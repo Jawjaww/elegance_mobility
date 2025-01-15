@@ -20,8 +20,8 @@ export default function MapComponent(props: MapComponentProps) {
   useEffect(() => {
     if (isLoaded && mapRef.current && !map) {
       const mapInstance = new google.maps.Map(mapRef.current, {
-        center: { lat: 48.8566, lng: 2.3522 }, // Paris par défaut
-        zoom: 12,
+        center: { lat: 48.8026, lng: 2.3522 }, // Paris by default
+        zoom: 10,
         mapId: 'ELEGANCE_MOBILITE_MAP'
       })
 
@@ -37,6 +37,9 @@ export default function MapComponent(props: MapComponentProps) {
 
   // Handle origin/destination changes
   useEffect(() => {
+    console.log('MapComponent - origin:', props.origin)
+    console.log('MapComponent - destination:', props.destination)
+    
     if (map && directionsRenderer && props.origin && props.destination) {
       const directionsService = new google.maps.DirectionsService()
 

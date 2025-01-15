@@ -7,7 +7,49 @@
 ✅ Supabase connecté
 ✅ Clés API Google Maps et Stripe configurées
 
-## 2. Frontend : Pages statiques
+## 2. Structure de la base de données
+
+### Tables principales
+- **rides** : Gestion des courses
+- **vehicles** : Gestion des véhicules
+- **pricing** : Gestion des tarifs
+- **payments** : Gestion des paiements (Stripe)
+
+### Relations
+- Une course est liée à un véhicule (vehicle_id)
+- Une course est liée à un utilisateur (user_id)
+- Les tarifs sont liés au type de véhicule (vehicle_type)
+- Les paiements sont liés aux courses (payment_id)
+
+### Règles de gestion
+1. Versioning des schémas via les migrations
+2. Toujours créer une nouvelle migration complète
+3. Ne jamais modifier directement les tables en production
+4. Maintenir la synchronisation des types frontend/backend
+5. Documenter chaque migration dans le devbook
+
+### Workflow de mise à jour
+1. Modifier les fichiers SQL dans supabase/schemas/
+2. Créer une nouvelle migration complète
+3. Exécuter la migration sur la base de production
+4. Générer les types TypeScript
+5. Mettre à jour le frontend
+
+## 3. Réalisations en cours et finalisées
+
+### Frontend
+✅ Page d'accueil avec formulaire de réservation
+✅ Dashboard admin pour la gestion des tarifs
+✅ Interface de modification des tarifs en temps réel
+✅ Intégration de Google Maps
+
+### Backend
+✅ Connexion à Supabase
+✅ Gestion des tarifs via contexte React
+✅ Calcul automatique des prix
+✅ Intégration Stripe (en cours)
+
+## 4. Frontend : Pages statiques
 ✅ Home Page:
 - Elegant design with background image
 - Benefits presentation section
@@ -38,17 +80,17 @@
 - Static pages created
 
 ## 3. Intégration Google Maps API
-🟡 Autocomplétion des adresses
-🟡 Calcul de distance
+✅ Autocomplétion des adresses
+✅ Calcul de distance
 ❌ Estimation du trafic
 
 ## 4. Backend: Reservation Management
 ❌ Reservations table in Supabase
-❌ Back-office de gestion
+🟡 Back-office de gestion
 ❌ Emails de confirmation
 
 ## 5. Reservation Form
-🟡 Modern user interface
+✅ Modern user interface
 - Vehicle selection with preview
 - Intuitive date and time selection
 - Real-time field validation

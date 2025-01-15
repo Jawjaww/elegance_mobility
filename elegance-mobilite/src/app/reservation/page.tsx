@@ -1,31 +1,13 @@
 "use client"
 import { motion } from "framer-motion"
 import { useState, useEffect } from "react"
+import { useCalculatePrice } from "@/lib/tarifs"
 import { Button } from "../../components/ui/button"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../../components/ui/card"
-import { Input } from "../../components/ui/input"
 import { Label } from "../../components/ui/label"
-import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group"
+import { RadioGroup } from "../../components/ui/radio-group"
 import { Switch } from "../../components/ui/switch"
 import { AutocompleteInput } from "../../components/AutocompleteInput"
-import toast from 'react-hot-toast'
 import MapComponent from "../../components/MapComponent"
-
-// Base pricing
-const PRICING = {
-  STANDARD: {
-    base: 5,
-    perKm: 1.5
-  },
-  PREMIUM: {
-    base: 10,
-    perKm: 2.5
-  },
-  VIP: {
-    base: 20,
-    perKm: 4
-  }
-}
 
 export default function Reservation() {
   const [step, setStep] = useState(1)
@@ -40,6 +22,7 @@ export default function Reservation() {
   const [distance, setDistance] = useState<string>()
   const [duration, setDuration] = useState<string>()
   const [estimatedPrice, setEstimatedPrice] = useState<number>()
+  const { calculatePrice } = useCalculatePrice()
   const [pickupDateTime, setPickupDateTime] = useState<Date>(new Date())
   const [vehicleType, setVehicleType] = useState<'STANDARD' | 'PREMIUM' | 'VIP'>('PREMIUM')
   const [options, setOptions] = useState<{
@@ -51,58 +34,38 @@ export default function Reservation() {
     childSeat: false,
     petFriendly: false
   })
-  const [geocoder, setGeocoder] = useState<google.maps.Geocoder>()
-  const [isGeocoding, setIsGeocoding] = useState(false)
-
-  // Verify if it's a peak hour
-  const isPeakHour = (time: string, date: Date): boolean => {
-    const dayOfWeek = date.getDay()
-    if (dayOfWeek === 6) return false // Pas de surcharge le samedi
-
-    const currentTime = new Date(`1970-01-01T${time}`)
-    
-    // 07:00 - 09:30 peak AM
-    const peakHours = [
-      { start: '07:00', end: '09:30' },
-      { start: '17:30', end: '19:00' }
-    ]
-    
-    return peakHours.some(peak => {
-      const start = new Date(`1970-01-01T${peak.start}`)
-      const end = new Date(`1970-01-01T${peak.end}`)
-      return currentTime >= start && currentTime <= end
-    })
-  }
-
-  // Price calculation
+  // Price calculation using new pricing system
   useEffect(() => {
     if (distance) {
-      console.log('Calcul du tarif pour:', vehicleType)
       const distanceValue = parseFloat(distance.replace(',', '.'))
-      const pricing = PRICING[vehicleType]
-      console.log('Tarif de base:', pricing)
+      const durationValue = duration ? parseFloat(duration.replace(' min', '')) : 0
       
-      // Basis price
-      let price = pricing.base + (distanceValue * pricing.perKm)
-      console.log('Prix avant options:', price)
+      // Get pricing based on vehicle type
+      const isPremium = vehicleType === 'PREMIUM' || vehicleType === 'VIP'
+      
+      // Calculate base price using new pricing system
+      const price = calculatePrice(
+        distanceValue,
+        durationValue,
+        vehicleType,
+        pickupDateTime,
+        origin.address || '',
+        destination.address || ''
+      )
       
       // Add options price
-      if (options.luggage) price += 5
-      if (options.childSeat) price += 3
-      if (options.petFriendly) price += 2
+      let finalPrice = price
+      if (options.luggage) finalPrice += 5
+      if (options.childSeat) finalPrice += 7  
+      if (options.petFriendly) finalPrice += 5
       
-      // Minimum price
-      price = Math.max(price, 24.50)
+      // Apply minimum price
+      const minimumPrice = isPremium ? 25.50 : 24.50
+      finalPrice = Math.max(finalPrice, minimumPrice)
       
-      // Peak hour surcharge
-      const now = new Date()
-      if (isPeakHour(now.toTimeString().slice(0,5), now)) {
-        price *= 1.25
-      }
-      
-      setEstimatedPrice(Number(price.toFixed(2)))
+      setEstimatedPrice(Number(finalPrice.toFixed(2)))
     }
-  }, [distance, vehicleType, options])
+  }, [distance, duration, vehicleType, options, pickupDateTime, calculatePrice, origin.address, destination.address])
 
   const handleNextStep = () => {
     setStep(prev => Math.min(prev + 1, 2))
@@ -211,6 +174,7 @@ export default function Reservation() {
                       className="w-full p-2 rounded-md bg-neutral-800 border border-neutral-700 focus:border-blue-500 focus:ring-blue-500 cursor-pointer appearance-none"
                       min={new Date().toISOString().slice(0, 16)}
                       onKeyDown={(e) => e.preventDefault()}
+                      aria-label="Sélectionnez la date et l'heure de prise en charge"
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-400">
@@ -264,7 +228,7 @@ export default function Reservation() {
                           lng: place.geometry.location.lng()
                         }
                         
-                        // Mettre à jour l'adresse dans l'input correspondant
+                        // Update address in corresponding input
                         const activeElement = document.activeElement
                         if (activeElement?.id === 'start') {
                           setOrigin({
