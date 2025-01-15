@@ -5,17 +5,17 @@ import { ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { Pencil, Trash } from "lucide-react"
 
-import { Tarif } from "../../../lib/types"
+import { Rate } from "../../../lib/types"
 
-export const columns: ColumnDef<Tarif>[] = [
+export const columns: ColumnDef<Rate>[] = [
   {
     accessorKey: "type",
     header: "Type"
   },
   {
-    accessorKey: "offPeakRate",
-    header: "Heure creuse (€/km)",
-    cell: ({ row }) => row.original.offPeakRate + " €/km"
+    accessorKey: "baseRate",
+    header: "Tarif de base (€/km)",
+    cell: ({ row }) => row.original.baseRate + " €/km"
   },
   {
     accessorKey: "peakRate",
@@ -30,21 +30,21 @@ export const columns: ColumnDef<Tarif>[] = [
   {
     id: "actions",
     cell: ({ row }) => {
-      const tarif = row.original
+      const rate = row.original
       
-      const updateTarif = (id: string, newTarif: Partial<Tarif>) => {
-        console.log('Updating tarif:', id, newTarif)
+      const updateRate = (id: string, newRate: Partial<Rate>) => {
+        console.log('Updating rate:', id, newRate)
         // TODO: Implémenter la mise à jour via un contexte ou state management
       }
       
       const handleEdit = () => {
-        const newOffPeakRate = parseFloat(prompt("Nouveau tarif heure creuse (€/km):", (tarif.offPeakRate || 0).toString()) || '0')
-        const newPeakRate = parseFloat(prompt("Nouveau tarif heure pleine (€/km):", (tarif.peakRate || 0).toString()) || '0')
-        const newNightRate = parseFloat(prompt("Nouveau tarif nuit (€/km):", (tarif.nightRate || 0).toString()) || '0')
+        const newBaseRate = parseFloat(prompt("Nouveau tarif de base (€/km):", (rate.baseRate || 0).toString()) || '0')
+        const newPeakRate = parseFloat(prompt("Nouveau tarif heure pleine (€/km):", (rate.peakRate || 0).toString()) || '0')
+        const newNightRate = parseFloat(prompt("Nouveau tarif nuit (€/km):", (rate.nightRate || 0).toString()) || '0')
         
-        if (!isNaN(newOffPeakRate) && !isNaN(newPeakRate) && !isNaN(newNightRate)) {
-          updateTarif(tarif.id, {
-            offPeakRate: newOffPeakRate,
+        if (!isNaN(newBaseRate) && !isNaN(newPeakRate) && !isNaN(newNightRate)) {
+          updateRate(rate.id, {
+            baseRate: newBaseRate,
             peakRate: newPeakRate,
             nightRate: newNightRate
           })
@@ -55,7 +55,7 @@ export const columns: ColumnDef<Tarif>[] = [
 
       const handleDelete = () => {
         // TODO: Implémenter la logique de suppression
-        console.log('Supprimer le tarif:', tarif)
+        console.log('Supprimer le rate:', rate)
       }
 
       return (

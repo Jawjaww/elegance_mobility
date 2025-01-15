@@ -3,7 +3,7 @@ export const MINIMUM_FARE = 21.50; // Regulatory minimum fare
 export const PREMIUM_MINIMUM_FARE = 25.50; // Premium minimum fare
 
 import { Zone } from './types'
-import { useTarifsStore } from './tarifsStore'
+import { useRatesStore } from './ratesStore'
 
 // Zone surcharges
 export const ZONE_SURCHARGES = {
@@ -49,7 +49,7 @@ export function determineZone(departure: string, arrival: string): Zone {
 
 // Hook for calculating ride price
 export function useCalculatePrice() {
-  const { tarifs } = useTarifsStore()
+  const { rates } = useRatesStore()
 
   const calculatePrice = (
     distanceKm: number,
@@ -59,56 +59,56 @@ export function useCalculatePrice() {
     departure: string,
     arrival: string
   ): number => {
-  const rate = tarifs.find(t => t.type === vehicleType)
-  
-  if (!rate) {
-    throw new Error(`Rates not found for vehicle type ${vehicleType}`)
-  }
-  
-  // Determine pricing period
-  let period = 'offPeak';
-  if (isNightTime(date) || isSundayOrHoliday(date)) {
-    period = 'night';
-  } else if (isPeakHour(date)) {
-    period = 'peak';
-  }
-  
-  // Calculate base price with typed access
-  let price: number;
-  switch (period) {
-    case 'offPeak':
-      price =
-        rate.offPeakRate +
-        (distanceKm * rate.offPeakRate * 0.8) +
-        (durationMinutes * rate.offPeakRate * 0.05);
-      break;
-    case 'peak':
-      price =
-        rate.peakRate +
-        (distanceKm * rate.peakRate * 0.8) +
-        (durationMinutes * rate.peakRate * 0.05);
-      break;
-    case 'night':
-      price =
-        rate.nightRate +
-        (distanceKm * rate.nightRate * 0.8) +
-        (durationMinutes * rate.nightRate * 0.05);
-      break;
-    default:
-      price = MINIMUM_FARE;
-  }
+    const rate = rates.find(t => t.type === vehicleType)
     
-  // Apply geographical surcharges
-  const zone = determineZone(departure, arrival);
-  if (zone !== Zone.PARIS) {
-    price *= ZONE_SURCHARGES[zone];
-  }
-  
-  // Apply minimum fare based on vehicle type
-  const minimum =
-    vehicleType === 'VIP' ? PREMIUM_MINIMUM_FARE * 1.2 :
-    vehicleType === 'PREMIUM' ? PREMIUM_MINIMUM_FARE :
-    MINIMUM_FARE;
+    if (!rate) {
+      throw new Error(`Rates not found for vehicle type ${vehicleType}`)
+    }
+    
+    // Determine pricing period
+    let period = 'base';
+    if (isNightTime(date) || isSundayOrHoliday(date)) {
+      period = 'night';
+    } else if (isPeakHour(date)) {
+      period = 'peak';
+    }
+    
+    // Calculate base price with typed access
+    let price: number;
+    switch (period) {
+      case 'base':
+        price =
+          rate.baseRate +
+          (distanceKm * rate.baseRate * 0.8) +
+          (durationMinutes * rate.baseRate * 0.05);
+        break;
+      case 'peak':
+        price =
+          rate.peakRate +
+          (distanceKm * rate.peakRate * 0.8) +
+          (durationMinutes * rate.peakRate * 0.05);
+        break;
+      case 'night':
+        price =
+          rate.nightRate +
+          (distanceKm * rate.nightRate * 0.8) +
+          (durationMinutes * rate.nightRate * 0.05);
+        break;
+      default:
+        price = MINIMUM_FARE;
+    }
+      
+    // Apply geographical surcharges
+    const zone = determineZone(departure, arrival);
+    if (zone !== Zone.PARIS) {
+      price *= ZONE_SURCHARGES[zone];
+    }
+    
+    // Apply minimum fare based on vehicle type
+    const minimum =
+      vehicleType === 'VIP' ? PREMIUM_MINIMUM_FARE * 1.2 :
+      vehicleType === 'PREMIUM' ? PREMIUM_MINIMUM_FARE :
+      MINIMUM_FARE;
     return Math.max(price, minimum);
   }
 

@@ -1,7 +1,7 @@
 "use client"
 import { motion } from "framer-motion"
 import { useState, useEffect } from "react"
-import { useCalculatePrice } from "@/lib/tarifs"
+import { useCalculatePrice } from "@/lib/rates"
 import { Button } from "../../components/ui/button"
 import { Label } from "../../components/ui/label"
 import { RadioGroup } from "../../components/ui/radio-group"
@@ -384,7 +384,7 @@ export default function Reservation() {
                       </div>
                     )}
                     <div className="flex justify-between font-semibold text-blue-400">
-                      <span>Tarif total</span>
+                      <span>Rate total</span>
                       <span>{estimatedPrice?.toFixed(2)}€</span>
                     </div>
                   </div>

@@ -1,28 +1,28 @@
 import { create } from 'zustand'
 import { supabase } from './supabaseClient'
 
-interface Tarif {
+interface Rate {
   id: string
   type: string
-  base_rate: number
-  peak_rate: number
-  night_rate: number
+  baseRate: number
+  peakRate: number
+  nightRate: number
 }
 
-interface TarifsStore {
-  tarifs: Tarif[]
+interface RatesStore {
+  rates: Rate[]
   loading: boolean
   error: string | null
-  fetchTarifs: () => Promise<void>
-  updateTarif: (id: string, newTarif: Partial<Tarif>) => Promise<void>
+  fetchRates: () => Promise<void>
+  updateRate: (id: string, newRate: Partial<Rate>) => Promise<void>
 }
 
-export const useTarifsStore = create<TarifsStore>((set) => ({
-  tarifs: [],
+export const useRatesStore = create<RatesStore>((set) => ({
+  rates: [],
   loading: false,
   error: null,
 
-  fetchTarifs: async () => {
+  fetchRates: async () => {
     set({ loading: true, error: null })
     try {
       const { data, error } = await supabase
@@ -33,12 +33,12 @@ export const useTarifsStore = create<TarifsStore>((set) => ({
       if (error) throw error
 
       set({ 
-        tarifs: data.map(rate => ({
+        rates: data.map(rate => ({
           id: rate.id,
           type: rate.type,
-          base_rate: rate.off_peak_rate,
-          peak_rate: rate.peak_rate,
-          night_rate: rate.night_rate
+          baseRate: rate.off_peak_rate,
+          peakRate: rate.peak_rate,
+          nightRate: rate.night_rate
         })),
         loading: false 
       })
@@ -50,15 +50,15 @@ export const useTarifsStore = create<TarifsStore>((set) => ({
     }
   },
 
-  updateTarif: async (id, newTarif) => {
+  updateRate: async (id, newRate) => {
     set({ loading: true, error: null })
     try {
       const { error } = await supabase
         .from('rates')
         .update({
-          off_peak_rate: newTarif.base_rate,
-          peak_rate: newTarif.peak_rate,
-          night_rate: newTarif.night_rate
+          off_peak_rate: newRate.baseRate,
+          peak_rate: newRate.peakRate, 
+          night_rate: newRate.nightRate
         })
         .eq('id', id)
 
@@ -66,8 +66,8 @@ export const useTarifsStore = create<TarifsStore>((set) => ({
 
       // Refresh the list after update
       set((state) => ({
-        tarifs: state.tarifs.map(tarif => 
-          tarif.id === id ? { ...tarif, ...newTarif } : tarif
+        rates: state.rates.map(rate => 
+          rate.id === id ? { ...rate, ...newRate } : rate
         ),
         loading: false
       }))

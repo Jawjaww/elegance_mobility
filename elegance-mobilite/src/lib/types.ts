@@ -6,10 +6,10 @@ export enum Zone {
 }
 
 // VTC rates
-export interface Tarif {
+export interface Rate {
   id: string
   type: string
-  offPeakRate: number
+  baseRate: number
   peakRate: number
   nightRate: number
 }
@@ -18,11 +18,11 @@ export interface Tarif {
 export const MINIMUM_FARE = 21.50
 export const PREMIUM_MINIMUM_FARE = 25.50
 
-// Tarifs store interface
-export interface TarifsStore {
-  tarifs: Tarif[]
+// Rates store interface
+export interface RatesStore {
+  rates: Rate[]
   loading: boolean
   error: string | null
-  fetchTarifs: () => Promise<void>
-  updateTarif: (id: string, newTarif: Partial<Tarif>) => Promise<void>
+  fetchRates: () => Promise<void>
+  updateRate: (id: string, newRate: Partial<Rate>) => Promise<void>
 }

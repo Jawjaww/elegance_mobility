@@ -7,7 +7,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <nav className="p-4">
           <h2 className="text-lg font-semibold mb-4">Admin Dashboard</h2>
           <ul className="space-y-2">
-            <li><a href="/admin/tarifs" className="hover:text-blue-500">Tarifs</a></li>
+            <li><a href="/admin/rates" className="hover:text-blue-500">Rates</a></li>
             <li><a href="/admin/chauffeurs" className="hover:text-blue-500">Chauffeurs</a></li>
             <li><a href="/admin/vehicules" className="hover:text-blue-500">Véhicules</a></li>
             <li><a href="/admin/courses" className="hover:text-blue-500">Courses</a></li>

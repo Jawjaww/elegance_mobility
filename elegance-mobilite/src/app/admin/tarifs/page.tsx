@@ -3,9 +3,9 @@
 import { DataTable } from "@/components/ui/data-table"
 import { columns } from "./columns"
 import { useEffect } from "react"
-import { useTarifsStore } from "../../../lib/tarifsStore"
+import { useRatesStore } from "../../../lib/ratesStore"
 
-export default function TarifsPage() {
+export default function RatesPage() {
   const { rates, fetchRates } = useRatesStore()
 
   useEffect(() => {
@@ -14,7 +14,7 @@ export default function TarifsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Gestion des tarifs</h1>
+        <h1 className="text-3xl font-bold">Gestion des rates</h1>
       </div>
       
       <DataTable

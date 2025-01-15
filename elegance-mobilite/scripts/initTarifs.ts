@@ -4,7 +4,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const supabase = createClient(supabaseUrl, supabaseKey)
 
-const defaultTarifs = [
+const defaultRates = [
   {
     type: 'STANDARD',
     heureCreuse: 1.50,
@@ -25,25 +25,25 @@ const defaultTarifs = [
   }
 ]
 
-async function initTarifs() {
+async function initRates() {
   try {
-    // Clear existing tarifs
-    await supabase.from('tarifs').delete().neq('id', '')
+    // Clear existing rates
+    await supabase.from('rates').delete().neq('id', '')
 
-    // Insert default tarifs
+    // Insert default rates
     const { data, error } = await supabase
-      .from('tarifs')
-      .insert(defaultTarifs)
+      .from('rates')
+      .insert(defaultRates)
       .select()
 
     if (error) throw error
 
-    console.log('Default tarifs initialized successfully:')
+    console.log('Default rates initialized successfully:')
     console.log(data)
   } catch (error) {
-    console.error('Error initializing tarifs:')
+    console.error('Error initializing rates:')
     console.error(error)
   }
 }
 
-initTarifs()
+initRates()
