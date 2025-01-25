@@ -2,6 +2,7 @@
 export const MINIMUM_FARE = 21.50; // Regulatory minimum fare
 export const PREMIUM_MINIMUM_FARE = 25.50; // Premium minimum fare
 
+import { useEffect } from 'react'
 import { Zone } from './types'
 import { useRatesStore } from './ratesStore'
 
@@ -49,7 +50,14 @@ export function determineZone(departure: string, arrival: string): Zone {
 
 // Hook for calculating ride price
 export function useCalculatePrice() {
-  const { rates } = useRatesStore()
+  const { rates, fetchRates } = useRatesStore()
+
+  // Ensure rates are loaded
+  useEffect(() => {
+    if (rates.length === 0) {
+      fetchRates()
+    }
+  }, [rates, fetchRates])
 
   const calculatePrice = (
     distanceKm: number,

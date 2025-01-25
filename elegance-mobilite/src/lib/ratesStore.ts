@@ -1,20 +1,25 @@
 import { create } from 'zustand'
 import { supabase } from './supabaseClient'
+import type { VehicleCategory, CreateVehicleCategory } from './types'
 
-interface Rate {
-  id: string
-  type: string
-  baseRate: number
-  peakRate: number
-  nightRate: number
+// Constants for error messages
+const ERROR_MESSAGES = {
+  FETCH: 'Erreur lors de la récupération des tarifs',
+  CREATE: 'Erreur lors de la création du tarif',
+  UPDATE: 'Erreur lors de la mise à jour du tarif',
+  DELETE: 'Erreur lors de la suppression du tarif',
+  UNKNOWN: 'Une erreur inconnue est survenue'
 }
 
 interface RatesStore {
-  rates: Rate[]
+  rates: VehicleCategory[]
   loading: boolean
   error: string | null
   fetchRates: () => Promise<void>
-  updateRate: (id: string, newRate: Partial<Rate>) => Promise<void>
+  initialize: () => Promise<void>
+  createRate: (rate: CreateVehicleCategory) => Promise<void>
+  updateRate: (id: string, newRate: Partial<VehicleCategory>) => Promise<void>
+  deleteRate: (id: string) => Promise<void>
 }
 
 export const useRatesStore = create<RatesStore>((set) => ({
@@ -23,8 +28,9 @@ export const useRatesStore = create<RatesStore>((set) => ({
   error: null,
 
   fetchRates: async () => {
-    set({ loading: true, error: null })
     try {
+      set({ loading: true, error: null })
+      
       const { data, error } = await supabase
         .from('rates')
         .select('*')
@@ -32,16 +38,76 @@ export const useRatesStore = create<RatesStore>((set) => ({
 
       if (error) throw error
 
-      set({ 
-        rates: data.map(rate => ({
+      console.log('Raw rates data:', data)
+      
+      const newRates = data.map(rate => {
+        if (!rate.type) {
+          console.error('Invalid rate data:', rate)
+          throw new Error('Invalid rate data: missing type')
+        }
+        
+        return {
           id: rate.id,
-          type: rate.type,
-          baseRate: rate.off_peak_rate,
-          peakRate: rate.peak_rate,
-          nightRate: rate.night_rate
-        })),
-        loading: false 
+          type: rate.type as VehicleCategory['type'],
+          baseRate: rate.base_rate || rate.off_peak_rate || 0,
+          peakRate: rate.peak_rate || 0,
+          nightRate: rate.night_rate || 0
+        }
       })
+      
+      console.log('Transformed rates:', newRates)
+
+      if (!newRates) {
+        set({ loading: false, error: ERROR_MESSAGES.FETCH })
+        return
+      }
+
+      set(state => {
+        if (!state.rates || JSON.stringify(state.rates) !== JSON.stringify(newRates)) {
+          return { rates: newRates, loading: false }
+        }
+        return { loading: false }
+      })
+    } catch (error: unknown) {
+      set({
+        error: error instanceof Error ? error.message : ERROR_MESSAGES.UNKNOWN,
+        loading: false
+      })
+    }
+  },
+
+  initialize: async () => {
+    try {
+      console.log('Initializing rates store...')
+      const { fetchRates } = useRatesStore.getState()
+      await fetchRates()
+      console.log('Rates store initialized successfully')
+    } catch (error) {
+      console.error('Error initializing rates store:', error)
+      throw error
+    }
+  },
+
+  createRate: async (rate) => {
+    set({ loading: true, error: null })
+    try {
+      const { data, error } = await supabase
+        .from('rates')
+        .insert({
+          type: rate.type,
+          base_rate: rate.baseRate,
+          peak_rate: rate.peakRate,
+          night_rate: rate.nightRate
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      set(state => ({
+        rates: [data, ...(state.rates || [])],
+        loading: false
+      }))
     } catch (error: unknown) {
       set({ 
         error: error instanceof Error ? error.message : 'An unknown error occurred',
@@ -56,19 +122,40 @@ export const useRatesStore = create<RatesStore>((set) => ({
       const { error } = await supabase
         .from('rates')
         .update({
-          off_peak_rate: newRate.baseRate,
-          peak_rate: newRate.peakRate, 
+          base_rate: newRate.baseRate,
+          peak_rate: newRate.peakRate,
           night_rate: newRate.nightRate
         })
         .eq('id', id)
 
-      if (error) throw new Error(error.message)
+      if (error) throw error
 
-      // Refresh the list after update
-      set((state) => ({
+      set(state => ({
         rates: state.rates.map(rate => 
           rate.id === id ? { ...rate, ...newRate } : rate
         ),
+        loading: false
+      }))
+    } catch (error: unknown) {
+      set({ 
+        error: error instanceof Error ? error.message : 'An unknown error occurred',
+        loading: false 
+      })
+    }
+  },
+
+  deleteRate: async (id) => {
+    set({ loading: true, error: null })
+    try {
+      const { error } = await supabase
+        .from('rates')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+
+      set(state => ({
+        rates: state.rates.filter(rate => rate.id !== id),
         loading: false
       }))
     } catch (error: unknown) {

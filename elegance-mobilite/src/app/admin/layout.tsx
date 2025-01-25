@@ -11,6 +11,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <li><a href="/admin/chauffeurs" className="hover:text-blue-500">Chauffeurs</a></li>
             <li><a href="/admin/vehicules" className="hover:text-blue-500">Véhicules</a></li>
             <li><a href="/admin/courses" className="hover:text-blue-500">Courses</a></li>
+            <li><a href="/admin/options" className="hover:text-blue-500">Options</a></li>
+
           </ul>
         </nav>
       </aside>

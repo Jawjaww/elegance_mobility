@@ -29,20 +29,42 @@ export interface RadioGroupProps
 }
 
 const RadioGroup = React.forwardRef<HTMLDivElement, RadioGroupProps>(
-  ({ className, variant, size, ...props }, ref) => {
+  ({ className, variant, size, value, onValueChange, ...props }, ref) => {
+    const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+      if (onValueChange) {
+        onValueChange(event.target.value)
+      }
+    }
+
     return (
       <div
         className={cn(radioGroupVariants({ variant, size, className }))}
         ref={ref}
+        role="radiogroup"
         {...props}
-      />
+      >
+        {React.Children.map(props.children, child => {
+          if (React.isValidElement<RadioGroupItemProps>(child)) {
+            return React.cloneElement(child, {
+              onChange: handleChange,
+              checked: value === child.props.value
+            } as RadioGroupItemProps)
+          }
+          return child
+        })}
+      </div>
     )
   }
 )
 RadioGroup.displayName = "RadioGroup"
 
-export interface RadioGroupItemProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {}
+interface RadioGroupItemProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  value: string
+  onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void
+  checked?: boolean
+  className?: string
+  children?: React.ReactNode
+}
 
 const RadioGroupItem = React.forwardRef<HTMLInputElement, RadioGroupItemProps>(
   ({ className, ...props }, ref) => {

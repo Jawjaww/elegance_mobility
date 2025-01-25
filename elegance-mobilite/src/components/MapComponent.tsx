@@ -1,79 +1,86 @@
-"use client"
-
-import { useEffect, useRef, useState } from 'react'
-import { useMap } from './MapProvider'
+import { useEffect, useRef, useState } from 'react';
+import { useMap } from './MapProvider';
+import type { LatLng } from '../lib/types';
 
 interface MapComponentProps {
-  onPlaceSelected: (place: google.maps.places.PlaceResult) => void
-  onRouteCalculated?: (distance: string, duration: string) => void
-  origin?: google.maps.LatLngLiteral
-  destination?: google.maps.LatLngLiteral
+  markers: {
+    position: LatLng;
+    address: string;
+    color?: string;
+    label?: string;
+  }[];
+  onRouteCalculated?: (distance: string, duration: string) => void;
+  zoom?: number;
 }
 
-export default function MapComponent(props: MapComponentProps) {
-  const { isLoaded, loader } = useMap()
-  const mapRef = useRef<HTMLDivElement>(null)
-  const [map, setMap] = useState<google.maps.Map>()
-  const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer>()
+export default function MapComponent({
+  markers = [],
+  onRouteCalculated,
+  zoom = 8
+}: MapComponentProps) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const [map, setMap] = useState<google.maps.Map>();
+  const directionsRendererRef = useRef<google.maps.DirectionsRenderer>();
+  const { loader } = useMap();
 
-  // Initialize map
+  // Initialisation de la carte
   useEffect(() => {
-    if (isLoaded && mapRef.current && !map) {
-      const mapInstance = new google.maps.Map(mapRef.current, {
-        center: { lat: 48.8026, lng: 2.3522 }, // Paris by default
-        zoom: 10,
-        mapId: 'ELEGANCE_MOBILITE_MAP'
-      })
+    const initMap = async () => {
+      if (!loader || !mapRef.current) return;
 
-      const renderer = new google.maps.DirectionsRenderer({
-        map: mapInstance,
-        suppressMarkers: false
-      })
+      const map = new google.maps.Map(mapRef.current, {
+        center: { lat: 48.844950, lng: 2.410230 },
+        zoom: zoom,
+        restriction: {
+          latLngBounds: {
+            north: 49.2,
+            south: 48.3,
+            east: 3.5,
+            west: 1.5
+          },
+          strictBounds: false
+        },
+        disableDefaultUI: true,
+        gestureHandling: 'cooperative',
+        mapId: process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID
+      });
 
-      setMap(mapInstance)
-      setDirectionsRenderer(renderer)
-    }
-  }, [isLoaded, map])
+      setMap(map);
+      directionsRendererRef.current = new google.maps.DirectionsRenderer({
+        map,
+        suppressMarkers: false,
+        preserveViewport: false
+      });
+    };
 
-  // Handle origin/destination changes
+    initMap();
+  }, [loader, zoom]);
+
+  // Calcul de l'itinéraire
   useEffect(() => {
-    console.log('MapComponent - origin:', props.origin)
-    console.log('MapComponent - destination:', props.destination)
-    
-    if (map && directionsRenderer && props.origin && props.destination) {
-      const directionsService = new google.maps.DirectionsService()
+    if (!map || markers.length < 2 || !directionsRendererRef.current) return;
 
-      directionsService.route({
-        origin: props.origin,
-        destination: props.destination,
+    const directionsService = new google.maps.DirectionsService();
+
+    directionsService.route(
+      {
+        origin: markers[0].position,
+        destination: markers[1].position,
         travelMode: google.maps.TravelMode.DRIVING,
-        drivingOptions: {
-          departureTime: new Date(),
-          trafficModel: google.maps.TrafficModel.BEST_GUESS
-        }
-      }, (response, status) => {
-        if (status === 'OK' && response && props.onRouteCalculated) {
-          directionsRenderer.setDirections(response)
-          
-          if (response.routes?.[0]?.legs?.[0]) {
-            const route = response.routes[0].legs[0]
-            const distance = route.distance?.text || 'N/A'
-            const duration = route.duration?.text || 'N/A'
-            
-            props.onRouteCalculated(distance, duration)
+        provideRouteAlternatives: false
+      },
+      (result, status) => {
+        if (status === 'OK' && directionsRendererRef.current && result) {
+          directionsRendererRef.current.setDirections(result);
+          if (onRouteCalculated && result.routes[0]) {
+            const distance = result.routes[0].legs[0]?.distance?.text || '';
+            const duration = result.routes[0].legs[0]?.duration?.text || '';
+            onRouteCalculated(distance, duration);
           }
         }
-      })
-    }
-  }, [map, directionsRenderer, props.origin, props.destination])
+      }
+    );
+  }, [map, markers, onRouteCalculated]);
 
-  if (!isLoaded) {
-    return <div className="h-[400px] w-full bg-neutral-800 animate-pulse rounded-lg" />
-  }
-
-  return (
-    <div className="h-[400px] w-full rounded-lg overflow-hidden">
-      <div ref={mapRef} className="h-full w-full" />
-    </div>
-  )
+  return <div ref={mapRef} style={{ height: '100%', width: '100%' }} />;
 }

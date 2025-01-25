@@ -1,62 +1,80 @@
-"use client"
+"use client";
 
-import { createContext, useContext, useEffect, useState } from 'react'
-import { Loader } from '@googlemaps/js-api-loader'
+import { 
+  createContext, 
+  useContext, 
+  useEffect, 
+  useState, 
+  ReactNode 
+} from 'react';
+import { Loader } from '@googlemaps/js-api-loader';
 
-type MapContextType = {
-  isLoaded: boolean
-  loader: Loader | null
+interface MapContextValue {
+  isLoaded: boolean;
+  loader: Loader | null;
 }
 
-const MapContext = createContext<MapContextType>({
+const MapContext = createContext<MapContextValue>({
   isLoaded: false,
-  loader: null
-})
+  loader: null,
+});
 
-export function MapProvider({ children }: { children: React.ReactNode }) {
-  const [isLoaded, setIsLoaded] = useState(false)
-  const [loader, setLoader] = useState<Loader | null>(null)
+export const useMap = () => useContext(MapContext);
 
+export function MapProvider({ children }: { children: ReactNode }) {
+  const [state, setState] = useState<MapContextValue>({
+    isLoaded: false,
+    loader: null,
+  });
+
+  // Initialisation unique du loader
   useEffect(() => {
-    let mounted = true
+    let isMounted = true;
     
     const initMap = async () => {
       try {
-        const loaderInstance = new Loader({
-          apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-          libraries: ['places', 'routes'],
-          version: 'weekly',
-          retries: 3
-        })
+        if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
+          throw new Error('API key manquante pour Google Maps');
+        }
 
-        await loaderInstance.load()
-        
-        if (mounted) {
-          setLoader(loaderInstance)
-          setIsLoaded(true)
+        // Vérifier si le loader est déjà initialisé
+        if (!state.loader) {
+          const loader = new Loader({
+            apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+            libraries: ['places', 'marker'],
+            version: 'weekly',
+          });
+
+          await loader.load();
+
+          if (isMounted) {
+            setState({
+              isLoaded: true,
+              loader,
+            });
+          }
         }
       } catch (error) {
-        console.error('Failed to load Google Maps API', error)
-        if (mounted) {
-          setIsLoaded(false)
+        console.error('Erreur de chargement Google Maps:', error);
+        if (isMounted) {
+          setState({
+            isLoaded: false,
+            loader: null,
+          });
         }
       }
-    }
+    };
 
-    initMap()
+    initMap();
 
     return () => {
-      mounted = false
-    }
-  }, [])
+      isMounted = false;
+    };
+  }, [state.loader]);
 
   return (
-    <MapContext.Provider value={{ isLoaded, loader }}>
+    <MapContext.Provider value={state}>
       {children}
     </MapContext.Provider>
-  )
-}
-
-export function useMap() {
-  return useContext(MapContext)
+  );
 }
