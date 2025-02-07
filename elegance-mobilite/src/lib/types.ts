@@ -1,105 +1,103 @@
-/// <reference types="@types/google.maps" />
+import * as L from 'leaflet';
 
-declare global {
-  interface Window {
-    google: typeof google;
-  }
+// Types de base pour l'application
+export type VehicleType = 'STANDARD' | 'PREMIUM';
+
+export interface VehicleOptions {
+  childSeat: boolean;
+  airConditioning: boolean;
 }
 
-// Types de base pour les coordonnées géographiques
-export interface LatLng {
-  lat: number;
-  lng: number;
-}
-
-export interface MapConfig {
-  center: LatLng;
-  zoom: number;
-  markers: {
-    position: LatLng;
-    color?: string;
-    label?: string;
-  }[];
-}
-
-// Type pour les marqueurs de carte
-export interface LatLng {
+export interface Coordinates {
   lat: number;
   lng: number;
 }
 
 export interface MapMarker {
-  position: LatLng;
-  label: string;
-  icon?: google.maps.Symbol;
+  position: L.LatLngExpression;
+  address: string;
+  draggable?: boolean;
+  color?: 'red' | 'darkred' | 'orange' | 'green' | 'darkgreen' | 'blue' | 'purple' | 'darkpurple' | 'cadetblue';
+  icon?: string;
 }
 
-export interface MapConfig {
-  center: LatLng;
-  zoom: number;
-  markers: {
-    position: LatLng;
-    color?: string;
-    label?: string;
-  }[];
-}
-
-export interface MapConfig {
-  center: LatLng;
-  zoom: number;
-  markers: {
-    position: LatLng;
-    color?: string;
-    label?: string;
-  }[];
-}
-
-// Type pour les résultats de géocodage Google
-export interface GooglePlace {
-  place_id: string;
-  description: string;
-  structured_formatting: {
-    main_text: string;
-    secondary_text: string;
-  };
-  location: LatLng;
-}
-
-// Type pour les données de réservation
-export interface VehicleCategory {
-  id: string;
-  type: 'STANDARD' | 'PREMIUM' | 'VIP';
-  baseRate: number;
-  peakRate: number;
-  nightRate: number;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface CreateVehicleCategory {
-  type: 'STANDARD' | 'PREMIUM' | 'VIP';
-  baseRate: number;
-  peakRate: number;
-  nightRate: number;
-}
-
-export interface ReservationData {
-  origin: string;
-  destination: string;
+export interface LocationStepProps {
+  origin?: Coordinates;
+  destination?: Coordinates;
+  originAddress: string;
+  destinationAddress: string;
   pickupDateTime: Date;
-  vehicleType: VehicleCategory;
-  options: {
-    luggage: boolean;
-    childSeat: boolean;
-    petFriendly: boolean;
-  };
-  distance: number;
-  duration: number;
+  distance?: number;
+  duration?: number;
+  vehicleType?: VehicleType;
+  onOriginChange: (address: string) => void;
+  onDestinationChange: (address: string) => void;
+  onOriginSelect: (address: string, coordinates: Coordinates) => void;
+  onDestinationSelect: (address: string, coordinates: Coordinates) => void;
+  onLocationDetected?: (coordinates: Coordinates) => void;
+  onRouteCalculated: (distance: number, duration: number) => void;
+  onDateTimeChange: (date: Date) => void;
+  onPrevious?: () => void;  // Optionnel car non nécessaire à la première étape
+  onNext: () => void;
 }
 
-// Type pour la réponse d'itinéraire
-export interface RouteResult {
-  distance: number;
-  duration: number;
-  points: LatLng[];
+// Types Leaflet étendus
+export interface LeafletRouter {
+  route(
+    waypoints: L.LatLng[],
+    callback: (error: Error | null, routes: LeafletRoute[]) => void
+  ): void;
+}
+
+export interface LeafletRouteStyle {
+  color: string;
+  opacity: number;
+  weight: number;
+}
+
+export interface LeafletControlOptions {
+  waypoints: L.LatLng[];
+  routeWhileDragging?: boolean;
+  showAlternatives?: boolean;
+  fitSelectedRoute?: boolean;
+  show?: boolean;
+  lineOptions?: {
+    styles?: LeafletRouteStyle[];
+  };
+  plan?: LeafletPlan;
+}
+
+export interface LeafletRoute {
+  coordinates: L.LatLng[];
+  summary: {
+    totalDistance: number;
+    totalTime: number;
+  };
+}
+
+export interface LeafletPlan extends L.Control {
+  setWaypoints(waypoints: L.LatLng[]): void;
+  getWaypoints(): L.LatLng[];
+  spliceWaypoints(index: number, waypointsToRemove: number, ...waypointsToAdd: L.LatLng[]): L.LatLng[];
+}
+
+export interface LeafletRoutingControl extends L.Control {
+  setWaypoints(waypoints: L.LatLng[]): this;
+  getWaypoints(): L.LatLng[];
+  route(): void;
+  hide(): void;
+  getPlan(): LeafletPlan;
+  on(event: string, fn: (e: { routes: LeafletRoute[] }) => void): this;
+  off(event: string, fn: (e: { routes: LeafletRoute[] }) => void): this;
+}
+
+// Extension de Leaflet
+declare module 'leaflet' {
+  export interface RoutingStatic {
+    control(options: LeafletControlOptions): LeafletRoutingControl;
+  }
+
+  export interface LeafletStatic {
+    Routing: RoutingStatic;
+  }
 }

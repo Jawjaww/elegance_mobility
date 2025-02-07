@@ -58,7 +58,7 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
         role="switch"
         className={cn(switchVariants({ variant, size, className }))}
         ref={ref}
-        aria-checked={isChecked}
+        aria-checked={checked ? "true" : "false"} // Convertir en string "true"/"false"
         data-state={isChecked ? "checked" : "unchecked"}
         onClick={handleClick}
         {...props}

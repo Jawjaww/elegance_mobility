@@ -1,27 +1,16 @@
-"use client";
-
-import { Inter } from "next/font/google";
+import "leaflet/dist/leaflet.css";
+import "leaflet.awesome-markers/dist/leaflet.awesome-markers.css";
 import "./globals.css";
-import { setupCardEffects } from '../lib/cardEffects';
-import { useEffect } from 'react';
-import { MapProvider } from '../components/MapProvider';
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
-
-export default function RootLayout({
-  children,
-}: Readonly<{
+interface RootLayoutProps {
   children: React.ReactNode;
-}>) {
+}
+
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} antialiased`}>
-        <MapProvider>
-          {children}
-        </MapProvider>
+    <html lang="fr">
+      <body>
+        {children}
       </body>
     </html>
   );

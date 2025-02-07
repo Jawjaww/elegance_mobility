@@ -3,7 +3,13 @@ export const MINIMUM_FARE = 21.50; // Regulatory minimum fare
 export const PREMIUM_MINIMUM_FARE = 25.50; // Premium minimum fare
 
 import { useEffect } from 'react'
-import { Zone } from './types'
+
+enum Zone {
+  PARIS = 'PARIS',
+  SUBURB = 'SUBURB',
+  AIRPORT = 'AIRPORT'
+}
+
 import { useRatesStore } from './ratesStore'
 
 // Zone surcharges

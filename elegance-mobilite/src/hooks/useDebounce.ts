@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react'
 
-export const useDebounce = (delay = 300) => {
-  const [debouncedFn, setDebouncedFn] = useState<() => void>()
+export const useDebounce = (value: string, delay = 300) => {
+  const [debouncedValue, setDebouncedValue] = useState(value)
 
   useEffect(() => {
-    if (debouncedFn) {
-      const timer = setTimeout(debouncedFn, delay)
-      return () => clearTimeout(timer)
-    }
-  }, [debouncedFn, delay])
+    const handler = setTimeout(() => {
+      setDebouncedValue(value)
+    }, delay)
 
-  return (fn: () => void) => setDebouncedFn(() => fn)
+    return () => {
+      clearTimeout(handler)
+    }
+  }, [value, delay])
+
+  return debouncedValue
 }

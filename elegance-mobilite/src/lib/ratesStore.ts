@@ -2,6 +2,15 @@ import { create } from 'zustand'
 import { supabase } from './supabaseClient'
 import type { VehicleCategory, CreateVehicleCategory } from './types'
 
+interface RateData {
+  id: string
+  type: string
+  base_rate: number
+  peak_rate?: number
+  night_rate?: number
+  off_peak_rate?: number
+}
+
 // Constants for error messages
 const ERROR_MESSAGES = {
   FETCH: 'Erreur lors de la récupération des tarifs',
@@ -20,12 +29,14 @@ interface RatesStore {
   createRate: (rate: CreateVehicleCategory) => Promise<void>
   updateRate: (id: string, newRate: Partial<VehicleCategory>) => Promise<void>
   deleteRate: (id: string) => Promise<void>
+  isInitialized: boolean
 }
 
 export const useRatesStore = create<RatesStore>((set) => ({
   rates: [],
   loading: false,
   error: null,
+  isInitialized: false,
 
   fetchRates: async () => {
     try {
@@ -40,20 +51,7 @@ export const useRatesStore = create<RatesStore>((set) => ({
 
       console.log('Raw rates data:', data)
       
-      const newRates = data.map(rate => {
-        if (!rate.type) {
-          console.error('Invalid rate data:', rate)
-          throw new Error('Invalid rate data: missing type')
-        }
-        
-        return {
-          id: rate.id,
-          type: rate.type as VehicleCategory['type'],
-          baseRate: rate.base_rate || rate.off_peak_rate || 0,
-          peakRate: rate.peak_rate || 0,
-          nightRate: rate.night_rate || 0
-        }
-      })
+      const newRates = transformRates(data)
       
       console.log('Transformed rates:', newRates)
 
@@ -81,6 +79,7 @@ export const useRatesStore = create<RatesStore>((set) => ({
       console.log('Initializing rates store...')
       const { fetchRates } = useRatesStore.getState()
       await fetchRates()
+      set({ isInitialized: true })
       console.log('Rates store initialized successfully')
     } catch (error) {
       console.error('Error initializing rates store:', error)
@@ -166,3 +165,14 @@ export const useRatesStore = create<RatesStore>((set) => ({
     }
   }
 }))
+
+// Optimisation : Améliorer l'efficacité du traitement des données
+const transformRates = (rawRates: RateData[]) => {
+  return rawRates.map(rate => ({
+    id: rate.id,
+    type: rate.type as VehicleCategory['type'],
+    baseRate: rate.base_rate || rate.off_peak_rate || 0,
+    peakRate: rate.peak_rate || 0,
+    nightRate: rate.night_rate || 0
+  }));
+};

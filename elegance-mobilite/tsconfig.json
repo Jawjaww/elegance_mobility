@@ -19,6 +19,8 @@
     "jsx": "preserve",
     "incremental": true,
     "baseUrl": ".",
+    "types": ["node"],
+  
     "paths": {
       "@/*": [
         "./src/*"

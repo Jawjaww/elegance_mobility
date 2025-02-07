@@ -5,7 +5,7 @@ import { createReservation } from '../lib/reservationService'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
-import { useToast } from './ui/toast'
+import { useToast, ToastTitle, ToastDescription } from './ui/toast'
 
 export default function ReservationForm() {
   const { toast } = useToast()
@@ -59,8 +59,14 @@ export default function ReservationForm() {
     try {
       await createReservation(formData)
       toast({
-        title: 'Succès',
-        description: 'Votre réservation a bien été enregistrée.',
+        children: (
+          <>
+            <ToastTitle>Succès</ToastTitle>
+            <ToastDescription>
+              Votre réservation a bien été enregistrée.
+            </ToastDescription>
+          </>
+        )
       })
       setFormData({
         client_name: '',
@@ -76,9 +82,15 @@ export default function ReservationForm() {
     } catch (error) {
       console.error('Erreur lors de la réservation:', error);
       toast({
-        title: 'Erreur',
-        description: 'Une erreur est survenue lors de la réservation.',
         variant: 'destructive',
+        children: (
+          <>
+            <ToastTitle>Erreur</ToastTitle>
+            <ToastDescription>
+              Une erreur est survenue lors de la réservation.
+            </ToastDescription>
+          </>
+        )
       })
     } finally {
       setLoading(false)
@@ -200,6 +212,7 @@ export default function ReservationForm() {
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             required
             aria-required="true"
+            aria-label="Type de véhicule"
           >
             <option value="standard">Standard</option>
             <option value="premium">Premium</option>

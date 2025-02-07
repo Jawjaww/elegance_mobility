@@ -1,96 +1,215 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Input } from "./ui/input";
-import { useMap } from "./MapProvider";
+import { useDebounce } from "../hooks/useDebounce";
+import type { Coordinates } from "@/lib/types";
+
+const reverseGeocode = async (lat: number, lng: number) => {
+  try {
+    const response = await fetch(
+      `https://api-adresse.data.gouv.fr/reverse/?lon=${lng}&lat=${lat}`
+    );
+    const data = await response.json();
+    if (data.features && data.features.length > 0) {
+      return data.features[0];
+    }
+    return null;
+  } catch (error) {
+    console.error("Error reverse geocoding:", error);
+    return null;
+  }
+};
 
 interface AutocompleteInputProps {
   id: string;
-  type: 'pickup' | 'dropoff';
+  value?: string;
+  onChange?: (value: string) => void;
   placeholder?: string;
-  value: string;
-  onChange: (value: string) => void;
-  onPlaceSelected: (place: google.maps.places.PlaceResult) => void;
+  onSelect: (address: string, position: Coordinates) => void;
+  className?: string;
+  defaultValue?: string;
+}
+
+interface AddressFeature {
+  properties: {
+    label: string;
+    housenumber?: string;
+    street?: string;
+    postcode?: string;
+    city?: string;
+  };
+  geometry: {
+    coordinates: [number, number];
+  };
+}
+
+function formatAddress(feature: AddressFeature): string {
+  const { label } = feature.properties;
+  const parts = label.split(',');
+  if (parts.length >= 2) {
+    const addressPart = parts[0].trim();
+    const cityPart = parts[1].trim();
+    return `${addressPart} - ${cityPart}`;
+  }
+  return label;
 }
 
 export function AutocompleteInput({
   id,
-  type,
-  placeholder,
   value,
   onChange,
-  onPlaceSelected
+  placeholder,
+  onSelect,
+  className,
+  defaultValue
 }: AutocompleteInputProps) {
-  const { isLoaded } = useMap();
   const inputRef = useRef<HTMLInputElement>(null);
-  const autocompleteRef = useRef<google.maps.places.Autocomplete>();
+  const [query, setQuery] = useState(value || defaultValue || "");
+  const debouncedQuery = useDebounce(query, 300);
+  const [suggestions, setSuggestions] = useState<AddressFeature[]>([]);
+  const [isLocating, setIsLocating] = useState(false);
+  const ignoreNextQueryChange = useRef(false);
 
-  useEffect(() => {
-    if (!isLoaded || !inputRef.current) return;
+  const handleGeolocation = async () => {
+    setIsLocating(true);
+    if (!navigator.geolocation) {
+      console.error("La géolocalisation n'est pas supportée");
+      setIsLocating(false);
+      return;
+    }
 
     try {
-      autocompleteRef.current = new window.google.maps.places.Autocomplete(
-        inputRef.current,
-        {
-          fields: ['formatted_address', 'geometry', 'place_id'],
-          types: ['address'],
-          componentRestrictions: { country: 'fr' }
-        }
-      );
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject);
+      });
 
-      const placeChangedListener = autocompleteRef.current.addListener(
-        'place_changed',
-        () => {
-          const place = autocompleteRef.current?.getPlace();
-          if (place?.formatted_address) {
-            onChange(place.formatted_address);
-            onPlaceSelected(place);
-          }
-        }
-      );
-
-      return () => {
-        if (placeChangedListener) {
-          google.maps.event.removeListener(placeChangedListener);
-        }
-      };
+      const { latitude, longitude } = position.coords;
+      const feature = await reverseGeocode(latitude, longitude);
+      
+      if (feature) {
+        const coords = {
+          lat: latitude,
+          lng: longitude,
+        };
+        onSelect(feature.properties.label, coords);
+        ignoreNextQueryChange.current = true;
+        setQuery(feature.properties.label);
+        setSuggestions([]); // Clear suggestions after selecting geolocation
+      }
     } catch (error) {
-      console.error('Erreur d\'initialisation de l\'autocomplete:', error);
+      console.error("Erreur de géolocalisation:", error);
+    } finally {
+      setIsLocating(false);
     }
-  }, [isLoaded, onChange, onPlaceSelected]);
+  };
 
-  if (!isLoaded) {
-    return (
-      <div className="relative">
-        <Input
-          id={id}
-          placeholder={placeholder}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="pr-10"
-          disabled
-        />
-        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-neutral-400" />
-          <span className="ml-2 text-sm text-neutral-400">Chargement...</span>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (value !== undefined) {
+      setQuery(value);
+    }
+  }, [value]);
+
+  useEffect(() => {
+    if (defaultValue) {
+      setQuery(defaultValue);
+    }
+  }, [defaultValue]);
+
+  useEffect(() => {
+    if (ignoreNextQueryChange.current) {
+      ignoreNextQueryChange.current = false;
+      return;
+    }
+
+    const cleanQuery = debouncedQuery.trim().replace(/[^\w\s]/g, '');
+    if (cleanQuery.length > 2) {
+      fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(cleanQuery)}&limit=5&autocomplete=1`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.features) {
+            setSuggestions(data.features);
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching geocoding data:", error);
+          setSuggestions([]);
+        });
+    } else {
+      setSuggestions([]);
+    }
+  }, [debouncedQuery]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    // If the user manually changes the input, we reset everything
+    ignoreNextQueryChange.current = false;
+    setQuery(newValue);
+    onChange?.(newValue);
+
+    // If the field is emptied, we notify that there is no selected address anymore
+    if (newValue === '') {
+      onSelect('', { lat: 0, lng: 0 });
+    }
+  };
 
   return (
-    <div className="relative">
-      <Input
-        id={id}
-        ref={inputRef}
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="pr-10"
-        aria-label={type === 'pickup' 
-          ? "Adresse de prise en charge" 
-          : "Adresse de destination"}
-      />
+    <div className="flex gap-2 w-full">
+      <div className="relative flex-1">
+        <Input
+          id={id}
+          value={query}
+          onChange={handleInputChange}
+          placeholder={placeholder}
+          ref={inputRef}
+          className={className}
+        />
+        {suggestions.length > 0 && (
+          <ul className="absolute z-[9999] w-full mt-1 overflow-auto bg-background border border-neutral-700 rounded-md shadow-lg max-h-60">
+            {suggestions.map((feature, idx) => (
+              <li
+                key={idx}
+                className="px-4 py-2 cursor-pointer text-neutral-100 hover:bg-neutral-800"
+                onClick={() => {
+                  const position = {
+                    lat: feature.geometry.coordinates[1],
+                    lng: feature.geometry.coordinates[0],
+                  };
+                  onSelect(feature.properties.label, position);
+                  ignoreNextQueryChange.current = true;
+                  setQuery(feature.properties.label);
+                  setSuggestions([]);
+                }}
+              >
+                {formatAddress(feature)}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={handleGeolocation}
+        className="rounded-md p-2 inline-flex items-center justify-center text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 transition-all duration-300 ease-out"
+        disabled={isLocating}
+      >
+        {isLocating ? (
+          <span>⌛</span>
+        ) : (
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            viewBox="0 0 24 24" 
+            fill="currentColor" 
+            className="w-5 h-5"
+          >
+            <path 
+              fillRule="evenodd" 
+              d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" 
+              clipRule="evenodd"
+            />
+          </svg>
+        )}
+      </button>
     </div>
   );
 }
