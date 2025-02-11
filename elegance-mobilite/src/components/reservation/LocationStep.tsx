@@ -6,7 +6,6 @@ import { AutocompleteInput } from "@/components/AutocompleteInput";
 import dynamic from "next/dynamic";
 import type { LocationStepProps, MapMarker } from "@/lib/types";
 import type { LatLngTuple } from "leaflet";
-
 const LeafletMap = dynamic(() => import("@/components/map/LeafletMap"), { ssr: false });
 
 const LocationStep: React.FC<LocationStepProps> = ({
@@ -19,7 +18,9 @@ const LocationStep: React.FC<LocationStepProps> = ({
   onRouteCalculated,
   onNext,
   origin,
-  destination
+  destination,
+  pickupDateTime,
+  onDateTimeChange
 }) => {
   const markers: MapMarker[] = [
     ...(origin ? [{
@@ -53,7 +54,7 @@ const LocationStep: React.FC<LocationStepProps> = ({
                  Point de départ
                </label>
                <div className="flex gap-2">
-                 <div className="flex-1 relative z-50">
+                 <div className="flex-1">
                    <AutocompleteInput
                      id="origin-input"
                      value={originAddress}
@@ -66,7 +67,40 @@ const LocationStep: React.FC<LocationStepProps> = ({
                </div>
              </div>
 
-              <div className="relative z-40">
+              <div className="relative z-30">
+                <label className="text-lg font-semibold text-neutral-100 mb-2 block">
+                  Date et heure de prise en charge
+                </label>
+                <div
+                  className="w-full p-4 bg-neutral-800 text-neutral-100 border border-neutral-700 rounded-md cursor-pointer relative"
+                  onClick={(e) => {
+                    const input = e.currentTarget.querySelector('input');
+                    input?.showPicker();
+                  }}
+                >
+                  <p className="text-neutral-100">
+                    {pickupDateTime.toLocaleString('fr-FR', {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                  <input
+                    type="datetime-local"
+                    value={pickupDateTime.toISOString().slice(0, 16)}
+                    onChange={(e) => onDateTimeChange(new Date(e.target.value))}
+                    min={new Date().toISOString().slice(0, 16)}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    id="pickup-datetime"
+                    name="pickup-datetime"
+                    aria-label="Date et heure de prise en charge"
+                  />
+                </div>
+              </div>
+
+              <div className="relative z-20">
                 <label className="text-lg font-semibold text-neutral-100 mb-2 block">
                   Destination
                 </label>

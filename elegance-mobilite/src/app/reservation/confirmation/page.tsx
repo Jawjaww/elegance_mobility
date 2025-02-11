@@ -12,9 +12,22 @@ export default function ConfirmationPage() {
     departure,
     destination,
     distance,
+    duration,
+    pickupDateTime,
     selectedVehicle,
     selectedOptions,
   } = useReservationStore();
+
+  const formatDuration = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = Math.round(minutes % 60);
+    
+    if (hours === 0) {
+      return `${remainingMinutes} min`;
+    }
+    
+    return `${hours}h${remainingMinutes > 0 ? ` ${remainingMinutes}min` : ''}`;
+  };
 
   const {
     base,
@@ -76,8 +89,24 @@ export default function ConfirmationPage() {
                 <p className="font-medium">{destination?.display_name}</p>
               </div>
               <div>
+                <p className="text-neutral-400">Date et heure de prise en charge</p>
+                <p className="font-medium">
+                  {pickupDateTime.toLocaleString('fr-FR', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              </div>
+              <div>
                 <p className="text-neutral-400">Distance</p>
                 <p className="font-medium">{distance?.toFixed(1) ?? 'N/A'} km</p>
+              </div>
+              <div>
+                <p className="text-neutral-400">Durée estimée</p>
+                <p className="font-medium">{duration ? formatDuration(duration) : 'N/A'}</p>
               </div>
               <div>
                 <p className="text-neutral-400">Véhicule</p>

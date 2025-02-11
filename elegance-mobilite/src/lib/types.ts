@@ -36,6 +36,7 @@ export interface LocationStepProps {
   onDestinationSelect: (address: string, coordinates: Coordinates) => void;
   onLocationDetected?: (coordinates: Coordinates) => void;
   onRouteCalculated: (distance: number, duration: number) => void;
+  pickupDateTime: Date;
   onDateTimeChange: (date: Date) => void;
   onPrevious?: () => void;  // Optionnel car non nécessaire à la première étape
   onNext: () => void;

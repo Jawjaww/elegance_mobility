@@ -15,6 +15,8 @@ interface ReservationState {
   selectedVehicle: VehicleType
   selectedOptions: string[]
   distance: number | null
+  duration: number | null
+  pickupDateTime: Date
 
   // État
   isInitialized: boolean
@@ -50,6 +52,8 @@ export const useReservationStore = create<ReservationState>((set, get) => ({
   selectedVehicle: 'STANDARD' as VehicleType,
   selectedOptions: [],
   distance: null,
+  duration: null,
+  pickupDateTime: new Date(Date.now() + 30 * 60000), // 30 minutes from now
   isInitialized: false,
   error: null,
 
@@ -102,6 +106,16 @@ export const useReservationStore = create<ReservationState>((set, get) => ({
     get().saveToStorage()
   },
 
+  setDuration: (minutes) => {
+    set({ duration: minutes })
+    get().saveToStorage()
+  },
+
+  setPickupDateTime: (date) => {
+    set({ pickupDateTime: date })
+    get().saveToStorage()
+  },
+
   setSelectedOptions: (options) => {
     set({ selectedOptions: options })
     get().saveToStorage()
@@ -134,7 +148,9 @@ export const useReservationStore = create<ReservationState>((set, get) => ({
           destination: data.destination,
           selectedVehicle: data.selectedVehicle,
           selectedOptions: data.selectedOptions,
-          distance: data.distance
+          distance: data.distance,
+          duration: data.duration,
+          pickupDateTime: data.pickupDateTime ? new Date(data.pickupDateTime) : new Date(Date.now() + 30 * 60000)
         })
       }
     } catch (error) {
@@ -150,7 +166,9 @@ export const useReservationStore = create<ReservationState>((set, get) => ({
         destination: state.destination,
         selectedVehicle: state.selectedVehicle,
         selectedOptions: state.selectedOptions,
-        distance: state.distance
+        distance: state.distance,
+        duration: state.duration,
+        pickupDateTime: state.pickupDateTime.toISOString()
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
     } catch (error) {
@@ -164,7 +182,9 @@ export const useReservationStore = create<ReservationState>((set, get) => ({
       destination: null,
       selectedVehicle: 'STANDARD' as VehicleType,
       selectedOptions: [],
-      distance: null
+      distance: null,
+      duration: null,
+      pickupDateTime: new Date(Date.now() + 30 * 60000)
     })
     localStorage.removeItem(STORAGE_KEY)
   }

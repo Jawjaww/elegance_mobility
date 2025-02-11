@@ -86,6 +86,8 @@ export function useReservation() {
       });
       reservationStore.setVehicleType(vehicleType);
       reservationStore.setDistance(distance);
+      reservationStore.setDuration(duration);
+      reservationStore.setPickupDateTime(pickupDateTime);
       reservationStore.setSelectedOptions(
         Object.entries(options)
           .filter(([, value]) => value)
@@ -101,7 +103,7 @@ export function useReservation() {
         variant: 'destructive'
       });
     }
-  }, [origin, destination, originAddress, destinationAddress, vehicleType, options, distance, router, reservationStore, toast]);
+  }, [origin, destination, originAddress, destinationAddress, vehicleType, options, distance, duration, pickupDateTime, router, reservationStore, toast]);
 
   const handlePrevStep = useCallback(() => {
     setStep(prev => Math.max(prev - 1, 1));
@@ -148,8 +150,9 @@ export function useReservation() {
 
   const handleRouteCalculated = useCallback((newDistance: number, newDuration: number) => {
     // Convertir la distance de mètres en kilomètres
-    setDistance(newDistance / 1000);
-    setDuration(newDuration);
+    setDistance(Math.round(newDistance / 1000));
+    // Duration est en secondes, la convertir en minutes
+    setDuration(Math.round(newDuration / 60));
   }, []);
 
   const handleOptionsChange = useCallback((newOptions: VehicleOptions) => {

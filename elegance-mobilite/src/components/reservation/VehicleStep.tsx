@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { VehicleType, VehicleOptions } from "@/lib/types";
 
@@ -55,73 +54,67 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
           Sélectionnez votre véhicule
         </h2>
 
-        <div>
-          <div className="grid gap-4 text-neutral-100 mb-6">
-            <RadioGroup 
-              value={vehicleType} 
-              onValueChange={(value) => onVehicleTypeChange(value as VehicleType)}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {vehicleOptions.map((option) => (
+            <div
+              key={option.value}
+              className={`relative p-4 rounded-lg border transition-all duration-200 cursor-pointer ${
+                vehicleType === option.value 
+                  ? 'bg-blue-600/20 border-blue-500'
+                  : 'bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800'
+              }`}
+              onClick={() => onVehicleTypeChange(option.value)}
             >
-              {vehicleOptions.map((option) => (
-                <div key={option.value} className="flex items-center space-x-2">
-                  <RadioGroupItem
-                    value={option.value}
-                    id={option.value}
-                    className="border-neutral-400"
-                  />
-                  <Label
-                    htmlFor={option.value}
-                    className="text-neutral-100 font-semibold"
-                  >
-                    {option.label}
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
-          </div>
-
-          <div className="space-y-4 pt-4 border-t border-neutral-700">
-            <h3 className="font-semibold text-neutral-100">Options</h3>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <Label
-                  htmlFor="child-seat"
-                  className="text-neutral-100 text-sm font-medium"
-                >
-                  Siège enfant
-                </Label>
-                <p className="text-neutral-400 text-xs">Ajout 15€</p>
-              </div>
-              <div>
-                <Switch
-                  id="child-seat"
-                  checked={options.childSeat}
-                  onCheckedChange={(checked) =>
-                    handleOptionChange({ childSeat: checked })
-                  }
-                />
+              <div className="mb-2">
+                <h3 className="font-semibold text-neutral-100">{option.label}</h3>
+                <p className="text-sm text-neutral-400">{option.description}</p>
               </div>
             </div>
+          ))}
+        </div>
 
-            <div className="flex items-center justify-between">
-              <div>
-                <Label
-                  htmlFor="pets"
-                  className="text-neutral-100 text-sm font-medium"
-                >
-                  Animaux domestiques
-                </Label>
-                <p className="text-neutral-400 text-xs">Ajout 10€</p>
-              </div>
-              <div>
-                <Switch
-                  id="pets"
-                  checked={options.pets}
-                  onCheckedChange={(checked) =>
-                    handleOptionChange({ pets: checked })
-                  }
-                />
-              </div>
+        <div className="space-y-4 pt-4 border-t border-neutral-700">
+          <h3 className="font-semibold text-neutral-100">Options</h3>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <Label
+                htmlFor="child-seat"
+                className="text-neutral-100 text-sm font-medium"
+              >
+                Siège enfant
+              </Label>
+              <p className="text-neutral-400 text-xs">Ajout 15€</p>
+            </div>
+            <div>
+              <Switch
+                id="child-seat"
+                checked={options.childSeat}
+                onCheckedChange={(checked) =>
+                  handleOptionChange({ childSeat: checked })
+                }
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <Label
+                htmlFor="pets"
+                className="text-neutral-100 text-sm font-medium"
+              >
+                Animaux domestiques
+              </Label>
+              <p className="text-neutral-400 text-xs">Ajout 10€</p>
+            </div>
+            <div>
+              <Switch
+                id="pets"
+                checked={options.pets}
+                onCheckedChange={(checked) =>
+                  handleOptionChange({ pets: checked })
+                }
+              />
             </div>
           </div>
         </div>
@@ -132,13 +125,13 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
           <div className="flex justify-between text-sm">
             <span className="text-neutral-400">Distance</span>
             <span className="text-neutral-100 font-medium">
-              {(distance / 1000).toFixed(1)} km
+              {distance.toFixed(1)} km
             </span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-neutral-400">Durée estimée</span>
             <span className="text-neutral-100 font-medium">
-              {formatDuration(duration / 60)}
+              {formatDuration(duration)}
             </span>
           </div>
         </div>
