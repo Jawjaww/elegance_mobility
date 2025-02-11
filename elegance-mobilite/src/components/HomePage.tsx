@@ -37,16 +37,16 @@ export default function HomePage() {
       </div>
 
       {/* Main content */}
-      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-8 py-24">
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 sm:px-8 py-12 sm:py-24">
         {/* Main title */}
         <div
           ref={el => { elementsRef.current[0] = el }}
-          className="fade-in text-center mb-16 transition-opacity duration-300 ease-out opacity-0 visible:opacity-100"
+          className="fade-in text-center mb-8 sm:mb-16 transition-opacity duration-300 ease-out opacity-0 visible:opacity-100"
         >
-          <h1 className="text-6xl md:text-8xl font-bold bg-gradient-to-r from-neutral-100 to-neutral-400 bg-clip-text text-transparent mb-4">
+          <h1 className="text-4xl sm:text-6xl md:text-8xl font-bold bg-gradient-to-r from-neutral-100 to-neutral-400 bg-clip-text text-transparent mb-4">
             Élégance
           </h1>
-          <h2 className="text-2xl md:text-3xl text-neutral-400">
+          <h2 className="text-xl sm:text-2xl md:text-3xl text-neutral-400">
             L&apos;excellence du transport privé
           </h2>
         </div>
@@ -54,12 +54,12 @@ export default function HomePage() {
         {/* How it works section */}
         <div
           ref={el => { elementsRef.current[1] = el }}
-          className="fade-in w-full max-w-7xl mt-16"
+          className="fade-in w-full max-w-7xl mt-8 sm:mt-16"
         >
-          <h2 className="text-3xl md:text-4xl font-bold text-neutral-100 mb-8 text-center">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-neutral-100 mb-6 sm:mb-8 text-center">
             Comment ça marche ?
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 px-4">
             {[
               {
                 title: "1. Simulez le prix",
@@ -74,13 +74,13 @@ export default function HomePage() {
                 description: "Votre chauffeur est confirmé. Vous recevrez ses coordonnées avant le départ.",
               }
             ].map((step, index) => (
-              <div key={index} className="card">
-                <Card className="bg-neutral-900/50 backdrop-blur-lg border-neutral-800 h-full">
+              <div key={index}>
+                <Card className="h-full transform transition-all duration-300 hover:scale-105 hover:shadow-lg">
                   <CardHeader>
-                    <CardTitle className="text-xl text-neutral-100">{step.title}</CardTitle>
+                    <CardTitle>{step.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <CardDescription className="text-neutral-400">
+                    <CardDescription>
                       {step.description}
                     </CardDescription>
                   </CardContent>
@@ -93,11 +93,11 @@ export default function HomePage() {
         {/* Main CTA */}
         <div
           ref={el => { elementsRef.current[2] = el }}
-          className="fade-in mt-16"
+          className="fade-in mt-8 sm:mt-16"
         >
           <Button
             size="lg"
-            className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 transition-all duration-300 ease-out transform overflow-hidden group"
+            className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 transition-all duration-300 ease-out transform hover:scale-105"
             onClick={() => window.location.href = "/reservation"}
           >
             Réserver maintenant
@@ -107,12 +107,12 @@ export default function HomePage() {
         {/* Vehicles section */}
         <div
           ref={el => { elementsRef.current[3] = el }}
-          className="fade-in w-full max-w-5xl mx-auto px-4 mt-32"
+          className="fade-in w-full max-w-5xl mx-auto px-4 mt-16 sm:mt-32"
         >
-          <h2 className="text-3xl md:text-4xl font-bold text-neutral-100 mb-8 text-center">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-neutral-100 mb-6 sm:mb-8 text-center">
             Nos véhicules
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
             {[
               {
                 title: "Berline Premium",
@@ -123,13 +123,13 @@ export default function HomePage() {
                 description: "Mercedes Classe V - Jusqu'à 7 passagers - 7 bagages - Idéal pour les groupes",
               }
             ].map((vehicle, index) => (
-              <div key={index} className="card">
-                <Card className="bg-neutral-900/50 backdrop-blur-lg border-neutral-800">
+              <div key={index}>
+                <Card className="transform transition-all duration-300 hover:scale-105 hover:shadow-lg">
                   <CardHeader>
-                    <CardTitle className="text-xl text-neutral-100">{vehicle.title}</CardTitle>
+                    <CardTitle>{vehicle.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <CardDescription className="text-neutral-400">
+                    <CardDescription>
                       {vehicle.description}
                     </CardDescription>
                   </CardContent>
@@ -142,11 +142,11 @@ export default function HomePage() {
         {/* Become a driver CTA */}
         <div
           ref={el => { elementsRef.current[4] = el }}
-          className="fade-in mt-32 mb-12"
+          className="fade-in mt-16 sm:mt-32 mb-12"
         >
           <Button
             size="lg"
-            className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 transition-all duration-300 ease-out transform overflow-hidden group"
+            className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 transition-all duration-300 ease-out transform hover:scale-105"
             onClick={() => window.location.href = "/contact"}
           >
             Devenir chauffeur

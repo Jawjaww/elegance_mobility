@@ -1,7 +1,7 @@
 import * as L from 'leaflet';
 
 // Types de base pour l'application
-export type VehicleType = 'STANDARD' | 'PREMIUM';
+export type VehicleType = 'STANDARD' | 'LUXURY' | 'VAN';
 
 export interface VehicleOptions {
   childSeat: boolean;

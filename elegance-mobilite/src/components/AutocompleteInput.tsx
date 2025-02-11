@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Input } from "./ui/input";
+import { Button } from "./ui/button";
 import { useDebounce } from "../hooks/useDebounce";
 import type { Coordinates } from "@/lib/types";
+import styles from "./AutocompleteInput.module.css";
 
 const reverseGeocode = async (lat: number, lng: number) => {
   try {
@@ -26,7 +28,7 @@ interface AutocompleteInputProps {
   value?: string;
   onChange?: (value: string) => void;
   placeholder?: string;
-  onSelect: (address: string, position: Coordinates) => void;
+  onSelect?: (address: string, position: Coordinates) => void;
   className?: string;
   defaultValue?: string;
 }
@@ -87,7 +89,7 @@ export function AutocompleteInput({
       const { latitude, longitude } = position.coords;
       const feature = await reverseGeocode(latitude, longitude);
       
-      if (feature) {
+      if (feature && onSelect) {
         const coords = {
           lat: latitude,
           lng: longitude,
@@ -142,20 +144,18 @@ export function AutocompleteInput({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
-    // If the user manually changes the input, we reset everything
     ignoreNextQueryChange.current = false;
     setQuery(newValue);
     onChange?.(newValue);
 
-    // If the field is emptied, we notify that there is no selected address anymore
-    if (newValue === '') {
+    if (newValue === '' && onSelect) {
       onSelect('', { lat: 0, lng: 0 });
     }
   };
 
   return (
-    <div className="flex gap-2 w-full">
-      <div className="relative flex-1">
+    <div className={styles.container}>
+      <div className={styles.inputWrapper}>
         <Input
           id={id}
           value={query}
@@ -165,17 +165,17 @@ export function AutocompleteInput({
           className={className}
         />
         {suggestions.length > 0 && (
-          <ul className="absolute z-[9999] w-full mt-1 overflow-auto bg-background border border-neutral-700 rounded-md shadow-lg max-h-60">
+          <ul className={styles.suggestions}>
             {suggestions.map((feature, idx) => (
               <li
                 key={idx}
-                className="px-4 py-2 cursor-pointer text-neutral-100 hover:bg-neutral-800"
+                className={styles.suggestion}
                 onClick={() => {
                   const position = {
                     lat: feature.geometry.coordinates[1],
                     lng: feature.geometry.coordinates[0],
                   };
-                  onSelect(feature.properties.label, position);
+                  onSelect?.(feature.properties.label, position);
                   ignoreNextQueryChange.current = true;
                   setQuery(feature.properties.label);
                   setSuggestions([]);
@@ -187,20 +187,21 @@ export function AutocompleteInput({
           </ul>
         )}
       </div>
-      <button
+      <Button
         type="button"
         onClick={handleGeolocation}
-        className="rounded-md p-2 inline-flex items-center justify-center text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 transition-all duration-300 ease-out"
+        className={styles.locationButton}
         disabled={isLocating}
+        title="Utiliser ma position actuelle"
       >
         {isLocating ? (
-          <span>⌛</span>
+          "⌛"
         ) : (
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
             viewBox="0 0 24 24" 
             fill="currentColor" 
-            className="w-5 h-5"
+            className={styles.locationIcon}
           >
             <path 
               fillRule="evenodd" 
@@ -209,7 +210,7 @@ export function AutocompleteInput({
             />
           </svg>
         )}
-      </button>
+      </Button>
     </div>
   );
 }

@@ -1,45 +1,72 @@
-import { ColumnDef, CellContext } from "@tanstack/react-table"
-import { Button } from "../../../components/ui/button"
-import { ArrowUpDown } from "lucide-react"
-import type { VehicleCategory } from "../../../lib/types"
+import { Button } from "@/components/ui/button";
+import { ColumnDef } from "@tanstack/react-table";
+import { RateForm } from "./RateForm";
+import type { Rate } from "@/lib/services/pricingService";
+import { Euro } from "lucide-react";
 
 interface ColumnsProps {
-  handleDelete: (id: string) => void;
+  onSave: (vehicleType: string, changes: Partial<Rate>) => Promise<void>;
+  onDelete: (vehicleType: string) => Promise<void>;
 }
 
-export const columns = ({ handleDelete }: ColumnsProps): ColumnDef<VehicleCategory>[] => [
+export const columns = ({ onSave, onDelete }: ColumnsProps): ColumnDef<Rate>[] => [
   {
-    accessorKey: "type",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        Type
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
+    accessorKey: "vehicleType",
+    header: "Type de véhicule",
+    cell: ({ row }) => (
+      <div className="font-medium">{row.getValue("vehicleType")}</div>
     ),
   },
   {
-    accessorKey: "baseRate",
-    header: "Tarif de base",
+    accessorKey: "basePrice",
+    header: "Prix de base",
+    cell: ({ row }) => (
+      <div className="flex items-center">
+        <Euro className="mr-1 h-4 w-4" />
+        {Number(row.getValue("basePrice")).toFixed(2)}
+      </div>
+    ),
   },
   {
-    accessorKey: "peakRate",
-    header: "Tarif heure de pointe",
-  },
-  {
-    accessorKey: "nightRate",
-    header: "Tarif de nuit",
+    accessorKey: "pricePerKm",
+    header: "Prix par km",
+    cell: ({ row }) => (
+      <div className="flex items-center">
+        <Euro className="mr-1 h-4 w-4" />
+        {Number(row.getValue("pricePerKm")).toFixed(2)}
+      </div>
+    ),
   },
   {
     id: "actions",
-    cell: ({ row }: CellContext<VehicleCategory, unknown>) => {
+    cell: ({ row }) => {
       const rate = row.original;
+
       return (
-        <Button variant="destructive" size="sm" onClick={() => handleDelete(rate.id)}>
-          Supprimer
-        </Button>
+        <div className="flex items-center gap-2">
+          <RateForm
+            mode="edit"
+            initialData={rate}
+            onSubmit={async (updatedRate) => {
+              const changes: Partial<Rate> = {
+                pricePerKm: updatedRate.pricePerKm,
+                basePrice: updatedRate.basePrice,
+              };
+              await onSave(rate.vehicleType, changes);
+            }}
+          />
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => {
+              if (window.confirm("Êtes-vous sûr de vouloir supprimer ce tarif ?")) {
+                onDelete(rate.vehicleType);
+              }
+            }}
+          >
+            Supprimer
+          </Button>
+        </div>
       );
     },
   },

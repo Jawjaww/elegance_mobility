@@ -1,55 +1,60 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-:root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --secondary: #728cf4;
-  --secondary-hover: #274bdb;
-  --accent: #22d3ee;
-  --accent-hover: #06b6d4;
-  --glass: rgba(255, 255, 255, 0.1);
-}
-
-@media (prefers-color-scheme: dark) {
+ 
+@layer base {
   :root {
-    --background: #0f172a;
-    --foreground: #f8fafc;
-    --primary: #818cf8;
-    --primary-hover: #6366f1;
-    --secondary: #236cff;
-    --secondary-hover: #275ddb;
-    --accent: #22d3ee;
-    --accent-hover: #06b6d4;
-    --glass: rgba(17, 24, 39, 0.5);
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 217.2 91.2% 59.8%;
+    --radius: 0.5rem;
+  }
+}
+ 
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
-/* @layer components {
+@layer components {
   .glass {
-    @apply bg-opacity-10 backdrop-blur border border-white/10;
+    @apply bg-black/10 backdrop-blur border border-white/10;
   }
+}
 
-  .gradient-text {
-    @apply bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent;
-  }
+.perspective-1000 {
+  perspective: 1000px;
+}
 
-  .button-gradient {
-    @apply bg-gradient-to-r from-primary to-secondary text-white transition-all hover:from-primary-hover hover:to-secondary-hover;
-  }
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
 
-  .slide-up {
-    @apply transform transition-all duration-300 ease-out;
-  }
+.translate-z-\[-50px\] {
+  transform: translateZ(-50px);
+}
 
-  .slide-up.visible {
-    @apply translate-y-0 opacity-100;
-  }
-
-  .slide-up:not(.visible) {
-    @apply -translate-y-2 opacity-0;
-  }
-} */
+.translate-z-\[-100px\] {
+  transform: translateZ(-100px);
+}

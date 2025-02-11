@@ -1,110 +1,115 @@
-"use client"
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import type { Rate } from '@/lib/services/pricingService';
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
-import * as Dialog from "@radix-ui/react-dialog"
-import * as Form from "@radix-ui/react-form"
-import { useRatesStore } from "../../../lib/ratesStore"
-import { useToast } from "@/components/ui/toast"
-import { z } from "zod"
-import { VehicleCategory } from "../../../lib/types"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Input } from "@/components/ui/input"
+interface RateFormProps {
+  onSubmit: (rate: Rate) => Promise<void>;
+  initialData?: Rate;
+  mode?: 'create' | 'edit';
+}
 
-const rateSchema = z.object({
-  type: z.enum(['STANDARD', 'PREMIUM', 'VIP']),
-  baseRate: z.number().min(0, "Le tarif doit être positif"),
-  peakRate: z.number().min(0, "Le tarif doit être positif"),
-  nightRate: z.number().min(0, "Le tarif doit être positif"),
-})
-
-export default function RateForm({ rate, onSuccess }: {
-  rate?: VehicleCategory,
-  onSuccess?: () => void
-}) {
-  const [open, setOpen] = useState(false)
-  const { createRate, updateRate } = useRatesStore()
-  const { toast } = useToast()
-
-  const form = useForm<z.infer<typeof rateSchema>>({
-    resolver: zodResolver(rateSchema),
-    defaultValues: rate || {
-      type: "STANDARD",
-      baseRate: 0,
-      peakRate: 0,
-      nightRate: 0
+export function RateForm({ onSubmit, initialData, mode = 'create' }: RateFormProps) {
+  const [open, setOpen] = useState(false);
+  const [formData, setFormData] = useState<Partial<Rate>>(
+    initialData || {
+      vehicleType: '',
+      pricePerKm: 0,
+      basePrice: 0
     }
-  })
+  );
+  const [error, setError] = useState<string | null>(null);
 
-  const onSubmit = async (values: z.infer<typeof rateSchema>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
     try {
-      if (rate) {
-        if (!rate?.id) throw new Error("ID manquant")
-        await updateRate(rate.id, values)
-      } else {
-        const { ...rateData } = values;
-        await createRate(rateData)
+      if (!formData.vehicleType || !formData.pricePerKm || !formData.basePrice) {
+        throw new Error('Tous les champs sont requis');
       }
-      toast({
-        title: "Succès",
-        description: `Tarif ${rate ? "modifié" : "créé"} avec succès`,
-      })
-      setOpen(false)
-      onSuccess?.()
-    } catch {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: `Erreur lors de ${rate ? "la modification" : "la création"} du tarif`,
-      })
+
+      await onSubmit(formData as Rate);
+      setOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
     }
-  }
+  };
 
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Ajouter un tarif
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant={mode === 'create' ? 'default' : 'outline'}>
+          {mode === 'create' ? 'Ajouter un tarif' : 'Modifier'}
         </Button>
-      </Dialog.Trigger>
-      <Dialog.Content>
-        <Dialog.Title>
-          {rate ? "Modifier le tarif" : "Créer un nouveau tarif"}
-        </Dialog.Title>
-        <Dialog.Description>
-          Remplissez les informations ci-dessous pour {rate ? "modifier" : "créer"} un tarif.
-        </Dialog.Description>
-        <Form.Root onSubmit={form.handleSubmit(onSubmit)}>
-          <div className="space-y-4">
-            <Form.Field>
-              <Form.Label>Type de véhicule</Form.Label>
-              <Input {...form.register("type")} />
-              <Form.Message />
-            </Form.Field>
-            <Form.Field>
-              <Form.Label>Tarif de base</Form.Label>
-              <Input type="number" {...form.register("baseRate", { valueAsNumber: true })} />
-              <Form.Message />
-            </Form.Field>
-            <Form.Field>
-              <Form.Label>Tarif heure de pointe</Form.Label>
-              <Input type="number" {...form.register("peakRate", { valueAsNumber: true })} />
-              <Form.Message />
-            </Form.Field>
-            <Form.Field>
-              <Form.Label>Tarif de nuit</Form.Label>
-              <Input type="number" {...form.register("nightRate", { valueAsNumber: true })} />
-              <Form.Message />
-            </Form.Field>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px] bg-neutral-900 text-neutral-100">
+        <DialogHeader>
+          <DialogTitle>
+            {mode === 'create' ? 'Nouveau tarif' : 'Modifier le tarif'}
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          <div className="grid w-full gap-2">
+            <Label htmlFor="vehicleType">Type de véhicule</Label>
+            <Input
+              id="vehicleType"
+              type="text"
+              value={formData.vehicleType}
+              onChange={(e) => setFormData({ ...formData, vehicleType: e.target.value })}
+              disabled={mode === 'edit'}
+              className="bg-neutral-800 border-neutral-700"
+            />
+          </div>
+
+          <div className="grid w-full gap-2">
+            <Label htmlFor="basePrice">Prix de base (€)</Label>
+            <Input
+              id="basePrice"
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.basePrice}
+              onChange={(e) => setFormData({ ...formData, basePrice: parseFloat(e.target.value) })}
+              className="bg-neutral-800 border-neutral-700"
+            />
+          </div>
+
+          <div className="grid w-full gap-2">
+            <Label htmlFor="pricePerKm">Prix par km (€)</Label>
+            <Input
+              id="pricePerKm"
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.pricePerKm}
+              onChange={(e) => setFormData({ ...formData, pricePerKm: parseFloat(e.target.value) })}
+              className="bg-neutral-800 border-neutral-700"
+            />
+          </div>
+
+          {error && (
+            <div className="text-red-500 text-sm mt-2">
+              {error}
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+            >
+              Annuler
+            </Button>
             <Button type="submit">
-              {rate ? "Modifier" : "Créer"}
+              {mode === 'create' ? 'Créer' : 'Enregistrer'}
             </Button>
           </div>
-        </Form.Root>
-      </Dialog.Content>
-    </Dialog.Root>
-  )
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 }
