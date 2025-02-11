@@ -5,7 +5,7 @@ export type VehicleType = 'STANDARD' | 'LUXURY' | 'VAN';
 
 export interface VehicleOptions {
   childSeat: boolean;
-  airConditioning: boolean;
+  pets: boolean;
 }
 
 export interface Coordinates {

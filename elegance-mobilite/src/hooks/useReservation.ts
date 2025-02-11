@@ -18,7 +18,7 @@ const DEFAULT_LOCATION_STATE: LocationState = {
 
 const DEFAULT_OPTIONS: VehicleOptions = {
   childSeat: false,
-  airConditioning: false
+  pets: false
 };
 
 export function useReservation() {
@@ -147,7 +147,8 @@ export function useReservation() {
   }, []);
 
   const handleRouteCalculated = useCallback((newDistance: number, newDuration: number) => {
-    setDistance(newDistance);
+    // Convertir la distance de mètres en kilomètres
+    setDistance(newDistance / 1000);
     setDuration(newDuration);
   }, []);
 

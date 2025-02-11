@@ -36,7 +36,7 @@ const vehicleOptions = [
 
 const VehicleStep: React.FC<VehicleStepProps> = ({
   vehicleType,
-  options = { childSeat: false, airConditioning: false },
+  options = { childSeat: false, pets: false },
   distance,
   duration,
   onVehicleTypeChange,
@@ -106,19 +106,19 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
             <div className="flex items-center justify-between">
               <div>
                 <Label
-                  htmlFor="air-conditioning"
+                  htmlFor="pets"
                   className="text-neutral-100 text-sm font-medium"
                 >
-                  Climatisation
+                  Animaux domestiques
                 </Label>
                 <p className="text-neutral-400 text-xs">Ajout 10€</p>
               </div>
               <div>
                 <Switch
-                  id="air-conditioning"
-                  checked={options.airConditioning}
+                  id="pets"
+                  checked={options.pets}
                   onCheckedChange={(checked) =>
-                    handleOptionChange({ airConditioning: checked })
+                    handleOptionChange({ pets: checked })
                   }
                 />
               </div>

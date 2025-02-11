@@ -87,11 +87,17 @@ export default function ConfirmationPage() {
                 <div>
                   <p className="text-neutral-400">Options</p>
                   <ul className="list-disc list-inside">
-                    {selectedOptions.map(option => (
-                      <li key={option} className="font-medium capitalize">
-                        {option}
-                      </li>
-                    ))}
+                    {selectedOptions.map(option => {
+                      const translations: Record<string, string> = {
+                        childSeat: 'Siège enfant',
+                        pets: 'Animaux domestiques'
+                      };
+                      return (
+                        <li key={option} className="font-medium">
+                          {translations[option] || option}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               )}
@@ -102,7 +108,7 @@ export default function ConfirmationPage() {
             <h2 className="text-xl font-semibold mb-4">Détails du prix</h2>
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span>Prix de base</span>
+                <span>Prix de réservation du véhicule</span>
                 <span>{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(base)}</span>
               </div>
               <div className="flex justify-between">
