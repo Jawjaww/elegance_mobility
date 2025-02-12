@@ -64,6 +64,7 @@ export function useReservation() {
   const reservationStore = useReservationStore();
 
   const handleReservation = useCallback(() => {
+    console.log("handleReservation called");
     if (!origin || !destination) {
       toast({
         title: 'Veuillez sélectionner un point de départ et une destination',

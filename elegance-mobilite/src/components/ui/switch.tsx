@@ -4,7 +4,7 @@ import { VariantProps, cva } from "class-variance-authority"
 import { cn } from "./utils"
 
 const switchVariants = cva(
-  "inline-flex items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background",
+  "inline-flex items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background",
   {
     variants: {
       variant: {
@@ -26,7 +26,7 @@ const thumbVariants = cva(
   {
     variants: {
       size: {
-        default: "h-5 w-5 translate-x-0.5 data-[state=checked]:translate-x-5",
+        default: "h-5 w-5",
       },
     },
     defaultVariants: {
@@ -58,15 +58,15 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
         role="switch"
         className={cn(switchVariants({ variant, size, className }))}
         ref={ref}
-        aria-checked={checked ? "true" : "false"} // Convertir en string "true"/"false"
+        aria-checked={checked ? "true" : "false"} // Convert in string "true"/"false"
         data-state={isChecked ? "checked" : "unchecked"}
         onClick={handleClick}
         {...props}
       >
         <span
           className={cn(thumbVariants({ size }), {
-            'translate-x-0.5': !isChecked,
-            'translate-x-5': isChecked
+            '-translate-x-[1px]': !isChecked,
+            'translate-x-[1.25rem]': isChecked
           })}
         />
       </button>

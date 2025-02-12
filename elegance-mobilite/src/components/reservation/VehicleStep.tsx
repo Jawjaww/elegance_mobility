@@ -43,6 +43,7 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
   onPrevious,
   onConfirm,
 }) => {
+
   const handleOptionChange = (option: Partial<VehicleOptions>) => {
     onOptionsChange({ ...options, ...option });
   };
@@ -145,8 +146,8 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
         >
           Retour
         </Button>
-        <Button onClick={onConfirm} className="bg-blue-600 hover:bg-blue-700">
-          Confirmer
+        <Button onClick={onConfirm} className="py-2 inline-flex items-center justify-center hover:bg-primary/90 text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-11 rounded-md px-8 relative bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 transition-all duration-300 ease-out">
+          Continuer
         </Button>
       </div>
     </div>

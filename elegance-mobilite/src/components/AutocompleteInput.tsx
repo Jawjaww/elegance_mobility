@@ -71,7 +71,32 @@ export function AutocompleteInput({
   const debouncedQuery = useDebounce(query, 300);
   const [suggestions, setSuggestions] = useState<AddressFeature[]>([]);
   const [isLocating, setIsLocating] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const ignoreNextQueryChange = useRef(false);
+
+  useEffect(() => {
+    if (ignoreNextQueryChange.current || !hasUserInteracted) {
+      ignoreNextQueryChange.current = false;
+      return;
+    }
+
+    const cleanQuery = debouncedQuery.trim().replace(/[^\w\s]/g, '');
+    if (cleanQuery.length > 2) {
+      fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(cleanQuery)}&limit=5&autocomplete=1`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.features) {
+            setSuggestions(data.features);
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching geocoding data:", error);
+          setSuggestions([]);
+        });
+    } else {
+      setSuggestions([]);
+    }
+  }, [debouncedQuery, hasUserInteracted]);
 
   const handleGeolocation = async () => {
     setIsLocating(true);
@@ -118,33 +143,10 @@ export function AutocompleteInput({
     }
   }, [defaultValue]);
 
-  useEffect(() => {
-    if (ignoreNextQueryChange.current) {
-      ignoreNextQueryChange.current = false;
-      return;
-    }
-
-    const cleanQuery = debouncedQuery.trim().replace(/[^\w\s]/g, '');
-    if (cleanQuery.length > 2) {
-      fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(cleanQuery)}&limit=5&autocomplete=1`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.features) {
-            setSuggestions(data.features);
-          }
-        })
-        .catch((error) => {
-          console.error("Error fetching geocoding data:", error);
-          setSuggestions([]);
-        });
-    } else {
-      setSuggestions([]);
-    }
-  }, [debouncedQuery]);
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     ignoreNextQueryChange.current = false;
+    setHasUserInteracted(true);
     setQuery(newValue);
     onChange?.(newValue);
 
