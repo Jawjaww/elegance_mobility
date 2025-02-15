@@ -26,7 +26,6 @@ export interface LocationStepProps {
   destination?: Coordinates;
   originAddress: string;
   destinationAddress: string;
-  pickupDateTime: Date;
   distance?: number;
   duration?: number;
   vehicleType?: VehicleType;

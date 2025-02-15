@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useCallback } from "react";
 import L from "leaflet";
 import "leaflet.awesome-markers";
+import "leaflet.awesome-markers/dist/leaflet.awesome-markers.css";
 import type { MapMarker } from "@/lib/types";
 
 interface LeafletMapProps {

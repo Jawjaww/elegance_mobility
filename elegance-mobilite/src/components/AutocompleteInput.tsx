@@ -67,8 +67,8 @@ export function AutocompleteInput({
   defaultValue
 }: AutocompleteInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [query, setQuery] = useState(value || defaultValue || "");
-  const debouncedQuery = useDebounce(query, 300);
+  const [query, setQuery] = useState<string>(value || defaultValue || "");
+  const debouncedQuery = useDebounce<string>(query, 300);
   const [suggestions, setSuggestions] = useState<AddressFeature[]>([]);
   const [isLocating, setIsLocating] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
@@ -80,7 +80,7 @@ export function AutocompleteInput({
       return;
     }
 
-    const cleanQuery = debouncedQuery.trim().replace(/[^\w\s]/g, '');
+    const cleanQuery = String(debouncedQuery || "").trim().replace(/[^\w\s]/g, '');
     if (cleanQuery.length > 2) {
       fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(cleanQuery)}&limit=5&autocomplete=1`)
         .then((res) => res.json())
@@ -122,7 +122,7 @@ export function AutocompleteInput({
         onSelect(feature.properties.label, coords);
         ignoreNextQueryChange.current = true;
         setQuery(feature.properties.label);
-        setSuggestions([]); // Clear suggestions after selecting geolocation
+        setSuggestions([]);
       }
     } catch (error) {
       console.error("Erreur de géolocalisation:", error);

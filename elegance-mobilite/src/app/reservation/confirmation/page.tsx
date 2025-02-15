@@ -34,8 +34,7 @@ export default function ConfirmationPage() {
     distance: distancePrice,
     options: optionsPrice,
     loading,
-    error,
-    formattedTotal
+    error
   } = usePrice({
     vehicleType: selectedVehicle,
     distanceKm: distance || 0,
@@ -51,7 +50,7 @@ export default function ConfirmationPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-10">
+      <div className="container mx-auto py-10 px-4">
         <div className="space-y-4">
           <div className="h-8 bg-neutral-800 rounded w-1/3 animate-pulse"></div>
           <div className="h-4 bg-neutral-800 rounded w-3/4 animate-pulse"></div>
@@ -63,7 +62,7 @@ export default function ConfirmationPage() {
 
   if (error) {
     return (
-      <div className="container mx-auto py-10">
+      <div className="container mx-auto py-10 px-4">
         <div className="bg-red-500/10 border border-red-500 rounded-lg p-4 text-red-500">
           {error}
         </div>
@@ -71,8 +70,10 @@ export default function ConfirmationPage() {
     );
   }
 
+  const totalPrice = base + distancePrice + optionsPrice;
+
   return (
-    <div className="container mx-auto py-10">
+    <div className="container mx-auto py-10 px-4">
       <h1 className="text-3xl font-bold mb-8">Confirmation de votre trajet</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -144,7 +145,7 @@ export default function ConfirmationPage() {
                 <span>Prix au km ({distance?.toFixed(1) ?? 'N/A'} km)</span>
                 <span>{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(distancePrice)}</span>
               </div>
-              {optionsPrice > 0 && (
+              {selectedOptions.length > 0 && (
                 <div className="flex justify-between">
                   <span>Options</span>
                   <span>{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(optionsPrice)}</span>
@@ -153,7 +154,7 @@ export default function ConfirmationPage() {
               <div className="border-t border-neutral-800 mt-4 pt-4">
                 <div className="flex justify-between text-lg font-semibold">
                   <span>Total</span>
-                  <span>{formattedTotal}</span>
+                  <span>{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(totalPrice)}</span>
                 </div>
               </div>
             </div>

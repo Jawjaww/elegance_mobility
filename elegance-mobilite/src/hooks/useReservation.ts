@@ -30,7 +30,7 @@ export function useReservation() {
   const [destinationAddress, setDestinationAddress] = useState("");
   const [pickupDateTime, setPickupDateTime] = useState(() => {
     const now = new Date();
-    now.setMinutes(now.getMinutes() + 30); // Par défaut, réservation dans 30 minutes
+    now.setMinutes(now.getMinutes() + 30); // Default reservation in 30 minutes
     return now;
   });
   const [distance, setDistance] = useState(0);
@@ -43,7 +43,7 @@ export function useReservation() {
   const handleNextStep = useCallback(() => {
     if (!origin || !destination || !originAddress || !destinationAddress) {
       toast({
-        title: 'Erreur',
+        title: 'Error',
         variant: 'destructive'
       });
       return;
@@ -51,7 +51,7 @@ export function useReservation() {
     
     if (typeof originAddress !== 'string' || typeof destinationAddress !== 'string') {
       toast({
-        title: 'Erreur',
+        title: 'Error',
         variant: 'destructive'
       });
       return;
@@ -67,40 +67,43 @@ export function useReservation() {
     console.log("handleReservation called");
     if (!origin || !destination) {
       toast({
-        title: 'Veuillez sélectionner un point de départ et une destination',
+        title: 'Please select a departure and destination point',
         variant: 'destructive'
       });
       return;
     }
 
     try {
-      // Mettre à jour le store avec toutes les informations
-      reservationStore.setPickup({
+      // Update store with all information
+      reservationStore.setDeparture({
         lat: origin.lat,
         lon: origin.lng,
-        display_name: originAddress
+        display_name: originAddress,
+        address: {}
       });
-      reservationStore.setDropoff({
+      reservationStore.setDestination({
         lat: destination.lat,
         lon: destination.lng,
-        display_name: destinationAddress
+        display_name: destinationAddress,
+        address: {}
       });
-      reservationStore.setVehicleType(vehicleType);
+      reservationStore.setSelectedVehicle(vehicleType);
       reservationStore.setDistance(distance);
       reservationStore.setDuration(duration);
       reservationStore.setPickupDateTime(pickupDateTime);
-      reservationStore.setSelectedOptions(
-        Object.entries(options)
-          .filter(([, value]) => value)
-          .map(([key]) => key)
-      );
+      
+      // Set all selected options at once
+      const selectedOptions = Object.entries(options)
+        .filter(([, value]) => value)
+        .map(([key]) => key);
+      reservationStore.setSelectedOptions(selectedOptions);
 
-      // Utiliser le router Next.js pour la navigation
+      // Use Next.js router for navigation
       router.push('/reservation/confirmation');
     } catch (error) {
-      console.error('Erreur lors de la sauvegarde de la réservation:', error);
+      console.error('Error saving reservation:', error);
       toast({
-        title: 'Une erreur est survenue lors de la sauvegarde de la réservation',
+        title: 'An error occurred while saving the reservation',
         variant: 'destructive'
       });
     }
@@ -112,9 +115,9 @@ export function useReservation() {
 
   const handleLocationDetected = useCallback((coords: Coordinates) => {
     setOrigin(coords);
-    setOriginAddress("Ma position actuelle");
+    setOriginAddress("My current location");
     setPickup({
-      raw: "Ma position actuelle",
+      raw: "My current location",
       validated: { location: coords }
     });
   }, []);
@@ -150,9 +153,9 @@ export function useReservation() {
   }, []);
 
   const handleRouteCalculated = useCallback((newDistance: number, newDuration: number) => {
-    // Convertir la distance de mètres en kilomètres
+    // Convert distance from meters to kilometers
     setDistance(Math.round(newDistance / 1000));
-    // Duration est en secondes, la convertir en minutes
+    // Duration is in seconds, convert to minutes
     setDuration(Math.round(newDuration / 60));
   }, []);
 

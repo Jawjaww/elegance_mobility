@@ -1,0 +1,31 @@
+.map {
+  position: relative;
+  min-height: 400px;
+  width: 100%;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.mapContainer {
+  height: 100%;
+  width: 100%;
+}
+
+/* Styles pour les marqueurs personnalisés */
+.markerDarkgreen {
+  width: 1.5rem;
+  height: 1.5rem;
+  background-color: rgb(22 101 52);
+  border: 2px solid white;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+
+.markerRed {
+  width: 1.5rem;
+  height: 1.5rem;
+  background-color: rgb(185 28 28);
+  border: 2px solid white;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}

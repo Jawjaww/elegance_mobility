@@ -1,0 +1,28 @@
+.mapContainer {
+  width: 100%;
+  height: 400px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.5rem;
+}
+
+.leafletMarkerOrigin {
+  width: 25px;
+  height: 41px;
+  cursor: pointer;
+  background-image: url('/marker-origin.png');
+  background-size: contain;
+}
+
+.leafletMarkerDestination {
+  width: 25px;
+  height: 41px;
+  cursor: pointer;
+  background-image: url('/marker-destination.png');
+  background-size: contain;
+}
+
+.routeLineClass {
+  stroke: #6366f1;
+  stroke-opacity: 0.6;
+}
