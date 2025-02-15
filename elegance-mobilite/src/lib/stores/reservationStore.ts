@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { createJSONStorage } from 'zustand/middleware';
 
 interface Location {
   lat: number;
@@ -119,6 +120,7 @@ export const useReservationStore = create<ReservationState>()(
     }),
     {
       name: 'reservation-store',
+      storage: createJSONStorage(() => localStorage),
     }
   )
 );

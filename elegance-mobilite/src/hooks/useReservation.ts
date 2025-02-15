@@ -16,29 +16,27 @@ const DEFAULT_LOCATION_STATE: LocationState = {
   validated: null
 };
 
-const DEFAULT_OPTIONS: VehicleOptions = {
-  childSeat: false,
-  pets: false
-};
-
 export function useReservation() {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
-  const [origin, setOrigin] = useState<Coordinates>();
-  const [destination, setDestination] = useState<Coordinates>();
-  const [originAddress, setOriginAddress] = useState("");
-  const [destinationAddress, setDestinationAddress] = useState("");
+  const reservationStore = useReservationStore();
+  const [origin, setOrigin] = useState<Coordinates | undefined>(reservationStore.departure ? { lat: reservationStore.departure.lat, lng: reservationStore.departure.lon } : undefined);
+  const [destination, setDestination] = useState<Coordinates | undefined>(reservationStore.destination ? { lat: reservationStore.destination.lat, lng: reservationStore.destination.lon } : undefined);
+  const [originAddress, setOriginAddress] = useState(reservationStore.departure?.display_name || "");
+  const [destinationAddress, setDestinationAddress] = useState(reservationStore.destination?.display_name || "");
   const [pickupDateTime, setPickupDateTime] = useState(() => {
-    const now = new Date();
-    now.setMinutes(now.getMinutes() + 30); // Default reservation in 30 minutes
-    return now;
+    return reservationStore.pickupDateTime || new Date();
   });
-  const [distance, setDistance] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [vehicleType, setVehicleType] = useState<VehicleType>('STANDARD');
+  const [distance, setDistance] = useState(reservationStore.distance || 0);
+  const [duration, setDuration] = useState(reservationStore.duration || 0);
+  const [vehicleType, setVehicleType] = useState<VehicleType>((reservationStore.selectedVehicle as VehicleType) || 'STANDARD');
   const [pickup, setPickup] = useState<LocationState>(DEFAULT_LOCATION_STATE);
   const [dropoff, setDropoff] = useState<LocationState>(DEFAULT_LOCATION_STATE);
-  const [options, setOptions] = useState<VehicleOptions>(DEFAULT_OPTIONS);
+  const [options, setOptions] = useState<VehicleOptions>(() => 
+    reservationStore.selectedOptions.reduce((acc, option) => ({ 
+      ...acc, [option]: true 
+    }), { childSeat: false, pets: false } as VehicleOptions)
+  );
 
   const handleNextStep = useCallback(() => {
     if (!origin || !destination || !originAddress || !destinationAddress) {
@@ -61,7 +59,6 @@ export function useReservation() {
   }, [origin, destination, originAddress, destinationAddress, toast]);
 
   const router = useRouter();
-  const reservationStore = useReservationStore();
 
   const handleReservation = useCallback(() => {
     console.log("handleReservation called");
