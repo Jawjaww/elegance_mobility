@@ -1,37 +1,31 @@
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { type ClassValue, clsx } from 'clsx'
+import { twMerge } from 'tailwind-merge'
 
 /**
- * Combines multiple class names and merges Tailwind classes
+ * Combine des classes CSS ensemble en gérant correctement les classes Tailwind
+ * Utilise clsx pour la logique conditionnelle et tailwind-merge pour résoudre les conflits
  */
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+  return twMerge(clsx(inputs))
 }
 
 /**
- * Formats a distance in meters to a human-readable string
- * @param meters Distance in meters
- * @returns Formatted distance string
+ * Formate un prix en euros
  */
-export function formatDistance(meters: number): string {
-  if (meters < 1000) {
-    return `${Math.round(meters)}m`;
-  }
-  return `${(meters / 1000).toFixed(1)}km`;
+export function formatPrice(price: number) {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(price)
 }
 
 /**
- * Formats a duration in seconds to a human-readable string
- * @param seconds Duration in seconds
- * @returns Formatted duration string
+ * Retourne les initiales d'un nom complet
  */
-export function formatDuration(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-
-  if (hours > 0) {
-    return `${hours}h${minutes > 0 ? ` ${minutes}min` : ''}`;
-  }
-
-  return `${minutes}min`;
+export function getInitials(name: string) {
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
 }

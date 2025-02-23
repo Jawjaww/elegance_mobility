@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import { ToastProvider } from "@/hooks/useToast";
+import { Toaster } from "@/components/ui/toaster";
 import { ReservationProvider } from "./ReservationProvider";
 
 function LoadingFallback() {
@@ -24,13 +24,10 @@ export function ClientProviders({
 }) {
   return (
     <Suspense fallback={<LoadingFallback />}>
-      <ToastProvider>
-        <div suppressHydrationWarning>
-          <ReservationProvider>
-            {children}
-          </ReservationProvider>
-        </div>
-      </ToastProvider>
+      <ReservationProvider>
+        {children}
+      </ReservationProvider>
+      <Toaster />
     </Suspense>
   );
 }

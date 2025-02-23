@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from 'react';
-import { useToast } from '../components/ui/toast';
+import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from 'next/navigation';
 import { Coordinates, VehicleType, VehicleOptions } from '../lib/types';
 import { useReservationStore } from '../lib/stores/reservationStore';

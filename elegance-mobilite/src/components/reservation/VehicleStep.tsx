@@ -29,7 +29,7 @@ const formatDuration = (minutes: number): string => {
 
 const vehicleOptions = [
   { value: 'STANDARD' as VehicleType, label: 'Berline Standard', description: 'Confort et élégance pour 4 passagers' },
-  { value: 'LUXURY' as VehicleType, label: 'Berline Luxe', description: 'Luxe et raffinement pour 4 passagers' },
+  { value: 'PREMIUM' as VehicleType, label: 'Berline Premium', description: 'Véhicule Premium et raffinement pour 4 passagers' },
   { value: 'VAN' as VehicleType, label: 'Van', description: 'Espace et confort pour 7 passagers' }
 ];
 

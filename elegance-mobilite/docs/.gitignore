@@ -1,0 +1,21 @@
+# Fichiers temporaires et brouillons
+*.tmp
+*.draft
+*.bak
+draft-*
+temp-*
+_*
+
+# Fichiers générés
+generated/
+dist/
+build/
+
+# Fichiers de configuration locale
+.vscode/
+.idea/
+*.sublime-*
+
+# Fichiers de cache
+.cache/
+.temp/
