@@ -1,103 +1,92 @@
-"use client";
+import { createClient } from '@/utils/supabase/server'
+import { redirect } from 'next/navigation'
+import { login, signup } from './actions'
 
-import * as React from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { supabase } from "@/lib/supabaseClient";
-import { useToast } from "@/components/ui/use-toast";
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: { message?: string; redirectedFrom?: string }
+}) {
+  const redirectedFrom = await Promise.resolve(searchParams?.redirectedFrom)
+  
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
-export default function LoginPage() {
-  const router = useRouter();
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = React.useState(false);
+  if (user) {
+    // Vérifier si l'utilisateur est admin/superadmin
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single()
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsLoading(true);
+    const { data: { user: fullUser } } = await supabase.auth.getUser()
+    const isAdmin = userData?.role === 'admin'
+    const isSuperAdmin = fullUser?.user_metadata?.is_super_admin === true
 
-    const formData = new FormData(event.currentTarget);
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-
-    try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInError) {
-        throw signInError;
-      }
-
-      toast({
-        title: "Connexion réussie",
-        description: "Vous êtes maintenant connecté",
-      });
-
-      router.push("/admin");
-      router.refresh();
-    } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: err instanceof Error ? err.message : "Email ou mot de passe incorrect",
-      });
-    } finally {
-      setIsLoading(false);
+    if (isAdmin || isSuperAdmin) {
+      redirect(redirectedFrom || '/admin')
+    } else {
+      redirect('/')
     }
   }
 
   return (
-    <div className="container flex h-screen w-screen flex-col items-center justify-center">
-      <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-        <div className="flex flex-col space-y-2 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Administration
-          </h1>
-          <p className="text-sm text-neutral-400">
-            Connectez-vous à votre compte administrateur
-          </p>
-        </div>
-
-        <div className="grid gap-6">
-          <form onSubmit={handleSubmit}>
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
+    <div className="flex flex-col items-center justify-center min-h-screen bg-neutral-950">
+      <div className="w-full max-w-md">
+        <div className="p-8 rounded-lg border border-neutral-800 bg-neutral-900/90 shadow-xl">
+          <h2 className="text-2xl font-semibold mb-6 text-neutral-100 text-center">
+            Connexion
+          </h2>
+          <form>
+            <input type="hidden" name="redirectedFrom" value={redirectedFrom} />
+            
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-neutral-300">
+                  Email
+                </label>
+                <input
                   id="email"
                   name="email"
                   type="email"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  autoCorrect="off"
-                  disabled={isLoading}
                   required
+                  className="mt-1 block w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md shadow-sm text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-neutral-400"
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="password">Mot de passe</Label>
-                <Input
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-neutral-300">
+                  Mot de passe
+                </label>
+                <input
                   id="password"
                   name="password"
                   type="password"
-                  autoComplete="current-password"
-                  disabled={isLoading}
                   required
+                  className="mt-1 block w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md shadow-sm text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-neutral-400"
                 />
               </div>
-              <Button disabled={isLoading}>
-                {isLoading && (
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-800" />
-                )}
-                Se connecter
-              </Button>
+
+              <div className="flex flex-col gap-3 pt-2">
+                <button
+                  formAction={login}
+                  className="flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-neutral-100 bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-neutral-900"
+                >
+                  Se connecter
+                </button>
+
+                <button
+                  formAction={signup}
+                  className="flex justify-center py-2.5 px-4 rounded-md shadow-sm text-sm font-medium text-blue-400 bg-neutral-800 border border-blue-500/20 hover:bg-neutral-800/80 hover:border-blue-500/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-neutral-900"
+                >
+                  {"S'inscrire"}
+                </button>
+              </div>
             </div>
           </form>
         </div>
       </div>
     </div>
-  );
+  )
 }

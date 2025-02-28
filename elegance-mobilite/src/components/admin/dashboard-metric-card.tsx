@@ -1,14 +1,14 @@
-import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+"use client"
+
 import Link from "next/link"
+import { cn } from "@/lib/utils"
+import { ArrowUpRight, ArrowDownRight } from "lucide-react"
 
 interface DashboardMetricCardProps {
   title: string
-  value: string | number
-  icon: React.ReactNode
+  value: string
+  icon?: React.ReactNode
   trend?: string
-  trendIcon?: React.ReactNode
   trendUp?: boolean
   href?: string
   className?: string
@@ -19,71 +19,67 @@ export function DashboardMetricCard({
   value,
   icon,
   trend,
-  trendIcon,
   trendUp,
   href,
   className,
 }: DashboardMetricCardProps) {
   const content = (
-    <Card className={cn(
-      "relative overflow-hidden",
-      "bg-neutral-900/90 border-neutral-800",
-      "transition-all hover:bg-neutral-800/90",
-      href && "cursor-pointer",
-      className
-    )}>
-      <div className="relative z-10">
-        <div className={cn(
-          "flex items-center justify-between",
-          "p-3 md:p-4"
-        )}>
-          <div className={cn(
-            "p-2 rounded-lg",
-            "bg-neutral-800/50",
-            "text-neutral-100"
-          )}>
-            {icon}
-          </div>
-          {trend && (
-            <Badge
-              variant={trendUp ? "success" : "warning"}
-              className={cn(
-                "text-xs flex items-center gap-1 font-medium",
-                "px-2 py-0.5"
-              )}
-            >
-              {trendIcon}
-              {trend}
-            </Badge>
-          )}
-        </div>
-        <div className={cn(
-          "space-y-1",
-          "px-3 pb-3 md:px-4 md:pb-4"
-        )}>
+    <>
+      <div className="flex items-center justify-between">
+        <div>
           <p className="text-sm font-medium text-neutral-400">
             {title}
           </p>
-          <p className={cn(
-            "text-2xl font-bold md:text-3xl",
-            "text-neutral-100"
-          )}>
-            {value}
-          </p>
+          <div className="flex items-baseline gap-2">
+            <p className="mt-2 text-2xl font-semibold">
+              {value}
+            </p>
+            {trend && (
+              <div className={cn(
+                "flex items-center gap-0.5 text-sm",
+                trendUp ? "text-green-400" : "text-red-400"
+              )}>
+                {trendUp ? (
+                  <ArrowUpRight className="h-4 w-4" />
+                ) : (
+                  <ArrowDownRight className="h-4 w-4" />
+                )}
+                <span>{trend}</span>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-      <div
-        className={cn(
-          "absolute inset-0",
-          "bg-gradient-to-br from-transparent via-transparent",
-          "to-neutral-800/10"
+        {icon && (
+          <div className="rounded-full border border-neutral-800 bg-neutral-900 p-2.5">
+            {icon}
+          </div>
         )}
-        aria-hidden="true"
-      />
-    </Card>
+      </div>
+
+      {href && (
+        <div className="absolute bottom-6 right-6">
+          <ArrowUpRight className="h-5 w-5 text-neutral-600 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-neutral-400" />
+        </div>
+      )}
+    </>
   )
 
-  return href ? (
-    <Link href={href}>{content}</Link>
-  ) : content
+  const sharedClassName = cn(
+    "group relative overflow-hidden rounded-lg border border-neutral-800 bg-neutral-900/90 p-6 text-neutral-50 transition-colors hover:border-neutral-700 hover:bg-neutral-900/95",
+    className
+  )
+
+  if (href) {
+    return (
+      <Link href={href} className={sharedClassName}>
+        {content}
+      </Link>
+    )
+  }
+
+  return (
+    <div className={sharedClassName}>
+      {content}
+    </div>
+  )
 }

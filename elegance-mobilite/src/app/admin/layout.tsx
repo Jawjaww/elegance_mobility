@@ -3,12 +3,23 @@
 import Link from "next/link"
 import { UserNav } from "@/components/admin/user-nav"
 import { LayoutDashboard } from "lucide-react"
+import { redirect } from "next/navigation"
+import { createClient } from "@/utils/supabase/client"
 
 interface AdminLayoutProps {
   children: React.ReactNode
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
+  const supabase = createClient()
+
+  // Vérifie l'authentification
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    if (!session) {
+      redirect("/login")
+    }
+  })
+
   return (
     <div className="min-h-screen bg-neutral-950">
       {/* Header */}

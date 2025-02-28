@@ -4,13 +4,12 @@ import { AdminCardGrid } from "@/components/admin/admin-card-grid"
 import { Car, CalendarCheck, MapPin, Users, CreditCard, PackageOpen } from "lucide-react"
 import { DashboardActionCard } from "@/components/admin/dashboard-action-card"
 import { DashboardMetricCard } from "@/components/admin/dashboard-metric-card"
-import { DashboardRecentRides } from "@/components/admin/dashboard-recent-rides"
 
 export default function AdminDashboard() {
   return (
     <>
       {/* Carte principale des courses d'aujourd'hui */}
-      <div className="mb-6">
+      <AdminCardGrid columns={{ default: 1 }}>
         <DashboardMetricCard
           title="Courses aujourd'hui"
           value="12"
@@ -18,12 +17,12 @@ export default function AdminDashboard() {
           trend="+20%"
           trendUp={true}
           href="/admin/rides/today"
-          className="bg-blue-900/90 border-blue-800 hover:bg-blue-800/90"
+          className="bg-blue-950/90 border-blue-500/20 hover:border-blue-500/30 hover:bg-blue-950/95"
         />
-      </div>
+      </AdminCardGrid>
 
       {/* Métriques */}
-      <AdminCardGrid columns={{
+      <AdminCardGrid className="mt-6" columns={{
         default: 2,  // 2 colonnes même en mobile
         sm: 2,
         md: 2,
@@ -82,9 +81,6 @@ export default function AdminDashboard() {
           iconColor="text-green-500"
         />
       </AdminCardGrid>
-
-      {/* Courses récentes */}
-      <DashboardRecentRides />
     </>
   )
 }

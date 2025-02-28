@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -12,8 +13,62 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { LogOut, Settings, User } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { createClient } from "@/utils/supabase/client"
+
+type UserData = {
+  email: string | null
+  role: string | null
+  name: string | null
+  avatar_url: string | null
+}
 
 export function UserNav() {
+  const router = useRouter()
+  const supabase = createClient()
+  const [userData, setUserData] = useState<UserData>({
+    email: null,
+    role: null,
+    name: null,
+    avatar_url: null,
+  })
+
+  useEffect(() => {
+    async function getUserData() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('role, name, avatar_url')
+          .eq('id', user.id)
+          .single()
+
+        setUserData({
+          email: user.email || null,
+          role: profile?.role || "utilisateur",
+          name: profile?.name || (user.email ? user.email.split("@")[0] : "Utilisateur"),
+          avatar_url: profile?.avatar_url || null
+        })
+      }
+    }
+    getUserData()
+  }, [supabase])
+
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut()
+    if (!error) {
+      router.push("/login")
+    }
+  }
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -22,9 +77,11 @@ export function UserNav() {
           className="relative h-10 w-10 rounded-full"
         >
           <Avatar className="h-10 w-10 border-2 border-neutral-800 bg-neutral-900">
-            <AvatarImage src="/avatars/admin.png" />
+            {userData.avatar_url ? (
+              <AvatarImage src={userData.avatar_url} />
+            ) : null}
             <AvatarFallback className="bg-neutral-900 text-neutral-200">
-              AD
+              {userData.name ? getInitials(userData.name) : "U"}
             </AvatarFallback>
           </Avatar>
         </Button>
@@ -37,10 +94,10 @@ export function UserNav() {
         <DropdownMenuLabel>
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium text-neutral-100">
-              Administrateur
+              {userData.role === "admin" ? "Administrateur" : userData.name}
             </p>
             <p className="text-xs text-neutral-400">
-              admin@elegance-mobilite.fr
+              {userData.email}
             </p>
           </div>
         </DropdownMenuLabel>
@@ -56,7 +113,10 @@ export function UserNav() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator className="bg-neutral-800" />
-        <DropdownMenuItem className="text-red-400 focus:bg-red-900/50 focus:text-red-300">
+        <DropdownMenuItem 
+          className="text-red-400 focus:bg-red-900/50 focus:text-red-300"
+          onSelect={handleSignOut}
+        >
           <LogOut className="mr-2 h-4 w-4" />
           <span>Déconnexion</span>
         </DropdownMenuItem>
