@@ -2,7 +2,7 @@
  * Formate une date en français (jour de la semaine, date et heure)
  */
 export function formatDate(date: Date | undefined | null): string {
-  if (!date) return "Non spécifié";
+  if (!date || isNaN(date.getTime())) return "Non spécifié";
   
   try {
     const options: Intl.DateTimeFormatOptions = {
@@ -16,7 +16,10 @@ export function formatDate(date: Date | undefined | null): string {
     return new Intl.DateTimeFormat('fr-FR', options).format(date);
   } catch (error) {
     console.error("Erreur lors du formatage de la date:", error);
-    return date.toLocaleString('fr-FR');
+    // Fallback simple en cas d'erreur
+    return typeof date.toLocaleString === 'function' ? 
+      date.toLocaleString('fr-FR') : 
+      "Date invalide";
   }
 }
 
