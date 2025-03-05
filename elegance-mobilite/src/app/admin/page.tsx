@@ -1,21 +1,50 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { AdminCardGrid } from "@/components/admin/admin-card-grid"
 import { Car, CalendarCheck, MapPin, Users, CreditCard, PackageOpen } from "lucide-react"
 import { DashboardActionCard } from "@/components/admin/dashboard-action-card"
 import { DashboardMetricCard } from "@/components/admin/dashboard-metric-card"
+import { getDashboardMetrics, type DashboardMetrics } from "@/lib/services/dashboard"
 
 export default function AdminDashboard() {
+  const [metrics, setMetrics] = useState<DashboardMetrics>({
+    todayRides: 0,
+    pendingRides: 0,
+    activeDrivers: 0,
+    remainingRides: 0,
+    availableVehicles: 0,
+    todayRidesTrend: {
+      percentage: 0,
+      isUp: true
+    }
+  })
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        const data = await getDashboardMetrics()
+        setMetrics(data)
+      } catch (error) {
+        console.error("Erreur lors de la récupération des métriques:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchMetrics()
+  }, [])
+
   return (
     <>
       {/* Carte principale des courses d'aujourd'hui */}
       <AdminCardGrid columns={{ default: 1 }}>
         <DashboardMetricCard
           title="Courses aujourd'hui"
-          value="12"
+          value={isLoading ? "..." : metrics.todayRides.toString()}
           icon={<MapPin className="h-4 w-4" />}
-          trend="+20%"
-          trendUp={true}
+          trend={isLoading ? undefined : `${metrics.todayRidesTrend.percentage.toFixed(0)}%`}
+          trendUp={metrics.todayRidesTrend.isUp}
           href="/admin/rides/today"
           className="bg-blue-950/90 border-blue-500/20 hover:border-blue-500/30 hover:bg-blue-950/95"
         />
@@ -31,29 +60,25 @@ export default function AdminDashboard() {
       }}>
         <DashboardMetricCard
           title="Courses non attribuées"
-          value="5"
+          value={isLoading ? "..." : metrics.pendingRides.toString()}
           icon={<MapPin className="h-4 w-4" />}
-          trend="+2"
-          trendUp={false}
           href="/admin/rides/pending"
         />
         <DashboardMetricCard
           title="Chauffeurs actifs"
-          value="8"
+          value={isLoading ? "..." : metrics.activeDrivers.toString()}
           icon={<Users className="h-4 w-4" />}
           href="/admin/drivers"
         />
         <DashboardMetricCard
           title="Courses restantes"
-          value="7"
+          value={isLoading ? "..." : metrics.remainingRides.toString()}
           icon={<CalendarCheck className="h-4 w-4" />}
-          trend="+2"
-          trendUp={false}
           href="/admin/rides/remaining"
         />
         <DashboardMetricCard
           title="Véhicules disponibles"
-          value="15"
+          value={isLoading ? "..." : metrics.availableVehicles.toString()}
           icon={<Car className="h-4 w-4" />}
           href="/admin/vehicles"
         />

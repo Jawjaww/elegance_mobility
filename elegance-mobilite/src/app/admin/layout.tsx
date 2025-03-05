@@ -1,24 +1,21 @@
-"use client"
-
 import Link from "next/link"
 import { UserNav } from "@/components/admin/user-nav"
 import { LayoutDashboard } from "lucide-react"
+import { headers } from "next/headers"
+import { createClient } from "@/utils/supabase/server"
 import { redirect } from "next/navigation"
-import { createClient } from "@/utils/supabase/client"
 
 interface AdminLayoutProps {
   children: React.ReactNode
 }
 
-export default function AdminLayout({ children }: AdminLayoutProps) {
-  const supabase = createClient()
+export default async function AdminLayout({ children }: AdminLayoutProps) {
+  const supabase = await createClient()
+  const { data: { session } } = await supabase.auth.getSession()
 
-  // Vérifie l'authentification
-  supabase.auth.getSession().then(({ data: { session } }) => {
-    if (!session) {
-      redirect("/login")
-    }
-  })
+  if (!session) {
+    redirect("/login")
+  }
 
   return (
     <div className="min-h-screen bg-neutral-950">

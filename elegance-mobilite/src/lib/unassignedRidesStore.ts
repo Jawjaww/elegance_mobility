@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase } from './supabaseClient';
+import { supabase } from '@/utils/supabase/client';
 
 interface UnassignedRide {
   id: string;

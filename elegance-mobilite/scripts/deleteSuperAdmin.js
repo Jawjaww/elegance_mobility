@@ -23,7 +23,7 @@ const {
 if (!NEXT_PUBLIC_SUPABASE_URL || !NEXT_SUPABASE_SERVICE_ROLE_KEY) {
   console.error('Missing required environment variables:');
   if (!NEXT_PUBLIC_SUPABASE_URL) console.error('- NEXT_PUBLIC_SUPABASE_URL');
-  if (!NEXT_SUPABASE_SERVICE_ROLE_KEY) console.error('- NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY');
+  if (!NEXT_SUPABASE_SERVICE_ROLE_KEY) console.error('- NEXT_SUPABASE_SERVICE_ROLE_KEY');
   console.error('\nPlease check your .env.local file in the project root directory');
   process.exit(1);
 }
@@ -42,29 +42,42 @@ const supabase = createClient(
   }
 );
 
-async function deleteAdmin() {
-  try {
-    const response = await prompts({
-      type: 'text',
-      name: 'email',
-      message: 'Enter admin email to delete',
-      validate: value => value.includes('@') ? true : 'Please enter a valid email'
-    });
+async function countSuperAdmins(users) {
+  return users.filter(u => u.user_metadata?.is_super_admin === true).length;
+}
 
-    if (!response.email) {
-      console.log('Operation cancelled');
-      process.exit(0);
+async function deleteSuperAdmin() {
+  try {
+    // Si un email spécifique a été fourni comme argument
+    const specificEmail = process.argv[2];
+    let emailToDelete;
+
+    if (specificEmail) {
+      emailToDelete = specificEmail;
+    } else {
+      const response = await prompts({
+        type: 'text',
+        name: 'email',
+        message: 'Enter super admin email to delete',
+        validate: value => value.includes('@') ? true : 'Please enter a valid email'
+      });
+
+      if (!response.email) {
+        console.log('Operation cancelled');
+        process.exit(0);
+      }
+      emailToDelete = response.email;
     }
 
-    // Récupérer l'utilisateur via l'API auth
+    // Récupérer tous les utilisateurs pour compter les super admins
     const { data: { users }, error: fetchError } = await supabase.auth.admin.listUsers();
     
-    const user = users.find(u => u.email === response.email);
-
     if (fetchError) {
-      console.error('Error fetching user:', fetchError);
+      console.error('Error fetching users:', fetchError);
       process.exit(1);
     }
+
+    const user = users.find(u => u.email === emailToDelete);
 
     if (!user) {
       console.error('User not found');
@@ -72,34 +85,27 @@ async function deleteAdmin() {
     }
 
     // Vérifier si c'est un super admin
-    if (user.user_metadata?.is_super_admin) {
-      console.error('Cannot delete a super admin');
+    if (!user.user_metadata?.is_super_admin) {
+      console.error('This user is not a super admin');
       process.exit(1);
     }
 
-    // Vérifier si c'est un admin
-    if (user.app_metadata?.role !== 'admin') {
-      console.error('This user is not an admin');
+    // Vérifier s'il reste d'autres super admins
+    const superAdminCount = await countSuperAdmins(users);
+    if (superAdminCount <= 1) {
+      console.error('Cannot delete the last super admin');
       process.exit(1);
-    }
-
-    // Supprimer le rôle PostgreSQL
-    const role_name = 'user_' + response.email.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    try {
-      await supabase.rpc('revoke_admin_role', { admin_email: response.email });
-    } catch (error) {
-      console.warn('Warning: Could not revoke admin role:', error);
     }
 
     // Supprimer l'utilisateur
     const { error: deleteError } = await supabase.auth.admin.deleteUser(user.id);
 
     if (deleteError) {
-      console.error('Error deleting admin:', deleteError);
+      console.error('Error deleting super admin:', deleteError);
       process.exit(1);
     }
 
-    console.log(`Admin ${response.email} deleted successfully`);
+    console.log(`Super admin ${emailToDelete} deleted successfully`);
     process.exit(0);
 
   } catch (error) {
@@ -109,7 +115,7 @@ async function deleteAdmin() {
   }
 }
 
-deleteAdmin().catch(error => {
+deleteSuperAdmin().catch(error => {
   console.error('Unexpected error:', error);
   console.error('Detailed error:', error.message);
   process.exit(1);

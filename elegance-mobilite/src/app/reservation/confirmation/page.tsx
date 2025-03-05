@@ -1,189 +1,143 @@
 "use client";
 
-import { useEffect } from 'react';
-import { useReservationStore } from '@/lib/stores/reservationStore';
-import { usePrice } from '@/hooks/usePrice';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { ConfirmationMap } from '@/components/map/ConfirmationMap';
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { useReservationStore } from "@/lib/stores/reservationStore";
+import { formatDate, formatDuration } from "@/lib/utils/dateUtils";
+import { useRouter } from "next/navigation";
+import { PriceSummary } from "@/components/reservation/PriceSummary";
+import { Check, ChevronLeft } from "lucide-react";
 
 export default function ConfirmationPage() {
-  const {
-    departure,
-    destination,
-    distance,
-    duration,
-    pickupDateTime,
-    selectedVehicle,
-    selectedOptions,
-  } = useReservationStore();
+  const store = useReservationStore();
+  const router = useRouter();
 
-  const formatDuration = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const remainingMinutes = Math.round(minutes % 60);
-    
-    if (hours === 0) {
-      return `${remainingMinutes} min`;
-    }
-    
-    return `${hours}h${remainingMinutes > 0 ? ` ${remainingMinutes}min` : ''}`;
+  const handleBack = () => {
+    router.push("/reservation");
   };
 
-  const {
-    base,
-    distance: distancePrice,
-    options: optionsPrice,
-    loading,
-    error
-  } = usePrice({
-    vehicleType: selectedVehicle,
-    distanceKm: distance || 0,
-    selectedOptions
-  });
+  const handleConfirm = () => {
+    console.log("Réservation confirmée:", {
+      departure: store.departure?.display_name,
+      destination: store.destination?.display_name,
+      dateTime: formatDate(store.pickupDateTime),
+      vehicle: store.selectedVehicle,
+      options: store.selectedOptions
+    });
+    
+    // Ici, vous appelleriez une API pour sauvegarder la réservation
+    // puis navigueriez vers une page de succès
+    router.push("/reservation/success");
+  };
 
-  // Rediriger si les informations nécessaires ne sont pas disponibles
-  useEffect(() => {
-    if (!departure || !destination || !selectedVehicle) {
-      window.location.href = '/reservation';
+  // Fonction d'aide pour afficher le type de véhicule
+  const getVehicleName = (type: string) => {
+    switch (type) {
+      case 'STANDARD': return 'Berline Standard';
+      case 'PREMIUM': return 'Berline Premium';
+      case 'VAN': return 'Van de Luxe';
+      case 'berlineStandard': return 'Berline Standard';
+      case 'berlinePremium': return 'Berline Premium';
+      case 'van': return 'Van';
+      default: return type;
     }
-  }, [departure, destination, selectedVehicle]);
+  };
 
-  if (loading) {
-    return (
-      <div className="container mx-auto py-10 px-4">
-        <div className="space-y-4">
-          <div className="h-8 bg-neutral-800 rounded w-1/3 animate-pulse"></div>
-          <div className="h-4 bg-neutral-800 rounded w-3/4 animate-pulse"></div>
-          <div className="h-4 bg-neutral-800 rounded w-1/2 animate-pulse"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container mx-auto py-10 px-4">
-        <div className="bg-red-500/10 border border-red-500 rounded-lg p-4 text-red-500">
-          {error}
-        </div>
-      </div>
-    );
-  }
-
-  const totalPrice = base + distancePrice + optionsPrice;
+  // Fonction d'aide pour afficher les options
+  const getOptionName = (option: string) => {
+    switch (option) {
+      case 'childSeat': return 'Siège enfant';
+      case 'pets': return 'Animaux domestiques';
+      case 'accueil': return 'Accueil personnalisé';
+      case 'boissons': return 'Boissons fraîches';
+      default: return option;
+    }
+  };
 
   return (
-    <div className="container mx-auto py-10 px-4">
-      <h1 className="text-3xl font-bold mb-8">Confirmation de votre trajet</h1>
+    <div className="min-h-screen bg-black text-white">
+      <div className="container max-w-4xl mx-auto py-10 px-4">
+        <h1 className="text-3xl font-bold mb-8 text-center">
+          Confirmation de votre trajet
+        </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div>
-          <Card className="p-6 bg-neutral-900/50 backdrop-blur-lg border-neutral-800">
-            <h2 className="text-xl font-semibold mb-4">Détails du trajet</h2>
-            <div className="space-y-4">
+        <div className="grid gap-8">
+          <Card className="bg-neutral-900 border-neutral-800 text-white p-6">
+            <h2 className="text-xl font-semibold mb-6">Détails du trajet</h2>
+            
+            <div className="space-y-6">
               <div>
                 <p className="text-neutral-400">Départ</p>
-                <p className="font-medium">{departure?.display_name}</p>
+                <p className="text-lg mt-1">{store.departure?.display_name || "Non spécifié"}</p>
               </div>
+              
               <div>
                 <p className="text-neutral-400">Destination</p>
-                <p className="font-medium">{destination?.display_name}</p>
+                <p className="text-lg mt-1">{store.destination?.display_name || "Non spécifiée"}</p>
               </div>
+              
               <div>
                 <p className="text-neutral-400">Date et heure de prise en charge</p>
-                <p className="font-medium">
-                  {pickupDateTime.toLocaleString('fr-FR', {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'long',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </p>
+                <p className="text-lg mt-1">{formatDate(store.pickupDateTime)}</p>
               </div>
-              <div>
-                <p className="text-neutral-400">Distance</p>
-                <p className="font-medium">{distance?.toFixed(1) ?? 'N/A'} km</p>
-              </div>
-              <div>
-                <p className="text-neutral-400">Durée estimée</p>
-                <p className="font-medium">{duration ? formatDuration(duration) : 'N/A'}</p>
-              </div>
+              
+              {store.distance && (
+                <div className="flex flex-row gap-8">
+                  <div>
+                    <p className="text-neutral-400">Distance</p>
+                    <p className="text-lg mt-1">{store.distance.toFixed(1)} km</p>
+                  </div>
+                  
+                  {store.duration && (
+                    <div>
+                      <p className="text-neutral-400">Durée estimée</p>
+                      <p className="text-lg mt-1">{formatDuration(store.duration)}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+              
               <div>
                 <p className="text-neutral-400">Véhicule</p>
-                <p className="font-medium capitalize">{selectedVehicle}</p>
+                <p className="text-lg mt-1">{getVehicleName(store.selectedVehicle)}</p>
               </div>
-              {selectedOptions.length > 0 && (
+              
+              {store.selectedOptions?.length > 0 && (
                 <div>
                   <p className="text-neutral-400">Options</p>
-                  <ul className="list-disc list-inside">
-                    {selectedOptions.map(option => {
-                      const translations: Record<string, string> = {
-                        childSeat: 'Siège enfant',
-                        pets: 'Animaux domestiques'
-                      };
-                      return (
-                        <li key={option} className="font-medium">
-                          {translations[option] || option}
-                        </li>
-                      );
-                    })}
+                  <ul className="mt-2 space-y-1">
+                    {store.selectedOptions.map((option) => (
+                      <li key={option} className="flex items-center gap-2">
+                        <Check size={16} className="text-green-500" />
+                        {getOptionName(option)}
+                      </li>
+                    ))}
                   </ul>
                 </div>
               )}
             </div>
           </Card>
-
-          <Card className="mt-6 p-6 bg-neutral-900/50 backdrop-blur-lg border-neutral-800">
-            <h2 className="text-xl font-semibold mb-4">Détails du prix</h2>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span>Prix de réservation du véhicule</span>
-                <span>{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(base)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Prix au km ({distance?.toFixed(1) ?? 'N/A'} km)</span>
-                <span>{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(distancePrice)}</span>
-              </div>
-              {selectedOptions.length > 0 && (
-                <div className="flex justify-between">
-                  <span>Options</span>
-                  <span>{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(optionsPrice)}</span>
-                </div>
-              )}
-              <div className="border-t border-neutral-800 mt-4 pt-4">
-                <div className="flex justify-between text-lg font-semibold">
-                  <span>Total</span>
-                  <span>{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(totalPrice)}</span>
-                </div>
-              </div>
-            </div>
+          
+          <Card className="bg-neutral-900 border-neutral-800 text-white p-6">
+            <PriceSummary />
           </Card>
-
-          <div className="mt-8 flex gap-4">
-            <Button
-              variant="outline"
-              onClick={() => window.history.back()}
-              className="w-full"
+          
+          <div className="flex gap-4 mt-4">
+            <Button 
+              variant="outline" 
+              className="flex-1 text-white border-neutral-700 bg-neutral-800 hover:bg-neutral-700" 
+              onClick={handleBack}
             >
+              <ChevronLeft className="mr-2 h-4 w-4" />
               Retour
             </Button>
-            <Button
-              onClick={() => {
-                // TODO: Implémenter la confirmation finale
-              }}
-              className="w-full py-2 inline-flex items-center justify-center hover:bg-primary/90 text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-11 rounded-md px-8 relative bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 transition-all duration-300 ease-out"
+            <Button 
+              className="flex-1 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600"
+              onClick={handleConfirm}
             >
               Confirmer la réservation
             </Button>
           </div>
-        </div>
-
-        <div className="h-[600px] rounded-lg overflow-hidden border border-neutral-800">
-          <ConfirmationMap
-            departure={departure}
-            destination={destination}
-          />
         </div>
       </div>
     </div>

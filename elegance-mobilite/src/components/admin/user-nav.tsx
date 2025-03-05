@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { LogOut, Settings, User } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { createClient } from "@/utils/supabase/client"
+import { supabase } from "@/utils/supabase/client"
 
 type UserData = {
   email: string | null
@@ -25,7 +25,6 @@ type UserData = {
 
 export function UserNav() {
   const router = useRouter()
-  const supabase = createClient()
   const [userData, setUserData] = useState<UserData>({
     email: null,
     role: null,
@@ -38,8 +37,8 @@ export function UserNav() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         const { data: profile } = await supabase
-          .from('users')
-          .select('role, name, avatar_url')
+          .from('user_profiles')
+          .select('role')
           .eq('id', user.id)
           .single()
 
@@ -52,7 +51,7 @@ export function UserNav() {
       }
     }
     getUserData()
-  }, [supabase])
+  }, [])
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut()

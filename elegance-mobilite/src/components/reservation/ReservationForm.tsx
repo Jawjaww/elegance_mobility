@@ -28,11 +28,25 @@ export function ReservationForm() {
   } : null;
 
   const handleNextStep = () => {
-    router.push("/reservation/confirmation");
+    try {
+      console.log("Navigation vers la page de confirmation...");
+      router.push("/reservation/confirmation");
+    } catch (error) {
+      console.error("Erreur de navigation:", error);
+      // Fallback en cas d'échec du router
+      window.location.href = "/reservation/confirmation";
+    }
   };
 
   const handleReset = () => {
     store.reset();
+  };
+
+  // Fonction de gestion du changement de date pour éviter les problèmes de type
+  const handleDateChange = (date: Date | null) => {
+    if (date) {
+      store.setPickupDateTime(date);
+    }
   };
 
   return (
@@ -45,8 +59,9 @@ export function ReservationForm() {
             <div>
               <Label>Point de départ</Label>
               <AutocompleteInput
+                id="pickup-location"
                 value={store.departure?.display_name || ""}
-                onSelect={store.setPickup}
+                onSelect={store.setDeparture}
                 placeholder="Adresse de départ"
               />
             </div>
@@ -54,25 +69,30 @@ export function ReservationForm() {
             <div>
               <Label>Destination</Label>
               <AutocompleteInput
+                id="dropoff-location"
                 value={store.destination?.display_name || ""}
-                onSelect={store.setDropoff}
+                onSelect={store.setDestination}
                 placeholder="Adresse d'arrivée"
               />
             </div>
 
-            <div>
-              <DateTimePicker 
-                value={store.pickupDateTime}
-                onChange={store.setPickupDateTime}
-                label="Date et heure de prise en charge"
-              />
+            <div className="mt-4">
+              <Label htmlFor="pickup-datetime">Date et heure de prise en charge</Label>
+              <div className="mt-2">
+                <DateTimePicker 
+                  value={store.pickupDateTime || new Date()}
+                  onChange={handleDateChange}
+                  label="Date et heure de prise en charge"
+                  minDate={new Date()}
+                />
+              </div>
             </div>
 
-            <div>
+            <div className="mt-6">
               <Label className="mb-4 block">Type de véhicule</Label>
               <RadioGroup 
                 value={store.selectedVehicle || ""}
-                onValueChange={(value) => store.setVehicleType(value as "STANDARD" | "VAN")}
+                onValueChange={(value) => store.setSelectedVehicle(value)}
                 className="flex gap-4"
               >
                 <div className="flex items-center space-x-2">
@@ -94,11 +114,7 @@ export function ReservationForm() {
                     id="accueil"
                     checked={store.selectedOptions.includes("accueil")}
                     onCheckedChange={(checked) => {
-                      store.setSelectedOptions(
-                        checked
-                          ? [...store.selectedOptions, "accueil"]
-                          : store.selectedOptions.filter((opt) => opt !== "accueil")
-                      );
+                      store.toggleOption("accueil");
                     }}
                   />
                   <Label htmlFor="accueil">Accueil personnalisé</Label>
@@ -108,11 +124,7 @@ export function ReservationForm() {
                     id="boissons"
                     checked={store.selectedOptions.includes("boissons")}
                     onCheckedChange={(checked) => {
-                      store.setSelectedOptions(
-                        checked
-                          ? [...store.selectedOptions, "boissons"]
-                          : store.selectedOptions.filter((opt) => opt !== "boissons")
-                      );
+                      store.toggleOption("boissons");
                     }}
                   />
                   <Label htmlFor="boissons">Boissons fraîches</Label>
@@ -129,7 +141,7 @@ export function ReservationForm() {
                 origin={origin}
                 destination={destinationCoords}
                 enableRouting={!!(origin && destinationCoords)}
-                onRouteCalculated={store.setDistance}
+                onRouteCalculated={(distance) => store.setDistance(distance)}
               />
             </Card>
           </Suspense>

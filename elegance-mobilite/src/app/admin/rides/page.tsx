@@ -17,9 +17,9 @@ export default function RidesPage() {
       <div className="flex flex-col gap-6">
         <div>
           <h1 className="text-2xl font-bold text-white">Gestion des Courses</h1>
-          <p className="text-gray-400 mt-1">
+          {/* <p className="text-gray-400 mt-1">
             Consultez et gérez toutes les courses depuis cette interface unifiée
-          </p>
+          </p> */}
         </div>
 
         <RidesFilters />

@@ -6,6 +6,9 @@
     "create-admin": "node createAdmin.js",
     "delete-admin": "node deleteAdmin.js",
     "delete-user": "node deleteUser.js",
+    "create-user": "node createUser.js",
+    "create-superAdmin": "node createSuperAdmin.js",
+    "delete-superAdmin": "node deleteSuperAdmin.js",
     "reset-db": "node resetDatabase.js"
   },
   "dependencies": {

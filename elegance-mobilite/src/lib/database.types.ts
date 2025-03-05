@@ -78,7 +78,12 @@ export interface Database {
         Row: {
           id: string
           user_id: string
-          name: string
+          first_name: string
+          last_name: string
+          company_name: string
+          company_phone: string
+          employee_phone: string
+          employee_name: string
           phone: string
           status: DriverStatus
           avatar_url: string | null
@@ -100,7 +105,12 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
-          name: string
+          first_name: string
+          last_name: string
+          company_name: string
+          company_phone: string
+          employee_phone: string
+          employee_name: string
           phone: string
           status?: DriverStatus
           avatar_url?: string | null
@@ -122,7 +132,12 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
-          name?: string
+          first_name?: string
+          last_name?: string
+          company_name?: string
+          company_phone?: string
+          employee_phone?: string
+          employee_name?: string
           phone?: string
           status?: DriverStatus
           avatar_url?: string | null

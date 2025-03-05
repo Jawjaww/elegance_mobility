@@ -1,39 +1,40 @@
--- Function to get user by email
-CREATE OR REPLACE FUNCTION get_user_by_email(p_email TEXT)
-RETURNS TABLE (
-  id uuid,
-  email text,
-  role text
-)
+-- Create admin role if it doesn't exist
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'admin') THEN
+    CREATE ROLE admin;
+  END IF;
+END
+$$;
+
+-- Grant privileges to admin role
+GRANT authenticated TO admin;
+
+-- Function to check if user is admin
+CREATE OR REPLACE FUNCTION auth.is_admin()
+RETURNS boolean
 LANGUAGE sql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT id, email, raw_user_meta_data->>'role' as role
-  FROM auth.users
-  WHERE email = p_email;
+  SELECT 
+    COALESCE(auth.jwt() ->> 'role', '') = 'admin'
 $$;
 
--- Function to delete user by id
-CREATE OR REPLACE FUNCTION delete_user_by_id(p_user_id UUID)
+-- Function to set user role as admin
+CREATE OR REPLACE FUNCTION auth.set_user_role_admin(user_id UUID)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  -- Delete admin record if exists
-  DELETE FROM public.admins WHERE id = p_user_id;
-  
-  -- Delete auth user
-  DELETE FROM auth.users WHERE id = p_user_id;
+  UPDATE auth.users
+  SET role = 'admin'
+  WHERE id = user_id;
 END;
 $$;
 
--- Grant execute permissions to service_role
-GRANT EXECUTE ON FUNCTION get_user_by_email(TEXT) TO service_role;
-GRANT EXECUTE ON FUNCTION delete_user_by_id(UUID) TO service_role;
-
--- Grant access to auth schema for service_role
-GRANT USAGE ON SCHEMA auth TO service_role;
-GRANT SELECT, DELETE ON auth.users TO service_role;
+-- Grant execute permissions
+GRANT EXECUTE ON FUNCTION auth.is_admin TO authenticated;
+GRANT EXECUTE ON FUNCTION auth.set_user_role_admin TO service_role;

@@ -1,89 +1,76 @@
+"use client";
+
 import { useState, useEffect } from 'react';
-import { PricingService } from '@/lib/services/pricingService';
-import { supabase } from '@/lib/supabaseClient';
+import { useReservationStore } from '@/lib/stores/reservationStore';
+import { pricingService } from '@/lib/services/pricingService';
 
-interface UsePriceParams {
-  vehicleType: string;
-  distanceKm: number | null;
-  selectedOptions?: string[];
+interface PriceBreakdown {
+  basePrice: number;
+  optionsPrice: number;
+  totalPrice: number;
 }
 
-interface PriceDetails {
-  base: number;
-  distance: number;
-  options: number;
-  total: number;
-  loading: boolean;
-  error: string | null;
-  formattedTotal: string;
-}
-
-export function usePrice({ vehicleType, distanceKm, selectedOptions = [] }: UsePriceParams): PriceDetails {
-  const [priceDetails, setPriceDetails] = useState<PriceDetails>({
-    base: 0,
-    distance: 0,
-    options: 0,
-    total: 0,
-    loading: true,
-    error: null,
-    formattedTotal: '0,00 €'
+export function usePrice() {
+  const { distance, selectedVehicle, selectedOptions } = useReservationStore();
+  const [price, setPrice] = useState<PriceBreakdown>({
+    basePrice: 0,
+    optionsPrice: 0,
+    totalPrice: 0,
   });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const calculatePrice = async () => {
-      try {
-        // S'assurer que le service est initialisé
-        await PricingService.initialize();
+      if (!distance || !selectedVehicle) {
+        return;
+      }
 
-        // Vérifier si distanceKm est null
-        if (distanceKm === null) {
-          throw new Error('La distance ne peut pas être null');
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        // Vérification que pricingService existe
+        if (!pricingService) {
+          throw new Error("Le service de tarification n'est pas disponible");
         }
 
-        // Calculer le prix
-        const price = PricingService.calculatePrice({
-          vehicleType,
-          distanceKm,
-          selectedOptions
-        });
+        // Initialisation du service si la méthode initialize existe
+        if (typeof pricingService.initialize === 'function') {
+          await pricingService.initialize();
+        }
 
-        setPriceDetails({
-          ...price,
-          loading: false,
-          error: null,
-          formattedTotal: PricingService.formatPrice(price.total)
-        });
+        const priceData = await pricingService.calculatePrice(
+          distance,
+          selectedVehicle,
+          selectedOptions
+        );
+
+        setPrice(priceData);
       } catch (err) {
-        setPriceDetails(prev => ({
-          ...prev,
-          loading: false,
-          error: err instanceof Error ? err.message : 'Erreur lors du calcul du prix'
-        }));
+        console.error("Erreur lors du calcul du prix:", err);
+        setError("Impossible de calculer le prix. Veuillez réessayer plus tard.");
+        
+        // Valeurs par défaut en cas d'erreur
+        setPrice({
+          basePrice: 0,
+          optionsPrice: 0,
+          totalPrice: 0,
+        });
+      } finally {
+        setIsLoading(false);
       }
     };
 
     calculatePrice();
+  }, [distance, selectedVehicle, selectedOptions]);
 
-    // S'abonner aux changements de tarifs
-    const channel = supabase
-      .channel('prices-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'rates'
-        },
-        calculatePrice // Recalculer le prix quand les tarifs changent
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [vehicleType, distanceKm, selectedOptions]);
-
-  return priceDetails;
+  return {
+    price,
+    isLoading,
+    error,
+    formatPrice: (amount: number) => `${amount.toFixed(2)} €`,
+  };
 }
 
 // Hook pour récupérer tous les tarifs

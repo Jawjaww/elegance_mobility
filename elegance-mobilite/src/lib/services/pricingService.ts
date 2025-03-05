@@ -1,175 +1,131 @@
-import { supabase } from '../supabaseClient';
+"use client";
 
-export interface Rate {
-  vehicleType: string;
-  pricePerKm: number;
-  basePrice: number;
+import { VehicleType } from "@/lib/stores/reservationStore";
+
+// Types pour le service de tarification
+export type PriceOption = "childSeat" | "pets" | "accueil" | "boissons";
+
+export interface PriceData {
+  baseFare: number;
+  perKmRate: number;
+  minPrice: number;
 }
 
-export interface OptionRate {
-  optionType: string;
+export interface OptionPrice {
+  id: string;
   price: number;
 }
 
-class PricingServiceClass {
-  private rates: Map<string, Rate> = new Map();
-  private optionRates: Map<string, OptionRate> = new Map();
+class PricingService {
   private initialized: boolean = false;
+  // Rendre les tarifs publics pour y accéder de l'extérieur
+  public vehicleRates: Record<string, PriceData> = {
+    STANDARD: { baseFare: 30, perKmRate: 2, minPrice: 35 },
+    VAN: { baseFare: 45, perKmRate: 2.5, minPrice: 50 },
+    berlineStandard: { baseFare: 25, perKmRate: 1.8, minPrice: 30 },
+    berlinePremium: { baseFare: 35, perKmRate: 2.2, minPrice: 40 },
+    van: { baseFare: 45, perKmRate: 2.5, minPrice: 50 },
+    PREMIUM: { baseFare: 40, perKmRate: 2.3, minPrice: 45 },
+  };
 
-  async initialize() {
-    if (this.initialized) return;
+  private optionRates: Record<string, number> = {
+    childSeat: 15,
+    pets: 10,
+    accueil: 20,
+    boissons: 10,
+  };
+
+  constructor() {
+    // Initialiser immédiatement
+    this.initialized = true;
+    console.log('PricingService created and initialized');
+  }
+
+  // Méthode initialize réécrite pour être plus robuste
+  async initialize(): Promise<void> {
+    if (this.initialized) {
+      console.log('PricingService already initialized');
+      return;
+    }
 
     try {
-      const { data: rateData, error: rateError } = await supabase
-        .from('rates')
-        .select('*');
-
-      if (rateError) throw rateError;
-
-      const { data: optionData, error: optionError } = await supabase
-        .from('option_rates')
-        .select('*');
-
-      if (optionError) throw optionError;
-
-      // Convert database data to Rate format
-      this.rates.clear();
-      rateData.forEach((rate) => {
-        this.rates.set(rate.vehicle_type, {
-          vehicleType: rate.vehicle_type,
-          pricePerKm: rate.price_per_km,
-          basePrice: rate.base_price
-        });
-      });
-
-      // Convert database data to OptionRate format
-      this.optionRates.clear();
-      optionData.forEach((option) => {
-        this.optionRates.set(option.option_type, {
-          optionType: option.option_type,
-          price: option.price
-        });
-      });
-
+      console.log('PricingService initializing...');
       this.initialized = true;
+      console.log('PricingService initialized successfully');
     } catch (error) {
-      console.error('Error initializing PricingService:', error);
-      throw error;
+      console.error('Error in PricingService initialization, using fallback data:', error);
+      // Ne pas relancer l'erreur, mais utiliser les données par défaut
+      this.initialized = true;
     }
   }
 
-  getAllRates(): Rate[] {
+  // Vérifie que le service est initialisé
+  private ensureInitialized(): void {
     if (!this.initialized) {
-      throw new Error('PricingService not initialized');
+      console.warn('PricingService not initialized, using default rates');
+      this.initialized = true; // Force initialization
     }
-    return Array.from(this.rates.values());
   }
 
-  getAllOptionRates(): OptionRate[] {
-    if (!this.initialized) {
-      throw new Error('PricingService not initialized');
-    }
-    return Array.from(this.optionRates.values());
-  }
+  // Calcule le prix total pour une réservation
+  async calculatePrice(
+    distance: number,
+    vehicleType: VehicleType | string,
+    options: string[]
+  ): Promise<{ basePrice: number; optionsPrice: number; totalPrice: number }> {
+    this.ensureInitialized();
+    
+    console.log(`Calcul prix pour: distance=${distance}, vehicle=${vehicleType}, options=${options.join(',')}`)
+    
+    // Vérifier que le type de véhicule existe dans notre tableau de tarifs
+    const vehicleData = this.vehicleRates[vehicleType] || this.vehicleRates.STANDARD;
+    console.log("Données du véhicule trouvées:", vehicleData);
 
-  getRate(vehicleType: string): Rate | undefined {
-    if (!this.initialized) {
-      throw new Error('PricingService not initialized');
-    }
-    return this.rates.get(vehicleType);
-  }
+    // Calcul du prix de base
+    let basePrice = vehicleData.baseFare + (distance * vehicleData.perKmRate);
+    
+    // Appliquer le prix minimum si nécessaire
+    basePrice = Math.max(basePrice, vehicleData.minPrice);
+    basePrice = Math.round(basePrice * 100) / 100; // Arrondir à 2 décimales
 
-  calculatePrice(params: {
-    vehicleType: string;
-    distanceKm: number;
-    selectedOptions?: string[];
-  }): {
-    base: number;
-    distance: number;
-    options: number;
-    total: number;
-  } {
-    if (!this.initialized) {
-      throw new Error('PricingService not initialized');
-    }
-
-    const rate = this.rates.get(params.vehicleType);
-    if (!rate) {
-      throw new Error(`Rate not found for vehicle type: ${params.vehicleType}`);
-    }
-
-    const basePrice = rate.basePrice;
-    const distancePrice = params.distanceKm * rate.pricePerKm;
-
-    // Calculate the price of options
-    const optionsPrice = (params.selectedOptions || []).reduce((total, option) => {
-      const optionRate = this.optionRates.get(option);
-      return total + (optionRate ? optionRate.price : 0);
+    // Calculer le prix des options
+    const optionsPrice = options.reduce((total, option) => {
+      const optionPrice = this.optionRates[option] || 0;
+      console.log(`Option ${option}: ${optionPrice}€`);
+      return total + optionPrice;
     }, 0);
 
+    // Prix total
+    const totalPrice = basePrice + optionsPrice;
+
+    console.log("Prix calculés:", { basePrice, optionsPrice, totalPrice });
+
     return {
-      base: basePrice,
-      distance: distancePrice,
-      options: optionsPrice,
-      total: basePrice + distancePrice + optionsPrice
+      basePrice,
+      optionsPrice,
+      totalPrice
     };
   }
 
-  // This method is used internally by the service to update rates
-  // after a change in the database
-  async refreshRates() {
-    this.initialized = false;
-    await this.initialize();
+  // Récupère le tarif de base pour un type de véhicule
+  getBaseFare(vehicleType: VehicleType | string): number {
+    this.ensureInitialized();
+    return (this.vehicleRates[vehicleType] || this.vehicleRates.STANDARD).baseFare;
   }
 
-  // Utility methods for validation
-  validateRate(rate: Rate): boolean {
-    return (
-      typeof rate.vehicleType === 'string' &&
-      typeof rate.pricePerKm === 'number' &&
-      typeof rate.basePrice === 'number' &&
-      rate.pricePerKm >= 0 &&
-      rate.basePrice >= 0
-    );
+  // Récupère le tarif au kilomètre pour un type de véhicule
+  getPerKmRate(vehicleType: VehicleType | string): number {
+    this.ensureInitialized();
+    return (this.vehicleRates[vehicleType] || this.vehicleRates.STANDARD).perKmRate;
   }
 
-  // Format a price for display
-  formatPrice(price: number): string {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'EUR'
-    }).format(price);
+  // Récupère le prix d'une option
+  getOptionPrice(optionId: string): number {
+    this.ensureInitialized();
+    return this.optionRates[optionId] || 0;
   }
 }
 
-// Export a singleton instance
-export const PricingService = new PricingServiceClass();
-
-// Listen for real-time changes on both rates and option_rates tables
-supabase
-  .channel('pricing-updates')
-  .on(
-    'postgres_changes',
-    {
-      event: '*',
-      schema: 'public',
-      table: 'rates'
-    },
-    async () => {
-      // Refresh rates when there are changes
-      await PricingService.refreshRates();
-    }
-  )
-  .on(
-    'postgres_changes',
-    {
-      event: '*',
-      schema: 'public',
-      table: 'option_rates'
-    },
-    async () => {
-      // Refresh rates when there are changes to options
-      await PricingService.refreshRates();
-    }
-  )
-  .subscribe();
+// Créer et exporter une instance singleton du service
+export const pricingService = new PricingService();
+export default pricingService;

@@ -58,18 +58,16 @@ export function RidesList() {
     setError(null)
 
     try {
-      // TODO: Remplacer par l'appel API réel
-      const response = await fetch('/api/rides', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          date: selectedDate,
-          status: selectedStatus,
-          driverId: driverFilter,
-        }),
-      })
+      const params = new URLSearchParams()
+      if (selectedDate) {
+        const date = new Date(selectedDate)
+        const formattedDate = date.toISOString().split('T')[0]
+        params.append('date', formattedDate)
+      }
+      if (selectedStatus) params.append('status', selectedStatus)
+      if (driverFilter) params.append('driverId', driverFilter)
+
+      const response = await fetch(`/api/rides?${params}`)
 
       if (!response.ok) {
         // Gestion des différents codes d'erreur HTTP
