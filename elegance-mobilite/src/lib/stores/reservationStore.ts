@@ -88,7 +88,8 @@ export const useReservationStore = create<ReservationState>()(
         })),
 
       setSelectedOptions: (options) =>
-        set(() => ({
+        set((state) => ({
+          ...state,
           selectedOptions: options,
         })),
 

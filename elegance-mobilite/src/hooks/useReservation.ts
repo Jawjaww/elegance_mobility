@@ -93,7 +93,19 @@ export function useReservation() {
       const selectedOptions = Object.entries(options)
         .filter(([, value]) => value)
         .map(([key]) => key);
-      reservationStore.setSelectedOptions(selectedOptions);
+      
+      // Contournement: utiliser toggleOption au lieu de setSelectedOptions
+      // D'abord retirer toutes les options
+      [...reservationStore.selectedOptions].forEach(option => {
+        reservationStore.toggleOption(option);
+      });
+      
+      // Ajouter les nouvelles options
+      selectedOptions.forEach(option => {
+        if (!reservationStore.selectedOptions.includes(option)) {
+          reservationStore.toggleOption(option);
+        }
+      });
 
       // Use Next.js router for navigation
       router.push('/reservation/confirmation');
