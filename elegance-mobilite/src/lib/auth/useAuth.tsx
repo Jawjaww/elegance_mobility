@@ -7,8 +7,9 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  phone?: string;
-  avatar_url?: string;
+  role: string;
+  avatar_url?: string;  // Ajouter le support pour l'avatar
+  phone?: string;      // Ajouter aussi le téléphone pour cohérence
 }
 
 interface AuthContextType {
@@ -56,37 +57,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         
         if (session?.user) {
-          // Utilisez uniquement les données de session pour le moment
-          // pour éviter les erreurs RLS
-          setUser({
+          // Créer un objet utilisateur de base avec les données de session
+          const userData: User = {
             id: session.user.id,
             email: session.user.email || '',
-            name: session.user.email?.split('@')[0] || 'Utilisateur',
-            phone: '',
-            avatar_url: '',
-          });
+            name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Utilisateur',
+            role: 'client', // Valeur par défaut
+            avatar_url: session.user.user_metadata?.avatar_url || undefined
+          };
           
-          // Tentative de récupération des informations supplémentaires en tant que service secondaire
-          // qui ne bloquera pas l'affichage de l'interface
+          // Tenter de récupérer le rôle de l'utilisateur depuis la table users
           try {
-            const { data: profile } = await supabase
+            const { data: userRecord } = await supabase
               .from('users')
-              .select('role, full_name, phone, avatar_url')
+              .select('role')
               .eq('id', session.user.id)
               .single();
               
-            if (profile) {
-              setUser(prev => ({
-                ...prev!,
-                name: profile.full_name || prev!.name,
-                phone: profile.phone || '',
-                avatar_url: profile.avatar_url || '',
-              }));
+            if (userRecord) {
+              userData.role = userRecord.role;
             }
           } catch (profileError) {
-            console.error("Erreur non bloquante lors de la récupération du profil:", profileError);
-            // Continue sans bloquer l'expérience utilisateur
+            console.error("Erreur non bloquante lors de la récupération du rôle:", profileError);
           }
+          
+          setUser(userData);
         }
       } catch (error) {
         console.error("Erreur lors de la vérification d'authentification:", error);
@@ -100,18 +95,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         if (event === 'SIGNED_IN' && session) {
           // Utilisateur connecté
-          const { data: profile } = await supabase
+          const { data: userRecord } = await supabase
             .from('users')
-            .select('*')
+            .select('role')
             .eq('id', session.user.id)
             .single();
             
           setUser({
             id: session.user.id,
             email: session.user.email || '',
-            name: profile?.full_name || session.user.email?.split('@')[0] || 'Utilisateur',
-            phone: profile?.phone || '',
-            avatar_url: profile?.avatar_url || '',
+            name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Utilisateur',
+            role: userRecord?.role || 'client'
           });
         } else if (event === 'SIGNED_OUT') {
           // Utilisateur déconnecté
@@ -165,34 +159,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (email: string, password: string, name: string): Promise<boolean> => {
     try {
       setIsLoading(true);
+      console.log("Début de l'inscription pour:", email);
       
-      // Inscription avec Supabase
-      const { data: { user: authUser }, error: signUpError } = await supabase.auth.signUp({
+      // Inscription avec Supabase Auth en incluant le nom dans les métadonnées
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            full_name: name
+          }
+        }
       });
 
-      if (signUpError || !authUser) {
-        throw signUpError || new Error("Échec de l'inscription");
+      if (signUpError) {
+        console.error("Erreur lors de l'inscription Auth:", signUpError);
+        return false;
       }
 
-      // Créer ou mettre à jour le profil utilisateur
-      const { error: profileError } = await supabase
-        .from('users')
-        .upsert({
-          id: authUser.id,
-          full_name: name,
-          email,
-          updated_at: new Date().toISOString(),
-        });
+      if (!authData.user) {
+        console.error("Pas d'utilisateur créé");
+        return false;
+      }
 
-      if (profileError) {
-        console.error("Erreur lors de la création du profil:", profileError);
+      console.log("Utilisateur Auth créé:", authData.user.id);
+
+      // 2. Insérer dans la table users directement
+      if (authData.session) {
+        // Si l'utilisateur est connecté automatiquement, on peut utiliser l'API directe
+        try {
+          const { error: usersError } = await supabase
+            .from('users')
+            .insert([
+              {
+                id: authData.user.id,
+                role: 'client'
+                // created_at et updated_at sont gérés par défaut
+              }
+            ]);
+
+          if (usersError) {
+            console.error("Erreur lors de l'insertion users:", usersError);
+            // On continue malgré l'erreur
+          }
+        } catch (dbError) {
+          console.error("Exception lors de l'insertion:", dbError);
+        }
+      } else {
+        // L'utilisateur devra confirmer son email avant de pouvoir se connecter
+        console.log("Email de confirmation envoyé à l'utilisateur");
       }
 
       return true;
     } catch (error) {
-      console.error("Erreur d'inscription:", error);
+      console.error("Erreur détaillée d'inscription:", error);
       return false;
     } finally {
       setIsLoading(false);

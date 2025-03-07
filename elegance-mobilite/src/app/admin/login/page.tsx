@@ -38,7 +38,7 @@ export default function AdminLoginPage() {
       // Vérifier que l'utilisateur est un administrateur
       if (data.user) {
         const { data: profile, error: profileError } = await supabase
-          .from('user_profiles')
+          .from('users')  // Utiliser la table users correcte
           .select('role')
           .eq('id', data.user.id)
           .single();

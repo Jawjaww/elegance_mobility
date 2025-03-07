@@ -37,17 +37,17 @@ export function UserNav() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
-          const { data: profile } = await supabase
-            .from('user_profiles')
+          const { data: userRole } = await supabase
+            .from('users')  // Utiliser la table users correcte
             .select('role')
             .eq('id', user.id)
             .single()
 
           setUserData({
             email: user.email || null,
-            role: profile?.role || "utilisateur",
-            name: profile?.name || (user.email ? user.email.split("@")[0] : "Utilisateur"),
-            avatar_url: profile?.avatar_url || null
+            role: userRole?.role || "utilisateur",
+            name: user.user_metadata?.full_name || (user.email ? user.email.split("@")[0] : "Utilisateur"),
+            avatar_url: user.user_metadata?.avatar_url || null
           })
         }
       } catch (error) {

@@ -22,7 +22,7 @@ const OSRM_SERVER = process.env.NEXT_PUBLIC_OSRM_SERVER || 'https://router.proje
 
 const LeafletMap: React.FC<LeafletMapProps> = ({
   markers,
-  initialZoom = 13,
+  initialZoom = 10,
   initialCenter = [48.8566, 2.3522] as L.LatLngExpression,
   enableRouting = false,
   onRouteCalculated,

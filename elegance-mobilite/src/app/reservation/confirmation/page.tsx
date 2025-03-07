@@ -77,23 +77,51 @@ export default function ConfirmationPage() {
         return;
       }
       
-      // Enregistrer la réservation dans Supabase
+      // 1. Vérifier si l'utilisateur existe dans la table users
+      const { data: existingUser, error: userCheckError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+        
+      // 2. Si l'utilisateur n'existe pas, le créer d'abord
+      if (userCheckError || !existingUser) {
+        console.log("L'utilisateur n'existe pas dans la table users, création en cours...");
+        
+        const { error: createUserError } = await supabase
+          .from('users')
+          .insert({
+            id: user.id,
+            role: 'client',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+          
+        if (createUserError) {
+          console.error("Erreur lors de la création de l'utilisateur:", createUserError);
+          throw createUserError;
+        }
+        
+        console.log("Utilisateur créé avec succès dans la table users");
+      }
+      
+      // 3. Maintenant que l'utilisateur existe, insérer la réservation
       const { data, error } = await supabase
-        .from('reservations')
+        .from('rides')
         .insert({
           user_id: user.id,
-          departure_address: reservation.departure.display_name,
-          departure_lat: reservation.departure.lat,
-          departure_lon: reservation.departure.lon,
-          destination_address: reservation.destination.display_name,
-          destination_lat: reservation.destination.lat,
-          destination_lon: reservation.destination.lon,
-          pickup_datetime: reservation.pickupDateTime,
-          distance_km: reservation.distance,
-          duration_min: reservation.duration,
+          pickup_address: reservation.departure.display_name,
+          pickup_lat: reservation.departure.lat,
+          pickup_lon: reservation.departure.lon,
+          dropoff_address: reservation.destination.display_name,
+          dropoff_lat: reservation.destination.lat,
+          dropoff_lon: reservation.destination.lon,
+          pickup_time: reservation.pickupDateTime,
+          distance: reservation.distance,
+          duration: reservation.duration,
           vehicle_type: reservation.selectedVehicle,
           options: reservation.selectedOptions,
-          total_price: totalPrice,
+          estimated_price: totalPrice,
           status: 'pending'
         });
 
