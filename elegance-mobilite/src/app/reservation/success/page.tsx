@@ -1,332 +1,174 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { CheckCircle2, CalendarCheck, Car, Loader2, AlertCircle } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useReservationStore } from "@/lib/stores/reservationStore";
-import { formatDate } from "@/lib/utils/dateUtils";
-import { useAuth } from "@/lib/auth/useAuth";
-import Link from "next/link";
-import { bookingService } from "@/lib/services/bookingService";
-import { usePrice } from "@/hooks/usePrice";
-import { toast } from "@/components/ui/use-toast";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import dynamic from 'next/dynamic';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { useReservationStore } from '@/lib/stores/reservationStore';
+import { useAuth } from '@/lib/auth/useAuth';
+import { Button } from '@/components/ui/button';
+import { CheckCircle2 } from 'lucide-react';
+import { AuthModal } from '@/components/auth/AuthModal';
 
-// Import dynamique de la carte pour éviter les erreurs de SSR
-const DynamicLeafletMap = dynamic(
-  () => import('@/components/map/DynamicLeafletMap'),
-  { ssr: false }
-);
-
-export default function SuccessPage() {
+export default function ReservationSuccessPage() {
   const router = useRouter();
-  const store = useReservationStore();
-  const { user, isAuthenticated, isLoading } = useAuth();
-  const { price } = usePrice();
-  const [bookingId, setBookingId] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [hasSaved, setHasSaved] = useState(false);
-  const [saveAttempts, setSaveAttempts] = useState(0);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+  const reservationStore = useReservationStore();
 
-  // Générer un numéro de réservation
-  const bookingNumber = bookingId ? 
-    `EM-${bookingId.substring(0, 6).toUpperCase()}` : 
-    `EM-${Math.floor(100000 + Math.random() * 900000)}`;
+  // Vérifier si les données de réservation existent
+  const hasReservationData = !!reservationStore.departure && !!reservationStore.destination;
 
-  // Vérification de l'authentification et redirection si nécessaire
   useEffect(() => {
-    // Attendre que l'état d'authentification soit chargé
-    if (isLoading) return;
-    
-    // Si l'utilisateur n'est pas connecté, rediriger vers la page de confirmation
-    if (!isAuthenticated || !user) {
-      console.warn("Accès non autorisé à la page de succès - redirection vers la confirmation");
-      router.replace("/reservation/confirmation");
-      return;
-    }
-    
-    // Si les données de réservation sont manquantes, rediriger vers la page de réservation
-    if (!store.departure || !store.destination) {
-      console.warn("Données de réservation manquantes - redirection");
-      router.replace("/reservation");
-      return;
-    }
-    
-    // Continuation du processus normal...
-  }, [isLoading, isAuthenticated, user, store, router]);
-
-  // Log détaillé pour les erreurs Supabase
-  const logSupabaseError = (error: any) => {
-    console.error("Détails de l'erreur Supabase:", {
-      message: error?.message,
-      details: error?.details,
-      hint: error?.hint,
-      code: error?.code
-    });
-  };
-
-  // Vérifiez que pickupDateTime est un objet Date valide
-  const formattedPickupDateTime = store.pickupDateTime instanceof Date
-    ? formatDate(store.pickupDateTime)
-    : typeof store.pickupDateTime === 'string'
-      ? store.pickupDateTime
-      : 'Date non disponible';
-
-  // S'assurer que les coordonnées pour la carte sont complètes
-  const origin = store.departure ? {
-    lat: store.departure.lat,
-    lon: store.departure.lon || 0 // Fournir une valeur par défaut
-  } : null;
-
-  const destinationCoords = store.destination ? {
-    lat: store.destination.lat,
-    lon: store.destination.lon || 0 // Fournir une valeur par défaut
-  } : null;
-
-  // Fonction pour vérifier si un objet de coordonnées est valide
-  const isValidLocation = (loc: any) => {
-    return loc && typeof loc.lat === 'number' && typeof loc.lon === 'number';
-  };
-
-  // Sauvegarde de la réservation dans Supabase avec retries
-  useEffect(() => {
-    const MAX_ATTEMPTS = 3;
-    
-    const saveBooking = async () => {
-      if (user && store.departure && store.destination && !hasSaved && saveAttempts < MAX_ATTEMPTS) {
-        setIsSaving(true);
-        setSaveError(null);
-        
-        try {
-          // Vérifier que les coordonnées sont valides avant d'envoyer
-          if (!isValidLocation(store.departure) || !isValidLocation(store.destination)) {
-            console.error("Coordonnées invalides:", { 
-              departure: store.departure, 
-              destination: store.destination 
-            });
-            throw new Error("Coordonnées invalides. Veuillez réessayer.");
-          }
-
-          // Log pour débogage
-          console.log("Tentative de sauvegarde avec l'utilisateur:", {
-            userId: user.id,
-            authState: !!user
-          });
-          
-          const bookingData = {
-            user_id: user.id,
-            pickup_address: store.departure.display_name,
-            dropoff_address: store.destination.display_name,
-            pickup_time: store.pickupDateTime instanceof Date 
-              ? store.pickupDateTime.toISOString() 
-              : new Date().toISOString(), // Utiliser la date actuelle comme fallback
-            estimated_price: price?.totalPrice || 0,
-            pickup_lat: store.departure.lat,
-            pickup_lon: store.departure.lon,
-            dropoff_lat: store.destination.lat, 
-            dropoff_lon: store.destination.lon,
-            distance: store.distance || 0,
-            duration: store.duration || 0,
-            vehicle_type: store.selectedVehicle,
-            options: store.selectedOptions
-          };
-          
-          const { success, id, error } = await bookingService.createBooking(bookingData);
-          
-          if (success && id) {
-            setBookingId(id);
-            setHasSaved(true);
-            toast({
-              title: "Réservation enregistrée",
-              description: "Votre réservation a été enregistrée avec succès.",
-            });
-          } else {
-            // Log détaillé de l'erreur
-            logSupabaseError(error);
-            console.error("Erreur lors de l'enregistrement de la réservation:", error);
-            
-            // Vérifier si l'erreur est liée à la politique RLS
-            if (error && error.includes("violates row-level security policy")) {
-              setSaveError("Problème d'autorisation: vérifiez que vous êtes correctement connecté");
-            } else {
-              setSaveError(error || "Impossible d'enregistrer votre réservation");
-            }
-            
-            setSaveAttempts(prev => prev + 1);
-            
-            if (saveAttempts + 1 >= MAX_ATTEMPTS) {
-              toast({
-                title: "Erreur",
-                description: "Nous n'avons pas pu enregistrer votre réservation après plusieurs tentatives.",
-                variant: "destructive",
-              });
-            }
-          }
-        } catch (error: any) {
-          // Log détaillé de l'erreur
-          logSupabaseError(error);
-          console.error("Exception lors de l'enregistrement de la réservation:", error);
-          setSaveError(error?.message || "Une erreur inattendue s'est produite");
-          setSaveAttempts(prev => prev + 1);
-        } finally {
-          setIsSaving(false);
+    // Timeout de sécurité pour ne pas laisser le chargement tourner indéfiniment
+    const timeoutId = setTimeout(() => {
+      if (isLoading) {
+        setIsLoading(false);
+        if (!hasReservationData) {
+          setError("Aucune réservation trouvée. Veuillez réessayer.");
         }
       }
-    };
-    
-    saveBooking();
-  }, [user, store, price, hasSaved, saveAttempts]);
+    }, 5000); // 5 secondes maximum
 
-  // Fonction pour réessayer la sauvegarde
-  const handleRetry = () => {
-    setSaveAttempts(0); // Réinitialiser le compteur pour permettre de nouveaux essais
+    // Si l'authentification est terminée, continuer le processus
+    if (!authLoading) {
+      const verifyReservation = async () => {
+        try {
+          // Vérifier si l'utilisateur est authentifié et si les données de réservation sont disponibles
+          if (!isAuthenticated) {
+            // Si l'utilisateur n'est pas authentifié, rediriger vers la page de confirmation
+            router.push('/reservation/confirmation');
+            return;
+          }
+          
+          if (!hasReservationData) {
+            setIsLoading(false);
+            setError("Aucune réservation trouvée. Veuillez réessayer.");
+            return;
+          }
+
+          // Si tout est OK, afficher la page de succès
+          setIsLoading(false);
+        } catch (err) {
+          console.error("Erreur lors de la vérification de la réservation:", err);
+          setIsLoading(false);
+          setError("Une erreur est survenue lors de la vérification de votre réservation.");
+        }
+      };
+      
+      verifyReservation();
+    }
+
+    return () => clearTimeout(timeoutId);
+  }, [hasReservationData, isAuthenticated, authLoading, router]);
+
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+    // Recharger la page pour reprendre le processus avec l'utilisateur connecté
+    window.location.reload();
   };
 
   const handleReturnHome = () => {
-    router.push("/");
+    reservationStore.reset(); // Réinitialiser le store
+    router.push('/');
   };
 
-  if (!store.departure || !store.destination) {
-    return null; // Éviter le rendu pendant la redirection
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <LoadingSpinner size="lg" />
+        <p className="mt-4 text-lg text-gray-300">Vérification de votre réservation...</p>
+        <p className="mt-2 text-sm text-gray-400">Cela ne prendra qu'un instant</p>
+      </div>
+    );
   }
 
-  // Afficher la carte seulement si les deux coordonnées sont valides
-  const showMap = isValidLocation(origin) && isValidLocation(destinationCoords);
-
-  // Si le chargement est en cours ou l'utilisateur n'est pas authentifié, afficher un chargement
-  if (isLoading || !isAuthenticated || !user) {
+  if (error) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-10 w-10 animate-spin mx-auto mb-4 text-blue-500" />
-          <p className="text-lg">Vérification de votre réservation...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="bg-red-900/30 p-6 rounded-lg max-w-md w-full text-center">
+          <h1 className="text-2xl font-bold text-red-400 mb-4">Erreur</h1>
+          <p className="text-gray-300 mb-6">{error}</p>
+          <Button onClick={handleReturnHome}>Retour à l'accueil</Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white pt-16">
-      <div className="container max-w-4xl mx-auto py-12 px-4">
-        <div className="flex flex-col items-center justify-center mb-8">
-          <div className="mb-6">
-            {saveError && saveAttempts >= 3 ? (
-              <AlertCircle className="h-20 w-20 text-yellow-500" />
-            ) : (
-              <CheckCircle2 className="h-20 w-20 text-green-500" />
-            )}
-          </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-center mb-4">
-            {saveError && saveAttempts >= 3 ? "Réservation en attente de confirmation" : "Réservation confirmée !"}
-          </h1>
-          <p className="text-gray-400 text-center max-w-xl">
-            {saveError && saveAttempts >= 3
-              ? "Votre réservation a été enregistrée localement mais n'a pas pu être synchronisée avec nos serveurs."
-              : "Merci pour votre réservation. Votre chauffeur vous contactera peu avant le départ pour confirmer les détails."
-            }
-          </p>
-        </div>
-
-        {saveError && saveAttempts >= 3 && (
-          <Alert variant="warning" className="mb-6 bg-yellow-900/30 border-yellow-800 text-yellow-100">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Problème de connexion</AlertTitle>
-            <AlertDescription className="mt-2">
-              <p>{saveError}</p>
-              <Button 
-                onClick={handleRetry}
-                variant="outline" 
-                className="mt-2 bg-yellow-800/30 border-yellow-700 hover:bg-yellow-800/50"
-              >
-                Réessayer la sauvegarde
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <Card className="bg-neutral-900 border-neutral-700 p-6 mb-6">
-          <div className="flex items-center justify-between mb-6 pb-4 border-b border-neutral-800">
-            <div>
-              <p className="text-sm text-neutral-400">Numéro de réservation</p>
-              <div className="flex items-center gap-2">
-                <p className="text-xl font-bold">{bookingNumber}</p>
-                {isSaving && <Loader2 className="animate-spin h-4 w-4 text-blue-500" />}
-              </div>
+    <>
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="bg-neutral-900/70 p-8 rounded-2xl max-w-2xl w-full">
+          <div className="flex flex-col items-center text-center mb-8">
+            <div className="bg-green-600/20 p-4 rounded-full mb-4">
+              <CheckCircle2 className="h-16 w-16 text-green-500" />
             </div>
-            <div>
-              <p className="text-sm text-neutral-400">Client</p>
-              <p className="font-medium">{user?.name || "Client"}</p>
-            </div>
+            <h1 className="text-3xl font-bold text-white mb-2">
+              Réservation confirmée !
+            </h1>
+            <p className="text-gray-400 max-w-md">
+              Votre réservation a été enregistrée avec succès. Vous recevrez un email de confirmation dans quelques instants.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Détails de la réservation */}
+          <div className="bg-neutral-800/60 rounded-xl p-6 mb-8">
+            <h2 className="text-xl font-semibold mb-4 text-white">Détails de votre trajet</h2>
+            
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <CalendarCheck className="h-5 w-5 text-blue-400" />
-                <span className="font-medium">Date et heure</span>
+              <div className="flex gap-4">
+                <div className="w-24 flex-shrink-0 text-gray-400">Départ</div>
+                <div className="font-medium text-white">{reservationStore.departure?.display_name}</div>
               </div>
-              <p className="text-gray-300 pl-7">
-                {formattedPickupDateTime} {/* Utilisation de la variable sûre */}
-              </p>
               
-              <div className="flex items-center gap-2 mt-4">
-                <Car className="h-5 w-5 text-blue-400" />
-                <span className="font-medium">Véhicule</span>
+              <div className="flex gap-4">
+                <div className="w-24 flex-shrink-0 text-gray-400">Destination</div>
+                <div className="font-medium text-white">{reservationStore.destination?.display_name}</div>
               </div>
-              <p className="text-gray-300 pl-7">
-                {store.selectedVehicle === 'STANDARD' ? 'Berline Standard' : 
-                store.selectedVehicle === 'PREMIUM' ? 'Berline Premium' :
-                store.selectedVehicle === 'VAN' ? 'Van de Luxe' : store.selectedVehicle}
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <p className="font-medium">Trajet</p>
-              <div className="pl-2 border-l-2 border-blue-500 space-y-4">
-                <div>
-                  <p className="text-sm text-blue-400">Départ</p>
-                  <p className="text-gray-300">{store.departure?.display_name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-blue-400">Destination</p>
-                  <p className="text-gray-300">{store.destination?.display_name}</p>
+              
+              <div className="flex gap-4">
+                <div className="w-24 flex-shrink-0 text-gray-400">Date & heure</div>
+                <div className="font-medium text-white">
+                  {reservationStore.pickupDateTime.toLocaleString('fr-FR', {
+                    dateStyle: 'full',
+                    timeStyle: 'short'
+                  })}
                 </div>
               </div>
+              
+              <div className="flex gap-4">
+                <div className="w-24 flex-shrink-0 text-gray-400">Véhicule</div>
+                <div className="font-medium text-white capitalize">
+                  {reservationStore.selectedVehicle.toLowerCase()}
+                </div>
+              </div>
+              
+              {reservationStore.selectedOptions.length > 0 && (
+                <div className="flex gap-4">
+                  <div className="w-24 flex-shrink-0 text-gray-400">Options</div>
+                  <div className="font-medium text-white">
+                    {reservationStore.selectedOptions.join(', ')}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        </Card>
-
-        {/* Ajout d'une condition pour afficher la carte uniquement si les coordonnées sont valides */}
-        {showMap ? (
-          <Card className="bg-neutral-900 border-neutral-700 p-0 overflow-hidden mb-6">
-            <div className="h-[300px]">
-              <DynamicLeafletMap 
-                startPoint={origin} 
-                endPoint={destinationCoords} 
-                enableRouting={true}
-              />
-            </div>
-          </Card>
-        ) : null}
-
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button
-            onClick={handleReturnHome}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            Retour à l'accueil
-          </Button>
-          <Link href="/my-account/bookings">
-            <Button variant="outline" className="border-neutral-700 bg-neutral-800 text-white hover:text-white hover:bg-neutral-800/80">
-              Voir mes réservations
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button onClick={handleReturnHome} className="bg-blue-600 hover:bg-blue-700">
+              Retour à l'accueil
             </Button>
-          </Link>
+          </div>
         </div>
       </div>
-    </div>
+      
+      <AuthModal 
+        open={showAuthModal} 
+        onClose={() => setShowAuthModal(false)} 
+        onSuccess={handleAuthSuccess}
+        defaultTab="login"
+      />
+    </>
   );
 }

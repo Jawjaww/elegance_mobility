@@ -55,7 +55,7 @@ export default function MapWrapper({
     if (!mapRef.current) {
       mapRef.current = L.map('map', {
         center: [48.864716, 2.349014], // Paris par défaut
-        zoom: 12
+        zoom: 13
       });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useReservationStore } from '@/lib/stores/reservationStore';
 import { pricingService } from '@/lib/services/pricingService';
+import { supabase } from '@/utils/supabase/client';
 
 interface PriceBreakdown {
   basePrice: number;
@@ -23,6 +24,12 @@ export function usePrice() {
   useEffect(() => {
     const calculatePrice = async () => {
       if (!distance || !selectedVehicle) {
+        setPrice({
+          basePrice: 0,
+          optionsPrice: 0,
+          totalPrice: 0,
+        });
+        setIsLoading(false);
         return;
       }
 
@@ -30,16 +37,10 @@ export function usePrice() {
       setError(null);
 
       try {
-        // Vérification que pricingService existe
-        if (!pricingService) {
-          throw new Error("Le service de tarification n'est pas disponible");
-        }
+        // Initialiser le service de tarification
+        await pricingService.initialize();
 
-        // Initialisation du service si la méthode initialize existe
-        if (typeof pricingService.initialize === 'function') {
-          await pricingService.initialize();
-        }
-
+        // Calculer le prix
         const priceData = await pricingService.calculatePrice(
           distance,
           selectedVehicle,
@@ -52,10 +53,14 @@ export function usePrice() {
         setError("Impossible de calculer le prix. Veuillez réessayer plus tard.");
         
         // Valeurs par défaut en cas d'erreur
+        // Calcul minimal pour avoir un prix plutôt que NaN
+        const basePrice = distance * 2; // 2€/km par défaut
+        const optionsPrice = selectedOptions.length * 10; // 10€ par option par défaut
+        
         setPrice({
-          basePrice: 0,
-          optionsPrice: 0,
-          totalPrice: 0,
+          basePrice: basePrice,
+          optionsPrice: optionsPrice,
+          totalPrice: basePrice + optionsPrice,
         });
       } finally {
         setIsLoading(false);
@@ -66,9 +71,10 @@ export function usePrice() {
   }, [distance, selectedVehicle, selectedOptions]);
 
   return {
-    price,
+    ...price,
     isLoading,
     error,
+    totalPrice: price.totalPrice,
     formatPrice: (amount: number) => `${amount.toFixed(2)} €`,
   };
 }

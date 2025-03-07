@@ -1,145 +1,283 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { useReservationStore } from "@/lib/stores/reservationStore";
-import { formatDate, formatDuration } from "@/lib/utils/dateUtils";
-import { useRouter } from "next/navigation";
-import { PriceSummary } from "@/components/reservation/PriceSummary";
-import { Check, ChevronLeft } from "lucide-react";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { useReservationStore } from '@/lib/stores/reservationStore';
+import { usePrice } from '@/hooks/usePrice';
+import { useRouter } from 'next/navigation';
+import { formatCurrency } from '@/lib/utils';
+import { useAuth } from '@/lib/auth/useAuth';
+import { AuthModal } from '@/components/auth/AuthModal';
+import { supabase } from '@/utils/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { 
+  MapPin, 
+  Calendar, 
+  Clock, 
+  Car, 
+  PackageCheck, 
+  ArrowRight, 
+  Route,
+  Clock3
+} from 'lucide-react';
+
+const SimpleSeparator = ({ className }: { className?: string }) => (
+  <div className={`h-[1px] w-full bg-neutral-800 my-2 ${className || ''}`} />
+);
 
 export default function ConfirmationPage() {
-  const store = useReservationStore();
   const router = useRouter();
+  const reservation = useReservationStore();
+  const { totalPrice, isLoading: priceLoading } = usePrice();
+  const { isAuthenticated, user } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
 
-  const handleBack = () => {
-    router.push("/reservation");
-  };
+  // Formatter les dates
+  const formattedDate = reservation.pickupDateTime
+    ? new Date(reservation.pickupDateTime).toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+    : '';
 
-  const handleConfirm = () => {
-    console.log("Réservation confirmée:", {
-      departure: store.departure?.display_name,
-      destination: store.destination?.display_name,
-      dateTime: formatDate(store.pickupDateTime),
-      vehicle: store.selectedVehicle,
-      options: store.selectedOptions
-    });
+  const formattedTime = reservation.pickupDateTime
+    ? new Date(reservation.pickupDateTime).toLocaleTimeString('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '';
+
+  const handleConfirm = async () => {
+    if (!isAuthenticated) {
+      // Si l'utilisateur n'est pas connecté, afficher le modal d'authentification
+      setShowAuthModal(true);
+      return;
+    }
     
-    // Ici, vous appelleriez une API pour sauvegarder la réservation
-    // puis navigueriez vers une page de succès
-    router.push("/reservation/success");
+    // Si l'utilisateur est connecté, procéder à l'enregistrement
+    await saveReservation();
   };
 
-  // Fonction d'aide pour afficher le type de véhicule
-  const getVehicleName = (type: string) => {
-    switch (type) {
-      case 'STANDARD': return 'Berline Standard';
-      case 'PREMIUM': return 'Berline Premium';
-      case 'VAN': return 'Van de Luxe';
-      case 'berlineStandard': return 'Berline Standard';
-      case 'berlinePremium': return 'Berline Premium';
-      case 'van': return 'Van';
-      default: return type;
+  const saveReservation = async () => {
+    try {
+      setIsSubmitting(true);
+      
+      // Vérifier que tous les éléments nécessaires sont présents
+      if (!reservation.departure || !reservation.destination || !user?.id) {
+        toast({
+          title: "Erreur",
+          description: "Informations de réservation incomplètes",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Enregistrer la réservation dans Supabase
+      const { data, error } = await supabase
+        .from('reservations')
+        .insert({
+          user_id: user.id,
+          departure_address: reservation.departure.display_name,
+          departure_lat: reservation.departure.lat,
+          departure_lon: reservation.departure.lon,
+          destination_address: reservation.destination.display_name,
+          destination_lat: reservation.destination.lat,
+          destination_lon: reservation.destination.lon,
+          pickup_datetime: reservation.pickupDateTime,
+          distance_km: reservation.distance,
+          duration_min: reservation.duration,
+          vehicle_type: reservation.selectedVehicle,
+          options: reservation.selectedOptions,
+          total_price: totalPrice,
+          status: 'pending'
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      // Rediriger vers la page de succès
+      router.push('/reservation/success');
+      
+    } catch (error) {
+      console.error('Erreur lors de l\'enregistrement de la réservation:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'enregistrer votre réservation. Veuillez réessayer.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // Fonction d'aide pour afficher les options
-  const getOptionName = (option: string) => {
-    switch (option) {
-      case 'childSeat': return 'Siège enfant';
-      case 'pets': return 'Animaux domestiques';
-      case 'accueil': return 'Accueil personnalisé';
-      case 'boissons': return 'Boissons fraîches';
-      default: return option;
-    }
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+    // Après connexion réussie, sauvegarder la réservation
+    saveReservation();
   };
+
+  const handleCancel = () => {
+    router.back();
+  };
+
+  if (!reservation.departure || !reservation.destination) {
+    router.push('/reservation');
+    return null;
+  }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="container max-w-4xl mx-auto py-10 px-4">
-        <h1 className="text-3xl font-bold mb-8 text-center">
-          Confirmation de votre trajet
-        </h1>
-
-        <div className="grid gap-8">
-          <Card className="bg-neutral-900 border-neutral-800 text-white p-6">
-            <h2 className="text-xl font-semibold mb-6">Détails du trajet</h2>
-            
-            <div className="space-y-6">
-              <div>
-                <p className="text-neutral-400">Départ</p>
-                <p className="text-lg mt-1">{store.departure?.display_name || "Non spécifié"}</p>
-              </div>
-              
-              <div>
-                <p className="text-neutral-400">Destination</p>
-                <p className="text-lg mt-1">{store.destination?.display_name || "Non spécifiée"}</p>
-              </div>
-              
-              <div>
-                <p className="text-neutral-400">Date et heure de prise en charge</p>
-                <p className="text-lg mt-1">{formatDate(store.pickupDateTime)}</p>
-              </div>
-              
-              {store.distance && (
-                <div className="flex flex-row gap-8">
-                  <div>
-                    <p className="text-neutral-400">Distance</p>
-                    <p className="text-lg mt-1">{store.distance.toFixed(1)} km</p>
-                  </div>
-                  
-                  {store.duration && (
-                    <div>
-                      <p className="text-neutral-400">Durée estimée</p>
-                      <p className="text-lg mt-1">{formatDuration(store.duration)}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              <div>
-                <p className="text-neutral-400">Véhicule</p>
-                <p className="text-lg mt-1">{getVehicleName(store.selectedVehicle)}</p>
-              </div>
-              
-              {store.selectedOptions?.length > 0 && (
-                <div>
-                  <p className="text-neutral-400">Options</p>
-                  <ul className="mt-2 space-y-1">
-                    {store.selectedOptions.map((option) => (
-                      <li key={option} className="flex items-center gap-2">
-                        <Check size={16} className="text-green-500" />
-                        {getOptionName(option)}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+    <div className="container bg-neutral-950 mx-auto max-w-4xl py-12 px-4 md:px-6">
+      <div className="mb-8 text-center">
+        <h1 className="text-neutral-100 text-3xl font-bold mb-2">Confirmation de réservation</h1>
+        <p className="text-neutral-400">Vérifiez les détails avant de confirmer votre trajet</p>
+      </div>
+      
+      <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6 mb-8 shadow-lg">
+        <h2 className="text-neutral-100 text-xl font-semibold mb-6 flex items-center">
+          <Route className="w-5 h-5 mr-2 text-blue-500" />
+          Détails du trajet
+        </h2>
+        
+        <div className="grid gap-6">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
+              <MapPin className="h-4 w-4 text-blue-500" />
             </div>
-          </Card>
-          
-          <Card className="bg-neutral-900 border-neutral-800 text-white p-6">
-            <PriceSummary />
-          </Card>
-          
-          <div className="flex gap-4 mt-4">
-            <Button 
-              variant="outline" 
-              className="flex-1 text-white border-neutral-700 bg-neutral-800 hover:bg-neutral-700" 
-              onClick={handleBack}
-            >
-              <ChevronLeft className="mr-2 h-4 w-4" />
-              Retour
-            </Button>
-            <Button 
-              className="flex-1 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600"
-              onClick={handleConfirm}
-            >
-              Confirmer la réservation
-            </Button>
+            <div>
+              <p className="text-sm text-neutral-400 mb-1">Départ</p>
+              <p className="text-white">{reservation.departure?.display_name}</p>
+            </div>
           </div>
+          
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
+              <ArrowRight className="h-4 w-4 text-blue-500" />
+            </div>
+            <div>
+              <p className="text-sm text-neutral-400 mb-1">Destination</p>
+              <p className="text-white">{reservation.destination?.display_name}</p>
+            </div>
+          </div>
+          
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
+              <Calendar className="h-4 w-4 text-blue-500" />
+            </div>
+            <div>
+              <p className="text-sm text-neutral-400 mb-1">Date</p>
+              <p className="text-white">{formattedDate}</p>
+            </div>
+          </div>
+          
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
+              <Clock className="h-4 w-4 text-blue-500" />
+            </div>
+            <div>
+              <p className="text-sm text-neutral-400 mb-1">Heure</p>
+              <p className="text-white">{formattedTime}</p>
+            </div>
+          </div>
+          
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
+              <Car className="h-4 w-4 text-blue-500" />
+            </div>
+            <div>
+              <p className="text-sm text-neutral-400 mb-1">Type de véhicule</p>
+              <p className="text-white capitalize">{reservation.selectedVehicle.toLowerCase()}</p>
+            </div>
+          </div>
+          
+          {reservation.selectedOptions.length > 0 && (
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
+                <PackageCheck className="h-4 w-4 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-sm text-neutral-400 mb-1">Options</p>
+                <p className="text-white capitalize">
+                  {reservation.selectedOptions.map(option => option.toLowerCase()).join(', ')}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+      
+      <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6 mb-8 shadow-lg">
+        <h2 className="text-neutral-100 text-xl font-semibold mb-6">Récapitulatif tarifaire</h2>
+        
+        <div className="grid gap-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center">
+              <Route className="h-4 w-4 mr-2 text-neutral-400" />
+              <span className="text-neutral-200">Distance estimée</span>
+            </div>
+            <span className="text-white">{reservation.distance} km</span>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <div className="flex items-center">
+              <Clock3 className="h-4 w-4 mr-2 text-neutral-400" />
+              <span className="text-neutral-200">Durée estimée</span>
+            </div>
+            <span className="text-white">{reservation.duration} min</span>
+          </div>
+          
+          <SimpleSeparator className="my-4" />
+          
+          <div className="flex justify-between items-center text-xl font-semibold">
+            <span className="text-white">Total</span>
+            {priceLoading ? (
+              <LoadingSpinner size="sm" className="text-blue-500" />
+            ) : (
+              <span className="text-blue-500">{formatCurrency(totalPrice || 0)}</span>
+            )}
+          </div>
+          
+          <p className="text-xs text-neutral-400 mt-2">
+            Le montant sera débité à la fin de votre course
+          </p>
+        </div>
+      </div>
+      
+      <div className="flex flex-col sm:flex-row gap-4 mt-8">
+        <Button 
+          variant="outline" 
+          className="flex-1 bg-neutral-800 border-neutral-700 hover:bg-neutral-700 text-neutral-100 hover:text-white transition-all duration-300 ease-out rounded-md" 
+          onClick={handleCancel}
+        >
+          Retour
+        </Button>
+        <Button 
+          className="flex-1 bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 transition-all duration-300 ease-out rounded-md" 
+          onClick={handleConfirm}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? (
+            <>
+              <LoadingSpinner size="sm" className="mr-2" />
+              Traitement en cours...
+            </>
+          ) : (
+            'Confirmer la réservation'
+          )}
+        </Button>
+      </div>
+      
+      <AuthModal 
+        open={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
+        defaultTab="login"
+      />
     </div>
   );
 }

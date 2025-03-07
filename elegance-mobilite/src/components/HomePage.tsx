@@ -59,7 +59,7 @@ export default function HomePage() {
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-neutral-100 mb-6 sm:mb-8 text-center">
             Comment ça marche ?
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 px-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 text-neutral-100 gap-6 sm:gap-8 px-4">
             {[
               {
                 title: "1. Simulez le prix",
@@ -112,7 +112,7 @@ export default function HomePage() {
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-neutral-100 mb-6 sm:mb-8 text-center">
             Nos véhicules
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 text-neutral-100 gap-6 sm:gap-8">
             {[
               {
                 title: "Berline Premium",

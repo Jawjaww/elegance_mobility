@@ -34,29 +34,35 @@ export function UserNav() {
 
   useEffect(() => {
     async function getUserData() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single()
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
 
-        setUserData({
-          email: user.email || null,
-          role: profile?.role || "utilisateur",
-          name: profile?.name || (user.email ? user.email.split("@")[0] : "Utilisateur"),
-          avatar_url: profile?.avatar_url || null
-        })
+          setUserData({
+            email: user.email || null,
+            role: profile?.role || "utilisateur",
+            name: profile?.name || (user.email ? user.email.split("@")[0] : "Utilisateur"),
+            avatar_url: profile?.avatar_url || null
+          })
+        }
+      } catch (error) {
+        console.error("Erreur lors de la récupération des données utilisateur:", error)
       }
     }
     getUserData()
   }, [])
 
   const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut()
-    if (!error) {
-      router.push("/login")
+    try {
+      await supabase.auth.signOut()
+      window.location.href = '/login'
+    } catch (error) {
+      console.error("Erreur lors de la déconnexion:", error)
     }
   }
 

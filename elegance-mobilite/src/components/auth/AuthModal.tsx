@@ -150,7 +150,7 @@ export function AuthModal({
 
               <Button 
                 type="submit" 
-                className="w-full bg-blue-600 hover:bg-blue-700" 
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 transition-all duration-300 ease-out rounded-md" 
                 disabled={loading}
               >
                 {loading ? <LoadingSpinner size="sm" /> : "Se connecter"}

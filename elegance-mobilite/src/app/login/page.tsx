@@ -1,92 +1,221 @@
-import { createClient } from '@/utils/supabase/server'
-import { redirect } from 'next/navigation'
-import { login, signup } from './actions'
+"use client";
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: { message?: string; redirectedFrom?: string }
-}) {
-  const redirectedFrom = await Promise.resolve(searchParams?.redirectedFrom)
-  
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+import { useState, FormEvent } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { useAuth } from "@/lib/auth/useAuth";
+import { AlertCircle } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 
-  if (user) {
-    // Vérifier si l'utilisateur est admin/superadmin
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+export default function LoginPage() {
+  const [activeTab, setActiveTab] = useState<string>("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const { login, register } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams?.get("redirectTo") || "/";
 
-    const { data: { user: fullUser } } = await supabase.auth.getUser()
-    const isAdmin = userData?.role === 'admin'
-    const isSuperAdmin = fullUser?.user_metadata?.is_super_admin === true
+  const handleLogin = async (e: FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
-    if (isAdmin || isSuperAdmin) {
-      redirect(redirectedFrom || '/admin')
-    } else {
-      redirect('/')
+    try {
+      const success = await login(email, password);
+      if (success) {
+        router.push(redirectTo);
+      } else {
+        setError("Identifiants incorrects. Veuillez réessayer.");
+      }
+    } catch (error) {
+      setError("Erreur de connexion. Veuillez réessayer plus tard.");
+    } finally {
+      setLoading(false);
     }
-  }
+  };
+
+  const handleRegister = async (e: FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    if (!name || !email || !password) {
+      setError("Tous les champs sont obligatoires");
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Le mot de passe doit contenir au moins 6 caractères");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const success = await register(email, password, name);
+      if (success) {
+        router.push(redirectTo);
+      } else {
+        setError("Erreur lors de l'inscription. Veuillez réessayer.");
+      }
+    } catch (error) {
+      setError("Erreur d'inscription. Veuillez réessayer plus tard.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setEmail("");
+    setPassword("");
+    setName("");
+    setError("");
+  };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-neutral-950">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-neutral-950 p-4">
       <div className="w-full max-w-md">
-        <div className="p-8 rounded-lg border border-neutral-800 bg-neutral-900/90 shadow-xl">
-          <h2 className="text-2xl font-semibold mb-6 text-neutral-100 text-center">
-            Connexion
-          </h2>
-          <form>
-            <input type="hidden" name="redirectedFrom" value={redirectedFrom} />
-            
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-neutral-300">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  className="mt-1 block w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md shadow-sm text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-neutral-400"
-                />
-              </div>
+        <Card className="border-neutral-800 bg-neutral-900 text-white">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold text-center">
+              Mon compte
+            </CardTitle>
+            <CardDescription className="text-neutral-400 text-center">
+              Connectez-vous ou créez un compte pour gérer vos réservations
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent>
+            <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); resetForm(); }}>
+              <TabsList className="grid grid-cols-2 mb-6">
+                <TabsTrigger value="login">Connexion</TabsTrigger>
+                <TabsTrigger value="register">Inscription</TabsTrigger>
+              </TabsList>
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-neutral-300">
-                  Mot de passe
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  className="mt-1 block w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md shadow-sm text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-neutral-400"
-                />
-              </div>
+              <TabsContent value="login">
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="votre@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="bg-neutral-800 border-neutral-700"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Mot de passe</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="bg-neutral-800 border-neutral-700"
+                    />
+                  </div>
+                  
+                  {error && (
+                    <div className="bg-red-900/30 text-red-400 p-3 rounded-md flex items-start gap-2">
+                      <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm">{error}</span>
+                    </div>
+                  )}
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 transition-all duration-300 ease-out rounded-md" 
+                    disabled={loading}
+                  >
+                    {loading ? <LoadingSpinner size="sm" /> : "Se connecter"}
+                  </Button>
+                </form>
+              </TabsContent>
 
-              <div className="flex flex-col gap-3 pt-2">
-                <button
-                  formAction={login}
-                  className="flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-neutral-100 bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-neutral-900"
-                >
-                  Se connecter
-                </button>
-
-                <button
-                  formAction={signup}
-                  className="flex justify-center py-2.5 px-4 rounded-md shadow-sm text-sm font-medium text-blue-400 bg-neutral-800 border border-blue-500/20 hover:bg-neutral-800/80 hover:border-blue-500/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-neutral-900"
-                >
-                  {"S'inscrire"}
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
+              <TabsContent value="register">
+                <form onSubmit={handleRegister} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nom complet</Label>
+                    <Input
+                      id="name"
+                      type="text"
+                      placeholder="Jean Dupont"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      className="bg-neutral-800 border-neutral-700"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="register-email">Email</Label>
+                    <Input
+                      id="register-email"
+                      type="email"
+                      placeholder="votre@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="bg-neutral-800 border-neutral-700"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="register-password">Mot de passe</Label>
+                    <Input
+                      id="register-password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="bg-neutral-800 border-neutral-700"
+                    />
+                  </div>
+                  
+                  {error && (
+                    <div className="bg-red-900/30 text-red-400 p-3 rounded-md flex items-start gap-2">
+                      <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm">{error}</span>
+                    </div>
+                  )}
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-blue-600 hover:bg-blue-700" 
+                    disabled={loading}
+                  >
+                    {loading ? <LoadingSpinner size="sm" /> : "Créer un compte"}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+          
+          <CardFooter className="flex justify-center">
+            <Link 
+              href="/" 
+              className="text-neutral-400 text-sm hover:text-neutral-300 transition-colors"
+            >
+              Retour à l'accueil
+            </Link>
+          </CardFooter>
+        </Card>
       </div>
     </div>
-  )
+  );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { VehicleType } from "@/lib/stores/reservationStore";
+import { supabase } from '@/utils/supabase/client';
 
 // Types pour le service de tarification
 export type PriceOption = "childSeat" | "pets" | "accueil" | "boissons";
@@ -18,13 +19,11 @@ export interface OptionPrice {
 
 class PricingService {
   private initialized: boolean = false;
-  // Rendre les tarifs publics pour y accéder de l'extérieur
+  
+  // Tarifs par défaut (utilisés en cas d'échec de récupération depuis Supabase)
   public vehicleRates: Record<string, PriceData> = {
     STANDARD: { baseFare: 30, perKmRate: 2, minPrice: 35 },
     VAN: { baseFare: 45, perKmRate: 2.5, minPrice: 50 },
-    berlineStandard: { baseFare: 25, perKmRate: 1.8, minPrice: 30 },
-    berlinePremium: { baseFare: 35, perKmRate: 2.2, minPrice: 40 },
-    van: { baseFare: 45, perKmRate: 2.5, minPrice: 50 },
     PREMIUM: { baseFare: 40, perKmRate: 2.3, minPrice: 45 },
   };
 
@@ -36,12 +35,10 @@ class PricingService {
   };
 
   constructor() {
-    // Initialiser immédiatement
-    this.initialized = true;
-    console.log('PricingService created and initialized');
+    console.log('PricingService created');
   }
 
-  // Méthode initialize réécrite pour être plus robuste
+  // Récupère les tarifs depuis Supabase
   async initialize(): Promise<void> {
     if (this.initialized) {
       console.log('PricingService already initialized');
@@ -50,6 +47,44 @@ class PricingService {
 
     try {
       console.log('PricingService initializing...');
+      
+      // Récupérer les tarifs depuis Supabase
+      const { data: rates, error } = await supabase
+        .from('rates')
+        .select('*');
+        
+      if (error) {
+        throw error;
+      }
+      
+      if (rates && rates.length > 0) {
+        // Mettre à jour les tarifs
+        rates.forEach(rate => {
+          this.vehicleRates[rate.vehicle_type] = {
+            baseFare: rate.base_price,
+            perKmRate: rate.price_per_km,
+            minPrice: rate.base_price // Si pas de minPrice défini, utiliser base_price
+          };
+        });
+        
+        console.log('Pricing data loaded from database:', this.vehicleRates);
+      }
+      
+      // Récupérer les prix des options
+      const { data: options, error: optionsError } = await supabase
+        .from('options')
+        .select('*');
+        
+      if (optionsError) {
+        console.warn('Failed to load option prices:', optionsError);
+      } else if (options && options.length > 0) {
+        options.forEach(option => {
+          this.optionRates[option.name.toLowerCase()] = option.price;
+        });
+        
+        console.log('Option prices loaded from database:', this.optionRates);
+      }
+
       this.initialized = true;
       console.log('PricingService initialized successfully');
     } catch (error) {

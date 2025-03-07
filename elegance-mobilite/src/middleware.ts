@@ -5,7 +5,7 @@ import { cookies } from 'next/headers'
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
 
-  // Utiliser createServerClient au lieu de createMiddlewareClient
+  // Utiliser createServerClient pour l'authentification
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -40,30 +40,57 @@ export async function middleware(req: NextRequest) {
     }
   )
   
-  // Pages qui nécessitent une authentification
-  const protectedPaths = ['/reservation/success', '/my-account']
+  // Vérifier si le chemin demandé est une page admin (backoffice)
+  const isAdminPath = req.nextUrl.pathname.startsWith('/admin')
   
-  // Vérifier si le chemin demandé est protégé
-  const isProtectedPath = protectedPaths.some(path => 
+  // Vérifier si c'est la page de login admin - on ne veut pas la protéger
+  const isAdminLoginPage = req.nextUrl.pathname === '/admin/login'
+  
+  // Vérifier si le chemin demandé est une page front-end protégée
+  const isProtectedPath = ['/reservation/success', '/my-account'].some(path => 
     req.nextUrl.pathname.startsWith(path)
   )
   
-  if (isProtectedPath) {
-    // Vérifier l'authentification
-    const { data: { session } } = await supabase.auth.getSession()
+  // Vérifier l'authentification
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  // CAS 1: Pages du backoffice (admin) - sauf page de login admin
+  if (isAdminPath && !isAdminLoginPage) {
+    // Si pas de session, rediriger vers login admin
+    if (!session) {
+      return NextResponse.redirect(new URL('/admin/login', req.url))
+    }
     
-    // Si pas de session, rediriger vers la page de connexion
+    // Vérifier en plus que l'utilisateur a bien le rôle admin
+    try {
+      const { data: userRole } = await supabase
+        .from('user_profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+      
+      // Si l'utilisateur n'est pas admin, rediriger vers la page d'accueil
+      if (!userRole || userRole.role !== 'admin') {
+        return NextResponse.redirect(new URL('/', req.url))
+      }
+    } catch (error) {
+      // En cas d'erreur, rediriger vers login admin par sécurité
+      return NextResponse.redirect(new URL('/admin/login', req.url))
+    }
+  }
+  
+  // CAS 2: Pages protégées du front-end (à traiter séparément selon les cas)
+  else if (isProtectedPath) {
+    // Si pas de session et que c'est /reservation/success, permettre l'accès quand même
+    if (!session && req.nextUrl.pathname === '/reservation/success') {
+      // La page success gèrera elle-même l'authentification avec un modal
+      return res
+    }
+    
+    // Pour les autres pages protégées du front-end, rediriger vers la connexion utilisateur
     if (!session) {
       const redirectUrl = new URL('/login', req.url)
-      
-      // Sauvegarder l'URL originale pour rediriger après connexion
-      if (req.nextUrl.pathname.startsWith('/reservation/success')) {
-        // Dans le cas spécial de la page de succès, rediriger vers la confirmation
-        redirectUrl.searchParams.set('redirectTo', '/reservation/confirmation')
-      } else {
-        redirectUrl.searchParams.set('redirectTo', req.nextUrl.pathname)
-      }
-      
+      redirectUrl.searchParams.set('redirectTo', req.nextUrl.pathname)
       return NextResponse.redirect(redirectUrl)
     }
   }
@@ -73,5 +100,5 @@ export async function middleware(req: NextRequest) {
 
 // Spécifier les chemins sur lesquels le middleware doit s'exécuter
 export const config = {
-  matcher: ['/reservation/success', '/my-account/:path*']
+  matcher: ['/admin/:path*', '/reservation/success', '/my-account/:path*']
 }
