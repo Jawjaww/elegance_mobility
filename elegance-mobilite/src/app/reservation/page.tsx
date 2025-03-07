@@ -1,11 +1,22 @@
 "use client";
 
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/utils/supabase/client';
 import LocationStep from "../../components/reservation/LocationStep";
 import VehicleStep from "../../components/reservation/VehicleStep";
 import { useReservation } from "../../hooks/useReservation";
+import { useReservationStore } from '@/lib/stores/reservationStore';
 
+interface ReservationPageProps {
+  isEditing?: boolean;
+}
 
-export default function ReservationPage() {
+export default function ReservationPage({ isEditing = false }: ReservationPageProps) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const reservationStore = useReservationStore();
+  
   const {
     step,
     origin,
@@ -30,6 +41,68 @@ export default function ReservationPage() {
     setVehicleType,
     setOptions
   } = useReservation();
+
+  // Gestion de la modification d'une réservation existante
+  const handleCompleteReservation = async () => {
+    if (isEditing) {
+      const reservationId = localStorage.getItem('currentEditingReservationId');
+      
+      if (!reservationId) {
+        toast({
+          title: 'Erreur',
+          description: "ID de réservation manquant pour la modification.",
+          variant: 'destructive'
+        });
+        return;
+      }
+      
+      try {
+        const { error } = await supabase
+          .from('rides')
+          .update({
+            pickup_address: originAddress,
+            pickup_lat: origin?.lat || 0,
+            pickup_lon: origin?.lng || 0,
+            dropoff_address: destinationAddress,
+            dropoff_lat: destination?.lat || 0, 
+            dropoff_lon: destination?.lng || 0,
+            pickup_time: pickupDateTime.toISOString(),
+            vehicle_type: vehicleType,
+            options: Object.entries(options)
+              .filter(([_, value]) => value)
+              .map(([key]) => key),
+            distance: distance,
+            duration: duration,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', reservationId);
+          
+        if (error) throw error;
+        
+        toast({
+          title: 'Réservation modifiée',
+          description: 'Votre réservation a été mise à jour avec succès.',
+        });
+        
+        // Nettoyer le localStorage
+        localStorage.removeItem('currentEditingReservationId');
+        localStorage.removeItem('editReservationId');
+        
+        // Rediriger vers la liste des réservations
+        router.push('/my-account/reservations');
+      } catch (err) {
+        console.error("Erreur lors de la mise à jour de la réservation:", err);
+        toast({
+          title: 'Erreur',
+          description: "La modification de votre réservation a échoué. Veuillez réessayer.",
+          variant: 'destructive'
+        });
+      }
+    } else {
+      // Pour une nouvelle réservation, continuer avec le comportement existant
+      handleReservation();
+    }
+  };
 
   return (
     <section className="relative grid min-h-screen bg-neutral-950 overflow-hidden">
@@ -57,6 +130,7 @@ export default function ReservationPage() {
               onRouteCalculated={handleRouteCalculated}
               onDateTimeChange={setPickupDateTime}
               onNext={handleNextStep}
+              isEditing={isEditing} // Passer l'information d'édition au composant enfant
             />
           ) : (
             <VehicleStep
@@ -67,9 +141,12 @@ export default function ReservationPage() {
               onVehicleTypeChange={setVehicleType}
               onOptionsChange={setOptions}
               onPrevious={handlePrevStep}
-              onConfirm={handleReservation}
+              onConfirm={isEditing ? handleCompleteReservation : handleReservation}
+              isEditing={isEditing} // Passer l'information d'édition au composant enfant
             />
           )}
+          
+          {/* Supprimé le bouton dupliqué ici */}
         </div>
       </div>
     </section>

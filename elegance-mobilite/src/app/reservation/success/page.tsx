@@ -6,7 +6,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useReservationStore } from '@/lib/stores/reservationStore';
 import { useAuth } from '@/lib/auth/useAuth';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Calendar, MapPin, Car, PackageCheck } from 'lucide-react';
 import { AuthModal } from '@/components/auth/AuthModal';
 
 export default function ReservationSuccessPage() {
@@ -69,9 +69,18 @@ export default function ReservationSuccessPage() {
     window.location.reload();
   };
 
-  const handleReturnHome = () => {
-    reservationStore.reset(); // Réinitialiser le store
-    router.push('/');
+  // Fonction pour gérer le retour après une réservation réussie
+  const handleNavigateAfterSuccess = () => {
+    // Réinitialiser le store de réservation pour éviter de garder des données obsolètes
+    reservationStore.reset(); 
+    
+    // Rediriger l'utilisateur connecté vers ses réservations
+    if (isAuthenticated) {
+      router.push('/my-account/reservations');
+    } else {
+      // Sinon, retour à l'accueil
+      router.push('/');
+    }
   };
 
   if (isLoading) {
@@ -90,7 +99,7 @@ export default function ReservationSuccessPage() {
         <div className="bg-red-900/30 p-6 rounded-lg max-w-md w-full text-center">
           <h1 className="text-2xl font-bold text-red-400 mb-4">Erreur</h1>
           <p className="text-gray-300 mb-6">{error}</p>
-          <Button onClick={handleReturnHome}>Retour à l'accueil</Button>
+          <Button onClick={() => router.push('/reservation')}>Nouvelle réservation</Button>
         </div>
       </div>
     );
@@ -117,38 +126,63 @@ export default function ReservationSuccessPage() {
             <h2 className="text-xl font-semibold mb-4 text-white">Détails de votre trajet</h2>
             
             <div className="space-y-4">
-              <div className="flex gap-4">
-                <div className="w-24 flex-shrink-0 text-gray-400">Départ</div>
-                <div className="font-medium text-white">{reservationStore.departure?.display_name}</div>
-              </div>
-              
-              <div className="flex gap-4">
-                <div className="w-24 flex-shrink-0 text-gray-400">Destination</div>
-                <div className="font-medium text-white">{reservationStore.destination?.display_name}</div>
-              </div>
-              
-              <div className="flex gap-4">
-                <div className="w-24 flex-shrink-0 text-gray-400">Date & heure</div>
-                <div className="font-medium text-white">
-                  {reservationStore.pickupDateTime.toLocaleString('fr-FR', {
-                    dateStyle: 'full',
-                    timeStyle: 'short'
-                  })}
+              <div className="flex gap-4 items-start">
+                <div className="w-10 flex-shrink-0">
+                  <MapPin className="h-5 w-5 text-blue-400" />
+                </div>
+                <div>
+                  <div className="text-sm text-gray-400">Départ</div>
+                  <div className="font-medium text-white">{reservationStore.departure?.display_name}</div>
                 </div>
               </div>
               
-              <div className="flex gap-4">
-                <div className="w-24 flex-shrink-0 text-gray-400">Véhicule</div>
-                <div className="font-medium text-white capitalize">
-                  {reservationStore.selectedVehicle.toLowerCase()}
+              <div className="flex gap-4 items-start">
+                <div className="w-10 flex-shrink-0">
+                  <MapPin className="h-5 w-5 text-blue-400" />
+                </div>
+                <div>
+                  <div className="text-sm text-gray-400">Destination</div>
+                  <div className="font-medium text-white">{reservationStore.destination?.display_name}</div>
                 </div>
               </div>
               
-              {reservationStore.selectedOptions.length > 0 && (
-                <div className="flex gap-4">
-                  <div className="w-24 flex-shrink-0 text-gray-400">Options</div>
+              <div className="flex gap-4 items-start">
+                <div className="w-10 flex-shrink-0">
+                  <Calendar className="h-5 w-5 text-blue-400" />
+                </div>
+                <div>
+                  <div className="text-sm text-gray-400">Date & heure</div>
                   <div className="font-medium text-white">
-                    {reservationStore.selectedOptions.join(', ')}
+                    {reservationStore.pickupDateTime.toLocaleString('fr-FR', {
+                      dateStyle: 'full',
+                      timeStyle: 'short'
+                    })}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex gap-4 items-start">
+                <div className="w-10 flex-shrink-0">
+                  <Car className="h-5 w-5 text-blue-400" />
+                </div>
+                <div>
+                  <div className="text-sm text-gray-400">Véhicule</div>
+                  <div className="font-medium text-white capitalize">
+                    {reservationStore.selectedVehicle?.toLowerCase() || "Standard"}
+                  </div>
+                </div>
+              </div>
+              
+              {reservationStore.selectedOptions && reservationStore.selectedOptions.length > 0 && (
+                <div className="flex gap-4 items-start">
+                  <div className="w-10 flex-shrink-0">
+                    <PackageCheck className="h-5 w-5 text-blue-400" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-400">Options</div>
+                    <div className="font-medium text-white">
+                      {reservationStore.selectedOptions.join(', ')}
+                    </div>
                   </div>
                 </div>
               )}
@@ -156,8 +190,25 @@ export default function ReservationSuccessPage() {
           </div>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button onClick={handleReturnHome} className="bg-blue-600 hover:bg-blue-700">
-              Retour à l'accueil
+            <Button 
+              onClick={handleNavigateAfterSuccess} 
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isAuthenticated 
+                ? "Voir mes réservations" 
+                : "Retour à l'accueil"}
+            </Button>
+            
+            {/* Bouton secondaire pour une nouvelle réservation */}
+            <Button 
+              onClick={() => {
+                reservationStore.reset();
+                router.push('/reservation');
+              }}
+              variant="outline"
+              className="flex-1 md:flex-none text-neutral-300 bg-neutral-800 border-neutral-700 hover:bg-neutral-700 hover:text-neutral-300"
+              >
+              Nouvelle réservation
             </Button>
           </div>
         </div>

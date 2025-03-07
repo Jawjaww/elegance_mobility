@@ -77,35 +77,50 @@ export default function ConfirmationPage() {
         return;
       }
       
-      // 1. Vérifier si l'utilisateur existe dans la table users
-      const { data: existingUser, error: userCheckError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('id', user.id)
-        .single();
-        
-      // 2. Si l'utilisateur n'existe pas, le créer d'abord
-      if (userCheckError || !existingUser) {
-        console.log("L'utilisateur n'existe pas dans la table users, création en cours...");
-        
-        const { error: createUserError } = await supabase
+      // Modification de l'approche pour vérifier/créer l'utilisateur
+      let userExists = false;
+      
+      try {
+        // 1. Vérifier si l'utilisateur existe dans la table users
+        const { data: existingUser, error: userCheckError } = await supabase
           .from('users')
-          .insert({
-            id: user.id,
-            role: 'client',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          });
+          .select('id')
+          .eq('id', user.id)
+          .single();
           
-        if (createUserError) {
-          console.error("Erreur lors de la création de l'utilisateur:", createUserError);
-          throw createUserError;
-        }
-        
-        console.log("Utilisateur créé avec succès dans la table users");
+        userExists = !!existingUser;
+      } catch (err) {
+        // Si une erreur se produit lors de la vérification, on continue quand même
+        console.log("Erreur lors de la vérification de l'utilisateur, on continue:", err);
       }
       
-      // 3. Maintenant que l'utilisateur existe, insérer la réservation
+      // 2. Si l'utilisateur n'existe pas, essayer de le créer, mais ignorer l'erreur de clé dupliquée
+      if (!userExists) {
+        try {
+          console.log("Tentative de création d'utilisateur dans la table users...");
+          
+          await supabase
+            .from('users')
+            .insert({
+              id: user.id,
+              role: 'client',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          
+          console.log("Utilisateur créé avec succès dans la table users");
+        } catch (createUserError: any) {
+          // Si l'erreur est une violation de contrainte de clé, ignorer l'erreur - l'utilisateur existe déjà
+          if (createUserError.code === '23505') {
+            console.log("L'utilisateur existe déjà, continuons avec la réservation");
+          } else {
+            // Pour les autres types d'erreurs, les logger mais continuer
+            console.warn("Erreur non bloquante lors de la création de l'utilisateur:", createUserError);
+          }
+        }
+      }
+      
+      // 3. Maintenant, insérer la réservation, que la création d'utilisateur ait réussi ou non
       const { data, error } = await supabase
         .from('rides')
         .insert({
@@ -126,6 +141,10 @@ export default function ConfirmationPage() {
         });
 
       if (error) {
+        // Si l'erreur d'insertion de réservation est liée à une contrainte de clé étrangère d'utilisateur
+        if (error.code === '23503' && error.message?.includes('rides_user_id_fkey')) {
+          throw new Error("L'utilisateur n'existe pas dans la base de données. Veuillez vous déconnecter et vous reconnecter.");
+        }
         throw error;
       }
 
@@ -136,7 +155,9 @@ export default function ConfirmationPage() {
       console.error('Erreur lors de l\'enregistrement de la réservation:', error);
       toast({
         title: "Erreur",
-        description: "Impossible d'enregistrer votre réservation. Veuillez réessayer.",
+        description: error instanceof Error 
+          ? error.message 
+          : "Impossible d'enregistrer votre réservation. Veuillez réessayer.",
         variant: "destructive"
       });
     } finally {
