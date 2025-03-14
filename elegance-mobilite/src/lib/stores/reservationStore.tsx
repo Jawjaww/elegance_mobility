@@ -1,13 +1,10 @@
+'use client';
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-// Amélioration du type Location avec des valeurs par défaut
-export interface Location {
-  display_name: string;
-  lat: number;
-  lon: number;
-  address?: any;
-}
+// Import du type Location depuis le fichier types centralisé
+import { Location } from '../../lib/types/map-types';
 
 // Définition de l'interface du store pour TypeScript
 export interface ReservationStore {
@@ -22,8 +19,8 @@ export interface ReservationStore {
   price: number | null;
 
   // Actions
-  setDeparture: (location: Location | null) => void;
-  setDestination: (location: Location | null) => void;
+  setDeparture: (locationOrLat: Location | number | null | string, lon?: number, address?: string) => void;
+  setDestination: (locationOrLat: Location | number | null | string, lon?: number, address?: string) => void;
   setPickupDateTime: (date: Date) => void;
   setSelectedVehicle: (vehicle: string) => void;
   toggleOption: (option: string) => void;
@@ -45,22 +42,66 @@ export const useReservationStore = create<ReservationStore>()(
       duration: null,
       price: null,
 
-      setDeparture: (location: Location | null) => {
-        // Vérifier et corriger les données si nécessaire
-        if (location && (typeof location.lon !== 'number' || isNaN(location.lon))) {
-          console.warn("Coordonnée longitude manquante, utilisation de la valeur par défaut");
-          location.lon = 0; // Valeur par défaut
+      setDeparture: (locationOrLat, lon, address) => {
+        // Gestion explicite du cas null ou undefined
+        if (locationOrLat === null || locationOrLat === undefined) {
+          set({ departure: null });
+          return;
         }
-        set({ departure: location });
+        
+        // Support pour l'effacement du formulaire en passant une chaîne vide
+        if (typeof locationOrLat === 'string') {
+          if (locationOrLat === '' || locationOrLat.trim() === '') {
+            set({ departure: null });
+            return;
+          }
+        }
+        
+        // Supporter à la fois un objet Location complet ou des paramètres individuels
+        if (typeof locationOrLat === 'object') {
+          set({ departure: locationOrLat });
+        } else if (typeof locationOrLat === 'number' && typeof lon === 'number' && typeof address === 'string') {
+          const locationData: Location = {
+            display_name: address,
+            lat: locationOrLat,
+            lon: lon,
+            address: { formatted: address }
+          };
+          set({ departure: locationData });
+        } else {
+          console.error("Format de données incorrect pour setDeparture");
+        }
       },
       
-      setDestination: (location: Location | null) => {
-        // Vérifier et corriger les données si nécessaire
-        if (location && (typeof location.lon !== 'number' || isNaN(location.lon))) {
-          console.warn("Coordonnée longitude manquante, utilisation de la valeur par défaut");
-          location.lon = 0; // Valeur par défaut
+      setDestination: (locationOrLat, lon, address) => {
+        // Gestion explicite du cas null ou undefined
+        if (locationOrLat === null || locationOrLat === undefined) {
+          set({ destination: null });
+          return;
         }
-        set({ destination: location });
+        
+        // Support pour l'effacement du formulaire en passant une chaîne vide
+        if (typeof locationOrLat === 'string') {
+          if (locationOrLat === '' || locationOrLat.trim() === '') {
+            set({ destination: null });
+            return;
+          }
+        }
+        
+        // Même logique que pour setDeparture
+        if (typeof locationOrLat === 'object') {
+          set({ destination: locationOrLat });
+        } else if (typeof locationOrLat === 'number' && typeof lon === 'number' && typeof address === 'string') {
+          const locationData: Location = {
+            display_name: address,
+            lat: locationOrLat,
+            lon: lon,
+            address: { formatted: address }
+          };
+          set({ destination: locationData });
+        } else {
+          console.error("Format de données incorrect pour setDestination");
+        }
       },
 
       setPickupDateTime: (date: Date) => set({ pickupDateTime: date }),
@@ -97,7 +138,6 @@ export const useReservationStore = create<ReservationStore>()(
     }),
     {
       name: 'reservation-store',
-      // Optionnel: vous pouvez ajouter des options de persistance pour contrôler ce qui est stocké
       partialize: (state) => ({
         departure: state.departure,
         destination: state.destination,

@@ -88,7 +88,7 @@ CREATE POLICY "Drivers can update their assigned rides" ON rides
 FOR UPDATE TO driver
 USING (driver_id = auth.uid())
 WITH CHECK (driver_id = auth.uid() AND 
-           (NEW.status IN ('confirmed', 'completed', 'cancelled')));
+           (NEW.status IN ('confirmed', 'completed', 'canceled')));
 ```
 
 ## Vérification des politiques en place

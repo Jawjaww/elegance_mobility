@@ -4,17 +4,22 @@ import React, { useState, useEffect, useRef } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { useDebounce } from "../hooks/useDebounce";
-import type { Coordinates } from "@/lib/types";
 import styles from "./AutocompleteInput.module.css";
 
-const reverseGeocode = async (lat: number, lng: number) => {
+// Définir le type Coordinates localement en utilisant lon
+interface Coordinates {
+  lat: number;
+  lon: number; // Standardisé sur lon
+}
+
+const reverseGeocode = async (lat: number, lon: number) => {
   try {
     const response = await fetch(
-      `https://api-adresse.data.gouv.fr/reverse/?lon=${lng}&lat=${lat}`
+      `https://api-adresse.data.gouv.fr/reverse/?lon=${lon}&lat=${lat}`
     );
     const data = await response.json();
     if (data.features && data.features.length > 0) {
-      return data.features[0];
+      return data.features[0].properties.label;
     }
     return null;
   } catch (error) {
@@ -28,7 +33,7 @@ interface AutocompleteInputProps {
   value?: string;
   onChange?: (value: string) => void;
   placeholder?: string;
-  onSelect?: (address: string, position: Coordinates) => void;
+  onSelect?: (lat: number, lon: number, address: string) => void; // Mise à jour pour utiliser lon
   className?: string;
   defaultValue?: string;
 }
@@ -99,35 +104,58 @@ export function AutocompleteInput({
   }, [debouncedQuery, hasUserInteracted]);
 
   const handleGeolocation = async () => {
-    setIsLocating(true);
-    if (!navigator.geolocation) {
-      console.error("La géolocalisation n'est pas supportée");
-      setIsLocating(false);
-      return;
-    }
-
-    try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject);
-      });
-
-      const { latitude, longitude } = position.coords;
-      const feature = await reverseGeocode(latitude, longitude);
-      
-      if (feature && onSelect) {
-        const coords = {
-          lat: latitude,
-          lng: longitude,
-        };
-        onSelect(feature.properties.label, coords);
-        ignoreNextQueryChange.current = true;
-        setQuery(feature.properties.label);
-        setSuggestions([]);
+    if (navigator.geolocation) {
+      setIsLocating(true);
+      try {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            
+            // S'assurer que les deux coordonnées sont présentes et valides
+            if (latitude === undefined || latitude === null || 
+                longitude === undefined || longitude === null) {
+              console.error("Coordonnées de géolocalisation invalides");
+              setIsLocating(false);
+              return;
+            }
+            
+            // Conversion explicite en numbers pour éviter des problèmes de types
+            const lat = parseFloat(latitude.toString());
+            const lon = parseFloat(longitude.toString()); 
+            
+            // Utilisez ces coordonnées pour obtenir l'adresse
+            try {
+              const address = await reverseGeocode(lat, lon);
+              
+              // Mise à jour de l'entrée et déclenchement du gestionnaire onSelect
+              if (onSelect && address) {
+                // Passer les coordonnées dans le format standardisé
+                onSelect(lat, lon, address);
+              }
+              
+              // Mettre à jour l'entrée avec l'adresse
+              if (address) {
+                setQuery(address);
+                onChange?.(address);
+              }
+              
+              setIsLocating(false);
+            } catch (error) {
+              console.error("Erreur lors du géocodage inversé:", error);
+              setIsLocating(false);
+            }
+          },
+          (error) => {
+            console.error("Erreur de géolocalisation:", error);
+            setIsLocating(false);
+          }
+        );
+      } catch (error) {
+        console.error("Erreur lors de la géolocalisation:", error);
+        setIsLocating(false);
       }
-    } catch (error) {
-      console.error("Erreur de géolocalisation:", error);
-    } finally {
-      setIsLocating(false);
+    } else {
+      console.error("La géolocalisation n'est pas prise en charge par ce navigateur");
     }
   };
 
@@ -150,8 +178,13 @@ export function AutocompleteInput({
     setQuery(newValue);
     onChange?.(newValue);
 
-    if (newValue === '' && onSelect) {
-      onSelect('', { lat: 0, lng: 0 });
+    if (newValue === '') {
+      setSuggestions([]);
+      // Passer des paramètres zéro explicites pour signaler une réinitialisation
+      // plutôt que des valeurs invalides
+      if (onSelect) {
+        onSelect(0, 0, '');
+      }
     }
   };
 
@@ -173,11 +206,9 @@ export function AutocompleteInput({
                 key={idx}
                 className={styles.suggestion}
                 onClick={() => {
-                  const position = {
-                    lat: feature.geometry.coordinates[1],
-                    lng: feature.geometry.coordinates[0],
-                  };
-                  onSelect?.(feature.properties.label, position);
+                  const lat = feature.geometry.coordinates[1];
+                  const lon = feature.geometry.coordinates[0]; // Standardisé sur lon
+                  onSelect?.(lat, lon, feature.properties.label);
                   ignoreNextQueryChange.current = true;
                   setQuery(feature.properties.label);
                   setSuggestions([]);

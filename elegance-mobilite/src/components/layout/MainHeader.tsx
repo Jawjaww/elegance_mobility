@@ -14,14 +14,46 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, User, Settings, Home, Menu, X } from 'lucide-react';
+import { LogOut, User as UserIcon, Settings, Home, Menu, X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { extractDisplayName, getInitialsFromName } from '@/lib/utils/user-utils';
+import { supabase } from '@/utils/supabase/client';
 
 export function MainHeader() {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, signOut } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const [userName, setUserName] = useState<string>("");
+  const [userEmail, setUserEmail] = useState<string>("");
+  const [userInitials, setUserInitials] = useState<string>("EM");
+
+  // Fonction pour charger les métadonnées utilisateur
+  useEffect(() => {
+    const loadUserMetadata = async () => {
+      if (!user?.id) return;
+      
+      try {
+        // Récupérer directement les métadonnées via getUser
+        const { data } = await supabase.auth.getUser();
+        const metadata = data?.user?.user_metadata;
+        const email = data?.user?.email || "";
+        
+        // Extraire le nom d'utilisateur et les initiales
+        const displayName = extractDisplayName(email, metadata);
+        setUserName(displayName);
+        setUserEmail(email);
+        setUserInitials(getInitialsFromName(displayName));
+        
+      } catch (error) {
+        console.error("Erreur lors du chargement des métadonnées:", error);
+      }
+    };
+    
+    if (isAuthenticated && user) {
+      loadUserMetadata();
+    }
+  }, [isAuthenticated, user]);
 
   // Fermer le menu mobile lors du changement de page
   useEffect(() => {
@@ -37,17 +69,8 @@ export function MainHeader() {
     { name: "Contact", href: "/contact" },
   ];
 
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
-  };
-
   const handleSignOut = async () => {
-    await logout();
-    window.location.href = '/';
+    await signOut();
   };
 
   return (
@@ -56,7 +79,7 @@ export function MainHeader() {
         <div className="mr-4 flex">
           <Link href="/" className="flex items-center space-x-2">
             <span className="text-xl font-bold bg-gradient-to-r from-blue-500 to-blue-300 bg-clip-text text-transparent">
-              Elegance Mobilité
+              Vector Elegans
             </span>
           </Link>
         </div>
@@ -87,9 +110,8 @@ export function MainHeader() {
                     className="relative h-10 w-10 rounded-full"
                   >
                     <Avatar className="h-10 w-10 border-2 border-neutral-800 bg-neutral-900">
-                      <AvatarImage src={user.avatar_url || undefined} />
                       <AvatarFallback className="bg-blue-900/40 text-blue-200">
-                        {getInitials(user.name)}
+                        {userInitials}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
@@ -102,10 +124,10 @@ export function MainHeader() {
                   <DropdownMenuLabel>
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium text-neutral-100">
-                        {user.name}
+                        {userName}
                       </p>
-                      <p className="text-xs text-neutral-400">
-                        {user.email}
+                      <p className="text-xs text-neutral-400 truncate">
+                        {userEmail}
                       </p>
                     </div>
                   </DropdownMenuLabel>
@@ -113,7 +135,7 @@ export function MainHeader() {
                   <DropdownMenuGroup>
                     <Link href="/my-account">
                       <DropdownMenuItem className="text-neutral-200 focus:bg-neutral-800 focus:text-neutral-100 cursor-pointer">
-                        <User className="mr-2 h-4 w-4" />
+                        <UserIcon className="mr-2 h-4 w-4" />
                         <span>Mon profil</span>
                       </DropdownMenuItem>
                     </Link>
@@ -188,14 +210,13 @@ export function MainHeader() {
                   <div className="space-y-4">
                     <div className="flex items-center">
                       <Avatar className="h-10 w-10 mr-3 border-2 border-neutral-800 bg-neutral-900">
-                        <AvatarImage src={user.avatar_url || undefined} />
                         <AvatarFallback className="bg-blue-900/40 text-blue-200">
-                          {getInitials(user.name)}
+                          {userInitials}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium text-white">{user.name}</p>
-                        <p className="text-sm text-neutral-400">{user.email}</p>
+                        <p className="font-medium text-white">{userName}</p>
+                        <p className="text-sm text-neutral-400 truncate">{userEmail}</p>
                       </div>
                     </div>
                     
@@ -205,7 +226,7 @@ export function MainHeader() {
                           variant="ghost"
                           className="w-full justify-start text-neutral-300 hover:text-blue-400 hover:bg-neutral-800"
                         >
-                          <User className="mr-2 h-4 w-4" />
+                          <UserIcon className="mr-2 h-4 w-4" />
                           Mon profil
                         </Button>
                       </Link>

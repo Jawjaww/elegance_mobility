@@ -28,7 +28,7 @@ const statusConfig = {
   pending: { color: "bg-yellow-500/20 text-yellow-500", icon: Clock },
   "in-progress": { color: "bg-blue-500/20 text-blue-500", icon: CheckCircle2 },
   completed: { color: "bg-green-500/20 text-green-500", icon: CheckCircle2 },
-  cancelled: { color: "bg-red-500/20 text-red-500", icon: XCircle },
+  canceled: { color: "bg-red-500/20 text-red-500", icon: XCircle },
 }
 
 interface RideCardProps {

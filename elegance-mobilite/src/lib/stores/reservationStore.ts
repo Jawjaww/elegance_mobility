@@ -1,14 +1,51 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { createJSONStorage } from 'zustand/middleware';
+import { Coordinates, Location } from '@/lib/types/map-types';
 
-interface Location {
-  lat: number;
-  lon: number;
-  display_name: string;
-  address: {
-    [key: string]: string;
-  };
+// Fonction de normalisation utilisant uniquement lon
+function normalizeLocation(location: any): Location | null {
+  try {
+    // Cas explicite pour null ou undefined
+    if (location === null || location === undefined) {
+      console.log("[Store] Réinitialisation des coordonnées");
+      return null;
+    }
+
+    // Vérifier le type de l'objet
+    if (typeof location !== 'object') {
+      console.error("[Store] Format invalide pour location:", location);
+      throw new Error("Format de données incorrect");
+    }
+
+    // Validation et conversion des coordonnées
+    const lat = typeof location.lat === 'number' ? location.lat : 
+                typeof location.lat === 'string' ? parseFloat(location.lat) : null;
+    const lon = typeof location.lon === 'number' ? location.lon : 
+                typeof location.lon === 'string' ? parseFloat(location.lon) : null;
+
+    // Vérification des valeurs
+    if (lat === null || lon === null || isNaN(lat) || isNaN(lon)) {
+      console.error("[Store] Coordonnées invalides:", { lat, lon });
+      throw new Error("Coordonnées invalides");
+    }
+
+    if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+      console.error("[Store] Coordonnées hors limites:", { lat, lon });
+      throw new Error("Coordonnées hors limites");
+    }
+
+    // Construction de l'objet normalisé
+    return {
+      lat,
+      lon,
+      display_name: typeof location.display_name === 'string' ? location.display_name : "",
+      address: typeof location.address === 'object' ? location.address : {}
+    };
+  } catch (error) {
+    console.error("[Store] Erreur de normalisation:", error);
+    return null;
+  }
 }
 
 interface ReservationState {
@@ -20,8 +57,8 @@ interface ReservationState {
   selectedVehicle: string;
   selectedOptions: string[];
   step: number;
-  setDeparture: (location: Location | null) => void;
-  setDestination: (location: Location | null) => void;
+  setDeparture: (location: any) => void;
+  setDestination: (location: any) => void;
   setPickupDateTime: (date: Date) => void;
   setDistance: (distance: number) => void;
   setDuration: (duration: number) => void;
@@ -50,15 +87,15 @@ export const useReservationStore = create<ReservationState>()(
     (set) => ({
       ...initialState,
 
-      setDeparture: (location) =>
-        set(() => ({
-          departure: location,
-        })),
+      setDeparture: (location) => {
+        const normalized = normalizeLocation(location);
+        set(() => ({ departure: normalized }));
+      },
 
-      setDestination: (location) =>
-        set(() => ({
-          destination: location,
-        })),
+      setDestination: (location) => {
+        const normalized = normalizeLocation(location);
+        set(() => ({ destination: normalized }));
+      },
 
       setPickupDateTime: (date) =>
         set(() => ({
@@ -100,8 +137,14 @@ export const useReservationStore = create<ReservationState>()(
 
       reset: () =>
         set(() => ({
-          ...initialState,
+          departure: null,
+          destination: null,
           pickupDateTime: new Date(),
+          distance: 0,
+          duration: 0,
+          selectedVehicle: '',
+          selectedOptions: [],
+          step: 1,
         })),
 
       addMinutesToPickupTime: (minutes: number) =>

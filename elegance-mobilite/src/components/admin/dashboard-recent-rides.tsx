@@ -55,13 +55,13 @@ export function DashboardRecentRides() {
       pending: "warning",
       confirmed: "default",
       completed: "success",
-      cancelled: "destructive",
+      canceled: "destructive",
     }
     const labels: Record<string, string> = {
       pending: "En attente",
       confirmed: "Confirmée",
       completed: "Terminée",
-      cancelled: "Annulée",
+      canceled: "Annulée",
     }
     return (
       <Badge variant={variants[status] || "default"}>{labels[status]}</Badge>

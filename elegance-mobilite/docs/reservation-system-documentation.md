@@ -131,7 +131,7 @@ CREATE TABLE reservations (
   final_price DECIMAL(10,2),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  CONSTRAINT valid_status CHECK (status IN ('PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'))
+  CONSTRAINT valid_status CHECK (status IN ('PENDING', 'CONFIRMED', 'canceled', 'COMPLETED'))
 );
 
 -- Options de réservation

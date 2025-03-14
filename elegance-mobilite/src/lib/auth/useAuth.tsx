@@ -1,50 +1,121 @@
 "use client";
 
-import React, { useEffect, useState, createContext, useContext, ReactNode } from "react";
-import { createClient } from "@/utils/supabase/client";
+import {
+  useState,
+  useEffect,
+  useContext,
+  createContext,
+  ReactNode,
+} from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/use-toast";
+import { supabase } from '@/utils/supabase/client';
+import { User, UserRole, AdminLevel } from '../types/auth.types';
 
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  avatar_url?: string;  // Ajouter le support pour l'avatar
-  phone?: string;      // Ajouter aussi le téléphone pour cohérence
-}
-
+// Types et contexte
 interface AuthContextType {
-  isAuthenticated: boolean;
-  isLoading: boolean;
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
-  register: (email: string, password: string, name: string) => Promise<boolean>;
-  updateProfile: (data: Partial<User>) => Promise<boolean>;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signUp: (email: string, password: string, userData?: any) => Promise<{ success: boolean; error?: string }>;
+  signOut: () => Promise<void>;
+  getCurrentUser: () => Promise<User | null>;
+  getUserRole: () => UserRole | null;
 }
 
-const defaultAuthContext: AuthContextType = {
-  isAuthenticated: false,
-  isLoading: true,
-  user: null,
-  login: async () => false,
-  logout: () => {},
-  register: async () => false,
-  updateProfile: async () => false,
-};
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AuthContext = createContext<AuthContextType>(defaultAuthContext);
-
-export function useAuth() {
-  return useContext(AuthContext);
-}
-
+// Provider
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const supabase = createClient();
+  const [sessionChecked, setSessionChecked] = useState(false); // Nouvel état pour suivre si la session a été vérifiée
+  const pathname = usePathname();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  // Définir un set d'erreurs déjà vues pour éviter les doublons
+  const errorsSeen = new Set();
+
+  // Fonction utilitaire pour créer un utilisateur en toute sécurité
+  const createUserSafely = async (userId: string, role: UserRole = 'client') => {
+    try {
+      // Créer l'utilisateur dans la table users si nécessaire
+      await supabase
+        .from('users')
+        .insert([{
+          id: userId,
+          role: role,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }])
+        .select()
+        .single();
+      
+      // Récupérer l'utilisateur créé ou existant
+      return await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+        
+    } catch (error: any) {
+      // Si c'est une violation de clé primaire, on ignore - l'utilisateur existe déjà
+      if (error.code === '23505') {
+        // Tenter de récupérer l'utilisateur existant
+        return await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single();
+      }
+      
+      // Log une seule fois par type d'erreur
+      if (!errorsSeen.has(error.message)) {
+        console.warn("Erreur lors de la création/récupération utilisateur:", error.message);
+        errorsSeen.add(error.message);
+      }
+      
+      return { data: null, error };
+    }
+  };
+
+  // Fonction pour rafraîchir les données utilisateur
+  const refreshUserData = async (userId: string): Promise<User | null> => {
+    try {
+      // Récupérer directement depuis la BD avec gestion des erreurs
+      const { data: userData, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) throw error;
+      if (!userData) return null;
+      
+      // Convertir en type User
+      const userObj: User = {
+        id: userData.id,
+        role: userData.role as UserRole,
+        admin_level: userData.admin_level as AdminLevel | undefined,
+        created_at: userData.created_at,
+        updated_at: userData.updated_at
+      };
+      
+      return userObj;
+    } catch (error) {
+      console.warn("Impossible de récupérer les données utilisateur:", error);
+      return null;
+    }
+  };
 
   // Vérifier si l'utilisateur est déjà connecté
   useEffect(() => {
+    // Ne vérifier qu'une seule fois au chargement initial
+    if (sessionChecked) return;
+    
     const checkAuth = async () => {
       try {
         setIsLoading(true);
@@ -53,77 +124,184 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          throw error;
+          console.error("Erreur lors de la vérification de la session:", error);
+          setIsLoading(false);
+          setSessionChecked(true);
+          return;
         }
         
         if (session?.user) {
-          // Créer un objet utilisateur de base avec les données de session
-          const userData: User = {
-            id: session.user.id,
-            email: session.user.email || '',
-            name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Utilisateur',
-            role: 'client', // Valeur par défaut
-            avatar_url: session.user.user_metadata?.avatar_url || undefined
-          };
+          // Utilisateur connecté - ne pas rediriger
+          console.log("Session active détectée, utilisateur connecté");
+          setIsAuthenticated(true);
           
-          // Tenter de récupérer le rôle de l'utilisateur depuis la table users
-          try {
-            const { data: userRecord } = await supabase
-              .from('users')
-              .select('role')
-              .eq('id', session.user.id)
-              .single();
-              
-            if (userRecord) {
-              userData.role = userRecord.role;
-            }
-          } catch (profileError) {
-            console.error("Erreur non bloquante lors de la récupération du rôle:", profileError);
+          // S'il existe déjà un objet user, éviter de le recréer
+          if (user && user.id === session.user.id) {
+            console.log("État utilisateur conservé");
+            setIsLoading(false);
+            setSessionChecked(true);
+            return;
           }
           
-          setUser(userData);
+          // Utilisateur connecté dans Supabase Auth
+          const userId = session.user.id;
+          
+          try {
+            // Récupérer le profil utilisateur
+            const userProfile = await refreshUserData(userId);
+            
+            if (userProfile) {
+              setUser(userProfile);
+            } else {
+              // Profil minimal en attendant que la BD se synchronise
+              setUser({
+                id: userId,
+                role: 'client',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              });
+            }
+            
+            // Attendre un peu pour s'assurer que l'état est mis à jour
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            setIsAuthenticated(true);
+          } catch (dbError) {
+            console.error("Erreur BD non bloquante:", dbError);
+            // Créer un utilisateur minimal
+            setUser({
+              id: userId,
+              role: 'client',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+            setIsAuthenticated(true);
+          }
+        } else {
+          // Pas de session active
+          setUser(null);
+          setIsAuthenticated(false);
         }
-      } catch (error) {
-        console.error("Erreur lors de la vérification d'authentification:", error);
+      } catch (err) {
+        console.error("Erreur d'authentification:", err);
+        // Ne pas effacer l'utilisateur en cas d'erreur de vérification
+        if (!user) {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
       } finally {
         setIsLoading(false);
+        setSessionChecked(true);
       }
     };
 
-    // Configurer la souscription aux événements d'authentification
+    checkAuth();
+
+    // Configurer un écouteur pour les changements d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (event === 'SIGNED_IN' && session) {
-          // Utilisateur connecté
-          const { data: userRecord } = await supabase
-            .from('users')
-            .select('role')
-            .eq('id', session.user.id)
-            .single();
+        console.log("Changement d'état d'authentification:", event);
+        
+        // Pour TOKEN_REFRESHED, maintenir explicitement l'état authentifié
+        if (event === 'TOKEN_REFRESHED') {
+          console.log("Token rafraîchi, conservation de l'état utilisateur existant");
+          setIsAuthenticated(true); 
+          return;
+        }
+        
+        // Pour INITIAL_SESSION, ne pas rediriger l'utilisateur déjà authentifié
+        if (event === 'INITIAL_SESSION') {
+          if (session) {
+            console.log("Session initiale détectée - authentifié");
+            setIsAuthenticated(true);
             
-          setUser({
-            id: session.user.id,
-            email: session.user.email || '',
-            name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Utilisateur',
-            role: userRecord?.role || 'client'
-          });
+            // Mettre à jour l'utilisateur si nécessaire mais sans redirection
+            if (!user && session.user) {
+              const userProfile = await refreshUserData(session.user.id);
+              if (userProfile) {
+                setUser(userProfile);
+              } else {
+                setUser({
+                  id: session.user.id,
+                  role: 'client',
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                });
+              }
+            }
+          }
+          return;
+        }
+        
+        // Autres événements comme d'habitude...
+        if (event === 'SIGNED_IN' && session) {
+          try {
+            // Récupérer le profil utilisateur
+            const userId = session.user.id;
+            const userProfile = await refreshUserData(userId);
+            
+            if (userProfile) {
+              // Utilisateur trouvé dans la BD
+              setUser(userProfile);
+              setIsAuthenticated(true);
+            } else {
+              // Utilisateur non trouvé, essayer de le créer
+              const { data: newUserData, error: createError } = await createUserSafely(userId);
+              
+              if (newUserData && !createError) {
+                setUser({
+                  id: newUserData.id,
+                  role: newUserData.role as UserRole,
+                  admin_level: newUserData.admin_level as AdminLevel | undefined,
+                  created_at: newUserData.created_at,
+                  updated_at: newUserData.updated_at
+                });
+                setIsAuthenticated(true);
+              } else {
+                // Échec de création, utiliser un objet User minimal
+                setUser({
+                  id: userId,
+                  role: 'client',
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                });
+                setIsAuthenticated(true);
+              }
+            }
+          } catch (error) {
+            console.error("Erreur lors de la récupération/création utilisateur:", error);
+            
+            if (session?.user?.id) {
+              // Utiliser données minimales en cas d'erreur
+              setUser({
+                id: session.user.id,
+                role: 'client', 
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              });
+              setIsAuthenticated(true);
+            } else {
+              setUser(null);
+              setIsAuthenticated(false);
+            }
+          }
         } else if (event === 'SIGNED_OUT') {
-          // Utilisateur déconnecté
           setUser(null);
+          setIsAuthenticated(false);
+          if (pathname?.startsWith('/admin') || pathname?.startsWith('/my-account')) {
+            router.push('/');
+          }
         }
       }
     );
 
-    checkAuth();
-
-    // Nettoyer la souscription lors du démontage
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, [pathname, router, user, sessionChecked]);
 
   // Fonction de connexion
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const signIn = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
       setIsLoading(true);
       
@@ -133,137 +311,122 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) {
-        throw error;
+        toast({
+          title: "Erreur de connexion",
+          description: error.message,
+          variant: "destructive",
+        });
+        return { success: false, error: error.message };
       }
 
-      return true;
-    } catch (error) {
+      // Délai court pour laisser le temps à la session de se propager
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      toast({
+        title: "Connexion réussie",
+        description: "Bienvenue !",
+      });
+
+      return { success: true };
+    } catch (error: any) {
       console.error("Erreur de connexion:", error);
-      return false;
+      return { success: false, error: error.message || "Erreur de connexion inconnue" };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fonction d'inscription
+  const signUp = async (email: string, password: string, userData?: any): Promise<{ success: boolean; error?: string }> => {
+    try {
+      setIsLoading(true);
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: userData,
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      // Créer l'entrée dans la table users
+      if (data?.user?.id) {
+        await createUserSafely(data.user.id, 'client');
+      }
+
+      toast({
+        title: "Inscription réussie",
+        description: "Veuillez vérifier votre email pour confirmer votre compte.",
+      });
+
+      return { success: true };
+    } catch (error: any) {
+      console.error("Erreur d'inscription:", error);
+      return { success: false, error: error.message || "Erreur d'inscription inconnue" };
     } finally {
       setIsLoading(false);
     }
   };
 
   // Fonction de déconnexion
-  const logout = async () => {
+  const signOut = async (): Promise<void> => {
     try {
       await supabase.auth.signOut();
       setUser(null);
+      setIsAuthenticated(false);
+      router.push('/');
     } catch (error) {
       console.error("Erreur de déconnexion:", error);
     }
   };
 
-  // Fonction d'inscription
-  const register = async (email: string, password: string, name: string): Promise<boolean> => {
+  // Fonction pour récupérer l'utilisateur actuel
+  const getCurrentUser = async (): Promise<User | null> => {
     try {
-      setIsLoading(true);
-      console.log("Début de l'inscription pour:", email);
-      
-      // Inscription avec Supabase Auth en incluant le nom dans les métadonnées
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: name
-          }
-        }
-      });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) return null;
 
-      if (signUpError) {
-        console.error("Erreur lors de l'inscription Auth:", signUpError);
-        return false;
-      }
-
-      if (!authData.user) {
-        console.error("Pas d'utilisateur créé");
-        return false;
-      }
-
-      console.log("Utilisateur Auth créé:", authData.user.id);
-
-      // 2. Insérer dans la table users directement
-      if (authData.session) {
-        // Si l'utilisateur est connecté automatiquement, on peut utiliser l'API directe
-        try {
-          const { error: usersError } = await supabase
-            .from('users')
-            .insert([
-              {
-                id: authData.user.id,
-                role: 'client'
-                // created_at et updated_at sont gérés par défaut
-              }
-            ]);
-
-          if (usersError) {
-            console.error("Erreur lors de l'insertion users:", usersError);
-            // On continue malgré l'erreur
-          }
-        } catch (dbError) {
-          console.error("Exception lors de l'insertion:", dbError);
-        }
-      } else {
-        // L'utilisateur devra confirmer son email avant de pouvoir se connecter
-        console.log("Email de confirmation envoyé à l'utilisateur");
-      }
-
-      return true;
+      return await refreshUserData(session.user.id);
     } catch (error) {
-      console.error("Erreur détaillée d'inscription:", error);
-      return false;
-    } finally {
-      setIsLoading(false);
+      console.error("Erreur lors de la récupération de l'utilisateur:", error);
+      return null;
     }
   };
 
-  // Fonction de mise à jour du profil
-  const updateProfile = async (userData: Partial<User>): Promise<boolean> => {
-    try {
-      if (!user?.id) {
-        throw new Error("Utilisateur non connecté");
-      }
-
-      // Mettre à jour le profil dans la base de données
-      const { error } = await supabase
-        .from('users')
-        .update({
-          full_name: userData.name,
-          phone: userData.phone,
-          avatar_url: userData.avatar_url,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
-
-      if (error) {
-        throw error;
-      }
-
-      // Mettre à jour l'état local
-      setUser(prev => prev ? { ...prev, ...userData } : null);
-      
-      return true;
-    } catch (error) {
-      console.error("Erreur lors de la mise à jour du profil:", error);
-      return false;
-    }
+  // Fonction pour récupérer uniquement le rôle de l'utilisateur
+  const getUserRole = (): UserRole | null => {
+    return user?.role || null;
   };
 
-  const value = {
-    isAuthenticated: !!user,
-    isLoading,
-    user,
-    login,
-    logout,
-    register,
-    updateProfile,
-  };
-
+  // Exposer les fonctions et état via le contexte
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        isAuthenticated,
+        signIn,
+        signUp,
+        signOut,
+        getCurrentUser,
+        getUserRole
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
+
+// Hook pour utiliser l'authentification
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth doit être utilisé à l'intérieur d'un AuthProvider");
+  }
+  return context;
+};

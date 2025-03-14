@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { useRidesStore } from '../ridesStore'
 import { useDriversStore } from '../driversStore'
 
-type RideStatus = 'all' | 'pending' | 'in-progress' | 'completed' | 'cancelled' | 'unassigned'
+type RideStatus = 'all' | 'pending' | 'in-progress' | 'completed' | 'canceled' | 'unassigned'
 
 interface UnifiedRidesStore {
   // Filtres

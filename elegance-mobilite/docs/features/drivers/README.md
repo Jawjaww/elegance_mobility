@@ -141,7 +141,7 @@ interface DriverMetrics {
   rides: {
     total: number;
     completed: number;
-    cancelled: number;
+    canceled: number;
     rating: number;
   };
   earnings: {

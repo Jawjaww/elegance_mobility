@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ChevronLeft, CheckCircle } from "lucide-react";
-import { VehicleOptions } from "@/lib/types";
+import { VehicleOptions } from "@/lib/types/types";
 
 interface OptionsStepProps {
   options: VehicleOptions;

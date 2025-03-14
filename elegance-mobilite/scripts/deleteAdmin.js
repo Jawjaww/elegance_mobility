@@ -52,7 +52,7 @@ async function deleteAdmin() {
     });
 
     if (!response.email) {
-      console.log('Operation cancelled');
+      console.log('Operation canceled');
       process.exit(0);
     }
 

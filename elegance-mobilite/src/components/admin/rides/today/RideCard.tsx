@@ -19,7 +19,7 @@ const statusConfig = {
   assigned: { label: "Assignée", color: "bg-blue-500" },
   in_progress: { label: "En cours", color: "bg-green-500" },
   completed: { label: "Terminée", color: "bg-neutral-500" },
-  cancelled: { label: "Annulée", color: "bg-red-500" },
+  canceled: { label: "Annulée", color: "bg-red-500" },
 }
 
 export function RideCard({ run, onClick, className }: RideCardProps) {

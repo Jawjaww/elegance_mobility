@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useReservationStore } from '@/lib/stores/reservationStore';
-import { usePrice } from '@/hooks/usePrice';
-import { useRouter } from 'next/navigation';
-import { formatCurrency } from '@/lib/utils';
-import { useAuth } from '@/lib/auth/useAuth';
-import { AuthModal } from '@/components/auth/AuthModal';
 import { supabase } from '@/utils/supabase/client';
-import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/lib/auth/useAuth';
+import { useToast } from "@/components/ui/use-toast";
+import { usePrice } from '@/hooks/usePrice';
+import { Button } from '@/components/ui/button';
+import { formatCurrency } from '@/lib/utils';
+import { AuthModal } from '@/components/auth/AuthModal';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { 
   MapPin, 
@@ -28,12 +28,31 @@ const SimpleSeparator = ({ className }: { className?: string }) => (
 
 export default function ConfirmationPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const reservation = useReservationStore();
-  const { totalPrice, isLoading: priceLoading } = usePrice();
+  const { totalPrice, calculatePrice, isLoading: priceLoading } = usePrice();
   const { isAuthenticated, user } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const [reservationId, setReservationId] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+
+  // Récupérer l'ID de la réservation pour le mode édition
+  useEffect(() => {
+    // Vérifier les paramètres d'URL d'abord, puis localStorage
+    const urlId = searchParams?.get('id');
+    const isEdit = searchParams?.get('edit') === 'true';
+    const storedId = localStorage.getItem('currentEditingReservationId');
+    
+    const editId = urlId || storedId;
+    
+    if (editId) {
+      console.log("Mode édition détecté, ID:", editId);
+      setReservationId(editId);
+      setIsEditMode(isEdit || !!storedId);
+    }
+  }, [searchParams]);
 
   // Formatter les dates
   const formattedDate = reservation.pickupDateTime
@@ -51,6 +70,27 @@ export default function ConfirmationPage() {
         minute: '2-digit',
       })
     : '';
+
+  // Forcer le recalcul du prix lorsque les données changent
+  useEffect(() => {
+    // Extraire les options sélectionnées du format du store
+    const selectedOptions = reservation.selectedOptions || [];
+    
+    // Recalculer le prix à chaque changement de données pertinentes
+    if (reservation.distance && reservation.selectedVehicle) {
+      console.log("Recalcul de tarification avec:", {
+        distance: reservation.distance,
+        vehicleType: reservation.selectedVehicle,
+        options: selectedOptions
+      });
+      
+      calculatePrice(
+        reservation.distance, 
+        reservation.selectedVehicle as any,
+        selectedOptions
+      );
+    }
+  }, [reservation.distance, reservation.selectedVehicle, reservation.selectedOptions, calculatePrice]);
 
   const handleConfirm = async () => {
     if (!isAuthenticated) {
@@ -77,75 +117,72 @@ export default function ConfirmationPage() {
         return;
       }
       
-      // Modification de l'approche pour vérifier/créer l'utilisateur
-      let userExists = false;
+      // Formater correctement la date pour l'enregistrement
+      const pickupDateTime = reservation.pickupDateTime instanceof Date 
+        ? reservation.pickupDateTime.toISOString() 
+        : new Date(reservation.pickupDateTime).toISOString();
       
-      try {
-        // 1. Vérifier si l'utilisateur existe dans la table users
-        const { data: existingUser, error: userCheckError } = await supabase
-          .from('users')
-          .select('id')
-          .eq('id', user.id)
-          .single();
-          
-        userExists = !!existingUser;
-      } catch (err) {
-        // Si une erreur se produit lors de la vérification, on continue quand même
-        console.log("Erreur lors de la vérification de l'utilisateur, on continue:", err);
-      }
+      // IMPORTANT: Créer un objet propre avec UNIQUEMENT les champs attendus par la base de données
+      // Cette approche élimine la possibilité d'envoyer des champs non existants
+      const rideData = {
+        pickup_address: reservation.departure.display_name,
+        pickup_lat: reservation.departure.lat,
+        pickup_lon: reservation.departure.lon, // Standardisé sur lon
+        dropoff_address: reservation.destination.display_name,
+        dropoff_lat: reservation.destination.lat,
+        dropoff_lon: reservation.destination.lon, // Standardisé sur lon
+        pickup_time: pickupDateTime,
+        distance: reservation.distance,
+        duration: reservation.duration,
+        vehicle_type: reservation.selectedVehicle,
+        options: reservation.selectedOptions,
+        estimated_price: totalPrice  // Utiliser le prix recalculé
+      };
       
-      // 2. Si l'utilisateur n'existe pas, essayer de le créer, mais ignorer l'erreur de clé dupliquée
-      if (!userExists) {
-        try {
-          console.log("Tentative de création d'utilisateur dans la table users...");
-          
-          await supabase
-            .from('users')
-            .insert({
-              id: user.id,
-              role: 'client',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            });
-          
-          console.log("Utilisateur créé avec succès dans la table users");
-        } catch (createUserError: any) {
-          // Si l'erreur est une violation de contrainte de clé, ignorer l'erreur - l'utilisateur existe déjà
-          if (createUserError.code === '23505') {
-            console.log("L'utilisateur existe déjà, continuons avec la réservation");
-          } else {
-            // Pour les autres types d'erreurs, les logger mais continuer
-            console.warn("Erreur non bloquante lors de la création de l'utilisateur:", createUserError);
-          }
+      console.log("Données envoyées à la base de données:", {
+        ...rideData,
+        // Ne pas montrer le prix estimé dans les logs
+        estimated_price: totalPrice
+      });
+      
+      // Si on est en mode édition
+      if (isEditMode && reservationId) {
+        const { error } = await supabase
+          .from('rides')
+          .update(rideData)
+          .eq('id', reservationId);
+            
+        if (error) {
+          console.error("Erreur Supabase:", error);
+          throw error;
         }
-      }
-      
-      // 3. Maintenant, insérer la réservation, que la création d'utilisateur ait réussi ou non
-      const { data, error } = await supabase
-        .from('rides')
-        .insert({
-          user_id: user.id,
-          pickup_address: reservation.departure.display_name,
-          pickup_lat: reservation.departure.lat,
-          pickup_lon: reservation.departure.lon,
-          dropoff_address: reservation.destination.display_name,
-          dropoff_lat: reservation.destination.lat,
-          dropoff_lon: reservation.destination.lon,
-          pickup_time: reservation.pickupDateTime,
-          distance: reservation.distance,
-          duration: reservation.duration,
-          vehicle_type: reservation.selectedVehicle,
-          options: reservation.selectedOptions,
-          estimated_price: totalPrice,
-          status: 'pending'
+        
+        toast({
+          title: "Réservation modifiée",
+          description: "Votre réservation a été mise à jour avec succès",
         });
+        
+        localStorage.removeItem('currentEditingReservationId');
+      } else {
+        // Création d'une nouvelle réservation
+        const newRideData = {
+          ...rideData,
+          user_id: user.id,
+          status: 'pending'
+        };
+        
+        const { error } = await supabase
+          .from('rides')
+          .insert(newRideData);
 
-      if (error) {
-        // Si l'erreur d'insertion de réservation est liée à une contrainte de clé étrangère d'utilisateur
-        if (error.code === '23503' && error.message?.includes('rides_user_id_fkey')) {
-          throw new Error("L'utilisateur n'existe pas dans la base de données. Veuillez vous déconnecter et vous reconnecter.");
+        if (error) {
+          throw error;
         }
-        throw error;
+        
+        toast({
+          title: "Réservation enregistrée",
+          description: "Votre réservation a été créée avec succès",
+        });
       }
 
       // Rediriger vers la page de succès

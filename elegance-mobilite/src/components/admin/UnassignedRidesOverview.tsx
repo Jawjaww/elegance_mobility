@@ -3,16 +3,8 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
-import dynamic from "next/dynamic"
 import { useUnassignedRidesStore } from "@/lib/unassignedRidesStore"
-import type { MapMarker } from "@/lib/types"
-
-const DynamicMap = dynamic(() => import("@/components/map/DynamicLeafletMap"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[300px] w-full animate-pulse bg-neutral-800 rounded-lg" />
-  ),
-})
+import MapLibreMap from "@/components/map/MapLibreMap" // Nouveau composant MapLibre
 
 export function UnassignedRidesOverview() {
   const router = useRouter()
@@ -38,14 +30,22 @@ export function UnassignedRidesOverview() {
     )
   }
 
-  const markers: MapMarker[] = rides.map((ride) => ({
-    position: [ride.pickup_lat, ride.pickup_lng] as [number, number],
-    popup: `Course #${ride.id} - ${new Date(ride.pickup_time).toLocaleString()}`,
-    onClick: () => router.push(`/admin/rides/${ride.id}/assign`),
-    color: "red"
-  }))
-
-  const initialCenter = markers[0]?.position || [48.8566, 2.3522] // Paris par défaut
+  // Créer la location de départ pour la première course
+  const firstRide = rides[0]
+  const departure = firstRide ? {
+    display_name: firstRide.pickup_address,
+    lat: firstRide.pickup_lat,
+    lon: firstRide.pickup_lon,
+    address: { formatted: firstRide.pickup_address }
+  } : null
+  
+  // Utiliser Paris comme valeur par défaut
+  const initialCenter = departure || {
+    display_name: "Paris",
+    lat: 48.8566,
+    lon: 2.3522,
+    address: { formatted: "Paris, France" }
+  }
 
   return (
     <Card className="p-6">
@@ -58,10 +58,9 @@ export function UnassignedRidesOverview() {
       </div>
       <div className="h-[300px] rounded-lg overflow-hidden">
         {rides.length > 0 ? (
-          <DynamicMap 
-            markers={markers} 
-            initialCenter={initialCenter}
-            initialZoom={12}
+          <MapLibreMap
+            departure={initialCenter}
+            destination={null}
           />
         ) : (
           <div className="flex h-full items-center justify-center bg-neutral-800/50">

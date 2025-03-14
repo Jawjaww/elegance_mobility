@@ -2,7 +2,7 @@
 
 ## Overview
 
-Elegance Mobilité implements comprehensive Row Level Security (RLS) using Supabase Auth 2025 best practices, ensuring data access control at the database level.
+Vector Elegans implements comprehensive Row Level Security (RLS) using Supabase Auth 2025 best practices, ensuring data access control at the database level.
 
 ## RLS Policies
 

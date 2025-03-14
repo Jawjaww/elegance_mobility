@@ -1,208 +1,309 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { supabase } from '@/utils/supabase/client';
-import { useAuth } from '@/lib/auth/useAuth';
-import { useToast } from '@/components/ui/use-toast';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { ReservationCard } from '@/components/reservations/ReservationCard';
-import { CalendarPlus, CircleAlert, AlertCircle } from 'lucide-react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from "react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { useAuth } from "@/lib/auth/useAuth";
+import ReservationCard from "@/components/reservation/ReservationCard";
+import { DetailModal } from "@/components/reservation/DetailModal"; // Importation du composant DetailModal
+import { supabase } from "@/utils/supabase/client";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+import { ReservationFilters } from "@/components/reservation/ReservationFilters";
+import { useToast } from "@/components/ui/use-toast";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { ALL_DB_STATUSES, mapStatusToDb } from "@/lib/services/statusService";
 
-// Type pour les données de réservation
+// Définition de l'interface pour les réservations
 interface Reservation {
   id: string;
+  pickup_time: string;
   pickup_address: string;
   dropoff_address: string;
-  pickup_time: string;
-  vehicle_type: string;
+  vehicle_type?: string;
   status: string;
-  estimated_price: number;
-  distance: number;
-  duration: number;
+  estimated_price?: number | null;
+  distance?: number | null;
+  duration?: number | null;
   created_at: string;
+  user_id: string;
 }
 
-export default function MyReservationsPage() {
+export default function ReservationsPage() {
+  const { user } = useAuth();
+  const router = useRouter();
+  const { toast } = useToast();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const router = useRouter(); // Ajouter le router pour la navigation
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  
+  // États pour le modal de détails
+  const [selectedRide, setSelectedRide] = useState<Reservation | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  // Récupérer les réservations de l'utilisateur
   useEffect(() => {
-    if (!user) return;
-
-    const fetchReservations = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        const { data, error } = await supabase
-          .from('rides')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('pickup_time', { ascending: false });
-          
-        if (error) throw error;
-        
-        setReservations(data as Reservation[]);
-      } catch (err) {
-        console.error('Erreur lors de la récupération des réservations:', err);
-        setError('Impossible de charger vos réservations. Veuillez réessayer plus tard.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    if (!user?.id) return;
     
-    fetchReservations();
+    loadReservations();
   }, [user]);
 
-  // Fonction pour annuler une réservation
-  const handleCancelReservation = async (id: string) => {
+  const loadReservations = async () => {
+    setIsLoading(true);
+    setError(null);
+    
     try {
-      // Utiliser 'cancelled' au lieu de 'canceled' (différence orthographique)
-      const { error } = await supabase
+      // Vérifier que l'utilisateur existe
+      if (!user?.id) {
+        setError("Utilisateur non connecté");
+        return;
+      }
+      
+      // Convertir les statuts UI en statuts DB avec gestion d'erreur
+      let dbStatusFilters: string[];
+      
+      if (selectedStatuses.length > 0) {
+        // Mapper chaque statut sélectionné vers son équivalent DB
+        dbStatusFilters = selectedStatuses.map(mapStatusToDb);
+      } else {
+        // Liste mise à jour sans 'canceled'
+        dbStatusFilters = ["pending", "scheduled", "completed", "in-progress", 
+                          "client-canceled", "driver-canceled", "admin-canceled", 
+                          "no-show", "delayed"];
+      }
+      
+      // S'assurer que dbStatusFilters n'est pas vide
+      if (!dbStatusFilters.length) {
+        dbStatusFilters = ["pending"]; // Au moins un statut par défaut
+      }
+      
+      console.log("Filtres de statut utilisés:", dbStatusFilters);
+      
+      // Créer la requête de base
+      const query = supabase
         .from('rides')
-        .update({ status: 'cancelled' }) // 'cancelled' au lieu de 'canceled'
-        .eq('id', id);
+        .select('*')
+        .eq('user_id', user.id);
+      
+      // Ajouter le filtre de statut seulement s'il y a des valeurs à filtrer
+      if (dbStatusFilters.length > 0) {
+        query.in('status', dbStatusFilters);
+      }
+      
+      // Exécuter la requête
+      const { data, error } = await query.order('pickup_time', { ascending: false });
         
-      if (error) throw error;
+      if (error) {
+        // Vérification détaillée des propriétés de l'erreur avant affichage
+        const errorDetails = {
+          code: error.code || 'no_code',
+          message: error.message || 'Aucun message d\'erreur',
+          details: error.details || 'Pas de détails disponibles'
+        };
+        
+        console.error("Erreur Supabase:", errorDetails);
+        throw new Error(`Erreur de base de données: ${errorDetails.message}`);
+      }
       
-      // Mettre à jour l'état local pour refléter l'annulation
-      setReservations(prev => 
-        prev.map(res => 
-          res.id === id ? { ...res, status: 'cancelled' } : res // 'cancelled' ici aussi
-        )
-      );
+      console.log(`${data ? data.length : 0} réservations chargées`);
+      setReservations(data || []);
+    } catch (err: any) {
+      // Gestion améliorée avec vérification du type d'erreur
+      let errorMessage = "Impossible de charger vos réservations";
       
-      toast({
-        title: 'Réservation annulée',
-        description: 'Votre réservation a été annulée avec succès.',
-      });
+      // Vérifier si l'erreur est une instance d'Error standard
+      if (err instanceof Error) {
+        errorMessage = err.message;
+        console.error("Erreur lors du chargement des réservations:", errorMessage);
+      } 
+      // Si c'est un objet avec une propriété message
+      else if (err && typeof err === 'object' && 'message' in err) {
+        errorMessage = err.message || errorMessage;
+        console.error("Erreur objet lors du chargement:", errorMessage);
+      }
+      // Si c'est un autre type d'erreur
+      else {
+        console.error("Erreur non standard:", typeof err, err);
+      }
+      
+      // Définir le message d'erreur pour l'utilisateur
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.id) {
+      loadReservations();
+    }
+  }, [selectedStatuses, user?.id]);
+
+  const handleEdit = (id: string) => {
+    // Récupérer la réservation à modifier
+    const ride = reservations.find(r => r.id === id);
+    if (!ride) return;
+    
+    try {
+      // Rediriger vers la page de réservation avec l'id en paramètre
+      router.push(`/reservation/edit?id=${id}`);
     } catch (err) {
-      console.error('Erreur lors de l\'annulation de la réservation:', err);
+      console.error("Erreur de navigation:", err);
       toast({
-        title: 'Erreur',
-        description: 'Impossible d\'annuler cette réservation. Veuillez réessayer.',
-        variant: 'destructive',
+        title: "Erreur",
+        description: "Impossible d'accéder à la page de modification",
+        variant: "destructive",
       });
     }
   };
 
-  // Ajouter une fonction pour modifier une réservation
-  const handleEditReservation = (id: string) => {
-    // Stocker l'ID de la réservation à modifier dans le localStorage
-    localStorage.setItem('editReservationId', id);
-    // Rediriger vers la page de réservation pour la modifier
-    router.push('/reservation/edit');
+  // Nouveau gestionnaire pour afficher les détails dans un modal au lieu de rediriger
+  const handleDetails = (id: string) => {
+    const ride = reservations.find(r => r.id === id);
+    if (!ride) return;
+    
+    setSelectedRide(ride);
+    setIsDetailModalOpen(true);
   };
 
-  // Filtrer les réservations par statut
-  const getActiveReservations = () => {
-    return reservations.filter(res => 
-      ['pending', 'confirmed', 'assigned', 'in_progress'].includes(res.status)
-    );
+  const handleCancel = async (id: string) => {
+    try {
+      // Récupérer d'abord les détails de la réservation pour vérifier son statut
+      const { data: ride, error: fetchError } = await supabase
+        .from('rides')
+        .select('status, pickup_time')
+        .eq('id', id)
+        .single();
+        
+      if (fetchError) throw fetchError;
+      if (!ride) throw new Error("Réservation introuvable");
+      
+      // Vérifier si la réservation peut être annulée
+      const pickupTime = new Date(ride.pickup_time);
+      const now = new Date();
+      
+      // Vérifier si la course est dans le passé
+      if (pickupTime < now) {
+        toast({
+          title: "Impossible d'annuler",
+          description: "Cette réservation est déjà passée et ne peut pas être annulée",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Vérifier si le statut permet l'annulation
+      if (ride.status !== 'pending' && ride.status !== 'scheduled') {
+        toast({
+          title: "Impossible d'annuler",
+          description: `Cette réservation ne peut pas être annulée car son statut est "${ride.status}"`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Utiliser la valeur correcte pour canceled dans la base de données (avec un seul 'l')
+      const { error } = await supabase
+        .from('rides')
+        .update({ status: 'client-canceled' })  // Utiliser 'client-canceled' (un seul 'l')
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Réservation annulée",
+        description: "Votre réservation a été annulée avec succès",
+      });
+      
+      // Recharger les réservations
+      loadReservations();
+    } catch (err: any) {
+      console.error("Erreur lors de l'annulation:", err);
+      toast({
+        title: "Erreur",
+        description: err?.message || "Impossible d'annuler cette réservation",
+        variant: "destructive",
+      });
+    }
   };
 
-  const getPastReservations = () => {
-    return reservations.filter(res => 
-      ['completed', 'cancelled'].includes(res.status) // 'cancelled' au lieu de 'canceled'
-    );
-  };
-
-  // Affichages conditionnels
-  if (isLoading) {
-    return (
-      <div className="bg-neutral-900 rounded-xl p-8 shadow-md flex flex-col items-center">
-        <LoadingSpinner size="lg" />
-        <p className="mt-4 text-neutral-400">Chargement de vos réservations...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-neutral-900 rounded-xl p-8 shadow-md">
-        <div className="flex items-center text-red-400 mb-4">
-          <AlertCircle className="h-5 w-5 mr-2" />
-          <p>{error}</p>
-        </div>
-        <Button onClick={() => window.location.reload()}>Réessayer</Button>
-      </div>
-    );
-  }
-
-  if (reservations.length === 0) {
-    return (
-      <div className="bg-neutral-900 rounded-xl p-8 shadow-md text-center">
-        <CircleAlert className="h-16 w-16 mx-auto text-neutral-600 mb-4" />
-        <h2 className="text-xl font-semibold mb-2">Aucune réservation</h2>
-        <p className="text-neutral-400 mb-6">
-          Vous n'avez pas encore effectué de réservation.
-        </p>
-        <Link href="/reservation">
-          <Button className="bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 transition-all duration-300">
-            <CalendarPlus className="mr-2 h-4 w-4" />
-            Nouvelle réservation
-          </Button>
-        </Link>
-      </div>
-    );
-  }
-
-  // Affichage des réservations
-  const activeReservations = getActiveReservations();
-  const pastReservations = getPastReservations();
+  // Organiser les réservations par date
+  const groupedReservations = reservations.reduce<Record<string, Reservation[]>>((groups, ride) => {
+    // Créer une date sans heure pour le regroupement
+    const dateKey = format(new Date(ride.pickup_time), 'yyyy-MM-dd');
+    
+    if (!groups[dateKey]) {
+      groups[dateKey] = [];
+    }
+    
+    groups[dateKey].push(ride);
+    return groups;
+  }, {});
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Mes réservations</h2>
-        <Link href="/reservation">
-          <Button className="bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 transition-all duration-300">
-            <CalendarPlus className="mr-2 h-4 w-4" />
-            Nouvelle réservation
+    <div className="container max-w-4xl py-8 px-4 sm:px-6">
+      <h1 className="text-2xl font-bold text-white mb-6">Mes réservations</h1>
+      
+      <ReservationFilters 
+        onStatusChange={setSelectedStatuses}
+        selectedStatuses={selectedStatuses}
+      />
+
+      {isLoading ? (
+        <div className="flex justify-center my-12">
+          <LoadingSpinner size="lg" />
+        </div>
+      ) : error ? (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Erreur</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : reservations.length === 0 ? (
+        <div className="text-center py-12">
+          <h3 className="text-lg font-semibold text-white mb-2">
+            Aucune réservation trouvée
+          </h3>
+          <p className="text-neutral-400 mb-6">
+            {selectedStatuses.length > 0 
+              ? "Aucune réservation ne correspond aux filtres sélectionnés" 
+              : "Vous n'avez pas encore de réservation"}
+          </p>
+          <Button onClick={() => router.push("/reservation")}>
+            Faire une réservation
           </Button>
-        </Link>
-      </div>
-
-      {/* Réservations actives */}
-      {activeReservations.length > 0 && (
-        <div>
-          <h3 className="text-xl font-medium mb-4">Réservations à venir</h3>
-          <div className="space-y-4">
-            {activeReservations.map(reservation => (
-              <ReservationCard 
-                key={reservation.id}
-                reservation={reservation}
-                onCancel={() => handleCancelReservation(reservation.id)}
-                onEdit={() => handleEditReservation(reservation.id)} // Ajouter le prop onEdit
-              />
-            ))}
-          </div>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {Object.entries(groupedReservations).map(([dateKey, rides]) => (
+            <div key={dateKey}>
+              <h2 className="text-lg font-semibold text-white mb-4 border-b border-neutral-800 pb-2">
+                {format(new Date(dateKey), "EEEE d MMMM yyyy", { locale: fr })}
+              </h2>
+              <div className="space-y-4">
+                {rides.map((ride: Reservation) => (
+                  <ReservationCard
+                    key={ride.id}
+                    ride={ride}
+                    onEdit={ride.status === "pending" ? handleEdit : undefined}
+                    onCancel={ride.status === "pending" ? handleCancel : undefined}
+                    onDetails={() => handleDetails(ride.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Réservations passées */}
-      {pastReservations.length > 0 && (
-        <div>
-          <h3 className="text-xl font-medium mb-4 mt-8">Réservations passées</h3>
-          <div className="space-y-4">
-            {pastReservations.map(reservation => (
-              <ReservationCard 
-                key={reservation.id}
-                reservation={reservation}
-                isPast
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Modal pour afficher les détails de la réservation */}
+      <DetailModal 
+        ride={selectedRide}
+        open={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+      />
     </div>
   );
 }

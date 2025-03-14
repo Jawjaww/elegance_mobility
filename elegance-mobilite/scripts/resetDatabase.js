@@ -41,7 +41,7 @@ async function resetDatabase() {
     });
 
     if (!response.value) {
-      spinner.info('Database reset cancelled');
+      spinner.info('Database reset canceled');
       process.exit(0);
     }
 

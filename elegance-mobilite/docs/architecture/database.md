@@ -25,7 +25,7 @@ CREATE TYPE ride_status AS ENUM (
     'pending',     -- En attente de confirmation
     'in-progress', -- Course en cours
     'completed',   -- Course terminée
-    'cancelled'    -- Course annulée
+    'canceled'    -- Course annulée
 );
 
 -- Types de véhicules

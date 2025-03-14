@@ -44,7 +44,7 @@ type RideStatus =
   | 'pending'
   | 'in-progress'
   | 'completed'
-  | 'cancelled';
+  | 'canceled';
 
 interface GeoPoint {
   lat: number;

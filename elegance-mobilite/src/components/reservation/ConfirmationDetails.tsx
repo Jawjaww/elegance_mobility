@@ -3,12 +3,12 @@
 import { useReservationStore } from "@/lib/stores/reservationStore";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import DynamicLeafletMap from "@/components/map/DynamicLeafletMap";
 import { LoadingSpinner } from "../ui/loading-spinner";
 import { Suspense } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useRouter } from "next/navigation";
+import MapLibreMap from "@/components/map/MapLibreMap"; // Remplacement de DynamicLeafletMap
 
 export function ConfirmationDetails() {
   const router = useRouter();
@@ -20,16 +20,6 @@ export function ConfirmationDetails() {
     selectedOptions,
     reset
   } = useReservationStore();
-
-  const origin = departure ? {
-    lat: departure.lat,
-    lng: departure.lon
-  } : null;
-
-  const destinationCoords = destination ? {
-    lat: destination.lat,
-    lng: destination.lon
-  } : null;
 
   const handleConfirm = () => {
     // TODO: Envoyer les données à l'API
@@ -92,11 +82,10 @@ export function ConfirmationDetails() {
 
         <Suspense fallback={<Card className="p-6"><LoadingSpinner /></Card>}>
           <Card className="p-0 overflow-hidden">
-            <DynamicLeafletMap
-              origin={origin}
-              destination={destinationCoords}
-              enableRouting={true}
-              isInteractive={false}
+            <MapLibreMap
+              departure={departure}
+              destination={destination}
+              onRouteCalculated={(distance, duration) => {}}
             />
           </Card>
         </Suspense>

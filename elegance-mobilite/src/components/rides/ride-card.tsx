@@ -42,12 +42,12 @@ export default function RideCard({
     const variants: Record<string, 'default' | 'secondary' | 'destructive'> = {
       pending: 'secondary',
       confirmed: 'default',
-      cancelled: 'destructive',
+      canceled: 'destructive',
     }
     const labels: Record<string, string> = {
       pending: 'En attente',
       confirmed: 'Confirmée',
-      cancelled: 'Annulée',
+      canceled: 'Annulée',
     }
     return (
       <Badge variant={variants[status] || 'secondary'}>{labels[status]}</Badge>

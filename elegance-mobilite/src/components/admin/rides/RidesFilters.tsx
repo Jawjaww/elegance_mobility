@@ -33,7 +33,7 @@ const statusOptions = [
   { value: "pending", label: "En attente" },
   { value: "in-progress", label: "En cours" },
   { value: "completed", label: "Terminées" },
-  { value: "cancelled", label: "Annulées" },
+  { value: "canceled", label: "Annulées" },
 ]
 
 export function RidesFilters() {

@@ -7,7 +7,7 @@ export interface Ride {
   clientName: string
   pickupAddress: string
   dropoffAddress: string
-  status: 'pending' | 'in-progress' | 'completed' | 'cancelled'
+  status: 'pending' | 'in-progress' | 'completed' | 'canceled'
   driverId: string | null
   createdAt: string
 }
@@ -34,7 +34,7 @@ export const columns: ColumnDef<Ride>[] = [
         pending: 'En attente',
         'in-progress': 'En cours',
         completed: 'Terminée',
-        cancelled: 'Annulée'
+        canceled: 'Annulée'
       }
       return <div>{statusMap[status]}</div>
     }

@@ -56,48 +56,9 @@ export default function ReservationPage({ isEditing = false }: ReservationPagePr
         return;
       }
       
-      try {
-        const { error } = await supabase
-          .from('rides')
-          .update({
-            pickup_address: originAddress,
-            pickup_lat: origin?.lat || 0,
-            pickup_lon: origin?.lng || 0,
-            dropoff_address: destinationAddress,
-            dropoff_lat: destination?.lat || 0, 
-            dropoff_lon: destination?.lng || 0,
-            pickup_time: pickupDateTime.toISOString(),
-            vehicle_type: vehicleType,
-            options: Object.entries(options)
-              .filter(([_, value]) => value)
-              .map(([key]) => key),
-            distance: distance,
-            duration: duration,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', reservationId);
-          
-        if (error) throw error;
-        
-        toast({
-          title: 'Réservation modifiée',
-          description: 'Votre réservation a été mise à jour avec succès.',
-        });
-        
-        // Nettoyer le localStorage
-        localStorage.removeItem('currentEditingReservationId');
-        localStorage.removeItem('editReservationId');
-        
-        // Rediriger vers la liste des réservations
-        router.push('/my-account/reservations');
-      } catch (err) {
-        console.error("Erreur lors de la mise à jour de la réservation:", err);
-        toast({
-          title: 'Erreur',
-          description: "La modification de votre réservation a échoué. Veuillez réessayer.",
-          variant: 'destructive'
-        });
-      }
+      // Au lieu de mettre à jour directement dans la BD, utiliser handleReservation pour passer par la page confirmation
+      console.log("Redirection vers la page de confirmation pour finaliser les modifications");
+      handleReservation();
     } else {
       // Pour une nouvelle réservation, continuer avec le comportement existant
       handleReservation();
@@ -116,21 +77,19 @@ export default function ReservationPage({ isEditing = false }: ReservationPagePr
       <div className="relative z-10 place-self-center w-full max-w-2xl mx-auto px-4 py-8">
         <div className="bg-neutral-900/50 backdrop-blur-lg rounded-lg border border-neutral-800 p-8">
           {step === 1 ? (
-            <LocationStep
-              origin={origin}
-              destination={destination}
-              originAddress={originAddress}
-              destinationAddress={destinationAddress}
-              pickupDateTime={pickupDateTime}
+            <LocationStep 
+              onNextStep={handleNextStep}
+              isEditing={isEditing}
+              onLocationDetected={handleLocationDetected}
               onOriginChange={setOriginAddress}
               onDestinationChange={setDestinationAddress}
               onOriginSelect={handleOriginSelect}
               onDestinationSelect={handleDestinationSelect}
-              onLocationDetected={handleLocationDetected}
               onRouteCalculated={handleRouteCalculated}
-              onDateTimeChange={setPickupDateTime}
-              onNext={handleNextStep}
-              isEditing={isEditing} // Passer l'information d'édition au composant enfant
+              onDateTimeChange={setPickupDateTime} 
+              pickupDateTime={pickupDateTime}
+              originAddress={originAddress}
+              destinationAddress={destinationAddress}
             />
           ) : (
             <VehicleStep
@@ -142,11 +101,9 @@ export default function ReservationPage({ isEditing = false }: ReservationPagePr
               onOptionsChange={setOptions}
               onPrevious={handlePrevStep}
               onConfirm={isEditing ? handleCompleteReservation : handleReservation}
-              isEditing={isEditing} // Passer l'information d'édition au composant enfant
+              isEditing={isEditing}
             />
           )}
-          
-          {/* Supprimé le bouton dupliqué ici */}
         </div>
       </div>
     </section>

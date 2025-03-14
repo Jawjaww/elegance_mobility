@@ -1,119 +1,243 @@
 "use client";
 
-import React, { useMemo } from "react";
+import { useEffect, useState } from "react";
+import { useReservationStore } from "@/lib/stores/reservationStore";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { MapPin, ArrowRight } from "lucide-react";
 import { AutocompleteInput } from "@/components/AutocompleteInput";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { Coordinates } from "@/lib/types/map-types";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import dynamic from "next/dynamic";
-import type { LocationStepProps, MapMarker } from "@/lib/types";
-import type { LatLngTuple } from "leaflet";
 
-const LeafletMap = dynamic(() => import("@/components/map/LeafletMap"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[400px] rounded-lg bg-neutral-800/50 animate-pulse" />
-  ),
-});
+// Import dynamique de MapLibre à la place de Leaflet
+import DynamicMapLibreMap from "@/components/map/DynamicMapLibreMap";
 
-const LocationStep: React.FC<LocationStepProps> = ({
-  originAddress,
-  destinationAddress,
+// Interface complète avec toutes les props nécessaires
+export interface LocationStepProps {
+  onNextStep: () => void;
+  isEditing?: boolean;
+  onLocationDetected?: (coords: Coordinates) => void;
+  onOriginChange?: (address: string) => void;
+  onDestinationChange?: (address: string) => void;
+  onOriginSelect?: (address: string, coords: Coordinates) => void;
+  onDestinationSelect?: (address: string, coords: Coordinates) => void;
+  onRouteCalculated?: (distance: number, duration: number) => void;
+  onDateTimeChange?: (date: Date) => void;
+  pickupDateTime?: Date;
+  originAddress?: string;
+  destinationAddress?: string;
+}
+
+export function LocationStep({ 
+  onNextStep,
+  isEditing = false,
+  onLocationDetected,
   onOriginChange,
   onDestinationChange,
   onOriginSelect,
   onDestinationSelect,
   onRouteCalculated,
-  onNext,
-  origin,
-  destination,
-  pickupDateTime,
   onDateTimeChange,
-}) => {
-  const markers: MapMarker[] = useMemo(
-    () => [
-      ...(origin
-        ? [
-            {
-              position: [origin.lat, origin.lng] as LatLngTuple,
-              address: originAddress,
-              color: "darkgreen" as const,
-            },
-          ]
-        : []),
-      ...(destination
-        ? [
-            {
-              position: [destination.lat, destination.lng] as LatLngTuple,
-              address: destinationAddress,
-              color: "red" as const,
-            },
-          ]
-        : []),
-    ],
-    [origin, destination, originAddress, destinationAddress]
-  );
+  pickupDateTime,
+  originAddress,
+  destinationAddress
+}: LocationStepProps) {
+  const store = useReservationStore();
+  const [formValid, setFormValid] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  
+  // État local pour suivre les modifications
+  const [mapKey, setMapKey] = useState(() => `map-${Date.now()}`);
 
-  const isNextDisabled = !origin || !destination;
+  // Validation du formulaire
+  useEffect(() => {
+    const valid = Boolean(
+      store.departure && store.destination && store.distance && store.duration
+    );
+    setFormValid(valid);
+  }, [store.departure, store.destination, store.distance, store.duration]);
+
+  // Effet pour contrôler l'affichage de la carte avec un délai pour éviter les rendus multiples
+  useEffect(() => {
+    const hasValidPoints = Boolean(store.departure || store.destination);
+    
+    if (hasValidPoints && !showMap) {
+      const timer = setTimeout(() => {
+        setShowMap(true);
+      }, 100);
+      return () => clearTimeout(timer);
+    } else if (!hasValidPoints && showMap) {
+      setShowMap(false);
+    }
+  }, [store.departure, store.destination, showMap]);
+
+  // Gestion de la sélection du point de départ
+  const handleDepartureSelect = (lat: number, lon: number, address: string) => {
+    // Si l'adresse est vide, c'est une réinitialisation
+    if (!address || address.trim() === '') {
+      console.log("Réinitialisation du point de départ");
+      
+      // Changer la clé avant de réinitialiser pour éviter les problèmes de rendu
+      setMapKey(`map-dep-${Date.now()}`);
+      setShowMap(false);
+      
+      // Attendre un court instant avant de modifier le store pour éviter les problèmes de rendu
+      setTimeout(() => {
+        store.setDeparture(null);
+        store.setDistance(0);
+        store.setDuration(0);
+        onOriginChange?.('');
+        onOriginSelect?.('', { lat: 0, lon: 0 });
+      }, 50);
+      return;
+    }
+
+    console.log("Point de départ sélectionné:", address, { lat, lon });
+    store.setDeparture({
+      lat,
+      lon,
+      display_name: address,
+      address: {},
+    });
+    
+    onOriginChange?.(address);
+    onOriginSelect?.(address, { lat, lon });
+  };
+
+  // Gestion de la sélection de la destination
+  const handleDestinationSelect = (lat: number, lon: number, address: string) => {
+    // Si l'adresse est vide, c'est une réinitialisation
+    if (!address || address.trim() === '') {
+      console.log("Réinitialisation de la destination");
+      
+      // Changer la clé avant de réinitialiser pour éviter les problèmes de rendu
+      setMapKey(`map-dest-${Date.now()}`);
+      setShowMap(false);
+      
+      // Attendre un court instant avant de modifier le store pour éviter les problèmes de rendu
+      setTimeout(() => {
+        store.setDestination(null);
+        store.setDistance(0);
+        store.setDuration(0);
+        onDestinationChange?.('');
+        onDestinationSelect?.('', { lat: 0, lon: 0 });
+      }, 50);
+      return;
+    }
+
+    console.log("Destination sélectionnée:", address, { lat, lon });
+    store.setDestination({
+      lat,
+      lon,
+      display_name: address,
+      address: {},
+    });
+    
+    onDestinationChange?.(address);
+    onDestinationSelect?.(address, { lat, lon });
+  };
+
+  // Gestion du calcul d'itinéraire
+  const handleRouteCalculated = (distance: number, duration: number = 0) => {
+    const distanceKm = Math.round(distance / 1000);
+    const durationMin = Math.round(duration / 60);
+    
+    store.setDistance(distanceKm); // Convertir en km
+    store.setDuration(durationMin); // Convertir en minutes
+    
+    // Appeler la fonction de callback si elle existe
+    onRouteCalculated?.(distance, duration);
+  };
+
+  // Gestion de la détection de la position
+  const handleLocationDetection = (coords: Coordinates) => {
+    onLocationDetected?.(coords);
+  };
 
   return (
     <div className="space-y-8">
-      <div className="grid gap-6">
-        <div>
-          <label className="text-lg font-semibold text-neutral-100 mb-2 block">
-            Point de départ
-          </label>
-          <AutocompleteInput
-            id="origin-input"
-            value={originAddress}
-            onChange={onOriginChange}
-            onSelect={onOriginSelect}
-            placeholder="Entrez votre adresse de départ"
-            className="w-full bg-neutral-800 text-neutral-100 border-neutral-700 placeholder:text-neutral-400"
-          />
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold mb-4">Sélectionner votre trajet</h2>
+
+        <div className="space-y-6">
+          {/* Point de départ */}
+          <div>
+            <Label className="mb-2 block">Point de départ</Label>
+            <div className="relative">
+              <div className="absolute left-3 top-3 text-neutral-500">
+                <MapPin className="h-5 w-5" />
+              </div>
+              <AutocompleteInput
+                id="departure-input"
+                value={originAddress || store.departure?.display_name || ""}
+                onSelect={handleDepartureSelect}
+                placeholder="Entrez une adresse de départ"
+                className="pl-10"
+              />
+            </div>
+          </div>
+
+          {/* Destination */}
+          <div>
+            <Label className="mb-2 block">Destination</Label>
+            <div className="relative">
+              <div className="absolute left-3 top-3 text-neutral-500">
+                <ArrowRight className="h-5 w-5" />
+              </div>
+              <AutocompleteInput
+                id="destination-input"
+                value={destinationAddress || store.destination?.display_name || ""}
+                onSelect={handleDestinationSelect}
+                placeholder="Entrez une adresse de destination"
+                className="pl-10"
+              />
+            </div>
+          </div>
         </div>
+      </Card>
 
-        <DateTimePicker
-          id="pickup-datetime"
-          label="Date et heure de prise en charge"
-          value={pickupDateTime}
-          onChange={onDateTimeChange}
-        />
-
-        <div>
-          <label className="text-lg font-semibold text-neutral-100 mb-2 block">
-            Destination
-          </label>
-          <AutocompleteInput
-            id="destination-input"
-            value={destinationAddress}
-            onChange={onDestinationChange}
-            onSelect={onDestinationSelect}
-            placeholder="Entrez votre destination"
-            className="w-full bg-neutral-800 text-neutral-100 border-neutral-700 placeholder:text-neutral-400"
+      {/* Modifié: Afficher la carte avec une clé stable et un état de contrôle */}
+      {showMap && (
+        <Card className="p-0 h-[400px] overflow-hidden">
+          <DynamicMapLibreMap
+            key={mapKey}
+            origin={store.departure}
+            destination={store.destination}
+            onRouteCalculated={handleRouteCalculated}
+            enableRouting={Boolean(store.departure && store.destination)}
           />
-        </div>
-      </div>
+        </Card>
+      )}
 
-      <div className="relative rounded-lg overflow-hidden">
-        <LeafletMap
-          markers={markers}
-          enableRouting={!!(origin && destination)}
-          onRouteCalculated={onRouteCalculated}
-          className="h-[400px]"
-        />
-      </div>
+      {/* Détails de la route si disponibles */}
+      {store.distance !== null && store.duration !== null && store.distance > 0 && store.duration > 0 && store.departure && store.destination && (
+        <Card className="p-4 bg-neutral-900">
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-sm text-neutral-400">Distance estimée</p>
+              <p className="font-medium text-white">{store.distance} km</p>
+            </div>
+            <div>
+              <p className="text-sm text-neutral-400 text-right">Durée estimée</p>
+              <p className="font-medium text-white text-right">{store.duration} min</p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <div className="flex justify-end">
         <Button
-          onClick={onNext}
-          disabled={isNextDisabled}
-          className="py-2 inline-flex items-center justify-center text-sm font-medium ring-offset-background disabled:pointer-events-none disabled:opacity-50 h-11 px-8 bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 transition-all duration-300 ease-out rounded-md"
+          onClick={onNextStep}
+          disabled={!formValid}
+          className="px-8"
         >
-          Continuer
+          {isEditing ? "Mettre à jour" : "Continuer"}
         </Button>
       </div>
     </div>
   );
-};
+}
 
-export default React.memo(LocationStep);
+export default LocationStep;

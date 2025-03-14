@@ -15,15 +15,9 @@ import {
 import { useUnassignedRidesStore } from "@/lib/unassignedRidesStore"
 import { useDriversStore } from "@/lib/driversStore"
 import { supabase } from "@/lib/supabaseClient"
-import type { Vehicle } from "@/lib/types"
-import dynamic from "next/dynamic"
-
-const DynamicMap = dynamic(() => import("@/components/map/DynamicLeafletMap"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[300px] w-full animate-pulse bg-neutral-800 rounded-lg" />
-  ),
-})
+import { Vehicle } from "@/lib/types/types"
+import { Location } from "@/lib/types/map-types"
+import MapLibreMap from "@/components/map/MapLibreMap"
 
 export default function AssignRidePage() {
   const params = useParams()
@@ -86,6 +80,21 @@ export default function AssignRidePage() {
 
   const activeDrivers = drivers.filter((d) => d.status === "active")
 
+  // Création des objets Location pour la carte MapLibre
+  const departure: Location = {
+    display_name: ride.pickup_address,
+    lat: ride.pickup_lat,
+    lon: ride.pickup_lon,
+    address: { formatted: ride.pickup_address }
+  }
+  
+  const destination: Location = {
+    display_name: ride.dropoff_address,
+    lat: ride.dropoff_lat,
+    lon: ride.dropoff_lon,
+    address: { formatted: ride.dropoff_address }
+  }
+
   return (
     <div className="container mx-auto py-10">
       <Card className="p-6 space-y-6">
@@ -115,17 +124,10 @@ export default function AssignRidePage() {
           </div>
 
           <div className="h-[300px] rounded-lg overflow-hidden">
-            <DynamicMap
-              markers={[
-                {
-                  position: [ride.pickup_lat, ride.pickup_lng],
-                  popup: "Départ",
-                },
-                {
-                  position: [ride.dropoff_lat, ride.dropoff_lng],
-                  popup: "Arrivée",
-                },
-              ]}
+            <MapLibreMap
+              departure={departure}
+              destination={destination}
+              onRouteCalculated={(distance, duration) => {}}
             />
           </div>
 

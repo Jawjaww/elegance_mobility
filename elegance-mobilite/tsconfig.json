@@ -20,24 +20,26 @@
     "incremental": true,
     "baseUrl": ".",
     "types": ["node"],
-  
     "paths": {
       "@/*": [
         "./src/*"
-      ]
+      ],
+      "*": ["./src/lib/@types/*"]
     },
     "plugins": [
       {
         "name": "next"
       }
-    ]
+    ],
+    "typeRoots": ["./node_modules/@types", "./src/lib/@types"]
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     "**/*.js",
     "**/*.jsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    "src/lib/@types/**/*.d.ts"
   ],
   "exclude": [
     "node_modules"

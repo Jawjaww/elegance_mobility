@@ -20,7 +20,7 @@ DROP TYPE IF EXISTS ride_status CASCADE;
 -- Create enums
 CREATE TYPE vehicle_type_enum AS ENUM ('STANDARD', 'PREMIUM', 'ELECTRIC', 'VAN');
 CREATE TYPE driver_status AS ENUM ('active', 'inactive');
-CREATE TYPE ride_status AS ENUM ('unassigned', 'pending', 'in-progress', 'completed', 'cancelled');
+CREATE TYPE ride_status AS ENUM ('unassigned', 'pending', 'in-progress', 'completed', 'canceled');
 
 -- Create users table linked to auth.users
 CREATE TABLE users (

@@ -6,7 +6,7 @@ interface Ride {
   clientName: string
   pickupAddress: string
   dropoffAddress: string
-  status: 'pending' | 'in-progress' | 'completed' | 'cancelled'
+  status: 'pending' | 'in-progress' | 'completed' | 'canceled'
   driverId: string | null
   createdAt: string
 }

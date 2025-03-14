@@ -59,7 +59,7 @@ async function createAdmin() {
     ]);
 
     if (!response.email || !response.password) {
-      console.log('Operation cancelled');
+      console.log('Operation canceled');
       process.exit(0);
     }
 

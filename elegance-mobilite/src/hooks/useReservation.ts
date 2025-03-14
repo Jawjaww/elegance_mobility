@@ -3,7 +3,8 @@
 import { useState, useCallback } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from 'next/navigation';
-import { Coordinates, VehicleType, VehicleOptions } from '../lib/types';
+import { Coordinates } from '../lib/types/map-types';
+import { VehicleType, VehicleOptions } from '../lib/types/vehicle.types';
 import { useReservationStore } from '../lib/stores/reservationStore';
 
 interface LocationState {
@@ -20,8 +21,25 @@ export function useReservation() {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const reservationStore = useReservationStore();
-  const [origin, setOrigin] = useState<Coordinates | undefined>(reservationStore.departure ? { lat: reservationStore.departure.lat, lng: reservationStore.departure.lon } : undefined);
-  const [destination, setDestination] = useState<Coordinates | undefined>(reservationStore.destination ? { lat: reservationStore.destination.lat, lng: reservationStore.destination.lon } : undefined);
+  
+  // Standardisation sur lon et gestion des cas null
+  const [origin, setOrigin] = useState<Coordinates | undefined>(() => {
+    if (!reservationStore.departure) return undefined;
+    return { 
+      lat: reservationStore.departure.lat, 
+      lon: reservationStore.departure.lon 
+    };
+  });
+  
+  const [destination, setDestination] = useState<Coordinates | undefined>(() => {
+    if (!reservationStore.destination || !reservationStore.departure) return undefined;
+    return { 
+      lat: reservationStore.destination.lat, 
+      lon: reservationStore.destination.lon 
+    };
+  });
+  
+  // Reste du code inchangé
   const [originAddress, setOriginAddress] = useState(reservationStore.departure?.display_name || "");
   const [destinationAddress, setDestinationAddress] = useState(reservationStore.destination?.display_name || "");
   const [pickupDateTime, setPickupDateTime] = useState(() => {
@@ -35,7 +53,7 @@ export function useReservation() {
   const [options, setOptions] = useState<VehicleOptions>(() => 
     reservationStore.selectedOptions.reduce((acc, option) => ({ 
       ...acc, [option]: true 
-    }), { childSeat: false, pets: false } as VehicleOptions)
+    }), { childSeat: false, petFriendly: false } as VehicleOptions)
   );
 
   const handleNextStep = useCallback(() => {
@@ -60,6 +78,7 @@ export function useReservation() {
 
   const router = useRouter();
 
+  // Utilisation cohérente de lon
   const handleReservation = useCallback(() => {
     console.log("handleReservation called");
     if (!origin || !destination) {
@@ -71,19 +90,22 @@ export function useReservation() {
     }
 
     try {
-      // Update store with all information
-      reservationStore.setDeparture({
-        lat: origin.lat,
-        lon: origin.lng,
-        display_name: originAddress,
-        address: {}
-      });
-      reservationStore.setDestination({
-        lat: destination.lat,
-        lon: destination.lng,
-        display_name: destinationAddress,
-        address: {}
-      });
+      // Update store with all information with lon
+      if (origin && destination) {
+        reservationStore.setDeparture({
+          lat: origin.lat,
+          lon: origin.lon,
+          display_name: originAddress,
+          address: {}
+        });
+        
+        reservationStore.setDestination({
+          lat: destination.lat,
+          lon: destination.lon,
+          display_name: destinationAddress,
+          address: {}
+        });
+      }
       reservationStore.setSelectedVehicle(vehicleType);
       reservationStore.setDistance(distance);
       reservationStore.setDuration(duration);
@@ -107,8 +129,12 @@ export function useReservation() {
         }
       });
 
-      // Use Next.js router for navigation
-      router.push('/reservation/confirmation');
+      // Vérifier si nous sommes en mode édition
+      const editingId = localStorage.getItem('currentEditingReservationId');
+      const urlParams = editingId ? `?edit=true&id=${editingId}` : '';
+
+      // Use Next.js router for navigation - toujours rediriger vers la page de confirmation
+      router.push(`/reservation/confirmation${urlParams}`);
     } catch (error) {
       console.error('Error saving reservation:', error);
       toast({
@@ -131,11 +157,19 @@ export function useReservation() {
     });
   }, []);
 
+  // Mise à jour des gestionnaires pour utiliser lon et gérer les valeurs nulles
   const handleOriginSelect = useCallback((address: string, coords: Coordinates) => {
-    if (address === '') {
+    if (!address || address.trim() === '') {
       setOrigin(undefined);
       setOriginAddress('');
       setPickup(DEFAULT_LOCATION_STATE);
+      // Réinitialiser le store avec null explicitement
+      reservationStore.setDeparture(null);
+      // Réinitialiser la distance et la durée car l'itinéraire n'est plus valide
+      setDistance(0);
+      setDuration(0);
+      reservationStore.setDistance(0);
+      reservationStore.setDuration(0);
     } else {
       setOrigin(coords);
       setOriginAddress(address);
@@ -143,14 +177,28 @@ export function useReservation() {
         raw: address,
         validated: { location: coords }
       });
+      // Mettre à jour le store avec un objet Location valide
+      reservationStore.setDeparture({
+        lat: coords.lat,
+        lon: coords.lon,
+        display_name: address,
+        address: {}
+      });
     }
-  }, []);
+  }, [reservationStore]);
 
   const handleDestinationSelect = useCallback((address: string, coords: Coordinates) => {
-    if (address === '') {
+    if (!address || address.trim() === '') {
       setDestination(undefined);
       setDestinationAddress('');
       setDropoff(DEFAULT_LOCATION_STATE);
+      // Réinitialiser le store avec null explicitement
+      reservationStore.setDestination(null);
+      // Réinitialiser la distance et la durée car l'itinéraire n'est plus valide
+      setDistance(0);
+      setDuration(0);
+      reservationStore.setDistance(0);
+      reservationStore.setDuration(0);
     } else {
       setDestination(coords);
       setDestinationAddress(address);
@@ -158,15 +206,30 @@ export function useReservation() {
         raw: address,
         validated: { location: coords }
       });
+      // Mettre à jour le store avec un objet Location valide
+      reservationStore.setDestination({
+        lat: coords.lat,
+        lon: coords.lon,
+        display_name: address,
+        address: {}
+      });
     }
-  }, []);
+  }, [reservationStore]);
 
   const handleRouteCalculated = useCallback((newDistance: number, newDuration: number) => {
     // Convert distance from meters to kilometers
-    setDistance(Math.round(newDistance / 1000));
+    const distanceKm = Math.round(newDistance / 1000);
     // Duration is in seconds, convert to minutes
-    setDuration(Math.round(newDuration / 60));
-  }, []);
+    const durationMin = Math.round(newDuration / 60);
+    
+    // Mettre à jour l'état local
+    setDistance(distanceKm);
+    setDuration(durationMin);
+    
+    // Mettre à jour le store
+    reservationStore.setDistance(distanceKm);
+    reservationStore.setDuration(durationMin);
+  }, [reservationStore]);
 
   const handleOptionsChange = useCallback((newOptions: VehicleOptions) => {
     setOptions(newOptions);

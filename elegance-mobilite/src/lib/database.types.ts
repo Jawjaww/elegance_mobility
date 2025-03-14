@@ -8,7 +8,7 @@ export type Json =
 
 export type VehicleType = 'STANDARD' | 'PREMIUM' | 'ELECTRIC' | 'VAN';
 export type DriverStatus = 'active' | 'inactive';
-export type RideStatus = 'unassigned' | 'pending' | 'in-progress' | 'completed' | 'cancelled';
+export type RideStatus = 'unassigned' | 'pending' | 'in-progress' | 'completed' | 'canceled';
 export type UserRole = 'admin' | 'client' | 'driver';
 
 export interface UserMetadata {

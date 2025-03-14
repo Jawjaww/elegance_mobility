@@ -33,3 +33,143 @@
     }
   }
 }
+
+/* Variables pour le thème */
+@layer base {
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-neutral-950 text-neutral-100;
+  }
+  
+  /* Styles pour les formulaires */
+  input, select, textarea {
+    @apply bg-neutral-800 text-neutral-100 border-neutral-700 placeholder:text-neutral-400;
+  }
+  
+  /* Suppression du style par défaut générique qui surcharge tous les boutons */
+  button:not(.unstyled) {
+    @apply inline-flex items-center justify-center text-sm font-medium transition-all duration-300 rounded-md;
+  }
+}
+
+@layer components {
+  /* Card styles */
+  .card-elegant {
+    @apply bg-neutral-900/50 backdrop-blur-lg rounded-lg border border-neutral-800 p-8;
+  }
+  
+  /* Input container style */
+  .form-group {
+    @apply space-y-2;
+  }
+  
+  /* Label style */
+  .form-label {
+    @apply text-lg font-semibold text-neutral-100 mb-2 block;
+  }
+  
+  /* Background effects */
+  .bg-elegant-gradient {
+    @apply relative;
+  }
+  
+  .bg-elegant-gradient::before {
+    @apply content-[''] absolute inset-0 bg-neutral-950/90 backdrop-blur-3xl -z-10;
+  }
+  
+  /* Elegant backdrop */
+  .elegant-backdrop {
+    @apply bg-neutral-900/50 backdrop-blur-lg rounded-lg border border-neutral-800;
+  }
+
+  /* Style des boutons gradient bleu */
+  .btn-gradient {
+    @apply py-2 inline-flex items-center justify-center text-sm font-medium h-11 px-8 bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 transition-all duration-300 ease-out rounded-md;
+  }
+  
+  /* Style des inputs */
+  .input-elegant {
+    @apply w-full bg-neutral-800 text-neutral-100 border-neutral-700 placeholder:text-neutral-400;
+  }
+
+  /* Bouton de position actuelle (taille réduite) */
+  .location-btn {
+    @apply py-1 px-3 h-auto text-xs flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-all;
+  }
+  
+  /* Pour les boutons dans les formulaires qui doivent être plus petits */
+  .btn-form {
+    @apply py-1 px-4 h-9 text-sm;
+  }
+  
+  /* Styles des boutons avec plus d'élégance et de variantes */
+  
+  /* Bouton principal avec gradient */
+  .btn-primary, 
+  .btn-gradient,
+  .button-primary {
+    @apply py-2 px-6 h-11 bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 transition-all duration-300 ease-out rounded-md shadow-md;
+  }
+  
+  /* Bouton secondaire avec bordure et fond subtil */
+  .btn-secondary,
+  .btn-outline,
+  .button-secondary {
+    @apply py-2 px-6 text-neutral-300 bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 hover:border-neutral-600 hover:text-white transition-all duration-300 ease-out rounded-md shadow-sm;
+  }
+  
+  /* Bouton destructif (annulation, suppression) */
+  .btn-destructive,
+  .button-destructive {
+    @apply py-2 px-6 bg-red-900/20 text-red-400 border border-red-900/30 hover:bg-red-900/40 hover:text-red-300 transition-all duration-300 ease-out rounded-md shadow-sm;
+  }
+  
+  /* Bouton bleu plein */
+  .btn-blue,
+  .button-blue {
+    @apply py-2 px-6 bg-blue-600 text-white hover:bg-blue-700 transition-all duration-300 ease-out rounded-md shadow-md;
+  }
+  
+  /* Bouton de petite taille */
+  .btn-sm,
+  .button-sm {
+    @apply py-1 px-4 h-9 text-sm;
+  }
+  
+  /* Bouton transparent avec texte coloré */
+  .btn-ghost,
+  .button-ghost {
+    @apply py-1 px-3 bg-transparent text-neutral-300 hover:bg-neutral-800/50 hover:text-white transition-all duration-300 ease-out rounded-md;
+  }
+  
+  /* Bouton de localisation (taille adaptée) */
+  .location-btn {
+    @apply py-1.5 px-3 h-auto text-xs flex items-center justify-center bg-blue-600/80 hover:bg-blue-700 text-white border border-blue-500 rounded-md shadow-sm transition-all;
+  }
+}

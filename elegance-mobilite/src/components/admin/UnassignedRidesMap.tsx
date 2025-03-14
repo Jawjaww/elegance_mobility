@@ -4,16 +4,9 @@ import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 import { useEffect } from "react"
 import { useUnassignedRidesStore } from "@/lib/unassignedRidesStore"
-import type { MapMarker } from "@/lib/types"
-import type { LatLngTuple } from "leaflet"
+import { MapMarker } from "@/lib/types/map-types"
 import { Card } from "@/components/ui/card"
-
-const DynamicMap = dynamic(() => import("@/components/map/DynamicLeafletMap"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[300px] w-full animate-pulse bg-neutral-800 rounded-lg" />
-  ),
-})
+import MapLibreMap from "@/components/map/MapLibreMap" // Nouveau composant MapLibre
 
 export function UnassignedRidesMap() {
   const router = useRouter()
@@ -39,17 +32,38 @@ export function UnassignedRidesMap() {
     )
   }
 
-  const markers: MapMarker[] = rides.map((ride) => {
-    const position: LatLngTuple = [ride.pickup_lat, ride.pickup_lng]
-    return {
-      position,
-      popup: `Course #${ride.id} - ${new Date(ride.pickup_time).toLocaleString()}`,
-      onClick: () => router.push(`/admin/rides/${ride.id}/assign`),
-      color: "red"
-    }
-  })
+  if (rides.length === 0) {
+    return (
+      <Card className="p-6">
+        <div className="mb-4">
+          <h2 className="text-xl font-bold">Courses non attribuées</h2>
+          <p className="text-sm text-neutral-400">
+            Aucune course en attente d&apos;attribution
+          </p>
+        </div>
+        <div className="h-[300px] rounded-lg flex items-center justify-center bg-neutral-800/50">
+          <p className="text-neutral-400">Aucune course non attribuée</p>
+        </div>
+      </Card>
+    )
+  }
 
-  const initialCenter: LatLngTuple = markers[0]?.position || [48.8566, 2.3522]
+  // Créer la location de départ pour la première course
+  const firstRide = rides[0]
+  const departure = firstRide ? {
+    display_name: firstRide.pickup_address,
+    lat: firstRide.pickup_lat,
+    lon: firstRide.pickup_lon,
+    address: { formatted: firstRide.pickup_address }
+  } : null
+  
+  // Utiliser Paris comme valeur par défaut
+  const initialCenter = departure || {
+    display_name: "Paris",
+    lat: 48.8566,
+    lon: 2.3522,
+    address: { formatted: "Paris, France" }
+  }
 
   return (
     <Card className="p-6">
@@ -61,17 +75,10 @@ export function UnassignedRidesMap() {
         </p>
       </div>
       <div className="h-[300px] rounded-lg overflow-hidden">
-        {rides.length > 0 ? (
-          <DynamicMap 
-            markers={markers}
-            initialCenter={initialCenter}
-            initialZoom={12}
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center bg-neutral-800/50">
-            <p className="text-neutral-400">Aucune course non attribuée</p>
-          </div>
-        )}
+        <MapLibreMap
+          departure={initialCenter}
+          destination={null}
+        />
       </div>
     </Card>
   )

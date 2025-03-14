@@ -5,7 +5,7 @@ import { useEffect } from "react"
 
 export type DeliveryRun = {
   id: string
-  status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled"
+  status: "pending" | "assigned" | "in_progress" | "completed" | "canceled"
   customer_name: string
   customer_phone?: string
   customer_email?: string

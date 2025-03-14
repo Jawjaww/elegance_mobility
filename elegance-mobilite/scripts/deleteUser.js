@@ -38,7 +38,7 @@ async function deleteUser() {
     });
 
     if (!response.email) {
-      console.log('Operation cancelled');
+      console.log('Operation canceled');
       process.exit(0);
     }
 

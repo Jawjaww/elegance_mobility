@@ -1,4 +1,4 @@
-# Configuration de la Base de Données Elegance Mobilité
+# Configuration de la Base de Données Vector Elegans
 
 ## Structure
 
@@ -40,7 +40,7 @@ Les types énumérés suivants sont utilisés :
 
 - `vehicle_type_enum` : STANDARD, PREMIUM, ELECTRIC, VAN
 - `driver_status` : active, inactive
-- `ride_status` : pending, confirmed, cancelled
+- `ride_status` : pending, confirmed, canceled
 
 ## Relations
 

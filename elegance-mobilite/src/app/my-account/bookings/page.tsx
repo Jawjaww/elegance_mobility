@@ -18,7 +18,7 @@ interface Booking {
   pickup_time: string;
   vehicle_type: string;
   distance: number;
-  status: "pending" | "confirmed" | "completed" | "cancelled";
+  status: "pending" | "confirmed" | "completed" | "canceled";
   price: number;
   created_at: string;
 }
@@ -87,7 +87,7 @@ export default function BookingsPage() {
           // Mettre à jour la liste des réservations
           setBookings(bookings.map(booking => 
             booking.id === bookingId 
-              ? { ...booking, status: "cancelled" } 
+              ? { ...booking, status: "canceled" } 
               : booking
           ));
         } else {
@@ -117,7 +117,7 @@ export default function BookingsPage() {
         return <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20">Confirmée</Badge>;
       case "completed":
         return <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">Terminée</Badge>;
-      case "cancelled":
+      case "canceled":
         return <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20">Annulée</Badge>;
       default:
         return <Badge variant="outline">Inconnue</Badge>;

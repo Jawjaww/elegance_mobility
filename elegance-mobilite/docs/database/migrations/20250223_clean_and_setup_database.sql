@@ -15,7 +15,7 @@ DROP TYPE IF EXISTS user_role CASCADE;
 -- Create enums
 CREATE TYPE vehicle_type_enum AS ENUM ('STANDARD', 'PREMIUM', 'ELECTRIC', 'VAN');
 CREATE TYPE driver_status AS ENUM ('active', 'inactive');
-CREATE TYPE ride_status AS ENUM ('unassigned', 'pending', 'in-progress', 'completed', 'cancelled');
+CREATE TYPE ride_status AS ENUM ('unassigned', 'pending', 'in-progress', 'completed', 'canceled');
 CREATE TYPE user_role AS ENUM ('superAdmin', 'admin', 'client', 'driver');
 
 -- Create users table first (as it's referenced by drivers)

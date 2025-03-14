@@ -10,9 +10,9 @@ export interface BookingData {
   pickup_time: string;     
   estimated_price: number; 
   pickup_lat?: number;
-  pickup_lon?: number;
+  pickup_lon?: number;  // Standardisé sur lon
   dropoff_lat?: number;
-  dropoff_lon?: number;
+  dropoff_lon?: number;  // Standardisé sur lon
   distance?: number;
   duration?: number;
   vehicle_type?: string;
@@ -23,7 +23,7 @@ export interface BookingData {
 export interface RideStop {
   address: string;
   lat?: number;
-  lon?: number;
+  lon?: number;  // Standardisé sur lon
   estimated_arrival?: string;
   estimated_wait_time?: number;
   notes?: string;
@@ -90,9 +90,9 @@ class BookingService {
           estimated_price: bookingData.estimated_price,
           status: 'pending',
           pickup_lat: bookingData.pickup_lat,
-          pickup_lon: bookingData.pickup_lon,
+          pickup_lon: bookingData.pickup_lon,  // Standardisé sur lon
           dropoff_lat: bookingData.dropoff_lat,
-          dropoff_lon: bookingData.dropoff_lon,
+          dropoff_lon: bookingData.dropoff_lon,  // Standardisé sur lon
           distance: bookingData.distance,
           duration: bookingData.duration,
           vehicle_type: bookingData.vehicle_type,
@@ -203,10 +203,10 @@ class BookingService {
   async cancelBooking(bookingId: string): Promise<{ success: boolean; error?: string }> {
     try {
       return await this.retryOperation(async () => {
-        // Mettre à jour le statut à "cancelled"
+        // Mettre à jour le statut à "canceled"
         const { error } = await supabase
           .from('rides')
-          .update({ status: 'cancelled' })
+          .update({ status: 'canceled' })
           .eq('id', bookingId);
           
         if (error) {
@@ -247,7 +247,7 @@ class BookingService {
         
         const nextOrder = lastStop ? lastStop.stop_order + 1 : 1;
         
-        // Insérer le nouvel arrêt
+        // Insérer le nouvel arrêt avec lon standardisé
         const { error } = await supabase
           .from('ride_stops')
           .insert({
@@ -255,7 +255,7 @@ class BookingService {
             stop_order: nextOrder,
             address: stop.address,
             lat: stop.lat,
-            lon: stop.lon,
+            lon: stop.lon,  // Standardisé sur lon
             estimated_arrival: stop.estimated_arrival,
             estimated_wait_time: stop.estimated_wait_time,
             notes: stop.notes

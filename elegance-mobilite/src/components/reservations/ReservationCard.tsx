@@ -62,7 +62,7 @@ const translateStatus = (status: string) => {
     'assigned': { label: 'Chauffeur assigné', color: 'bg-blue-500/20 text-blue-500' },
     'in_progress': { label: 'En cours', color: 'bg-purple-500/20 text-purple-500' },
     'completed': { label: 'Terminée', color: 'bg-neutral-500/20 text-neutral-400' },
-    'cancelled': { label: 'Annulée', color: 'bg-red-500/20 text-red-400' }, // 'cancelled' au lieu de 'canceled'
+    'canceled': { label: 'Annulée', color: 'bg-red-500/20 text-red-400' }, // 'canceled' au lieu de 'canceled'
   };
   
   return statusMap[status] || { label: status, color: 'bg-neutral-500/20 text-neutral-400' };
@@ -79,7 +79,7 @@ export function ReservationCard({ reservation, onCancel, onEdit, isPast = false 
   );
   
   const status = translateStatus(reservation.status);
-  // Utiliser 'cancelled' au lieu de 'canceled' et vérifier si la réservation est modifiable
+  // Utiliser 'canceled' au lieu de 'canceled' et vérifier si la réservation est modifiable
   const canCancel = ['pending', 'confirmed'].includes(reservation.status) && !isPast;
   const canEdit = ['pending', 'confirmed'].includes(reservation.status) && !isPast && onEdit;
 

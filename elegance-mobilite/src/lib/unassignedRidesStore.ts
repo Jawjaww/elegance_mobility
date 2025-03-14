@@ -4,9 +4,9 @@ import { supabase } from '@/utils/supabase/client';
 interface UnassignedRide {
   id: string;
   pickup_lat: number;
-  pickup_lng: number;
+  pickup_lon: number; // Standardisé sur lon uniquement
   dropoff_lat: number;
-  dropoff_lng: number;
+  dropoff_lon: number; // Standardisé sur lon uniquement
   pickup_address: string;
   dropoff_address: string;
   pickup_time: string;

@@ -7,30 +7,93 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import DynamicLeafletMap from "@/components/map/DynamicLeafletMap";
+import MapLibreMap from "@/components/map/MapLibreMap"; 
 import { AutocompleteInput } from "../AutocompleteInput";
 import { LoadingSpinner } from "../ui/loading-spinner";
-import { Suspense } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import React from "react";
+// Importer correctement les types depuis le bon chemin
+import { MapMarker, Location } from '@/lib/types/map-types';
 
-export function ReservationForm() {
+
+// Ajout d'une interface pour les props du composant
+export interface ReservationFormProps {
+  editMode?: boolean;
+  reservationId?: string | null;
+}
+
+export const ReservationForm: React.FC<ReservationFormProps> = ({ 
+  editMode = false,
+  reservationId
+}) => {
   const router = useRouter();
   const store = useReservationStore();
-
-  const origin = store.departure ? {
-    lat: store.departure.lat,
-    lng: store.departure.lon
-  } : null;
-
-  const destinationCoords = store.destination ? {
-    lat: store.destination.lat,
-    lng: store.destination.lon
-  } : null;
+  const [mapReady, setMapReady] = useState(false);
+  const [mapKey, setMapKey] = useState(`map-${Date.now()}`);
+  const renderedRef = useRef(false);
+  // Ajouter l'état des marqueurs qui manquait
+  const [markers, setMarkers] = useState<MapMarker[]>([]);
+  
+  // Effet pour gérer le rendu initial et les coordonnées en mode édition
+  useEffect(() => {
+    // Éviter les rendus multiples qui peuvent causer des boucles
+    if (editMode && store.departure && store.destination && !renderedRef.current) {
+      // Marquer comme rendu pour éviter les appels répétés
+      renderedRef.current = true;
+      
+      // Forcer un re-rendu de la carte après chargement complet des données
+      console.log("Forçage du rendu de la carte en mode édition - une seule fois");
+      setMapKey(`map-edit-${Date.now()}`);
+      setMapReady(true);
+    }
+  }, [editMode, store.departure, store.destination]);
+  
+  // Effet pour mettre à jour les marqueurs quand les coordonnées changent
+  useEffect(() => {
+    const newMarkers: MapMarker[] = [];
+    
+    if (store.departure && typeof store.departure.lat === 'number' && 
+       typeof store.departure.lon === 'number') {
+      newMarkers.push({
+        position: [
+          store.departure.lon,
+          store.departure.lat
+        ],
+        address: store.departure.display_name,
+        color: "green"
+      });
+    }
+    
+    if (store.destination && typeof store.destination.lat === 'number' && 
+       typeof store.destination.lon === 'number') {
+      newMarkers.push({
+        position: [
+          store.destination.lon,
+          store.destination.lat
+        ],
+        address: store.destination.display_name,
+        color: "red"
+      });
+    }
+    
+    setMarkers(newMarkers);
+  }, [store.departure, store.destination]);
 
   const handleNextStep = () => {
     try {
-      console.log("Navigation vers la page de confirmation...");
-      router.push("/reservation/confirmation");
+      // Obtenir l'ID de réservation pour le mode édition
+      const editingId = localStorage.getItem('currentEditingReservationId');
+      
+      console.log("Navigation vers la page de confirmation...", 
+        editMode ? `(Mode édition, ID: ${editingId})` : "(Nouvelle réservation)");
+      
+      // Passer l'ID en paramètre de requête si en mode édition
+      if (editMode && editingId) {
+        router.push(`/reservation/confirmation?id=${editingId}`);
+      } else {
+        router.push("/reservation/confirmation");
+      }
     } catch (error) {
       console.error("Erreur de navigation:", error);
       // Fallback en cas d'échec du router
@@ -49,6 +112,39 @@ export function ReservationForm() {
     }
   };
 
+  // Adaptateurs pour les fonctions onSelect des inputs d'adresse
+  const handleOriginSelect = (lat: number, lon: number, address: string) => {
+    // Créer un objet Location complet au lieu de passer 3 paramètres séparés
+    const locationData = {
+      lat,
+      lon,
+      display_name: address,
+      address: { formatted: address }
+    };
+    store.setDeparture(locationData);
+  };
+
+  const handleDestinationSelect = (lat: number, lon: number, address: string) => {
+    // Créer un objet Location complet au lieu de passer 3 paramètres séparés
+    const locationData = {
+      lat,
+      lon, 
+      display_name: address,
+      address: { formatted: address }
+    };
+    store.setDestination(locationData);
+  };
+
+  // Handler pour les calculs de route
+  const handleRouteCalculated = (distance: number, duration: number) => {
+    // Éviter les recalculs non nécessaires qui peuvent causer des boucles de rendu
+    if (store.distance !== Math.round(distance / 1000) || 
+        store.duration !== Math.round(duration / 60)) {
+      store.setDistance(Math.round(distance / 1000)); // Convertir en km
+      store.setDuration(Math.round(duration / 60)); // Convertir en minutes
+    }
+  };
+
   return (
     <div className="container mx-auto py-8">
       <div className="grid gap-8 max-w-4xl mx-auto">
@@ -61,7 +157,7 @@ export function ReservationForm() {
               <AutocompleteInput
                 id="pickup-location"
                 value={store.departure?.display_name || ""}
-                onSelect={store.setDeparture}
+                onSelect={handleOriginSelect}
                 placeholder="Adresse de départ"
               />
             </div>
@@ -71,7 +167,7 @@ export function ReservationForm() {
               <AutocompleteInput
                 id="dropoff-location"
                 value={store.destination?.display_name || ""}
-                onSelect={store.setDestination}
+                onSelect={handleDestinationSelect}
                 placeholder="Adresse d'arrivée"
               />
             </div>
@@ -113,7 +209,7 @@ export function ReservationForm() {
                   <Switch
                     id="accueil"
                     checked={store.selectedOptions.includes("accueil")}
-                    onCheckedChange={(checked) => {
+                    onCheckedChange={() => {
                       store.toggleOption("accueil");
                     }}
                   />
@@ -123,7 +219,7 @@ export function ReservationForm() {
                   <Switch
                     id="boissons"
                     checked={store.selectedOptions.includes("boissons")}
-                    onCheckedChange={(checked) => {
+                    onCheckedChange={() => {
                       store.toggleOption("boissons");
                     }}
                   />
@@ -134,14 +230,14 @@ export function ReservationForm() {
           </div>
         </Card>
 
-        {(origin || destinationCoords) && (
+        {store.departure && store.destination && (
           <Suspense fallback={<Card className="p-6"><LoadingSpinner /></Card>}>
             <Card className="p-0 overflow-hidden">
-              <DynamicLeafletMap
-                origin={origin}
-                destination={destinationCoords}
-                enableRouting={!!(origin && destinationCoords)}
-                onRouteCalculated={(distance) => store.setDistance(distance)}
+              <MapLibreMap
+                key={mapKey}
+                departure={store.departure}
+                destination={store.destination}
+                onRouteCalculated={handleRouteCalculated}
               />
             </Card>
           </Suspense>
@@ -158,7 +254,7 @@ export function ReservationForm() {
           <Button
             onClick={handleNextStep}
             className="flex-1"
-            disabled={!origin || !destinationCoords || !store.pickupDateTime || !store.selectedVehicle}
+            disabled={!store.departure || !store.destination || !store.pickupDateTime || !store.selectedVehicle}
           >
             Continuer
           </Button>
@@ -166,4 +262,4 @@ export function ReservationForm() {
       </div>
     </div>
   );
-}
+};

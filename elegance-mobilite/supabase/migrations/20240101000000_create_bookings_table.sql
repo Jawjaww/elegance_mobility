@@ -1,7 +1,7 @@
 -- Création de la table des réservations
 
 -- Création d'un type enum pour les statuts de réservation
-CREATE TYPE booking_status AS ENUM ('pending', 'confirmed', 'completed', 'cancelled');
+CREATE TYPE booking_status AS ENUM ('pending', 'confirmed', 'completed', 'canceled');
 
 -- Création de la table des réservations
 CREATE TABLE public.bookings (

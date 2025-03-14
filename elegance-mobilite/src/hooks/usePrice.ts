@@ -1,81 +1,88 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useReservationStore } from '@/lib/stores/reservationStore';
+import { useState, useEffect, useCallback } from 'react';
 import { pricingService } from '@/lib/services/pricingService';
+import { useReservationStore } from '@/lib/stores/reservationStore';
+import { VehicleType } from '@/lib/types/vehicle.types';
 import { supabase } from '@/utils/supabase/client';
 
-interface PriceBreakdown {
-  basePrice: number;
-  optionsPrice: number;
-  totalPrice: number;
+// Définition du type pour les tarifs depuis la base de données
+interface RateData {
+  id: number;
+  vehicle_type: string;
+  price_per_km: number;
+  base_price: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export function usePrice() {
-  const { distance, selectedVehicle, selectedOptions } = useReservationStore();
-  const [price, setPrice] = useState<PriceBreakdown>({
-    basePrice: 0,
-    optionsPrice: 0,
-    totalPrice: 0,
-  });
+  const store = useReservationStore();
+  const [basePrice, setBasePrice] = useState(0);
+  const [optionsPrice, setOptionsPrice] = useState(0);
+  const [totalPrice, setTotalPrice] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  useEffect(() => {
-    const calculatePrice = async () => {
-      if (!distance || !selectedVehicle) {
-        setPrice({
-          basePrice: 0,
-          optionsPrice: 0,
-          totalPrice: 0,
-        });
-        setIsLoading(false);
-        return;
+  // Fonction pour calculer le prix, exposée pour les appels manuels
+  const calculatePrice = useCallback(async (
+    distance: number, 
+    vehicleType: VehicleType, 
+    options: string[]
+  ) => {
+    setIsLoading(true);
+    try {
+      if (!isInitialized) {
+        await pricingService.initialize();
+        setIsInitialized(true);
       }
 
-      setIsLoading(true);
-      setError(null);
+      const priceDetails = await pricingService.calculatePrice(
+        distance,
+        vehicleType,
+        options
+      );
+      
+      setBasePrice(priceDetails.basePrice);
+      setOptionsPrice(priceDetails.optionsPrice);
+      setTotalPrice(priceDetails.totalPrice);
 
-      try {
-        // Initialiser le service de tarification
-        await pricingService.initialize();
+      return priceDetails.totalPrice;
+    } catch (error) {
+      console.error("Erreur lors du calcul du prix:", error);
+      return 0;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isInitialized]);
 
-        // Calculer le prix
-        const priceData = await pricingService.calculatePrice(
-          distance,
-          selectedVehicle,
-          selectedOptions
+  // Calcul initial automatique basé sur le store
+  useEffect(() => {
+    const initPrice = async () => {
+      if (
+        store.distance && 
+        store.selectedVehicle && 
+        Array.isArray(store.selectedOptions)
+      ) {
+        await calculatePrice(
+          store.distance,
+          store.selectedVehicle as VehicleType,
+          store.selectedOptions
         );
-
-        setPrice(priceData);
-      } catch (err) {
-        console.error("Erreur lors du calcul du prix:", err);
-        setError("Impossible de calculer le prix. Veuillez réessayer plus tard.");
-        
-        // Valeurs par défaut en cas d'erreur
-        // Calcul minimal pour avoir un prix plutôt que NaN
-        const basePrice = distance * 2; // 2€/km par défaut
-        const optionsPrice = selectedOptions.length * 10; // 10€ par option par défaut
-        
-        setPrice({
-          basePrice: basePrice,
-          optionsPrice: optionsPrice,
-          totalPrice: basePrice + optionsPrice,
-        });
-      } finally {
-        setIsLoading(false);
+      } else {
+        setIsLoading(false); // Arrêter le chargement si les données ne sont pas disponibles
       }
     };
 
-    calculatePrice();
-  }, [distance, selectedVehicle, selectedOptions]);
+    initPrice();
+  }, [store.distance, store.selectedVehicle, store.selectedOptions, calculatePrice]);
 
   return {
-    ...price,
+    basePrice,
+    optionsPrice,
+    totalPrice,
     isLoading,
-    error,
-    totalPrice: price.totalPrice,
-    formatPrice: (amount: number) => `${amount.toFixed(2)} €`,
+    calculatePrice // Exposer la fonction pour les recalculs manuels
   };
 }
 
@@ -92,8 +99,23 @@ export function useAllRates() {
   useEffect(() => {
     const loadRates = async () => {
       try {
-        await PricingService.initialize();
-        setRates(PricingService.getAllRates());
+        await pricingService.initialize();
+        
+        // Récupérer les tarifs depuis la base de données au lieu d'utiliser getAllRates
+        const { data, error } = await supabase
+          .from('rates')
+          .select('*');
+        
+        if (error) throw error;
+        
+        // Transformer les données au format attendu
+        const formattedRates = data.map((rate: RateData) => ({
+          vehicleType: rate.vehicle_type,
+          pricePerKm: rate.price_per_km,
+          basePrice: rate.base_price
+        }));
+        
+        setRates(formattedRates);
         setLoading(false);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erreur lors du chargement des tarifs');

@@ -1,4 +1,4 @@
-import { Coordinates, CoordinatesAdapter } from "@/lib/types";
+import { Coordinates, CoordinatesAdapter } from "@/lib/types/types";
 
 /**
  * Convertit les coordonnées GPS entre les différents formats utilisés dans l'application

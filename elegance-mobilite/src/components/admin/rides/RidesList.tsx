@@ -28,7 +28,7 @@ const statusColors = {
   pending: "bg-yellow-500",
   "in-progress": "bg-blue-500",
   completed: "bg-green-500",
-  cancelled: "bg-red-500",
+  canceled: "bg-red-500",
 }
 
 const statusLabels = {
@@ -36,7 +36,7 @@ const statusLabels = {
   pending: "En attente",
   "in-progress": "En cours",
   completed: "Terminée",
-  cancelled: "Annulée",
+  canceled: "Annulée",
 }
 
 type ErrorType = {

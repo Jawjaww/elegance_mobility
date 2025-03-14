@@ -1,7 +1,7 @@
 "use client";
 
 import DynamicLeafletMap from './DynamicLeafletMap';
-import type { MapMarker } from '@/lib/types';
+import type { MapMarker } from '@/lib/types/types';
 
 interface ConfirmationMapProps {
   departure: { lat: number; lon: number; display_name: string } | null;

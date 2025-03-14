@@ -1,21 +1,23 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useReservationStore } from '@/lib/stores/reservationStore';
 import { supabase } from '@/utils/supabase/client';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import ReservationPage from '../page';
+import { Card } from '@/components/ui/card';
+import EditReservationMap from '@/components/map/EditReservationMap';
 
 // Type pour les données de réservation
 interface ReservationData {
   id: string;
   pickup_address: string;
-  pickup_lat: number;
-  pickup_lon: number;
+  pickup_lat?: number;
+  pickup_lon?: number; // Standardisé sur lon
   dropoff_address: string;
-  dropoff_lat: number;
-  dropoff_lon: number;
+  dropoff_lat?: number;
+  dropoff_lon?: number; // Standardisé sur lon
   pickup_time: string;
   vehicle_type: string;
   options: string[];
@@ -25,15 +27,32 @@ interface ReservationData {
 
 export default function EditReservationPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const reservationStore = useReservationStore();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [showReservationForm, setShowReservationForm] = useState(false);
+
+  // Effet pour éviter les chargements multiples
+  const loadedRef = useRef(false);
 
   useEffect(() => {
+    // Nettoyer le store et réinitialiser l'état au montage
+    return () => {
+      if (!loadedRef.current) {
+        reservationStore.reset();
+        loadedRef.current = false;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (loadedRef.current || dataLoaded) return;
+    
     async function fetchReservationData() {
       try {
-        // Récupérer l'ID de la réservation à modifier depuis le localStorage
-        const reservationId = localStorage.getItem('editReservationId');
+        const reservationId = searchParams?.get('id') || localStorage.getItem('editReservationId');
         
         if (!reservationId) {
           setError("ID de réservation non trouvé");
@@ -41,7 +60,6 @@ export default function EditReservationPage() {
           return;
         }
 
-        // Récupérer les détails de la réservation depuis Supabase
         const { data, error } = await supabase
           .from('rides')
           .select('*')
@@ -52,22 +70,35 @@ export default function EditReservationPage() {
           throw error || new Error('Réservation non trouvée');
         }
 
-        // Initialiser le store avec les données de la réservation
+        localStorage.setItem('currentEditingReservationId', reservationId);
+        console.log("ID de réservation stocké:", reservationId);
+        
+        // Réinitialiser le store avant de le remplir
+        reservationStore.reset();
+        
         const reservation = data as ReservationData;
         
-        // Mise à jour du store
+        // Journal pour diagnostiquer les problèmes
+        console.log("Données de réservation:", {
+          pickup_lat: reservation.pickup_lat,
+          pickup_lon: reservation.pickup_lon,
+          dropoff_lat: reservation.dropoff_lat,
+          dropoff_lon: reservation.dropoff_lon
+        });
+        
+        // Définir les données de manière synchrone pour éviter les problèmes de timing
         reservationStore.setDeparture({
-          lat: reservation.pickup_lat,
-          lon: reservation.pickup_lon,
+          lat: reservation.pickup_lat || 0,
+          lon: reservation.pickup_lon || 0,
           display_name: reservation.pickup_address,
-          address: {}
+          address: { formatted: reservation.pickup_address }
         });
         
         reservationStore.setDestination({
-          lat: reservation.dropoff_lat,
-          lon: reservation.dropoff_lon,
+          lat: reservation.dropoff_lat || 0,
+          lon: reservation.dropoff_lon || 0,
           display_name: reservation.dropoff_address,
-          address: {}
+          address: { formatted: reservation.dropoff_address }
         });
         
         reservationStore.setPickupDateTime(new Date(reservation.pickup_time));
@@ -75,23 +106,30 @@ export default function EditReservationPage() {
         reservationStore.setDuration(reservation.duration);
         reservationStore.setSelectedVehicle(reservation.vehicle_type);
         
-        // Réinitialiser les options
-        const currentOptions = [...reservationStore.selectedOptions];
-        currentOptions.forEach(option => {
-          reservationStore.toggleOption(option);
-        });
-        
-        // Ajouter les nouvelles options
+        // Gérer les options
         if (reservation.options && Array.isArray(reservation.options)) {
+          // Réinitialiser options existantes
+          const currentOptions = [...reservationStore.selectedOptions];
+          currentOptions.forEach(option => reservationStore.toggleOption(option));
+          
+          // Ajouter nouvelles options
           reservation.options.forEach(option => {
-            reservationStore.toggleOption(option);
+            if (!reservationStore.selectedOptions.includes(option)) {
+              reservationStore.toggleOption(option);
+            }
           });
         }
         
-        // Stocker l'ID pour la mise à jour
-        localStorage.setItem('currentEditingReservationId', reservationId);
-
+        // Marquer comme chargé pour éviter des chargements multiples
+        loadedRef.current = true;
+        setDataLoaded(true);
         setIsLoading(false);
+        
+        // Délai court pour s'assurer que le store est mis à jour
+        setTimeout(() => {
+          setShowReservationForm(true);
+          console.log("Données de réservation chargées avec succès");
+        }, 100);
       } catch (err) {
         console.error("Erreur lors de la récupération de la réservation:", err);
         setError("Impossible de charger les détails de la réservation");
@@ -100,13 +138,9 @@ export default function EditReservationPage() {
     }
 
     fetchReservationData();
-    
-    return () => {
-      // Nettoyage
-      localStorage.removeItem('currentEditingReservationId');
-    };
-  }, [reservationStore]);
+  }, [reservationStore, searchParams]);
 
+  // Afficher l'écran de chargement
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
@@ -116,6 +150,7 @@ export default function EditReservationPage() {
     );
   }
 
+  // Afficher l'erreur
   if (error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
@@ -133,6 +168,19 @@ export default function EditReservationPage() {
     );
   }
 
-  // Afficher l'interface de réservation standard, mais avec un état isEditing
+  // Utiliser l'approche conditionnelle avec délai pour régler le problème de timing
+  if (!showReservationForm) {
+    return (
+      <div className="container mx-auto py-8 max-w-4xl">
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-4">Préparation de votre réservation</h2>
+          <p className="text-neutral-400 mb-6">Chargement des données...</p>
+          <EditReservationMap />
+        </Card>
+      </div>
+    );
+  }
+
+  // Afficher le formulaire d'édition
   return <ReservationPage isEditing={true} />;
 }

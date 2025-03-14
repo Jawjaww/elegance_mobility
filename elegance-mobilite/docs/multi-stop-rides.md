@@ -1,6 +1,6 @@
 # Support des trajets à plusieurs étapes (multi-stop)
 
-Les trajets avec plusieurs arrêts sont maintenant pris en charge dans l'application Elegance Mobilité. Cette fonctionnalité permet aux clients de définir un ou plusieurs arrêts intermédiaires entre le point de départ et la destination finale.
+Les trajets avec plusieurs arrêts sont maintenant pris en charge dans l'application Vector Elegans. Cette fonctionnalité permet aux clients de définir un ou plusieurs arrêts intermédiaires entre le point de départ et la destination finale.
 
 ## Structure de données
 

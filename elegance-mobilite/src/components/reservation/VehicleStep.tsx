@@ -3,17 +3,18 @@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { VehicleType, VehicleOptions } from "@/lib/types";
+import { VehicleType, VehicleOptions } from "@/lib/types/vehicle.types";
 
-interface VehicleStepProps {
+export interface VehicleStepProps {
   vehicleType: VehicleType;
-  options?: VehicleOptions;
+  options: VehicleOptions;
   distance?: number;
   duration?: number;
   onVehicleTypeChange: (type: VehicleType) => void;
   onOptionsChange: (options: VehicleOptions) => void;
   onPrevious: () => void;
   onConfirm: () => void;
+  isEditing?: boolean;
 }
 
 const formatDuration = (minutes: number): string => {
@@ -28,14 +29,14 @@ const formatDuration = (minutes: number): string => {
 };
 
 const vehicleOptions = [
-  { value: 'STANDARD' as VehicleType, label: 'Berline Standard', description: 'Confort et élégance pour 4 passagers' },
-  { value: 'PREMIUM' as VehicleType, label: 'Berline Premium', description: 'Véhicule Premium et raffinement pour 4 passagers' },
-  { value: 'VAN' as VehicleType, label: 'Van', description: 'Espace et confort pour 7 passagers' }
+  { value: VehicleType.STANDARD, label: 'Berline Standard', description: 'Confort et élégance pour 4 passagers' },
+  { value: VehicleType.PREMIUM, label: 'Berline Premium', description: 'Véhicule Premium et raffinement pour 4 passagers' },
+  { value: VehicleType.VAN, label: 'Van', description: 'Espace et confort pour 7 passagers' }
 ];
 
 const VehicleStep: React.FC<VehicleStepProps> = ({
   vehicleType,
-  options = { childSeat: false, pets: false },
+  options,
   distance,
   duration,
   onVehicleTypeChange,
@@ -44,8 +45,12 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
   onConfirm,
 }) => {
 
-  const handleOptionChange = (option: Partial<VehicleOptions>) => {
-    onOptionsChange({ ...options, ...option });
+  const handleOptionChange = (optionName: keyof VehicleOptions, value: boolean) => {
+    const updatedOptions = {
+      ...options,
+      [optionName]: value
+    };
+    onOptionsChange(updatedOptions);
   };
 
   return (
@@ -92,7 +97,7 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
                 id="child-seat"
                 checked={options.childSeat}
                 onCheckedChange={(checked) =>
-                  handleOptionChange({ childSeat: checked })
+                  handleOptionChange('childSeat', checked)
                 }
               />
             </div>
@@ -101,7 +106,7 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <Label
-                htmlFor="pets"
+                htmlFor="petFriendly"
                 className="text-neutral-100 text-sm font-medium"
               >
                 Animaux domestiques
@@ -110,10 +115,10 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
             </div>
             <div>
               <Switch
-                id="pets"
-                checked={options.pets}
+                id="petFriendly"
+                checked={options.petFriendly}
                 onCheckedChange={(checked) =>
-                  handleOptionChange({ pets: checked })
+                  handleOptionChange('petFriendly', checked)
                 }
               />
             </div>

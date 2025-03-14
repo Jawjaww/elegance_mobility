@@ -1,4 +1,4 @@
-# Structure de la base de données Elegance Mobilité
+# Structure de la base de données Vector Elegans
 
 ## Table principale: rides
 
@@ -35,7 +35,7 @@ CREATE TABLE public.rides (
 
 - `id`: Identifiant unique de la réservation
 - `user_id`: Identifiant de l'utilisateur qui a fait la réservation
-- `status`: État de la réservation ('pending', 'confirmed', 'completed', 'cancelled')
+- `status`: État de la réservation ('pending', 'confirmed', 'completed', 'canceled')
 - `pickup_address`, `dropoff_address`: Adresses textuelles de prise en charge et de destination
 - `pickup_time`: Date et heure prévues pour la prise en charge
 - `estimated_price`: Prix estimé pour le trajet
