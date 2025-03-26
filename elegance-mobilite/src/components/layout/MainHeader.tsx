@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useAuth } from '@/lib/auth/useAuth';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useAuth } from "@/lib/auth/useAuth";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,47 +13,33 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { LogOut, User as UserIcon, Settings, Home, Menu, X } from 'lucide-react';
-import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
-import { extractDisplayName, getInitialsFromName } from '@/lib/utils/user-utils';
-import { supabase } from '@/utils/supabase/client';
+} from "@/components/ui/dropdown-menu";
+import {
+  LogOut,
+  User as UserIcon,
+  Settings,
+  Home,
+  Menu,
+  X,
+} from "lucide-react";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import {
+  extractDisplayName,
+  getInitialsFromName,
+} from "@/lib/utils/user-utils";
 
 export function MainHeader() {
   const { isAuthenticated, user, signOut } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
-  const [userName, setUserName] = useState<string>("");
-  const [userEmail, setUserEmail] = useState<string>("");
-  const [userInitials, setUserInitials] = useState<string>("EM");
 
-  // Fonction pour charger les métadonnées utilisateur
-  useEffect(() => {
-    const loadUserMetadata = async () => {
-      if (!user?.id) return;
-      
-      try {
-        // Récupérer directement les métadonnées via getUser
-        const { data } = await supabase.auth.getUser();
-        const metadata = data?.user?.user_metadata;
-        const email = data?.user?.email || "";
-        
-        // Extraire le nom d'utilisateur et les initiales
-        const displayName = extractDisplayName(email, metadata);
-        setUserName(displayName);
-        setUserEmail(email);
-        setUserInitials(getInitialsFromName(displayName));
-        
-      } catch (error) {
-        console.error("Erreur lors du chargement des métadonnées:", error);
-      }
-    };
-    
-    if (isAuthenticated && user) {
-      loadUserMetadata();
-    }
-  }, [isAuthenticated, user]);
+  // On utilise directement les données de l'utilisateur sans faire d'appel API
+  const displayName = user
+    ? extractDisplayName(user.email || "", user.user_metadata)
+    : "";
+  const userEmail = user?.email || "";
+  const userInitials = getInitialsFromName(displayName);
 
   // Fermer le menu mobile lors du changement de page
   useEffect(() => {
@@ -89,11 +75,13 @@ export function MainHeader() {
           <ul className="flex space-x-6">
             {navItems.map((item) => (
               <li key={item.name}>
-                <Link 
-                  href={item.href} 
+                <Link
+                  href={item.href}
                   className={cn(
                     "text-sm transition-colors hover:text-blue-400",
-                    pathname === item.href ? "text-blue-500 font-medium" : "text-neutral-300"
+                    pathname === item.href
+                      ? "text-blue-500 font-medium"
+                      : "text-neutral-300"
                   )}
                 >
                   {item.name}
@@ -105,8 +93,8 @@ export function MainHeader() {
             {isAuthenticated && user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     className="relative h-10 w-10 rounded-full"
                   >
                     <Avatar className="h-10 w-10 border-2 border-neutral-800 bg-neutral-900">
@@ -116,15 +104,15 @@ export function MainHeader() {
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent 
-                  className="w-56 bg-neutral-900 border-neutral-800" 
-                  align="end" 
+                <DropdownMenuContent
+                  className="w-56 bg-neutral-900 border-neutral-800"
+                  align="end"
                   forceMount
                 >
                   <DropdownMenuLabel>
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium text-neutral-100">
-                        {userName}
+                        {displayName}
                       </p>
                       <p className="text-xs text-neutral-400 truncate">
                         {userEmail}
@@ -147,7 +135,7 @@ export function MainHeader() {
                     </Link>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator className="bg-neutral-800" />
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     className="text-red-400 focus:bg-red-900/50 focus:text-red-300 cursor-pointer"
                     onSelect={handleSignOut}
                   >
@@ -157,7 +145,7 @@ export function MainHeader() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Link href="/login">
+              <Link href="/auth/login">
                 <Button
                   variant="default"
                   size="sm"
@@ -172,9 +160,9 @@ export function MainHeader() {
 
         {/* Bouton menu mobile */}
         <div className="flex-1 flex justify-end md:hidden">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             className="text-neutral-200"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
@@ -193,18 +181,20 @@ export function MainHeader() {
           <div className="container py-4 px-4 sm:px-6">
             <nav className="flex flex-col space-y-4">
               {navItems.map((item) => (
-                <Link 
+                <Link
                   key={item.name}
-                  href={item.href} 
+                  href={item.href}
                   className={cn(
                     "flex items-center py-2 text-base transition-colors hover:text-blue-400",
-                    pathname === item.href ? "text-blue-500 font-medium" : "text-neutral-300"
+                    pathname === item.href
+                      ? "text-blue-500 font-medium"
+                      : "text-neutral-300"
                   )}
                 >
                   {item.name}
                 </Link>
               ))}
-              
+
               <div className="pt-4 border-t border-neutral-800">
                 {isAuthenticated && user ? (
                   <div className="space-y-4">
@@ -215,11 +205,13 @@ export function MainHeader() {
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium text-white">{userName}</p>
-                        <p className="text-sm text-neutral-400 truncate">{userEmail}</p>
+                        <p className="font-medium text-white">{displayName}</p>
+                        <p className="text-sm text-neutral-400 truncate">
+                          {userEmail}
+                        </p>
                       </div>
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Link href="/my-account">
                         <Button
@@ -230,7 +222,7 @@ export function MainHeader() {
                           Mon profil
                         </Button>
                       </Link>
-                      
+
                       <Link href="/my-account/reservations">
                         <Button
                           variant="ghost"
@@ -240,7 +232,7 @@ export function MainHeader() {
                           Mes réservations
                         </Button>
                       </Link>
-                      
+
                       <Button
                         variant="ghost"
                         className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-900/30"
@@ -252,10 +244,8 @@ export function MainHeader() {
                     </div>
                   </div>
                 ) : (
-                  <Link href="/login">
-                    <Button
-                      className="w-full bg-blue-600 hover:bg-blue-700"
-                    >
+                  <Link href="/auth/login">
+                    <Button className="w-full bg-blue-600 hover:bg-blue-700">
                       Connexion
                     </Button>
                   </Link>

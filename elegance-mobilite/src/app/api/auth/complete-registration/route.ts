@@ -15,19 +15,21 @@ export async function POST(request: Request) {
     }
     
     // Créer un client Supabase côté serveur qui contourne le RLS
+    const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!, // Utiliser la clé de service qui a un accès complet
       {
         cookies: {
-          get(name) {
-            return cookies().get(name)?.value;
+          async get(name) {
+            const cookie = await cookieStore.get(name);
+            return cookie?.value;
           },
-          set(name, value, options) {
-            cookies().set({ name, value, ...options });
+          async set(name, value, options) {
+            await cookieStore.set({ name, value, ...options });
           },
-          remove(name, options) {
-            cookies().delete({ name, ...options });
+          async remove(name, options) {
+            await cookieStore.delete({ name, ...options });
           }
         }
       }

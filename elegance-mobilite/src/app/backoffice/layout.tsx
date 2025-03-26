@@ -1,61 +1,55 @@
-import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import AdminDashboardClient from "@/components/admin/AdminDashboardClient";
-import {
-  createServerComponentClient,
-  getAuthenticatedUser,
-} from "@/lib/auth/server";
+import { getAuthenticatedUser } from "@/lib/auth/server";
 import { hasAdminAccess, hasSuperAdminAccess } from "@/lib/types/auth.types";
-import { cache } from "react";
+import { AdminProvider } from "@/lib/contexts/admin.context";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-// Mettre en cache la vérification de l'utilisateur
-const checkAdminAuthWithCache = cache(async () => {
-  try {
-    const cookieStore = cookies();
-    const user = await getAuthenticatedUser(cookieStore);
-
-    if (!user) {
-      console.error("[BACKOFFICE] Utilisateur non authentifié");
-      return null;
-    }
-
-    // Vérifier l'accès admin en utilisant le rôle natif PostgreSQL
-    if (!hasAdminAccess(user.role)) {
-      console.error("[BACKOFFICE] Utilisateur non admin:", {
-        email: user.email,
-        role: user.role
-      });
-      return null;
-    }
-
-    // Déterminer si l'utilisateur est un super admin
-    const is_super_admin = hasSuperAdminAccess(user.role);
-
-    return {
-      ...user,
-      is_admin: true,
-      is_super_admin
-    };
-  } catch (error) {
-    console.error("[BACKOFFICE] Erreur vérification admin:", error);
-    return null;
-  }
-});
-
 export default async function AdminLayout({ children }: AdminLayoutProps) {
-  const user = await checkAdminAuthWithCache();
+  const cookieStore = cookies();
+  const user = await getAuthenticatedUser(cookieStore);
 
   if (!user) {
-    return redirect("/auth/admin-login?error=permissions");
+    console.error("[BACKOFFICE] Utilisateur non authentifié");
+    redirect("/auth/login?error=not_authenticated");
+  }
+
+  // Vérifier l'accès admin en utilisant le rôle natif PostgreSQL
+  if (!hasAdminAccess(user.role)) {
+    console.error("[BACKOFFICE] Utilisateur non admin:", {
+      email: user.email,
+      role: user.role
+    });
+    redirect("/auth/login?error=insufficient_permissions");
+  }
+
+  // Déterminer si l'utilisateur est super admin
+  const isSuperAdmin = hasSuperAdminAccess(user.role);
+
+  // En mode développement, afficher les informations d'accès
+  if (process.env.NODE_ENV === "development") {
+    console.log("[BACKOFFICE] Access granted:", {
+      email: user.email,
+      role: user.role,
+      isSuperAdmin
+    });
   }
 
   return (
-    <AdminDashboardClient user={user} isSuperAdminLevel={user.is_super_admin}>
-      {children}
-    </AdminDashboardClient>
+    <AdminProvider isSuperAdmin={isSuperAdmin}>
+      <AdminDashboardClient 
+        user={user} 
+        isSuperAdminLevel={isSuperAdmin}
+      >
+        {children}
+      </AdminDashboardClient>
+    </AdminProvider>
   );
 }
+
+// Empêcher la génération statique
+export const dynamic = "force-dynamic";

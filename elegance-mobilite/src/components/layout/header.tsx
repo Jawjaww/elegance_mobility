@@ -1,21 +1,21 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { UserNav } from "@/components/admin/UserNav"
-import { cn } from "@/lib/utils"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { UserNav } from "@/components/admin/UserNav";
+import { cn } from "@/lib/utils";
 
 const navigation = [
   { name: "Accueil", href: "/" },
   { name: "Réserver", href: "/reservation" },
   { name: "Tarifs", href: "/rates" },
   { name: "Contact", href: "/contact" },
-]
+];
 
 export function Header() {
-  const pathname = usePathname()
-  const isAdmin = pathname?.startsWith("/admin")
+  const pathname = usePathname();
+  const isAdmin = pathname?.startsWith("/admin");
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-neutral-800 bg-black/50 backdrop-blur supports-[backdrop-filter]:bg-black/50">
@@ -47,7 +47,7 @@ export function Header() {
               <UserNav />
             ) : (
               <>
-                <Link href="/login">
+                <Link href="/auth/login">
                   <Button variant="ghost" size="sm">
                     Admin
                   </Button>
@@ -61,5 +61,5 @@ export function Header() {
         </div>
       </nav>
     </header>
-  )
+  );
 }

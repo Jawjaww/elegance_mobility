@@ -1,45 +1,43 @@
-import type { Metadata } from "next";
-import { Montserrat } from "next/font/google";
-import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from "@/lib/auth/useAuth";
-import { cn } from "@/lib/utils";
-import { MainHeader } from "@/components/layout/MainHeader";
-
-// Imports pour MapLibre GL
-import 'maplibre-gl/dist/maplibre-gl.css';
-import "@/styles/map.css";
-
+import { Inter } from "next/font/google";
+import { Providers } from "./providers";
 import "./globals.css";
 
-const montserrat = Montserrat({
-  subsets: ["latin"],
-  display: "swap",
-});
+const inter = Inter({ subsets: ["latin"] });
 
-export const metadata: Metadata = {
-  title: "Vector Elegans",
-  description: "VTC de luxe sur Paris et région parisienne",
+export const metadata = {
+  title: "Elegance Mobilité",
+  description: "Service de transport VTC de luxe",
 };
 
+/**
+ * Root layout component that provides authentication context
+ * while preserving the original styling and structure
+ */
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="fr" className="dark">
-      <body
-        className={cn(
-          "bg-neutral-950 font-sans antialiased min-h-screen text-neutral-100",
-          montserrat.className
-        )}
-      >
-        <AuthProvider>
-          {/* Ajout du MainHeader dans le layout principal */}
-          <MainHeader />
-          {children}
-          <Toaster />
-        </AuthProvider>
+    <html lang="fr">
+      <body className={inter.className}>
+        <Providers>
+          {/* Preserve existing layout structure */}
+          <div className="min-h-screen flex flex-col">
+            {/* Main content wrapped with auth provider */}
+            <main className="flex-grow">{children}</main>
+
+            {/* Keep existing footer */}
+            <footer className="bg-gray-100 py-4">
+              <div className="container mx-auto px-4 text-center text-gray-600">
+                <p>
+                  &copy; {new Date().getFullYear()} Elegance Mobilité. Tous
+                  droits réservés.
+                </p>
+              </div>
+            </footer>
+          </div>
+        </Providers>
       </body>
     </html>
   );

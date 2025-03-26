@@ -1,27 +1,15 @@
 {
   "name": "elegance-mobilite-scripts",
   "version": "1.0.0",
-  "private": true,
+  "description": "Management scripts for Elegance Mobilité",
+  "type": "commonjs",
   "scripts": {
-    "create-admin": "node create-admin.js",
-    "delete-admin": "node deleteAdmin.js",
-    "delete-user": "node deleteUser.js",
-    "create-user": "node create-user.js",
-    "create-superAdmin": "node create-super-admin.js",
-    "delete-superAdmin": "node deleteSuperAdmin.js",
-    "reset-db": "node resetDatabase.js",
-    "migrate-users": "node migrate-users.js",
-    "migrate-database": "node migrate-database.js",
-    "migrate-ride-stops": "node migrate-ride-stops.js",
-    "fix-rls-policies-simple": "tsc fix-rls-policies-simple.ts && node fix-rls-policies-simple.js"
+    "cleanup": "node cleanup_user.js",
+    "promote": "node promote_to_superadmin.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
-    "argon2": "^0.31.2",
     "dotenv": "^16.3.1",
-    "ora": "^5.4.1",
-    "prompts": "^2.4.2",
-    "uuid": "^9.0.1",
-    "typescript": "^5.0.0"
+    "prompts": "^2.4.2"
   }
 }

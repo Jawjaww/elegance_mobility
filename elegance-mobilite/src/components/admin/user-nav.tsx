@@ -23,39 +23,54 @@ type UserData = {
   avatar_url: string | null
 }
 
-export function UserNav() {
+interface UserNavProps {
+  user?: {
+    email: string
+    role: string
+    user_metadata?: {
+      full_name?: string
+      avatar_url?: string
+    }
+  }
+}
+
+export function UserNav({ user }: UserNavProps) {
   const router = useRouter()
   const [userData, setUserData] = useState<UserData>({
-    email: null,
-    role: null,
-    name: null,
-    avatar_url: null,
+    email: user?.email || null,
+    role: user?.role || null,
+    name: user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : null),
+    avatar_url: user?.user_metadata?.avatar_url || null,
   })
 
-  useEffect(() => {
-    async function getUserData() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          const { data: userRole } = await supabase
-            .from('users')  // Utiliser la table users correcte
-            .select('role')
-            .eq('id', user.id)
-            .single()
+  const fetchUserData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: userRole } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single()
 
-          setUserData({
-            email: user.email || null,
-            role: userRole?.role || "utilisateur",
-            name: user.user_metadata?.full_name || (user.email ? user.email.split("@")[0] : "Utilisateur"),
-            avatar_url: user.user_metadata?.avatar_url || null
-          })
-        }
-      } catch (error) {
-        console.error("Erreur lors de la récupération des données utilisateur:", error)
+        setUserData({
+          email: user.email || null,
+          role: userRole?.role || "utilisateur",
+          name: user.user_metadata?.full_name || (user.email ? user.email.split("@")[0] : "Utilisateur"),
+          avatar_url: user.user_metadata?.avatar_url || null
+        })
       }
+    } catch (error) {
+      console.error("Erreur lors de la récupération des données utilisateur:", error)
     }
-    getUserData()
-  }, [])
+  }
+
+  // Récupérer les données si non fournies en props
+  useEffect(() => {
+    if (!user) {
+      fetchUserData()
+    }
+  }, [user])
 
   const handleSignOut = async () => {
     try {
@@ -99,7 +114,9 @@ export function UserNav() {
         <DropdownMenuLabel>
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium text-neutral-100">
-              {userData.role === "admin" ? "Administrateur" : userData.name}
+              {userData.role === "app_super_admin" ? "Super Admin" : 
+               userData.role === "app_admin" ? "Admin" : 
+               userData.name}
             </p>
             <p className="text-xs text-neutral-400">
               {userData.email}
