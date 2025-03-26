@@ -1,57 +1,42 @@
 /**
- * Types unifiés pour l'authentification Vector Elegans
+ * Native PostgreSQL roles used in the application
+ * These roles are managed directly in the database
  */
+export type PostgresRole = 'app_super_admin' | 'app_admin' | 'app_driver' | 'app_customer';
 
-// Rôles utilisateur standardisés
-export type UserRole = 'admin' | 'client' | 'driver';
-
-// Niveau d'accès admin (pour les utilisateurs avec rôle 'admin')
-export type AdminLevel = 'super' | 'standard';
-
-// Structure d'un utilisateur dans la base de données publique
-export interface User {
+/**
+ * User session with native role information from Supabase auth
+ */
+export interface AuthUser {
   id: string;
-  role: UserRole;
-  admin_level?: AdminLevel; // Uniquement pour les utilisateurs avec role='admin'
-  created_at: string;
-  updated_at: string;
+  email?: string;
+  role: PostgresRole;
 }
 
-// Structure pour le profil utilisateur combiné
-export interface UserProfile extends User {
-  email: string;
-  admin_level?: AdminLevel; // Ajout du niveau admin dans le profil utilisateur
-  first_name?: string;
-  last_name?: string;
-  phone?: string;
+/**
+ * Authentication errors
+ */
+export type AuthError = 
+  | 'not_authenticated'
+  | 'insufficient_permissions'
+  | 'invalid_credentials'
+  | 'internal';
+
+/**
+ * Role validation helpers
+ */
+export const isValidRole = (role?: string): role is PostgresRole => {
+  return ['app_super_admin', 'app_admin', 'app_driver', 'app_customer'].includes(role || '');
 }
 
-// Options pour les hooks d'autorisation
-export interface RouteGuardOptions {
-  redirectTo?: string;
-  allowedRoles?: UserRole[];
-  requiredAdminLevel?: AdminLevel;
-  requireProfile?: boolean;
+export const hasAdminAccess = (role?: string): boolean => {
+  return role === 'app_super_admin' || role === 'app_admin';
 }
 
-// Résultat des hooks d'autorisation
-export interface GuardResult {
-  isAuthorized: boolean;
-  isLoading: boolean;
-  profile?: UserProfile | null;
+export const hasSuperAdminAccess = (role?: string): boolean => {
+  return role === 'app_super_admin';
 }
 
-// Réponse de session 
-export interface SessionResponse {
-  data: {
-    session: any | null;
-  };
-  error: Error | null;
-}
-
-// Erreur de session
-export interface SessionError extends Error {
-  message: string;
-  code?: string;
-  details?: string;
+export const isDriver = (role?: string): boolean => {
+  return role === 'app_driver';
 }

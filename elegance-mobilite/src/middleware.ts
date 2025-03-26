@@ -1,104 +1,106 @@
-import { createServerClient } from '@supabase/ssr'
-import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+import { hasAdminAccess } from './lib/types/auth.types'
 
-export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
+export async function middleware(request: NextRequest) {
+  const requestUrl = new URL(request.url)
+  const response = NextResponse.next()
 
-  // Utiliser createServerClient pour l'authentification
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return req.cookies.get(name)?.value
+  try {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: CookieOptions) {
+            request.cookies.set({
+              name,
+              value,
+              ...options,
+            })
+            response.cookies.set({
+              name,
+              value,
+              ...options,
+            })
+          },
+          remove(name: string, options: CookieOptions) {
+            request.cookies.set({
+              name,
+              value: '',
+              ...options,
+            })
+            response.cookies.set({
+              name,
+              value: '',
+              ...options,
+            })
+          },
         },
-        set(name: string, value: string, options: any) {
-          req.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-          res.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-        },
-        remove(name: string, options: any) {
-          req.cookies.delete({
-            name,
-            ...options,
-          })
-          res.cookies.delete({
-            name,
-            ...options,
-          })
-        },
-      },
-    }
-  )
-  
-  // Vérifier si le chemin demandé est une page admin (backoffice)
-  const isAdminPath = req.nextUrl.pathname.startsWith('/admin')
-  
-  // Vérifier si c'est la page de login admin - on ne veut pas la protéger
-  const isAdminLoginPage = req.nextUrl.pathname === '/admin/login'
-  
-  // Vérifier si le chemin demandé est une page front-end protégée
-  const isProtectedPath = ['/reservation/success', '/my-account'].some(path => 
-    req.nextUrl.pathname.startsWith(path)
-  )
-  
-  // Vérifier l'authentification
-  const { data: { session } } = await supabase.auth.getSession()
-  
-  // CAS 1: Pages du backoffice (admin) - sauf page de login admin
-  if (isAdminPath && !isAdminLoginPage) {
-    // Si pas de session, rediriger vers login admin
-    if (!session) {
-      return NextResponse.redirect(new URL('/admin/login', req.url))
-    }
-    
-    // Vérifier en plus que l'utilisateur a bien le rôle admin
-    try {
-      const { data: userRole } = await supabase
-        .from('user_profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single();
-      
-      // Si l'utilisateur n'est pas admin, rediriger vers la page d'accueil
-      if (!userRole || userRole.role !== 'admin') {
-        return NextResponse.redirect(new URL('/', req.url))
       }
-    } catch (error) {
-      // En cas d'erreur, rediriger vers login admin par sécurité
-      return NextResponse.redirect(new URL('/admin/login', req.url))
+    )
+
+    // Get session and check auth
+    const { data: { session } } = await supabase.auth.getSession()
+
+    // Debug logging
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[MIDDLEWARE] Auth check:', {
+        path: requestUrl.pathname,
+        hasSession: !!session,
+        role: session?.user?.role,
+      })
     }
-  }
-  
-  // CAS 2: Pages protégées du front-end (à traiter séparément selon les cas)
-  else if (isProtectedPath) {
-    // Si pas de session et que c'est /reservation/success, permettre l'accès quand même
-    if (!session && req.nextUrl.pathname === '/reservation/success') {
-      // La page success gèrera elle-même l'authentification avec un modal
-      return res
+
+    // Handle auth routes (login pages)
+    if (requestUrl.pathname.startsWith('/auth/')) {
+      if (session) {
+        // Already authenticated users should be redirected
+        return NextResponse.redirect(new URL('/backoffice', request.url))
+      }
+      return response
     }
+
+    // Handle protected routes
+    if (requestUrl.pathname.startsWith('/backoffice')) {
+      if (!session) {
+        // Redirect to login if not authenticated
+        const redirectUrl = new URL('/auth/login', request.url)
+        redirectUrl.searchParams.set('redirectTo', requestUrl.pathname)
+        return NextResponse.redirect(redirectUrl)
+      }
+
+      // Check admin access using native role
+      if (!hasAdminAccess(session.user.role)) {
+        const redirectUrl = new URL('/auth/login', request.url)
+        redirectUrl.searchParams.set('error', 'insufficient_permissions')
+        return NextResponse.redirect(redirectUrl)
+      }
+    }
+
+    return response
+  } catch (error) {
+    console.error('[MIDDLEWARE] Critical error:', error)
     
-    // Pour les autres pages protégées du front-end, rediriger vers la connexion utilisateur
-    if (!session) {
-      const redirectUrl = new URL('/login', req.url)
-      redirectUrl.searchParams.set('redirectTo', req.nextUrl.pathname)
+    // On error in protected routes, redirect to login
+    if (requestUrl.pathname.startsWith('/backoffice')) {
+      const redirectUrl = new URL('/auth/login', request.url)
+      redirectUrl.searchParams.set('error', 'internal')
       return NextResponse.redirect(redirectUrl)
     }
+    
+    return response
   }
-  
-  return res
 }
 
-// Spécifier les chemins sur lesquels le middleware doit s'exécuter
+// Protect specific routes
 export const config = {
-  matcher: ['/admin/:path*', '/reservation/success', '/my-account/:path*']
+  matcher: [
+    '/auth/:path*',
+    '/backoffice/:path*',
+    '/account/:path*',
+  ],
 }
