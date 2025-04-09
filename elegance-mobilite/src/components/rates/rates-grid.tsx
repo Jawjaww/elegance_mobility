@@ -1,4 +1,4 @@
-import { Database } from '@/lib/database.types'
+import { Database } from '@/lib/types/database.types'
 import RateCard from './rate-card'
 
 type Rate = Database['public']['Tables']['rates']['Row']

@@ -11,7 +11,7 @@ import { Calendar, Car, Route, MapPin } from 'lucide-react';
 import LocationStep from '@/components/reservation/LocationStep';
 import VehicleStep from '@/components/reservation/VehicleStep';
 import { Coordinates } from '@/lib/types/map-types';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/useToast';
 import { VehicleType, VehicleOptions } from '@/lib/types/vehicle.types';
 import { dbVehicleTypeToEnum, dbOptionsToVehicleOptions, vehicleOptionsToDbOptions } from '@/lib/utils/db-mapping';
 

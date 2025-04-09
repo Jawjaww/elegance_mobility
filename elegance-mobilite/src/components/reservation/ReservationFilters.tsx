@@ -21,7 +21,7 @@ export interface ReservationFiltersProps {
   selectedStatuses: string[];
 }
 
-export function ReservationFilters({ onStatusChange, selectedStatuses = [] }: ReservationFiltersProps) {
+export default function ReservationFilters({ onStatusChange, selectedStatuses = [] }: ReservationFiltersProps) {
   const [open, setOpen] = useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)");
 

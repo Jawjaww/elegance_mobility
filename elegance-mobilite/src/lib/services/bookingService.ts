@@ -1,7 +1,6 @@
 "use client";
 
-// Importer le client supabase depuis auth-helpers au lieu de le recréer
-import { supabase, checkConnection } from "@/utils/supabase/auth-helpers";
+import { createServerSupabaseClient } from "@/lib/database/server";
 
 export interface BookingData {
   user_id: string;
@@ -10,9 +9,9 @@ export interface BookingData {
   pickup_time: string;     
   estimated_price: number; 
   pickup_lat?: number;
-  pickup_lon?: number;  // Standardisé sur lon
+  pickup_lon?: number;
   dropoff_lat?: number;
-  dropoff_lon?: number;  // Standardisé sur lon
+  dropoff_lon?: number;
   distance?: number;
   duration?: number;
   vehicle_type?: string;
@@ -23,7 +22,7 @@ export interface BookingData {
 export interface RideStop {
   address: string;
   lat?: number;
-  lon?: number;  // Standardisé sur lon
+  lon?: number;
   estimated_arrival?: string;
   estimated_wait_time?: number;
   notes?: string;
@@ -53,7 +52,13 @@ class BookingService {
    * Vérifie si le service est disponible
    */
   async isServiceAvailable(): Promise<boolean> {
-    return await checkConnection(); // Utiliser la fonction de auth-helpers
+    try {
+      const supabase = await createServerSupabaseClient();
+      const { data } = await supabase.from('health').select('*').limit(1);
+      return !!data;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -69,7 +74,9 @@ class BookingService {
         };
       }
 
+      const supabase = await createServerSupabaseClient();
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
       if (sessionError || !session) {
         return {
           success: false,
@@ -90,9 +97,9 @@ class BookingService {
           estimated_price: bookingData.estimated_price,
           status: 'pending',
           pickup_lat: bookingData.pickup_lat,
-          pickup_lon: bookingData.pickup_lon,  // Standardisé sur lon
+          pickup_lon: bookingData.pickup_lon,
           dropoff_lat: bookingData.dropoff_lat,
-          dropoff_lon: bookingData.dropoff_lon,  // Standardisé sur lon
+          dropoff_lon: bookingData.dropoff_lon,
           distance: bookingData.distance,
           duration: bookingData.duration,
           vehicle_type: bookingData.vehicle_type,
@@ -112,7 +119,13 @@ class BookingService {
           ...stop
         }));
 
-        await supabase.from('ride_stops').insert(stopsWithRideId);
+        const { error: stopsError } = await supabase
+          .from('ride_stops')
+          .insert(stopsWithRideId);
+
+        if (stopsError) {
+          console.warn("Erreur lors de l'ajout des arrêts:", stopsError);
+        }
       }
 
       return {
@@ -135,6 +148,7 @@ class BookingService {
   async getUserBookings(userId: string) {
     try {
       return await this.retryOperation(async () => {
+        const supabase = await createServerSupabaseClient();
         const { data, error } = await supabase
           .from('rides')
           .select('*')
@@ -159,31 +173,34 @@ class BookingService {
   async getBookingById(bookingId: string): Promise<{ data: any | null; error: string | null }> {
     try {
       return await this.retryOperation(async () => {
-        // Récupérer la réservation
-        const { data: ride, error: rideError } = await supabase
-          .from('rides')
-          .select('*')
-          .eq('id', bookingId)
-          .single();
-          
-        if (rideError) throw rideError;
+        const supabase = await createServerSupabaseClient();
         
-        // Récupérer les arrêts associés
-        const { data: stops, error: stopsError } = await supabase
-          .from('ride_stops')
-          .select('*')
-          .eq('ride_id', bookingId)
-          .order('stop_order');
+        // Récupérer la réservation et ses arrêts
+        const [rideResult, stopsResult] = await Promise.all([
+          supabase
+            .from('rides')
+            .select('*')
+            .eq('id', bookingId)
+            .single(),
           
+          supabase
+            .from('ride_stops')
+            .select('*')
+            .eq('ride_id', bookingId)
+            .order('stop_order')
+        ]);
+        
+        if (rideResult.error) throw rideResult.error;
+        
         // Même si la récupération des arrêts échoue, on renvoie la réservation
-        if (stopsError) {
-          console.warn("Erreur lors de la récupération des arrêts:", stopsError);
+        if (stopsResult.error) {
+          console.warn("Erreur lors de la récupération des arrêts:", stopsResult.error);
         }
         
         // Combiner la réservation et ses arrêts
         const bookingWithStops = {
-          ...ride,
-          stops: stops || [] 
+          ...rideResult.data,
+          stops: stopsResult.data || []
         };
         
         return { data: bookingWithStops, error: null };
@@ -203,7 +220,7 @@ class BookingService {
   async cancelBooking(bookingId: string): Promise<{ success: boolean; error?: string }> {
     try {
       return await this.retryOperation(async () => {
-        // Mettre à jour le statut à "canceled"
+        const supabase = await createServerSupabaseClient();
         const { error } = await supabase
           .from('rides')
           .update({ status: 'canceled' })
@@ -230,14 +247,16 @@ class BookingService {
   async addRideStop(rideId: string, stop: RideStop): Promise<{ success: boolean; error?: string }> {
     try {
       return await this.retryOperation(async () => {
-        // Vérifier que l'utilisateur est propriétaire de la réservation
+        const supabase = await createServerSupabaseClient();
+        
+        // Vérifier que l'utilisateur est connecté
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           return { success: false, error: "Utilisateur non connecté" };
         }
         
         // Obtenir l'ordre du prochain arrêt
-        const { data: lastStop, error: countError } = await supabase
+        const { data: lastStop } = await supabase
           .from('ride_stops')
           .select('stop_order')
           .eq('ride_id', rideId)
@@ -247,7 +266,7 @@ class BookingService {
         
         const nextOrder = lastStop ? lastStop.stop_order + 1 : 1;
         
-        // Insérer le nouvel arrêt avec lon standardisé
+        // Insérer le nouvel arrêt
         const { error } = await supabase
           .from('ride_stops')
           .insert({
@@ -255,7 +274,7 @@ class BookingService {
             stop_order: nextOrder,
             address: stop.address,
             lat: stop.lat,
-            lon: stop.lon,  // Standardisé sur lon
+            lon: stop.lon,
             estimated_arrival: stop.estimated_arrival,
             estimated_wait_time: stop.estimated_wait_time,
             notes: stop.notes

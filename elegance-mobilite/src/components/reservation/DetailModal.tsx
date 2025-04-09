@@ -26,7 +26,7 @@ interface DetailModalProps {
   onClose: () => void;
 }
 
-export function DetailModal({ ride, open, onClose }: DetailModalProps) {
+export default function DetailModal({ ride, open, onClose }: DetailModalProps) {
   if (!ride) return null;
   
   // Format la date et l'heure

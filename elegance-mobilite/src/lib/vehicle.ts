@@ -1,4 +1,4 @@
-import { Database } from './database.types'
+import { Database } from './types/database.types'
 import { createClient } from '@supabase/supabase-js'
 
 export type Vehicle = Database['public']['Tables']['vehicles']['Row']

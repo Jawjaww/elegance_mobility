@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 export interface ToastProps {
   title?: string;
   description?: string;
-  variant?: "default" | "destructive";
+  variant?: "default" | "destructive" | "success";
 }
 
 interface ToastContextValue {
@@ -43,8 +43,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             open={open}
             onOpenChange={setOpen}
             className={cn(
-              "fixed bottom-4 right-4 z-50 flex items-center justify-between space-x-4 rounded-md border border-neutral-200 bg-white p-6 shadow-lg transition-all dark:border-neutral-800 dark:bg-neutral-900",
-              current.variant === "destructive" && "border-red-600 bg-red-600 text-white"
+              "fixed z-[100] flex items-center justify-between space-x-4 rounded-md p-4 shadow-lg transition-all w-[calc(100%-2rem)] sm:w-auto max-w-md", // Adjusted padding and width
+              "left-1/2 -translate-x-1/2 top-4 sm:left-auto sm:translate-x-0 sm:right-4", // Position top-center (mobile) / top-right (desktop)
+              current.variant === "destructive" && "border border-red-800 bg-red-900 text-white", // Darker solid red
+              current.variant === "success" && "border border-green-700 bg-green-800 text-white", // Adjusted success color
+              (!current.variant || current.variant === "default") && "border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900" // Default style
             )}
           >
             <div className="grid gap-1">
@@ -61,7 +64,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             </div>
           </ToastPrimitives.Root>
         )}
-        <ToastPrimitives.Viewport className="fixed bottom-0 right-0 z-[100] flex flex-col p-6 gap-2 w-[390px] m-0" />
+        {/* Viewport positioning is less critical now as Root handles positioning */}
+        <ToastPrimitives.Viewport className="fixed top-0 right-0 z-[100] flex flex-col p-4 gap-2 w-full sm:w-auto m-0" />
       </ToastPrimitives.Provider>
     </ToastContext.Provider>
   );

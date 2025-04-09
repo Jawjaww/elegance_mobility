@@ -1,4 +1,4 @@
-import { supabase } from '@/utils/supabase/client';
+import { supabase } from '@/lib/database/client';
 import { mapStatusToDb } from './statusService';
 
 interface StatusUpdateOptions {

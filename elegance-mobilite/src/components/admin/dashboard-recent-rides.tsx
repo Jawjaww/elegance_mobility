@@ -4,10 +4,10 @@ import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CalendarClock, MapPin, User } from "lucide-react"
-import { supabase } from "@/lib/supabaseClient"
+import { createBrowserSupabaseClient } from "@/lib/database/client"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
-import { Database } from "@/lib/database.types"
+import { Database } from "@/lib/types/database.types"
 
 type DbRide = Database["public"]["Tables"]["rides"]["Row"]
 type RideWithDriver = Omit<DbRide, "driver"> & {
@@ -16,6 +16,8 @@ type RideWithDriver = Omit<DbRide, "driver"> & {
   } | null
 }
 
+type BadgeVariant = "default" | "secondary" | "destructive" | "outline"
+
 export function DashboardRecentRides() {
   const [rides, setRides] = useState<RideWithDriver[]>([])
   const [loading, setLoading] = useState(true)
@@ -23,6 +25,7 @@ export function DashboardRecentRides() {
   useEffect(() => {
     const fetchRecentRides = async () => {
       try {
+        const supabase = createBrowserSupabaseClient()
         const { data, error } = await supabase
           .from("rides")
           .select(`
@@ -51,10 +54,10 @@ export function DashboardRecentRides() {
   }, [])
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "success" | "warning" | "destructive"> = {
-      pending: "warning",
+    const variants: Record<string, BadgeVariant> = {
+      pending: "secondary",
       confirmed: "default",
-      completed: "success",
+      completed: "default",
       canceled: "destructive",
     }
     const labels: Record<string, string> = {

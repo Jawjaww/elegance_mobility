@@ -1,7 +1,7 @@
 "use client";
 
 import { VehicleOptions, VehicleType } from "@/lib/types/vehicle.types";
-import { supabase } from '@/utils/supabase/client';
+import { supabase } from '@/lib/database/client';
 
 // Types pour le service de tarification
 export interface PriceData {

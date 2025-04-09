@@ -1,4 +1,4 @@
-import { Database } from '@/lib/database.types'
+import { Database } from '@/lib/types/database.types'
 import DriverCard from './driver-card'
 
 type Driver = Database['public']['Tables']['drivers']['Row']

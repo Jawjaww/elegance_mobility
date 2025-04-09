@@ -1,42 +1,25 @@
-/**
- * Native PostgreSQL roles used in the application
- * These roles are managed directly in the database
- */
-export type PostgresRole = 'app_super_admin' | 'app_admin' | 'app_driver' | 'app_customer';
+import type { User } from '@supabase/supabase-js';
 
-/**
- * User session with native role information from Supabase auth
- */
+// Rôles natifs de Supabase
+export type SupabaseRole = 'app_super_admin' | 'app_admin' | 'app_driver' | 'app_customer' | 'unauthorized';
+
+// L'alias UserRole n'est plus nécessaire
+// export type UserRole = Exclude<SupabaseRole, 'unauthorized'>;
+
 export interface AuthUser {
   id: string;
-  email?: string;
-  role: PostgresRole;
+  email?: string; // Rendre optionnel
+  role: SupabaseRole; // Utiliser SupabaseRole directement
+  name?: string; // Rendre optionnel
+  user_metadata?: { // Rendre optionnel pour correspondre à server.ts
+    name?: string;
+    phone?: string; // Ajouté pour correspondre à server.ts
+    avatar_url?: string; // Ajouté pour correspondre à server.ts
+    [key: string]: any;
+  };
 }
 
-/**
- * Authentication errors
- */
-export type AuthError = 
-  | 'not_authenticated'
-  | 'insufficient_permissions'
-  | 'invalid_credentials'
-  | 'internal';
-
-/**
- * Role validation helpers
- */
-export const isValidRole = (role?: string): role is PostgresRole => {
-  return ['app_super_admin', 'app_admin', 'app_driver', 'app_customer'].includes(role || '');
-}
-
-export const hasAdminAccess = (role?: string): boolean => {
-  return role === 'app_super_admin' || role === 'app_admin';
-}
-
-export const hasSuperAdminAccess = (role?: string): boolean => {
-  return role === 'app_super_admin';
-}
-
-export const isDriver = (role?: string): boolean => {
-  return role === 'app_driver';
+// Type utilitaire pour la réponse RPC des rôles
+export interface UserRoleResponse {
+  role: SupabaseRole; // Utiliser SupabaseRole directement
 }

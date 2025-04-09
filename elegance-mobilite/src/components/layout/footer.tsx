@@ -4,7 +4,7 @@ export function Footer() {
       <div className="container py-8">
         <div className="grid gap-8 lg:grid-cols-3">
           <div>
-            <h3 className="text-lg font-semibold mb-4">Élégance Mobilité</h3>
+            <h3 className="text-lg font-semibold mb-4">Vector Elegans</h3>
             <p className="text-sm text-neutral-400">
               Service de transport VTC de luxe pour vos déplacements professionnels
               et privés.
@@ -14,7 +14,7 @@ export function Footer() {
             <h4 className="text-lg font-semibold mb-4">Contact</h4>
             <ul className="space-y-2 text-sm text-neutral-400">
               <li>Téléphone: +33 1 XX XX XX XX</li>
-              <li>Email: contact@elegance-mobilite.fr</li>
+              <li>Email: contact@vector-elegans.fr</li>
               <li>Adresse: Paris, France</li>
             </ul>
           </div>
@@ -23,7 +23,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm text-neutral-400">
               <li>SIRET: XXX XXX XXX XXXXX</li>
               <li>Licence VTC: XXXXXXXX</li>
-              <li>© 2024 Élégance Mobilité. Tous droits réservés.</li>
+              <li>© 2024 Vector Elegans. Tous droits réservés.</li>
             </ul>
           </div>
         </div>

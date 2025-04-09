@@ -172,4 +172,9 @@
   .location-btn {
     @apply py-1.5 px-3 h-auto text-xs flex items-center justify-center bg-blue-600/80 hover:bg-blue-700 text-white border border-blue-500 rounded-md shadow-sm transition-all;
   }
+
+  .content-container {
+    @apply container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl;
+  }
 }
+

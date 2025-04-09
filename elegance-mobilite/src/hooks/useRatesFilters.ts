@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { VehicleType } from '@/lib/vehicle'
-import { Database } from '@/lib/database.types'
+import { Database } from '@/lib/types/database.types'
 
 type Rate = Database['public']['Tables']['rates']['Row']
 

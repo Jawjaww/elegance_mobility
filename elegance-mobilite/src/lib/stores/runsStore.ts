@@ -1,6 +1,7 @@
 import { create } from "zustand"
 import { devtools } from "zustand/middleware"
-import { supabase } from "@/lib/supabaseClient"
+import { createServerSupabaseClient } from "@/lib/database/server"
+import { createBrowserSupabaseClient } from "@/lib/database/client"
 import { useEffect } from "react"
 
 export type DeliveryRun = {
@@ -47,6 +48,7 @@ export const useRunsStore = create<RunsState>()(
       fetchRuns: async (date) => {
         set({ isLoading: true, error: null })
         try {
+          const supabase = await createServerSupabaseClient()
           const startOfDay = new Date(date)
           startOfDay.setHours(0, 0, 0, 0)
           
@@ -82,6 +84,7 @@ export const useRunsStore = create<RunsState>()(
 
       updateRunStatus: async (runId, status) => {
         try {
+          const supabase = await createServerSupabaseClient()
           const { error } = await supabase
             .from("courses")
             .update({ status })
@@ -104,6 +107,8 @@ export const useRunsStore = create<RunsState>()(
 
       assignDriver: async (runId, driverId) => {
         try {
+          const supabase = await createServerSupabaseClient()
+          
           // Récupérer d'abord le véhicule par défaut du chauffeur
           const { data: driverData, error: driverError } = await supabase
             .from("drivers")
@@ -154,6 +159,7 @@ export const useRealtimeRuns = () => {
   const selectedDate = useRunsStore(state => state.selectedDate)
 
   useEffect(() => {
+    const supabase = createBrowserSupabaseClient()
     const channel = supabase
       .channel("courses-changes")
       .on(
@@ -171,7 +177,7 @@ export const useRealtimeRuns = () => {
       .subscribe()
 
     return () => {
-      supabase.removeChannel(channel)
+      channel.unsubscribe()
     }
   }, [fetchRuns, selectedDate])
 }

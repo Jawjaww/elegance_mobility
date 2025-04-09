@@ -1,8 +1,8 @@
 "use client";
 
-import { AuthProvider } from "@/lib/auth/useAuth";
 import { ThemeProvider } from "./ThemeProvider";
 import { ReactNode } from "react";
+import { ToastProvider } from "@/hooks/useToast";
 
 interface ClientProvidersProps {
   children: ReactNode;
@@ -15,9 +15,9 @@ export function ClientProviders({ children }: ClientProvidersProps) {
       defaultTheme="dark"
       enableSystem
     >
-      <AuthProvider>
+      <ToastProvider>
         {children}
-      </AuthProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

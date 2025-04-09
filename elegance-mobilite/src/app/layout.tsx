@@ -1,17 +1,21 @@
-import { Inter } from "next/font/google";
-import { Providers } from "./providers";
+import { Plus_Jakarta_Sans } from "next/font/google";
+import { ClientProviders } from "@/components/ClientProviders";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-plus-jakarta'
+});
 
 export const metadata = {
-  title: "Elegance Mobilité",
+  title: "Vector Elegans",
   description: "Service de transport VTC de luxe",
 };
 
 /**
- * Root layout component that provides authentication context
- * while preserving the original styling and structure
+ * Layout racine minimal qui contient uniquement les providers
+ * Les layouts spécifiques (client/admin) sont gérés dans leurs routes respectives
  */
 export default function RootLayout({
   children,
@@ -20,24 +24,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr">
-      <body className={inter.className}>
-        <Providers>
-          {/* Preserve existing layout structure */}
-          <div className="min-h-screen flex flex-col">
-            {/* Main content wrapped with auth provider */}
-            <main className="flex-grow">{children}</main>
-
-            {/* Keep existing footer */}
-            <footer className="bg-gray-100 py-4">
-              <div className="container mx-auto px-4 text-center text-gray-600">
-                <p>
-                  &copy; {new Date().getFullYear()} Elegance Mobilité. Tous
-                  droits réservés.
-                </p>
-              </div>
-            </footer>
-          </div>
-        </Providers>
+      <body className={`${plusJakarta.variable} font-plus-jakarta`}>
+        <ClientProviders>
+          {children}
+        </ClientProviders>
       </body>
     </html>
   );
