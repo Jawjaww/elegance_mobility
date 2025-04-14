@@ -178,3 +178,10 @@
   }
 }
 
+@layer utilities {
+  /* Ajoute un padding en bas sur mobile pour éviter que le menu mobile cache le contenu */
+  .mobile-safe-area {
+    @apply pb-20 md:pb-0;
+  }
+}
+

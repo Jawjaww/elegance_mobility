@@ -2,9 +2,13 @@
 
 import { createServerSupabaseClient } from '@/lib/database/server' 
 import { type AuthError } from '@supabase/supabase-js'
-import { isAdmin, isDriver } from '@/lib/utils/roles'
-import { SupabaseRole } from '@/lib/types/auth.types' // Importer depuis auth.types
+import { isAdmin, isDriver } from '@/lib/database/roles'  // Import corrigé depuis database/roles
+import { SupabaseRole } from '@/lib/types/auth.types'
+import { redirect } from 'next/navigation'
 
+/**
+ * Login standard pour les utilisateurs (clients)
+ */
 export async function login(email: string, password: string): Promise<{
   error: AuthError | string | null
 }> {
@@ -26,8 +30,8 @@ export async function login(email: string, password: string): Promise<{
     return { error: 'Impossible de récupérer les informations utilisateur' }
   }
 
-  // Caster user.role en SupabaseRole
-  const userRole = user.role as SupabaseRole | undefined;
+  // Le rôle est directement accessible via user.role (rôle PostgreSQL natif)
+  const userRole = user.role as SupabaseRole;
 
   // L'administrateur ne devrait pas utiliser cette page de connexion
   if (isAdmin(userRole)) { 
@@ -38,6 +42,18 @@ export async function login(email: string, password: string): Promise<{
   return { error: null }
 }
 
+/**
+ * Action de déconnexion - à utiliser dans un composant form avec action={logout}
+ */
+export async function logout() {
+  const supabase = await createServerSupabaseClient()
+  await supabase.auth.signOut()
+  redirect('/')
+}
+
+/**
+ * Login spécifique pour les chauffeurs
+ */
 export async function driverLogin(email: string, password: string): Promise<{
   error: AuthError | string | null
 }> {
@@ -59,8 +75,8 @@ export async function driverLogin(email: string, password: string): Promise<{
     return { error: 'Impossible de récupérer les informations utilisateur' }
   }
 
-  // Caster user.role en SupabaseRole
-  const userRole = user.role as SupabaseRole | undefined;
+  // Le rôle est directement accessible via user.role (rôle PostgreSQL natif)
+  const userRole = user.role as SupabaseRole;
 
   // Seuls les chauffeurs peuvent utiliser cette page de connexion
   if (!isDriver(userRole)) { 
@@ -71,7 +87,21 @@ export async function driverLogin(email: string, password: string): Promise<{
   return { error: null }
 }
 
-export async function logout() {
+/**
+ * Vérifie si l'utilisateur a accès à une ressource en fonction de son rôle
+ */
+export async function checkAccess(requiredRole: string | string[]) {
   const supabase = await createServerSupabaseClient()
-  await supabase.auth.signOut()
+  
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return false
+  
+  // Utiliser le rôle natif PostgreSQL dans session.user
+  const userRole = session.user.role as SupabaseRole
+  
+  if (Array.isArray(requiredRole)) {
+    return requiredRole.includes(userRole)
+  }
+  
+  return userRole === requiredRole
 }

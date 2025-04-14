@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Car, Calendar, Home, User } from "lucide-react";
-import { AuthUser } from "@/lib/types/auth.types";
+import type { AuthUser } from "@/lib/types/database.types";
 import { cn } from "@/lib/utils";
 
 interface ClientMobileNavProps {

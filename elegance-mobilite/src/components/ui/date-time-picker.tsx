@@ -22,7 +22,6 @@ const formatDateForInput = (date: Date | string | number | null | undefined) => 
   } else if (date && typeof date === 'number') {
     validDate = new Date(date);
   } else {
-    // Si la date est null, undefined, ou invalide, utiliser la date actuelle
     validDate = new Date();
     console.warn("DateTimePicker: Invalid date provided, using current date instead", date);
   }
@@ -55,9 +54,10 @@ export function DateTimePicker({
   const inputRef = React.useRef<HTMLInputElement>(null);
   const inputId = id || React.useId();
 
+  // S'assurer que la date est valide
   const ensureValidDate = (dateInput: Date | string | number | null | undefined): Date => {
     if (dateInput instanceof Date && !isNaN(dateInput.getTime())) {
-      return dateInput;
+      return new Date(dateInput.getTime()); // Créer une nouvelle instance
     }
     
     if (dateInput && (typeof dateInput === 'string' || typeof dateInput === 'number')) {
@@ -70,33 +70,37 @@ export function DateTimePicker({
     return new Date(); // Date par défaut si invalide
   };
 
+  // État local pour la date
   const currentDate = ensureValidDate(value);
   const { date: dateValue, time: timeValue } = formatDateForInput(currentDate);
 
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newDateValue = e.target.value;
-    if (!newDateValue) return; // Ignorer les valeurs vides
-    
-    const [year, month, day] = newDateValue.split("-").map(Number);
-    const newDate = ensureValidDate(value); // Utiliser la date courante comme base
-    newDate.setFullYear(year);
-    newDate.setMonth(month - 1); // Les mois commencent à 0 en JavaScript
-    newDate.setDate(day);
-    
-    onChange(newDate);
+  const handleDateTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const newDateTime = new Date(e.target.value);
+      
+      // Vérifier si la date est valide
+      if (!isNaN(newDateTime.getTime())) {
+        // Copier la date pour éviter les modifications par référence
+        const safeDate = new Date(newDateTime.getTime());
+        onChange(safeDate);
+      } else {
+        console.warn("Invalid date input:", e.target.value);
+      }
+    } catch (error) {
+      console.error("Error parsing date:", error);
+    }
   };
 
-  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTimeValue = e.target.value;
-    if (!newTimeValue) return; // Ignorer les valeurs vides
-    
-    const [hours, minutes] = newTimeValue.split(":").map(Number);
-    const newDate = ensureValidDate(value); // Utiliser la date courante comme base
-    newDate.setHours(hours);
-    newDate.setMinutes(minutes);
-    
-    onChange(newDate);
-  };
+  // Formater la date minimum
+  const minDateString = React.useMemo(() => {
+    try {
+      const { date, time } = formatDateForInput(minDate);
+      return `${date}T${time}`;
+    } catch (error) {
+      console.error("Error formatting minDate:", error);
+      return formatDateForInput(new Date()).date;
+    }
+  }, [minDate]);
 
   return (
     <div className="space-y-2 relative">
@@ -107,8 +111,8 @@ export function DateTimePicker({
           ref={inputRef}
           type="datetime-local"
           value={`${dateValue}T${timeValue}`}
-          onChange={handleDateChange}
-          min={formatDateForInput(minDate).date}
+          onChange={handleDateTimeChange}
+          min={minDateString}
           className="w-full pr-10 bg-neutral-900 border-neutral-700 text-white focus:border-neutral-500 focus:ring-neutral-500"
         />
         <button

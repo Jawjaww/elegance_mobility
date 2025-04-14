@@ -1,20 +1,18 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { createJSONStorage } from 'zustand/middleware';
-import { Coordinates, Location } from '@/lib/types/map-types';
+import { Location, ReservationStore } from '@/lib/types/reservation.types';
 
 // Fonction de normalisation utilisant uniquement lon
 function normalizeLocation(location: any): Location | null {
   try {
     // Cas explicite pour null ou undefined
     if (location === null || location === undefined) {
-      console.log("[Store] Réinitialisation des coordonnées");
       return null;
     }
 
     // Vérifier le type de l'objet
     if (typeof location !== 'object') {
-      console.error("[Store] Format invalide pour location:", location);
       throw new Error("Format de données incorrect");
     }
 
@@ -26,12 +24,10 @@ function normalizeLocation(location: any): Location | null {
 
     // Vérification des valeurs
     if (lat === null || lon === null || isNaN(lat) || isNaN(lon)) {
-      console.error("[Store] Coordonnées invalides:", { lat, lon });
       throw new Error("Coordonnées invalides");
     }
 
     if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
-      console.error("[Store] Coordonnées hors limites:", { lat, lon });
       throw new Error("Coordonnées hors limites");
     }
 
@@ -48,29 +44,6 @@ function normalizeLocation(location: any): Location | null {
   }
 }
 
-interface ReservationState {
-  departure: Location | null;
-  destination: Location | null;
-  pickupDateTime: Date;
-  distance: number | null;
-  duration: number | null;
-  selectedVehicle: string;
-  selectedOptions: string[];
-  step: number;
-  setDeparture: (location: any) => void;
-  setDestination: (location: any) => void;
-  setPickupDateTime: (date: Date) => void;
-  setDistance: (distance: number) => void;
-  setDuration: (duration: number) => void;
-  setSelectedVehicle: (vehicle: string) => void;
-  toggleOption: (option: string) => void;
-  setSelectedOptions: (options: string[]) => void;
-  setStep: (step: number) => void;
-  reset: () => void;
-  addMinutesToPickupTime: (minutes: number) => void;
-  updatePickupDate: (date: Date) => void;
-}
-
 const initialState = {
   departure: null,
   destination: null,
@@ -82,9 +55,9 @@ const initialState = {
   step: 1,
 };
 
-export const useReservationStore = create<ReservationState>()(
+export const useReservationStore = create<ReservationStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...initialState,
 
       setDeparture: (location) => {
@@ -97,10 +70,22 @@ export const useReservationStore = create<ReservationState>()(
         set(() => ({ destination: normalized }));
       },
 
-      setPickupDateTime: (date) =>
-        set(() => ({
-          pickupDateTime: date,
-        })),
+      setPickupDateTime: (date) => {
+        // Validation et conversion de la date
+        try {
+          const validDate = date instanceof Date ? new Date(date.getTime()) : new Date(date);
+          if (isNaN(validDate.getTime())) {
+            throw new Error("Date invalide");
+          }
+          set(() => ({ pickupDateTime: validDate }));
+        } catch (error) {
+          console.error("[Store] Erreur lors de la définition de la date:", error);
+          // En cas d'erreur, utiliser l'heure actuelle + 3h comme fallback
+          const fallbackDate = new Date();
+          fallbackDate.setHours(fallbackDate.getHours() + 3);
+          set(() => ({ pickupDateTime: fallbackDate }));
+        }
+      },
 
       setDistance: (distance) =>
         set(() => ({
@@ -125,8 +110,7 @@ export const useReservationStore = create<ReservationState>()(
         })),
 
       setSelectedOptions: (options) =>
-        set((state) => ({
-          ...state,
+        set(() => ({
           selectedOptions: options,
         })),
 
@@ -137,34 +121,58 @@ export const useReservationStore = create<ReservationState>()(
 
       reset: () =>
         set(() => ({
-          departure: null,
-          destination: null,
-          pickupDateTime: new Date(),
-          distance: 0,
-          duration: 0,
-          selectedVehicle: '',
-          selectedOptions: [],
-          step: 1,
+          ...initialState,
+          pickupDateTime: new Date(), // Toujours utiliser une nouvelle instance
         })),
 
-      addMinutesToPickupTime: (minutes: number) =>
-        set((state) => ({
-          pickupDateTime: new Date(state.pickupDateTime.getTime() + minutes * 60000),
-        })),
-
-      updatePickupDate: (date: Date) =>
+      addMinutesToPickupTime: (minutes) =>
         set((state) => {
-          const newDate = new Date(date);
-          newDate.setHours(state.pickupDateTime.getHours());
-          newDate.setMinutes(state.pickupDateTime.getMinutes());
-          return {
-            pickupDateTime: newDate,
-          };
+          const newDate = new Date(state.pickupDateTime.getTime());
+          newDate.setMinutes(newDate.getMinutes() + minutes);
+          return { pickupDateTime: newDate };
+        }),
+
+      updatePickupDate: (date) =>
+        set((state) => {
+          try {
+            const currentDate = new Date(state.pickupDateTime);
+            const newDate = new Date(date);
+            
+            // Conserver l'heure actuelle
+            newDate.setHours(currentDate.getHours());
+            newDate.setMinutes(currentDate.getMinutes());
+            
+            // Vérifier si la date est valide
+            if (isNaN(newDate.getTime())) {
+              throw new Error("Date invalide après mise à jour");
+            }
+            
+            return { pickupDateTime: newDate };
+          } catch (error) {
+            console.error("[Store] Erreur lors de la mise à jour de la date:", error);
+            return state; // Conserver l'état actuel en cas d'erreur
+          }
         }),
     }),
     {
       name: 'reservation-store',
       storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        ...state,
+        // Convertir la date en ISO string pour le stockage
+        pickupDateTime: state.pickupDateTime.toISOString(),
+      }),
+      onRehydrateStorage: () => (state) => {
+        // Reconvertir la date en objet Date lors de la réhydratation
+        if (state && typeof state.pickupDateTime === 'string') {
+          try {
+            state.pickupDateTime = new Date(state.pickupDateTime);
+          } catch (error) {
+            console.error("[Store] Erreur lors de la réhydratation de la date:", error);
+            state.pickupDateTime = new Date(); // Utiliser la date actuelle en cas d'erreur
+          }
+        }
+      },
     }
   )
 );

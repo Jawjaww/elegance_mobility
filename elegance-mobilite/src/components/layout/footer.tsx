@@ -1,6 +1,6 @@
 export function Footer() {
   return (
-    <footer className="border-t border-neutral-800 bg-black/50 backdrop-blur supports-[backdrop-filter]:bg-black/50">
+    <footer className="hidden md:flex border-t border-neutral-800 bg-black/50 backdrop-blur supports-[backdrop-filter]:bg-black/50">
       <div className="container py-8">
         <div className="grid gap-8 lg:grid-cols-3">
           <div>

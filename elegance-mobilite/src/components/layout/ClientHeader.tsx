@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { UserMenu } from "@/components/layout/UserMenu";
-import { AuthUser } from "@/lib/types/auth.types"; // Utiliser le type harmonisé
+import { UserMenu } from "../customers/UserMenu";
+import type { Database } from "@/lib/types/database.types";
+
+type AuthUser = Database['auth']['users']['Row'];
 
 // Interface pour les props, incluant l'utilisateur optionnel
 interface ClientHeaderProps {
@@ -17,11 +19,8 @@ const navItems = [
   { name: "Mon compte", href: "/my-account" },
 ];
 
-// Accepter user comme prop
 export function ClientHeader({ user }: ClientHeaderProps) {
   const pathname = usePathname();
-
-  // Pas besoin de useState ou useEffect ici, user vient des props
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -52,7 +51,7 @@ export function ClientHeader({ user }: ClientHeaderProps) {
           ))}
         </div>
         <div className="flex items-center pr-4">
-          <UserMenu user={user} />
+          {user && <UserMenu user={user} />}
         </div>
       </div>
     </header>
