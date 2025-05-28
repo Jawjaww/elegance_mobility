@@ -5,18 +5,10 @@ import { formatDateTime } from "@/lib/utils/date-format";
 import { Car, MapPin } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
 
+import type { Database } from "@/lib/types/database.types";
+
 interface ReservationCardProps {
-  ride: {
-    id: string;
-    pickup_time: string;
-    pickup_address: string;
-    dropoff_address: string;
-    vehicle_type?: string;
-    status: string;
-    estimated_price?: number | null;
-    distance?: number | null;
-    created_at: string;
-  };
+  ride: Database["public"]["Tables"]["rides"]["Row"];
   onEdit?: (id: string) => void;
   onCancel?: (id: string) => void;
   onDetails?: (id: string) => void;

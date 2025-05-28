@@ -50,11 +50,20 @@ export function useReservation() {
   const [vehicleType, setVehicleType] = useState<VehicleType>((reservationStore.selectedVehicle as VehicleType) || 'STANDARD');
   const [pickup, setPickup] = useState<LocationState>(DEFAULT_LOCATION_STATE);
   const [dropoff, setDropoff] = useState<LocationState>(DEFAULT_LOCATION_STATE);
-  const [options, setOptions] = useState<VehicleOptions>(() => 
-    reservationStore.selectedOptions.reduce((acc, option) => ({ 
-      ...acc, [option]: true 
-    }), { childSeat: false, petFriendly: false } as VehicleOptions)
-  );
+  const [options, setOptions] = useState<VehicleOptions>(() => {
+    // Récupérer les options précédemment sélectionnées du store
+    const storedOptions = Array.isArray(reservationStore.selectedOptions)
+      ? reservationStore.selectedOptions
+      : [];
+      
+    // Initialiser toutes les options à false par défaut
+    return {
+      childSeat: storedOptions.includes('childSeat'),
+      petFriendly: storedOptions.includes('petFriendly'),
+      accueil: storedOptions.includes('accueil'),
+      boissons: storedOptions.includes('boissons')
+    };
+  });
 
   const handleNextStep = useCallback(() => {
     if (!origin || !destination || !originAddress || !destinationAddress) {
@@ -116,18 +125,13 @@ export function useReservation() {
         .filter(([, value]) => value)
         .map(([key]) => key);
       
-      // Contournement: utiliser toggleOption au lieu de setSelectedOptions
-      // D'abord retirer toutes les options
-      [...reservationStore.selectedOptions].forEach(option => {
-        reservationStore.toggleOption(option);
-      });
-      
-      // Ajouter les nouvelles options
-      selectedOptions.forEach(option => {
-        if (!reservationStore.selectedOptions.includes(option)) {
-          reservationStore.toggleOption(option);
-        }
-      });
+      // Convertir les options activées en tableau
+      const newSelectedOptions = Object.entries(options)
+        .filter(([, value]) => value)
+        .map(([key]) => key);
+
+      // La persistance est gérée automatiquement par le middleware Zustand
+      reservationStore.setSelectedOptions(newSelectedOptions);
 
       // Vérifier si nous sommes en mode édition
       const editingId = localStorage.getItem('currentEditingReservationId');

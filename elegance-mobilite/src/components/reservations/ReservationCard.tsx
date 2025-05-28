@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { formatDuration } from "@/lib/utils";
 import { 
   Card, 
   CardContent, 
@@ -248,7 +249,7 @@ export function ReservationCard({ reservation, onCancel, onEdit, isPast = false 
                 <p className="text-sm text-neutral-400">Durée estimée</p>
                 <div className="flex items-center gap-2 mt-1">
                   <Clock className="h-4 w-4 text-blue-400" />
-                  <p>{reservation.duration} min</p>
+                  <p>{formatDuration(reservation.duration)}</p>
                 </div>
               </div>
             </div>

@@ -1,16 +1,27 @@
-import { ToastProvider } from "@/hooks/useToast"
+'use server'
 
-interface AccountLayoutProps {
-  children: React.ReactNode
-}
+import { createServerSupabaseClient } from "@/lib/database/server"
+import { redirect } from "next/navigation"
+import { ReactNode } from "react"
+import { getAppRole } from '@/lib/types/common.types'
 
-export default function AccountLayout({ children }: AccountLayoutProps) {
+export default async function CustomerPortalLayout({
+  children,
+}: {
+  children: ReactNode
+}) {
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user || getAppRole(user as any) !== 'app_customer') {
+    redirect('/auth/login?from=account')
+  }
+
   return (
-    <ToastProvider>
-      <div className="container py-8 max-w-3xl px-4 md:px-6">
-        {/* Contenu principal simplifié */}
-        <main>{children}</main>
-      </div>
-    </ToastProvider>
+    <div className="min-h-screen bg-neutral-950 text-white">
+      <main className="container mx-auto px-4 py-8">
+        {children}
+      </main>
+    </div>
   )
 }

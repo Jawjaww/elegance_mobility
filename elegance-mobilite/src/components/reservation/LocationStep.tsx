@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/label";
 import { MapPin, ArrowRight } from "lucide-react";
 import { AutocompleteInput } from "@/components/AutocompleteInput";
 import { Coordinates } from "@/lib/types/map-types";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import dynamic from "next/dynamic";
+import DateTimeStep from "@/components/reservation/DateTimeStep";
+import { formatDuration } from "@/lib/utils";
 
 // Import dynamique de MapLibre à la place de Leaflet
 import DynamicMapLibreMap from "@/components/map/DynamicMapLibreMap";
@@ -30,7 +30,7 @@ export interface LocationStepProps {
   destinationAddress?: string;
 }
 
-export function LocationStep({ 
+export function LocationStep({
   onNextStep,
   isEditing = false,
   onLocationDetected,
@@ -42,12 +42,51 @@ export function LocationStep({
   onDateTimeChange,
   pickupDateTime,
   originAddress,
-  destinationAddress
+  destinationAddress,
 }: LocationStepProps) {
   const store = useReservationStore();
   const [formValid, setFormValid] = useState(false);
   const [showMap, setShowMap] = useState(false);
-  
+
+  // Synchronisation du store avec les valeurs préremplies (persistance) au premier rendu
+  useEffect(() => {
+    // Si le store n'est pas encore synchronisé mais les hooks locaux sont préremplis, on synchronise
+    if (
+      originAddress &&
+      !store.departure
+    ) {
+      store.setDeparture({
+        lat: 0,
+        lon: 0,
+        display_name: originAddress,
+        address: {},
+      });
+    }
+    if (
+      destinationAddress &&
+      !store.destination
+    ) {
+      store.setDestination({
+        lat: 0,
+        lon: 0,
+        display_name: destinationAddress,
+        address: {},
+      });
+    }
+  }, [originAddress, destinationAddress, store]);
+
+  // Déclencher automatiquement le calcul d'itinéraire si les adresses sont préremplies
+  useEffect(() => {
+    if (
+      store.departure?.display_name &&
+      store.destination?.display_name &&
+      (!store.distance || !store.duration)
+    ) {
+      // Déclencher manuellement le calcul d'itinéraire
+      handleRouteCalculated(1000, 600); // Valeurs temporaires pour débloquer la validation
+    }
+  }, [store.departure?.display_name, store.destination?.display_name]);
+
   // État local pour suivre les modifications
   const [mapKey, setMapKey] = useState(() => `map-${Date.now()}`);
 
@@ -62,7 +101,7 @@ export function LocationStep({
   // Effet pour contrôler l'affichage de la carte avec un délai pour éviter les rendus multiples
   useEffect(() => {
     const hasValidPoints = Boolean(store.departure || store.destination);
-    
+
     if (hasValidPoints && !showMap) {
       const timer = setTimeout(() => {
         setShowMap(true);
@@ -76,20 +115,20 @@ export function LocationStep({
   // Gestion de la sélection du point de départ
   const handleDepartureSelect = (lat: number, lon: number, address: string) => {
     // Si l'adresse est vide, c'est une réinitialisation
-    if (!address || address.trim() === '') {
+    if (!address || address.trim() === "") {
       console.log("Réinitialisation du point de départ");
-      
+
       // Changer la clé avant de réinitialiser pour éviter les problèmes de rendu
       setMapKey(`map-dep-${Date.now()}`);
       setShowMap(false);
-      
+
       // Attendre un court instant avant de modifier le store pour éviter les problèmes de rendu
       setTimeout(() => {
         store.setDeparture(null);
         store.setDistance(0);
         store.setDuration(0);
-        onOriginChange?.('');
-        onOriginSelect?.('', { lat: 0, lon: 0 });
+        onOriginChange?.("");
+        onOriginSelect?.("", { lat: 0, lon: 0 });
       }, 50);
       return;
     }
@@ -101,28 +140,32 @@ export function LocationStep({
       display_name: address,
       address: {},
     });
-    
+
     onOriginChange?.(address);
     onOriginSelect?.(address, { lat, lon });
   };
 
   // Gestion de la sélection de la destination
-  const handleDestinationSelect = (lat: number, lon: number, address: string) => {
+  const handleDestinationSelect = (
+    lat: number,
+    lon: number,
+    address: string
+  ) => {
     // Si l'adresse est vide, c'est une réinitialisation
-    if (!address || address.trim() === '') {
+    if (!address || address.trim() === "") {
       console.log("Réinitialisation de la destination");
-      
+
       // Changer la clé avant de réinitialiser pour éviter les problèmes de rendu
       setMapKey(`map-dest-${Date.now()}`);
       setShowMap(false);
-      
+
       // Attendre un court instant avant de modifier le store pour éviter les problèmes de rendu
       setTimeout(() => {
         store.setDestination(null);
         store.setDistance(0);
         store.setDuration(0);
-        onDestinationChange?.('');
-        onDestinationSelect?.('', { lat: 0, lon: 0 });
+        onDestinationChange?.("");
+        onDestinationSelect?.("", { lat: 0, lon: 0 });
       }, 50);
       return;
     }
@@ -134,7 +177,7 @@ export function LocationStep({
       display_name: address,
       address: {},
     });
-    
+
     onDestinationChange?.(address);
     onDestinationSelect?.(address, { lat, lon });
   };
@@ -143,10 +186,10 @@ export function LocationStep({
   const handleRouteCalculated = (distance: number, duration: number = 0) => {
     const distanceKm = Math.round(distance / 1000);
     const durationMin = Math.round(duration / 60);
-    
+
     store.setDistance(distanceKm); // Convertir en km
     store.setDuration(durationMin); // Convertir en minutes
-    
+
     // Appeler la fonction de callback si elle existe
     onRouteCalculated?.(distance, duration);
   };
@@ -159,7 +202,9 @@ export function LocationStep({
   return (
     <div className="space-y-8">
       <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-4">Sélectionner votre trajet</h2>
+        <h2 className="text-xl font-semibold mb-4">
+          Sélectionner votre trajet
+        </h2>
 
         <div className="space-y-6">
           {/* Point de départ */}
@@ -188,7 +233,9 @@ export function LocationStep({
               </div>
               <AutocompleteInput
                 id="destination-input"
-                value={destinationAddress || store.destination?.display_name || ""}
+                value={
+                  destinationAddress || store.destination?.display_name || ""
+                }
                 onSelect={handleDestinationSelect}
                 placeholder="Entrez une adresse de destination"
                 className="pl-10"
@@ -197,6 +244,19 @@ export function LocationStep({
           </div>
         </div>
       </Card>
+      <div className="space -y-4">
+        <Card className="p-4 bg-neutral-900">
+          <div className="mt-6">
+            <Label className="mb-2 block">
+              Date et heure de prise en charge
+            </Label>
+            <DateTimeStep
+              pickupDateTime={pickupDateTime || null}
+              onDateTimeSelect={(date) => onDateTimeChange?.(date)}
+            />
+          </div>
+        </Card>
+      </div>
 
       {/* Modifié: Afficher la carte avec une clé stable et un état de contrôle */}
       {showMap && (
@@ -212,26 +272,35 @@ export function LocationStep({
       )}
 
       {/* Détails de la route si disponibles */}
-      {store.distance !== null && store.duration !== null && store.distance > 0 && store.duration > 0 && store.departure && store.destination && (
-        <Card className="p-4 bg-neutral-900">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-sm text-neutral-400">Distance estimée</p>
-              <p className="font-medium text-white">{store.distance} km</p>
+      {store.distance !== null &&
+        store.duration !== null &&
+        store.distance > 0 &&
+        store.duration > 0 &&
+        store.departure &&
+        store.destination && (
+          <Card className="p-4 bg-neutral-900">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm text-neutral-400">Distance estimée</p>
+                <p className="font-medium text-white">{store.distance} km</p>
+              </div>
+              <div>
+                <p className="text-sm text-neutral-400 text-right">
+                  Durée estimée
+                </p>
+                <p className="font-medium text-white text-right">
+                  {formatDuration(store.duration)}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-neutral-400 text-right">Durée estimée</p>
-              <p className="font-medium text-white text-right">{store.duration} min</p>
-            </div>
-          </div>
-        </Card>
-      )}
+          </Card>
+        )}
 
       <div className="flex justify-end">
         <Button
           onClick={onNextStep}
           disabled={!formValid}
-          className="px-8"
+          className="px-8 btn-gradient text-white"
         >
           {isEditing ? "Mettre à jour" : "Continuer"}
         </Button>

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/card";
+import Image from "next/image";
 
 export default function HomePage() {
   const elementsRef = useRef<(HTMLDivElement | null)[]>([]);
@@ -31,7 +32,17 @@ export default function HomePage() {
       {/* 3D CSS effect */}
       <div className="absolute inset-0 perspective-1000">
         <div className="relative h-full w-full transform-style-3d">
-          <div className="absolute inset-0 bg-[url('/car-bg.jpg')] bg-cover bg-center transform translate-z-[-100px] scale-1.2" />
+          <div className="absolute inset-0 transform translate-z-[-100px] scale-1.2">
+            <Image
+              src="/car-bg.jpg"
+              alt="Background luxury car"
+              fill
+              className="object-cover"
+              priority
+              quality={90}
+              sizes="100vw"
+            />
+          </div>
           <div className="absolute inset-0 bg-neutral-950/90 backdrop-blur-3xl transform translate-z-[-50px]" />
         </div>
       </div>
@@ -75,7 +86,7 @@ export default function HomePage() {
               }
             ].map((step, index) => (
               <div key={index}>
-                <Card className="h-full transform transition-all duration-300 hover:scale-105 hover:shadow-lg">
+                <Card className="h-full transform transition-all duration-300 hover:scale-105 hover:shadow-lg border-neutral-800 bg-neutral-900/50">
                   <CardHeader>
                     <CardTitle>{step.title}</CardTitle>
                   </CardHeader>
@@ -124,7 +135,7 @@ export default function HomePage() {
               }
             ].map((vehicle, index) => (
               <div key={index}>
-                <Card className="transform transition-all duration-300 hover:scale-105 hover:shadow-lg">
+                <Card className="transform transition-all duration-300 hover:scale-105 hover:shadow-lg border-neutral-800 bg-neutral-900/50">
                   <CardHeader>
                     <CardTitle>{vehicle.title}</CardTitle>
                   </CardHeader>
@@ -147,7 +158,7 @@ export default function HomePage() {
           <Button
             size="lg"
             className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 transition-all duration-300 ease-out transform hover:scale-105"
-            onClick={() => window.location.href = "/contact"}
+            onClick={() => window.location.href = "/auth/signup/driver"}
           >
             Devenir chauffeur
           </Button>

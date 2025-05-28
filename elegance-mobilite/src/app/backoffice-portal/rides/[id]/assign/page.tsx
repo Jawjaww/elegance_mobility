@@ -1,192 +1,289 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Card } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { useUnassignedRidesStore } from "@/lib/unassignedRidesStore"
-import { useDriversStore } from "@/lib/driversStore"
-import { createBrowserSupabaseClient } from "@/lib/database/client"
-import { Vehicle } from "@/lib/types/types"
-import { Location } from "@/lib/types/map-types"
-import MapLibreMap from "@/components/map/MapLibreMap"
+import { User, Car, Clock, CalendarRange, MapPin, Users } from "lucide-react"
+import { Separator } from "@/components/ui/separator"
+import { Badge } from "@/components/ui/badge"
+import { format } from "date-fns"
+import { fr } from "date-fns/locale"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useToast } from "@/hooks/useToast"
+import { useUnifiedRidesStore } from "@/lib/stores/unifiedRidesStore"
+import { useDriversStore } from "@/lib/stores/driversStore"
+import { supabase } from "@/lib/database/client"
+import type { Database } from "@/lib/types/database.types"
 
-export default function AssignRidePage() {
-  const params = useParams()
-  const rideId = params?.id as string
+// Définir les types à partir de la Database
+type Driver = Database['public']['Tables']['drivers']['Row']
+type Ride = Database['public']['Tables']['rides']['Row']
+
+export default function AssignDriverPage() {
   const router = useRouter()
-  const { rides } = useUnassignedRidesStore()
-  const { drivers, fetchDrivers } = useDriversStore()
-  const [selectedDriver, setSelectedDriver] = useState<string>("")
-  const [selectedVehicle, setSelectedVehicle] = useState<string>("")
-  const [availableVehicles, setAvailableVehicles] = useState<Vehicle[]>([])
-  const [loading, setLoading] = useState(false)
+  const params = useParams()
+  const { toast } = useToast()
+  const fetchDrivers = useDriversStore(state => state.fetchDrivers)
+  const drivers = useDriversStore(state => state.drivers)
+  const [loading, setLoading] = useState(true)
+  const [assigning, setAssigning] = useState(false)
+  const [ride, setRide] = useState<Ride | null>(null)
+  const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [tab, setTab] = useState("list")
 
-  const ride = rides.find((r) => r.id === rideId)
+  // Trouver tous les conducteurs disponibles
+  const availableDrivers = drivers.filter(d => d.status === 'active')
 
   useEffect(() => {
-    fetchDrivers()
-  }, [fetchDrivers])
-
-  useEffect(() => {
-    const fetchVehicles = async () => {
-      if (selectedDriver) {
-        const supabase = createBrowserSupabaseClient()
-        const { data, error } = await supabase
-          .from("vehicles")
-          .select("*")
-          .eq("status", "available")
-          .eq("type", ride?.vehicle_type)
-
-        if (!error && data) {
-          setAvailableVehicles(data)
-        }
-      }
+    // Vérifier si params et params.id existent
+    if (params && params.id) {
+      fetchRide()
+      fetchDrivers()
     }
+  }, [params])
 
-    fetchVehicles()
-  }, [selectedDriver, ride?.vehicle_type])
-
-  if (!ride) {
-    return (
-      <div className="container mx-auto py-10">
-        <Card className="p-6">Course non trouvée</Card>
-      </div>
-    )
-  }
-
-  const handleAssign = async () => {
-    if (!selectedDriver || !selectedVehicle) return
+  // Récupérer les détails du trajet
+  const fetchRide = async () => {
+    if (!params || !params.id) {
+      toast({
+        variant: "destructive", 
+        title: "Erreur",
+        description: "ID de trajet manquant."
+      })
+      return
+    }
 
     setLoading(true)
     try {
-      await useUnassignedRidesStore
-        .getState()
-        .assignRide(ride.id, selectedDriver, selectedVehicle)
-      router.push("/admin")
+      const { data, error } = await supabase
+        .from('rides')
+        .select('*')
+        .eq('id', params.id)
+        .single()
+
+      if (error) throw error
+      setRide(data)
     } catch (error) {
-      console.error("Erreur lors de l'attribution:", error)
+      console.error("Erreur lors de la récupération du trajet:", error)
+      toast({
+        variant: "destructive", 
+        title: "Erreur",
+        description: "Impossible de charger les détails du trajet."
+      })
     } finally {
       setLoading(false)
     }
   }
 
-  const activeDrivers = drivers.filter((d) => d.status === "active")
+  // Assigner un chauffeur au trajet
+  const assignDriver = async () => {
+    if (!selectedDriverId || !ride) return
 
-  // Création des objets Location pour la carte MapLibre
-  const departure: Location = {
-    display_name: ride.pickup_address,
-    lat: ride.pickup_lat,
-    lon: ride.pickup_lon,
-    address: { formatted: ride.pickup_address }
+    setAssigning(true)
+    try {
+      const { error } = await supabase
+        .from('rides')
+        .update({ 
+          driver_id: selectedDriverId,
+          status: 'scheduled',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', ride.id)
+
+      if (error) throw error
+
+      // Ajouter une entrée dans l'historique des statuts
+      const { error: historyError } = await supabase
+        .from('ride_status_history')
+        .insert({
+          ride_id: ride.id,
+          status: 'scheduled',
+          previous_status: ride.status,
+          changed_at: new Date().toISOString(),
+        })
+
+      if (historyError) {
+        console.error("Erreur lors de l'ajout à l'historique:", historyError)
+      }
+
+      toast({
+        title: "Chauffeur assigné",
+        description: "Le chauffeur a été assigné à cette course avec succès."
+      })
+
+      router.push('/backoffice-portal/rides')
+    } catch (error: any) {
+      console.error("Erreur lors de l'assignation:", error)
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: error.message || "Impossible d'assigner le chauffeur."
+      })
+    } finally {
+      setAssigning(false)
+    }
   }
-  
-  const destination: Location = {
-    display_name: ride.dropoff_address,
-    lat: ride.dropoff_lat,
-    lon: ride.dropoff_lon,
-    address: { formatted: ride.dropoff_address }
+
+  // Filtrer les chauffeurs par nom
+  const filteredDrivers = availableDrivers.filter((driver) => {
+    if (!searchQuery) return true
+    const fullName = `${driver.first_name} ${driver.last_name}`.toLowerCase()
+    return fullName.includes(searchQuery.toLowerCase())
+  })
+
+  if (loading) {
+    return (
+      <div className="py-8 px-4 sm:px-6 text-center">
+        <p className="text-neutral-400">Chargement...</p>
+      </div>
+    )
+  }
+
+  if (!ride) {
+    return (
+      <div className="py-8 px-4 sm:px-6 text-center">
+        <p className="text-neutral-400">Trajet non trouvé</p>
+        <Button className="mt-4" onClick={() => router.push('/backoffice-portal/rides')}>
+          Retour aux trajets
+        </Button>
+      </div>
+    )
   }
 
   return (
-    <div className="container mx-auto py-10">
-      <Card className="p-6 space-y-6">
-        <h1 className="text-2xl font-bold">Attribution de course</h1>
+    <div className="py-8 px-4 sm:px-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Assigner un chauffeur</h1>
+        <Button variant="outline" onClick={() => router.push('/backoffice-portal/rides')}>
+          Retour
+        </Button>
+      </div>
 
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-xl font-semibold mb-2">Détails de la course</h2>
-            <div className="grid gap-2">
-              <p>
-                <span className="text-neutral-400">Départ:</span>{" "}
-                {ride.pickup_address}
-              </p>
-              <p>
-                <span className="text-neutral-400">Arrivée:</span>{" "}
-                {ride.dropoff_address}
-              </p>
-              <p>
-                <span className="text-neutral-400">Heure:</span>{" "}
-                {new Date(ride.pickup_time).toLocaleString()}
-              </p>
-              <p>
-                <span className="text-neutral-400">Type de véhicule:</span>{" "}
-                {ride.vehicle_type}
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
+        {/* Détails du trajet */}
+        <Card className="md:col-span-1">
+          <CardHeader>
+            <CardTitle>Détails du trajet</CardTitle>
+            <CardDescription>Information du trajet à assigner</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1">
+              <div className="flex items-center text-sm text-neutral-400">
+                <Clock className="mr-2 h-4 w-4" />
+                <span>Date et heure</span>
+              </div>
+              <p className="font-medium">
+                {format(new Date(ride.pickup_time), "EEEE d MMMM yyyy 'à' HH'h'mm", { locale: fr })}
               </p>
             </div>
-          </div>
 
-          <div className="h-[300px] rounded-lg overflow-hidden">
-            <MapLibreMap
-              departure={departure}
-              destination={destination}
-              onRouteCalculated={(distance, duration) => {}}
-            />
-          </div>
+            <Separator />
 
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="driver">Chauffeur</Label>
-              <Select onValueChange={setSelectedDriver} value={selectedDriver}>
-                <SelectTrigger id="driver">
-                  <SelectValue placeholder="Sélectionner un chauffeur" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeDrivers.map((driver) => (
-                    <SelectItem key={driver.id} value={driver.id}>
-                      {driver.first_name} {driver.last_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-1">
+              <div className="flex items-center text-sm text-neutral-400">
+                <MapPin className="mr-2 h-4 w-4" />
+                <span>Adresse de départ</span>
+              </div>
+              <p className="font-medium">{ride.pickup_address}</p>
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="vehicle">Véhicule</Label>
-              <Select
-                onValueChange={setSelectedVehicle}
-                value={selectedVehicle}
-                disabled={!selectedDriver}
-              >
-                <SelectTrigger id="vehicle">
-                  <SelectValue placeholder="Sélectionner un véhicule" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableVehicles.map((vehicle) => (
-                    <SelectItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.brand} {vehicle.model} ({vehicle.plate_number})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <Separator />
+
+            <div className="space-y-1">
+              <div className="flex items-center text-sm text-neutral-400">
+                <MapPin className="mr-2 h-4 w-4" />
+                <span>Adresse d'arrivée</span>
+              </div>
+              <p className="font-medium">{ride.dropoff_address}</p>
             </div>
 
-            <div className="flex justify-end space-x-2">
+            <Separator />
+
+            <div className="space-y-1">
+              <div className="flex items-center text-sm text-neutral-400">
+                <Car className="mr-2 h-4 w-4" />
+                <span>Type de véhicule</span>
+              </div>
+              <p className="font-medium">{ride.vehicle_type}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Sélection du chauffeur */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Chauffeurs disponibles</CardTitle>
+            <CardDescription>Sélectionnez un chauffeur pour ce trajet</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="list" className="w-full" value={tab} onValueChange={setTab}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="list">Liste</TabsTrigger>
+                <TabsTrigger value="map">Carte</TabsTrigger>
+              </TabsList>
+              <TabsContent value="list" className="space-y-4">
+                <div className="relative mt-4">
+                  <input
+                    type="text"
+                    placeholder="Rechercher un chauffeur..."
+                    className="w-full py-2 px-4 rounded-md bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+
+                <div className="mt-4 space-y-2 max-h-[400px] overflow-y-auto">
+                  {filteredDrivers.length === 0 ? (
+                    <p className="text-center py-8 text-neutral-400">Aucun chauffeur disponible</p>
+                  ) : (
+                    filteredDrivers.map((driver) => (
+                      <div
+                        key={driver.id}
+                        className={`p-4 rounded-md cursor-pointer transition-colors ${
+                          selectedDriverId === driver.id
+                            ? "bg-primary/20 border border-primary"
+                            : "bg-neutral-800 hover:bg-neutral-700"
+                        }`}
+                        onClick={() => setSelectedDriverId(driver.id)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="h-10 w-10 rounded-full bg-neutral-700 flex items-center justify-center">
+                              <User className="h-6 w-6 text-neutral-300" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{driver.first_name} {driver.last_name}</p>
+                              <p className="text-sm text-neutral-400">{driver.phone}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </TabsContent>
+              <TabsContent value="map">
+                <div className="h-[400px] rounded-md bg-neutral-900 flex items-center justify-center">
+                  <p className="text-neutral-400">Carte en développement</p>
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            <div className="mt-6">
               <Button
-                variant="outline"
-                onClick={() => router.back()}
-                disabled={loading}
+                className="w-full"
+                size="lg"
+                disabled={!selectedDriverId || assigning}
+                onClick={assignDriver}
               >
-                Annuler
-              </Button>
-              <Button
-                onClick={handleAssign}
-                disabled={!selectedDriver || !selectedVehicle || loading}
-              >
-                {loading ? "Attribution..." : "Attribuer la course"}
+                {assigning ? "Assignation en cours..." : "Assigner ce chauffeur"}
               </Button>
             </div>
-          </div>
-        </div>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { VehicleType, VehicleOptions } from "@/lib/types/vehicle.types";
+import { formatDuration } from "@/lib/utils";
 
 export interface VehicleStepProps {
   vehicleType: VehicleType;
@@ -16,17 +17,6 @@ export interface VehicleStepProps {
   onConfirm: () => void;
   isEditing?: boolean;
 }
-
-const formatDuration = (minutes: number): string => {
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = Math.round(minutes % 60);
-  
-  if (hours === 0) {
-    return `${remainingMinutes} min`;
-  }
-  
-  return `${hours}h${remainingMinutes > 0 ? ` ${remainingMinutes}min` : ''}`;
-};
 
 const vehicleOptions = [
   { value: VehicleType.STANDARD, label: 'Berline Standard', description: 'Confort et élégance pour 4 passagers' },

@@ -3,7 +3,7 @@
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { useUnifiedRidesStore } from "@/lib/stores/unifiedRidesStore"
-import { useDriversStore } from "@/lib/driversStore"
+import { useDriversStore } from "@/lib/stores/driversStore"
 import { Calendar } from "@/components/ui/calendar"
 import {
   Select,

@@ -7,25 +7,32 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import MapLibreMap from "@/components/map/MapLibreMap"; 
+import MapLibreMap from "@/components/map/MapLibreMap";
 import { AutocompleteInput } from "../AutocompleteInput";
 import { LoadingSpinner } from "../ui/loading-spinner";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import React from "react";
-// Importer correctement les types depuis le bon chemin
 import { MapMarker, Location } from '@/lib/types/map-types';
+import { Database } from "@/lib/types/database.types";
+import { supabase } from "@/lib/database/client";
 
 
 // Ajout d'une interface pour les props du composant
 export interface ReservationFormProps {
   editMode?: boolean;
   reservationId?: string | null;
+  initialData?: Database["public"]["Tables"]["rides"]["Row"];
+  onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
-export const ReservationForm: React.FC<ReservationFormProps> = ({ 
+export const ReservationForm: React.FC<ReservationFormProps> = ({
   editMode = false,
-  reservationId
+  reservationId,
+  initialData,
+  onSuccess,
+  onCancel
 }) => {
   const router = useRouter();
   const store = useReservationStore();
@@ -35,19 +42,40 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
   // Ajouter l'état des marqueurs qui manquait
   const [markers, setMarkers] = useState<MapMarker[]>([]);
   
-  // Effet pour gérer le rendu initial et les coordonnées en mode édition
+  // Effet pour initialiser le store avec les données existantes en mode édition
   useEffect(() => {
-    // Éviter les rendus multiples qui peuvent causer des boucles
-    if (editMode && store.departure && store.destination && !renderedRef.current) {
-      // Marquer comme rendu pour éviter les appels répétés
-      renderedRef.current = true;
+    if (initialData && !renderedRef.current) {
+      store.setDeparture({
+        lat: initialData.pickup_lat || 0,
+        lon: initialData.pickup_lon || 0,
+        display_name: initialData.pickup_address,
+        address: { formatted: initialData.pickup_address }
+      });
       
-      // Forcer un re-rendu de la carte après chargement complet des données
-      console.log("Forçage du rendu de la carte en mode édition - une seule fois");
+      store.setDestination({
+        lat: initialData.dropoff_lat || 0,
+        lon: initialData.dropoff_lon || 0,
+        display_name: initialData.dropoff_address,
+        address: { formatted: initialData.dropoff_address }
+      });
+
+      store.setPickupDateTime(new Date(initialData.pickup_time));
+      store.setSelectedVehicle(initialData.vehicle_type);
+      
+      // Initialiser les options une par une
+      if (initialData.options) {
+        initialData.options.forEach(option => {
+          if (!store.selectedOptions.includes(option)) {
+            store.toggleOption(option);
+          }
+        });
+      }
+      
+      renderedRef.current = true;
       setMapKey(`map-edit-${Date.now()}`);
       setMapReady(true);
     }
-  }, [editMode, store.departure, store.destination]);
+  }, [initialData, store]);
   
   // Effet pour mettre à jour les marqueurs quand les coordonnées changent
   useEffect(() => {
@@ -80,29 +108,44 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
     setMarkers(newMarkers);
   }, [store.departure, store.destination]);
 
-  const handleNextStep = () => {
-    try {
-      // Obtenir l'ID de réservation pour le mode édition
-      const editingId = localStorage.getItem('currentEditingReservationId');
-      
-      console.log("Navigation vers la page de confirmation...", 
-        editMode ? `(Mode édition, ID: ${editingId})` : "(Nouvelle réservation)");
-      
-      // Passer l'ID en paramètre de requête si en mode édition
-      if (editMode && editingId) {
-        router.push(`/reservation/confirmation?id=${editingId}`);
-      } else {
-        router.push("/reservation/confirmation");
+  const handleNextStep = async () => {
+    if (editMode && reservationId) {
+      try {
+        // Utiliser le client Supabase singleton
+        const updateData = {
+          pickup_address: store.departure?.display_name,
+          pickup_lat: store.departure?.lat,
+          pickup_lon: store.departure?.lon,
+          dropoff_address: store.destination?.display_name,
+          dropoff_lat: store.destination?.lat,
+          dropoff_lon: store.destination?.lon,
+          pickup_time: store.pickupDateTime?.toISOString(),
+          vehicle_type: store.selectedVehicle,
+          options: store.selectedOptions,
+          distance: store.distance,
+          duration: store.duration,
+          updated_at: new Date().toISOString()
+        };
+
+        const { error } = await supabase
+          .from('rides')
+          .update(updateData)
+          .eq('id', reservationId);
+
+        if (error) throw error;
+        onSuccess?.();
+      } catch (error) {
+        console.error('Erreur lors de la mise à jour:', error);
+        // Ici vous pourriez ajouter une notification d'erreur
       }
-    } catch (error) {
-      console.error("Erreur de navigation:", error);
-      // Fallback en cas d'échec du router
-      window.location.href = "/reservation/confirmation";
+    } else {
+      router.push("/reservation/confirmation");
     }
   };
 
   const handleReset = () => {
     store.reset();
+    onCancel?.();
   };
 
   // Fonction de gestion du changement de date pour éviter les problèmes de type
@@ -249,14 +292,14 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
             onClick={handleReset}
             className="flex-1"
           >
-            Annuler
+            {editMode ? 'Retour' : 'Annuler'}
           </Button>
           <Button
             onClick={handleNextStep}
-            className="flex-1"
+            className="flex-1 btn-gradient"
             disabled={!store.departure || !store.destination || !store.pickupDateTime || !store.selectedVehicle}
           >
-            Continuer
+            {editMode ? 'Enregistrer les modifications' : 'Continuer'}
           </Button>
         </div>
       </div>

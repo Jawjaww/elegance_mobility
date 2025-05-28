@@ -44,7 +44,6 @@ export default function PersonalInfoPage() {
     try {
       const result = await updateProfile({
         userId: "current",
-        name: data.name,
         phone: data.phone,
       });
 

@@ -1,140 +1,121 @@
-"use client"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { supabase } from '@/lib/database/client'
+import type { Ride } from '@/lib/types/common.types';
 
-import { useEffect, useState } from "react"
-import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { CalendarClock, MapPin, User } from "lucide-react"
-import { createBrowserSupabaseClient } from "@/lib/database/client"
-import { format } from "date-fns"
-import { fr } from "date-fns/locale"
-import { Database } from "@/lib/types/database.types"
-
-type DbRide = Database["public"]["Tables"]["rides"]["Row"]
-type RideWithDriver = Omit<DbRide, "driver"> & {
-  driver: {
-    name: string | null
-  } | null
-}
-
-type BadgeVariant = "default" | "secondary" | "destructive" | "outline"
+// Importer les variables d'environnement nécessaires à Supabase
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 export function DashboardRecentRides() {
-  const [rides, setRides] = useState<RideWithDriver[]>([])
-  const [loading, setLoading] = useState(true)
+  const [recentRides, setRecentRides] = useState<Ride[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fonction pour charger les dernières courses
+  const loadRecentRides = async () => {
+    setLoading(true);
+    
+    try {
+      // Utiliser directement supabase
+      const { data, error } = await supabase
+        .from('rides')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      // Gérer les erreurs éventuelles
+      if (error) {
+        throw error;
+      }
+      
+      setRecentRides(data || []);
+    } catch (error) {
+      console.error('Error loading recent rides:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchRecentRides = async () => {
-      try {
-        const supabase = createBrowserSupabaseClient()
-        const { data, error } = await supabase
-          .from("rides")
-          .select(`
-            *,
-            driver:drivers(name)
-          `)
-          .order("created_at", { ascending: false })
-          .limit(5)
-
-        if (error) throw error
-
-        const formattedRides = (data || []).map((ride) => ({
-          ...ride,
-          driver: ride.driver?.[0] || null,
-        })) as RideWithDriver[]
-
-        setRides(formattedRides)
-      } catch (error) {
-        console.error("Erreur lors de la récupération des courses récentes:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchRecentRides()
-  }, [])
+    loadRecentRides();
+  }, []);
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, BadgeVariant> = {
-      pending: "secondary",
-      confirmed: "default",
-      completed: "default",
-      canceled: "destructive",
-    }
-    const labels: Record<string, string> = {
-      pending: "En attente",
-      confirmed: "Confirmée",
-      completed: "Terminée",
-      canceled: "Annulée",
-    }
-    return (
-      <Badge variant={variants[status] || "default"}>{labels[status]}</Badge>
-    )
-  }
+    // Définir les configurations pour chaque statut
+    const statusConfig: Record<string, { label: string, color: string }> = {
+      'pending': { label: 'En attente', color: 'bg-yellow-500/20 text-yellow-500' },
+      'scheduled': { label: 'Programmée', color: 'bg-purple-500/20 text-purple-500' },
+      'in-progress': { label: 'En cours', color: 'bg-blue-600/20 text-blue-400' },
+      'completed': { label: 'Terminée', color: 'bg-green-500/20 text-green-500' },
+      'client-canceled': { label: 'Annulée', color: 'bg-red-500/20 text-red-500' },
+      'driver-canceled': { label: 'Annulée', color: 'bg-red-500/20 text-red-500' },
+      'admin-canceled': { label: 'Annulée', color: 'bg-red-500/20 text-red-500' },
+      'no-show': { label: 'No-show', color: 'bg-orange-500/20 text-orange-500' },
+      'delayed': { label: 'Retardée', color: 'bg-orange-300/20 text-orange-300' }
+    };
 
-  if (loading) {
+    const config = statusConfig[status] || { label: 'Inconnu', color: 'bg-gray-500/20 text-gray-500' };
+    
     return (
-      <Card className="p-6 backdrop-blur-sm">
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse">
-              <div className="h-12 rounded-lg bg-neutral-200/20 dark:bg-neutral-800/20" />
-            </div>
-          ))}
-        </div>
-      </Card>
-    )
-  }
+      <Badge className={`${config.color}`}>
+        {config.label}
+      </Badge>
+    );
+  };
 
   return (
-    <Card className="relative overflow-hidden p-6 backdrop-blur-sm">
-      <div className="relative z-10">
-        <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">
-          Dernières courses
-        </h3>
-        <div className="space-y-6">
-          {rides.map((ride) => (
-            <div
-              key={ride.id}
-              className="flex flex-col space-y-4 pb-4 last:pb-0 last:border-0 border-b border-neutral-200 dark:border-neutral-800"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 text-sm text-neutral-600 dark:text-neutral-400">
-                  <CalendarClock className="h-4 w-4" />
-                  <span>
-                    {format(new Date(ride.pickup_time), "d MMMM à HH:mm", {
-                      locale: fr,
-                    })}
-                  </span>
-                </div>
-                {getStatusBadge(ride.status)}
-              </div>
-              <div className="grid gap-2">
-                <div className="flex items-start space-x-2">
-                  <MapPin className="h-4 w-4 mt-0.5 text-neutral-500 dark:text-neutral-400" />
-                  <div className="text-sm">
-                    <div className="font-medium text-neutral-900 dark:text-neutral-100">
-                      {ride.pickup_address}
+    <Card className="col-span-1 lg:col-span-2">
+      <CardHeader>
+        <CardTitle>Dernières Courses</CardTitle>
+        <CardDescription>Les 5 dernières courses enregistrées</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <p className="text-center py-4 text-sm text-neutral-400">Chargement...</p>
+        ) : recentRides.length === 0 ? (
+          <p className="text-center py-4 text-sm text-neutral-400">Aucune course récente</p>
+        ) : (
+          <div className="space-y-4">
+            {recentRides.map((ride: Ride) => (
+              <div key={ride.id} className="flex flex-col">
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-white">
+                        {format(new Date(ride.pickup_time), "dd MMM yyyy", { locale: fr })}
+                      </span>
+                      {getStatusBadge(ride.status)}
                     </div>
-                    <div className="text-neutral-600 dark:text-neutral-400">
-                      → {ride.dropoff_address}
-                    </div>
+                    <span className="text-xs text-neutral-400">
+                      {ride.pickup_address.substring(0, 30)}... → {ride.dropoff_address.substring(0, 30)}...
+                    </span>
                   </div>
+                  <Link 
+                    href={`/backoffice-portal/rides/${ride.id}`} 
+                    className="text-xs text-blue-500 hover:text-blue-400"
+                  >
+                    Détails
+                  </Link>
                 </div>
-                {ride.driver?.name && (
-                  <div className="flex items-center space-x-2 text-sm text-neutral-600 dark:text-neutral-400">
-                    <User className="h-4 w-4" />
-                    <span>{ride.driver.name}</span>
-                  </div>
-                )}
+                <Separator className="mt-4 bg-neutral-800" />
               </div>
+            ))}
+            <div className="text-center pt-2">
+              <Link 
+                href="/backoffice-portal/rides" 
+                className="text-sm text-blue-500 hover:text-blue-400"
+              >
+                Voir toutes les courses
+              </Link>
             </div>
-          ))}
-        </div>
-      </div>
-      <div
-        className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-neutral-100/10 dark:to-neutral-800/10"
-        aria-hidden="true"
-      />
+          </div>
+        )}
+      </CardContent>
     </Card>
-  )
+  );
 }

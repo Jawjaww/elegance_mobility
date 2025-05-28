@@ -1,0 +1,324 @@
+/// <reference types="@supabase/supabase-js" />
+
+import { SupabaseClient } from '@supabase/supabase-js';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+interface RateRecord {
+  base_price: number;
+  price_per_km: number;
+  min_price: number;
+}
+
+interface RideRecord {
+  id: string;
+  vehicle_type: string;
+  distance: number;
+  options?: string[];
+}
+
+interface AuditLog {
+  event_type: string;
+  service: string;
+  ride_id: string;
+  calculated_price?: number;
+  metadata?: Record<string, unknown>;
+}
+
+
+// Helper function for comparing arrays
+const arraysAreEqual = (a: any[], b: any[]): boolean => {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  return a.every((item, index) => item === b[index]);
+};
+
+const logAudit = async (supabaseClient, log: AuditLog) => {
+  try {
+    const { error } = await supabaseClient.from('audit_logs').insert([log]);
+    if (error) {
+      console.error('Failed to log audit event:', error);
+    }
+  } catch (error) {
+    console.error('Audit logging error:', error);
+  }
+};
+
+// @ts-ignore: Supabase edge function types
+export const onRequest = async (req, supabaseClient) => {
+  try {
+    console.log('[DEBUG] Edge function démarrée', {
+      method: req.method,
+      url: req.url
+    });
+
+    // Parser le payload
+    const rawBody = await req.clone().text();
+    const payload = JSON.parse(rawBody);
+
+    // Vérifier la structure du payload
+    if (!payload || !payload.new) {
+      console.error('Invalid payload structure', {
+        receivedKeys: Object.keys(payload || {})
+      });
+      return new Response(JSON.stringify({
+        error: 'Payload invalide - objet "new" manquant',
+        received: Object.keys(payload || {})
+      }), {
+        status: 400
+      });
+    }
+
+    // Log détaillé de l'opération
+    console.log('[DEBUG] Type d\'opération:', {
+      isUpdate: !!payload.old,
+      oldId: payload.old?.id,
+      newId: payload.new.id
+    });
+
+    const ride = payload.new;
+    const oldRide = payload.old || {};
+    console.log('Processing ride:', {
+      id: ride.id,
+      operation: ride.id && oldRide.id ? 'update' : 'insert',
+      vehicle_type: {
+        old: oldRide.vehicle_type,
+        new: ride.vehicle_type
+      },
+      distance: {
+        old: oldRide.distance,
+        new: ride.distance
+      },
+      options: {
+        old: oldRide.options,
+        new: ride.options
+      }
+    });
+
+    // 3. Déterminer si c'est une création ou une mise à jour
+    const isUpdate = ride.id && payload.old?.id;
+
+    // 4. Vérifier les données nécessaires selon l'opération
+    if (isUpdate) {
+      // Pour les mises à jour, on a besoin du vehicle_type
+      if (!ride.vehicle_type) {
+        console.error('vehicle_type missing in update', {
+          received: ride.vehicle_type
+        });
+        return new Response(JSON.stringify({
+          error: 'vehicle_type manquant lors de la mise à jour',
+          received: ride.vehicle_type
+        }), {
+          status: 400
+        });
+      }
+
+      // Vérifier si la distance, le type de véhicule ou les options ont changé
+      const distanceChanged = ride.distance !== undefined && ride.distance !== null && ride.distance !== oldRide.distance;
+      const vehicleTypeChanged = ride.vehicle_type !== oldRide.vehicle_type;
+      const optionsChanged = Array.isArray(ride.options) && Array.isArray(oldRide.options) ?
+        !arraysAreEqual(ride.options, oldRide.options) :
+        ride.options !== oldRide.options;
+      if (!distanceChanged && !vehicleTypeChanged && !optionsChanged) {
+        console.log('No change in vehicle type, distance or options', {
+          rideId: ride.id,
+          vehicleType: {
+            old: oldRide.vehicle_type,
+            new: ride.vehicle_type
+          },
+          distance: {
+            old: oldRide.distance,
+            new: ride.distance
+          },
+          options: {
+            old: oldRide.options,
+            new: ride.options
+          }
+        });
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Aucune modification nécessitant un recalcul du prix'
+        }));
+      }
+    } else {
+      // Pour les créations, on a besoin du vehicle_type et de la distance
+      if (!ride.vehicle_type) {
+        console.error('vehicle_type missing in insert', {
+          received: ride.vehicle_type
+        });
+        return new Response(JSON.stringify({
+          error: 'vehicle_type manquant lors de la création',
+          received: ride.vehicle_type
+        }), {
+          status: 400
+        });
+      }
+      if (ride.distance === null || ride.distance === undefined) {
+        console.error('distance missing in insert', {
+          received: ride.distance
+        });
+        return new Response(JSON.stringify({
+          error: 'distance manquante lors de la création',
+          received: ride.distance
+        }), {
+          status: 400
+        });
+      }
+    }
+
+    // 5. Récupérer les tarifs
+    const { data: rate, error: rateError } = await supabaseClient.from('rates').select('base_price, price_per_km, min_price').eq('vehicle_type', ride.vehicle_type).single();
+    if (rateError || !rate) {
+      console.error('Error fetching rates', {
+        error: rateError,
+        vehicleType: ride.vehicle_type
+      });
+      await logAudit(supabaseClient, {
+        event_type: 'price_calculation_error',
+        service: 'price_calculator_webhook',
+        ride_id: ride.id,
+        metadata: {
+          error: 'Erreur lors de la récupération des tarifs',
+          details: rateError,
+          vehicleType: ride.vehicle_type
+        }
+      });
+      return new Response(JSON.stringify({
+        error: 'Erreur lors de la récupération des tarifs',
+        details: rateError,
+        vehicleType: ride.vehicle_type
+      }), {
+        status: 500
+      });
+    }
+
+    console.log('Rate found:', rate);
+
+    // 6. Calculer le prix de base en utilisant la distance fournie ou celle existante
+    const distanceToUse = ride.distance !== undefined && ride.distance !== null ? ride.distance : oldRide.distance || 0;
+    let totalPrice = rate.base_price + distanceToUse * rate.price_per_km;
+    // 7. Ajouter le coût des options avec typage correct
+    if (Array.isArray(ride.options)) {
+      const validOptions = [
+        'child_seat',
+        'pet_friendly'
+      ];
+      const validOptionsInPayload = ride.options.filter(opt => validOptions.includes(opt));
+      if (validOptionsInPayload.length > 0) {
+        totalPrice += validOptionsInPayload.reduce((sum, opt) => {
+          switch(opt){
+            case 'child_seat':
+              return sum + 15;
+            case 'pet_friendly':
+              return sum + 10;
+            default:
+              return sum;
+          }
+        }, 0);
+        console.log('Options added:', {
+          options: validOptionsInPayload,
+          additionalCost: totalPrice - (rate.base_price + distanceToUse * rate.price_per_km)
+        });
+      }
+    }
+    // 8. Appliquer le prix minimum et loguer les détails
+    totalPrice = Math.max(totalPrice, rate.min_price);
+    console.log('[DEBUG] Prix final calculé:', {
+      basePrice: rate.base_price,
+      distance: distanceToUse,
+      pricePerKm: rate.price_per_km,
+      options: ride.options,
+      minPrice: rate.min_price,
+      totalPrice: totalPrice
+    });
+    // 9. Auditer et mettre à jour la course
+    await logAudit(supabaseClient, {
+      event_type: 'price_calculation',
+      service: 'price_calculator_webhook',
+      ride_id: ride.id,
+      calculated_price: totalPrice,
+      metadata: {
+        base_price: rate.base_price,
+        distance: distanceToUse,
+        price_per_km: rate.price_per_km,
+        options: ride.options
+      }
+    });
+    const { error: updateError } = await supabaseClient.from('rides').update({
+      final_price: totalPrice,
+      estimated_price: totalPrice
+    }).eq('id', ride.id);
+    if (updateError) {
+      console.error('Error updating ride', {
+        error: updateError,
+        rideId: ride.id,
+        calculatedPrice: totalPrice
+      });
+      await logAudit(supabaseClient, {
+        event_type: 'price_calculation_error',
+        service: 'price_calculator_webhook',
+        ride_id: ride.id,
+        calculated_price: totalPrice,
+        metadata: {
+          error: 'Erreur lors de la mise à jour de la course',
+          details: updateError
+        }
+      });
+      return new Response(JSON.stringify({
+        error: 'Erreur lors de la mise à jour de la course',
+        details: updateError,
+        rideId: ride.id,
+        calculatedPrice: totalPrice
+      }), {
+        status: 500
+      });
+    }
+    console.log('Ride updated successfully', {
+      rideId: ride.id,
+      price: totalPrice
+    });
+    // 10. Réponse réussie
+    return new Response(JSON.stringify({
+      success: true,
+      price: totalPrice,
+      breakdown: {
+        base: rate.base_price,
+        distance: distanceToUse,
+        pricePerKm: rate.price_per_km,
+        minPrice: rate.min_price,
+        options: Array.isArray(ride.options) ? ride.options : [],
+        totalPrice
+      }
+    }));
+  } catch (error) {
+    // 11. Gestion des erreurs générales
+    console.error('Unexpected error', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    // Tenter de logger l'erreur même en cas d'échec général
+    try {
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      await logAudit(supabaseClient, {
+        event_type: 'price_calculation_error',
+        service: 'price_calculator_webhook',
+        ride_id: 'unknown',
+        metadata: {
+          error: errorMessage,
+          stack: errorStack || null,
+          timestamp: new Date().toISOString()
+        }
+      });
+    } catch (auditError) {
+      console.error('Failed to log audit for error:', auditError);
+    }
+    return new Response(JSON.stringify({
+      error: error instanceof Error ? error.message : 'Erreur inconnue',
+      timestamp: new Date().toISOString(),
+      stack: error instanceof Error ? error.stack : undefined
+    }), {
+      status: 500
+    });
+  }
+};

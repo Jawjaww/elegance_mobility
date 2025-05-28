@@ -1,13 +1,14 @@
-"use client"
+'use client'
 
-import Link from "next/link"
+import { Card } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { ArrowUpRight, ArrowDownRight } from "lucide-react"
+import Link from "next/link"
+import { ArrowDownIcon, ArrowUpIcon } from "lucide-react"
 
 interface DashboardMetricCardProps {
   title: string
   value: string
-  icon?: React.ReactNode
+  icon: React.ReactNode
   trend?: string
   trendUp?: boolean
   href?: string
@@ -24,10 +25,14 @@ export function DashboardMetricCard({
   className,
 }: DashboardMetricCardProps) {
   const content = (
-    <>
-      <div className="flex items-center justify-between">
+    <div className={cn(
+      "relative p-6 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-all duration-200",
+      href && "hover:border-blue-500/30 hover:shadow-md",
+      className
+    )}>
+      <div className="flex justify-between">
         <div>
-          <p className="text-sm font-medium text-neutral-400">
+          <p className="text-sm font-medium text-muted-foreground">
             {title}
           </p>
           <div className="flex items-baseline gap-2">
@@ -35,51 +40,33 @@ export function DashboardMetricCard({
               {value}
             </p>
             {trend && (
-              <div className={cn(
-                "flex items-center gap-0.5 text-sm",
-                trendUp ? "text-green-400" : "text-red-400"
+              <span className={cn(
+                "text-xs font-medium",
+                trendUp ? "text-green-500" : "text-red-500"
               )}>
-                {trendUp ? (
-                  <ArrowUpRight className="h-4 w-4" />
-                ) : (
-                  <ArrowDownRight className="h-4 w-4" />
-                )}
-                <span>{trend}</span>
-              </div>
+                {trendUp ? <ArrowUpIcon className="inline h-3 w-3" /> : <ArrowDownIcon className="inline h-3 w-3" />}
+                {trend}
+              </span>
             )}
           </div>
         </div>
-        {icon && (
-          <div className="rounded-full border border-neutral-800 bg-neutral-900 p-2.5">
-            {icon}
-          </div>
-        )}
-      </div>
-
-      {href && (
-        <div className="absolute bottom-6 right-6">
-          <ArrowUpRight className="h-5 w-5 text-neutral-600 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-neutral-400" />
+        <div className={cn(
+          "p-2 rounded-full",
+          trend ? (trendUp ? "bg-green-500/10" : "bg-red-500/10") : "bg-blue-500/10"
+        )}>
+          {icon}
         </div>
-      )}
-    </>
-  )
-
-  const sharedClassName = cn(
-    "group relative overflow-hidden rounded-lg border border-neutral-800 bg-neutral-900/90 p-6 text-neutral-50 transition-colors hover:border-neutral-700 hover:bg-neutral-900/95",
-    className
+      </div>
+    </div>
   )
 
   if (href) {
     return (
-      <Link href={href} className={sharedClassName}>
+      <Link href={href}>
         {content}
       </Link>
     )
   }
 
-  return (
-    <div className={sharedClassName}>
-      {content}
-    </div>
-  )
+  return <Card>{content}</Card>
 }

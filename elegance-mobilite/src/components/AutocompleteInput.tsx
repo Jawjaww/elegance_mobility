@@ -198,6 +198,21 @@ export function AutocompleteInput({
           placeholder={placeholder}
           ref={inputRef}
           className={className}
+          onKeyDown={(e) => {
+            if (
+              e.key === "Enter" &&
+              suggestions.length > 0
+            ) {
+              const feature = suggestions[0];
+              const lat = feature.geometry.coordinates[1];
+              const lon = feature.geometry.coordinates[0];
+              onSelect?.(lat, lon, feature.properties.label);
+              ignoreNextQueryChange.current = true;
+              setQuery(feature.properties.label);
+              setSuggestions([]);
+              e.preventDefault();
+            }
+          }}
         />
         {suggestions.length > 0 && (
           <ul className={styles.suggestions}>

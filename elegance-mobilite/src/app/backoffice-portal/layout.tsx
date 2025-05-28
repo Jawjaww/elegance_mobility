@@ -1,40 +1,33 @@
-"use server"
+'use server'
 
-import { redirect } from "next/navigation"
+import { AdminGuard } from "@/components/auth/RoleGuard"
 import { AdminHeader } from "@/components/layout/AdminHeader"
 import { MobileAdminNav } from "@/components/layout/MobileAdminNav"
 import { getServerUser } from "@/lib/database/server"
-import type { Database } from "@/lib/types/database.types"
+import { redirect } from "next/navigation"
 
-type SupabaseRole = Database["auth"]["users"]["Row"]["role"]
-
-export default async function BackofficeLayout({
+export default async function BackofficePortalLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   const user = await getServerUser()
+  
+  // Vérification précoce avant le guard
   if (!user) {
-    redirect("/login")
+    redirect("/auth/login?from=admin")
   }
-
-  // Cast du rôle pour la vérification de type
-  const role = user.role as SupabaseRole
-
-  // Vérifier si l'utilisateur a le rôle admin
-  const hasAccess = role === 'app_admin' || role === 'app_super_admin'
-
-  if (!hasAccess) {
-    redirect("/unauthorized")
-  }
-
+  
   return (
-    <div className="min-h-screen bg-neutral-950 flex flex-col">
-      <AdminHeader />
-      <div className="content-container py-6 flex-grow pb-20 md:pb-6 mobile-safe-area">
-        {children}
+    <AdminGuard>
+      <div className="min-h-screen bg-neutral-950 text-white">
+        {/* user est garanti non-null ici */}
+        <AdminHeader user={user} />
+        <MobileAdminNav />
+        <main className="container mx-auto px-4 py-8">
+          {children}
+        </main>
       </div>
-      <MobileAdminNav />
-    </div>
+    </AdminGuard>
   )
 }

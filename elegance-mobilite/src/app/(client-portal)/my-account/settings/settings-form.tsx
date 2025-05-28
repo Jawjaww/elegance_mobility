@@ -6,20 +6,28 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/useToast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AuthUser } from "@/lib/types/auth.types";
+import { Database } from "@/lib/types/database.types";
 import { updateProfile } from "@/lib/services/profileService";
+import { User } from "@supabase/supabase-js";
 
 interface SettingsFormProps {
-  user: AuthUser;
+  user: User;
+  initialData: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+  };
 }
 
-export default function SettingsForm({ user }: SettingsFormProps) {
+export default function SettingsForm({ user, initialData }: SettingsFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   
-  const [name, setName] = useState(user.name || "");
-  const [email, setEmail] = useState(user.email || "");
-  const [phone, setPhone] = useState(user.user_metadata?.phone || "");
+  const [firstName, setFirstName] = useState(initialData.first_name);
+  const [lastName, setLastName] = useState(initialData.last_name);
+  const [email, setEmail] = useState(initialData.email);
+  const [phone, setPhone] = useState(initialData.phone);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -31,7 +39,8 @@ export default function SettingsForm({ user }: SettingsFormProps) {
     
     try {
       const result = await updateProfile({
-        name,
+        first_name: firstName,
+        last_name: lastName,
         email,
         phone,
         userId: user.id
@@ -77,7 +86,6 @@ export default function SettingsForm({ user }: SettingsFormProps) {
     setIsLoading(true);
     
     try {
-      // Utiliser le service pour changer le mot de passe
       const result = await updateProfile({
         currentPassword,
         newPassword,
@@ -120,16 +128,29 @@ export default function SettingsForm({ user }: SettingsFormProps) {
         <CardContent>
           <form onSubmit={handleProfileUpdate} className="space-y-6">
             <div className="space-y-4">
-              <div>
-                <label htmlFor="name" className="text-sm font-medium text-neutral-200">
-                  Nom complet
-                </label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="mt-1 bg-neutral-800 border-neutral-700"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="firstName" className="text-sm font-medium text-neutral-200">
+                    Prénom
+                  </label>
+                  <Input
+                    id="firstName"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="mt-1 bg-neutral-800 border-neutral-700"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="lastName" className="text-sm font-medium text-neutral-200">
+                    Nom
+                  </label>
+                  <Input
+                    id="lastName"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="mt-1 bg-neutral-800 border-neutral-700"
+                  />
+                </div>
               </div>
               
               <div>

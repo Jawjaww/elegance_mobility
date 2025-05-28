@@ -1,5 +1,4 @@
 import { supabase, handleRoleError } from '@/lib/database/client';
-import { PostgrestError } from '@supabase/supabase-js';
 
 /**
  * Utilitaire pour gérer les réservations de manière robuste face aux erreurs de rôle
@@ -42,23 +41,59 @@ export const reservationService = {
   // Mettre à jour une réservation
   async updateReservation(id: string, updateData: any) {
     try {
-      // Utilisation de await pour résoudre correctement la promesse
+      // Log des données d'entrée
+      console.log("[DEBUG] Tentative de mise à jour de la réservation:", {
+        id,
+        updateData,
+      });
+
+      // Vérification de l'authentification
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) {
+        console.error("[DEBUG] Erreur d'authentification:", authError);
+        return { success: false, error: authError };
+      }
+      console.log("[DEBUG] Utilisateur authentifié:", {
+        id: user?.id,
+        role: user?.app_metadata?.role,
+      });
+
+      // Première tentative avec select()
+      console.log("[DEBUG] Première tentative de mise à jour avec select()");
       const { data, error } = await supabase
         .from('rides')
         .update(updateData)
         .eq('id', id)
         .select();
       
+      // Log détaillé de l'erreur si présente
+      if (error) {
+        console.error("[DEBUG] Erreur lors de la première tentative:", {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+      }
+
       if (error && handleRoleError(error)) {
+        console.log("[DEBUG] Erreur de rôle détectée, tentative sans select()");
         const { error: secondError } = await supabase
           .from('rides')
           .update(updateData)
           .eq('id', id);
           
         if (secondError) {
+          console.error("[DEBUG] Échec de la deuxième tentative:", {
+            code: secondError.code,
+            message: secondError.message,
+            details: secondError.details,
+            hint: secondError.hint
+          });
           return { success: false, error: secondError };
         }
         
+        console.log("[DEBUG] Deuxième tentative réussie");
         return { success: true, data: null };
       }
       
@@ -66,9 +101,10 @@ export const reservationService = {
         return { success: false, error };
       }
       
+      console.log("[DEBUG] Mise à jour réussie:", data);
       return { success: true, data };
     } catch (error) {
-      console.error("Erreur lors de la mise à jour:", error);
+      console.error("[DEBUG] Exception inattendue lors de la mise à jour:", error);
       return { success: false, error };
     }
   },
@@ -110,24 +146,21 @@ export const reservationService = {
   // Récupérer les réservations d'un utilisateur
   async getUserReservations(userId: string) {
     try {
-      // Utilisation de await pour résoudre correctement la promesse
+      // On ne vérifie plus le rôle app_customer, on utilise la policy RLS standard (authenticated)
       const { data, error } = await supabase
         .from('rides')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
-      
-      if (error && handleRoleError(error)) {
-        return { success: true, data: [] };
-      }
-      
+
       if (error) {
+        console.error("[ERROR] Erreur dans getUserReservations:", error);
         return { success: false, error };
       }
-      
+
       return { success: true, data };
     } catch (error) {
-      console.error("Erreur lors de la récupération:", error);
+      console.error("[ERROR] Exception générale dans getUserReservations:", error);
       return { success: false, error };
     }
   }

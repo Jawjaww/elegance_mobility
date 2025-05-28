@@ -1,30 +1,26 @@
 "use client";
 
+import { format } from 'date-fns'
+import { fr } from 'date-fns/locale'
+import { formatDuration } from "@/lib/utils";
+import { CalendarIcon, Clock, MapPinIcon, CarIcon, User, PackageCheck,
+  ArrowRight,
+  Route  } from 'lucide-react'
+import { Card } from '@/components/ui/card'
+import type { Database } from '@/lib/types/database.types'
 import { useReservationStore } from "@/lib/stores/reservationStore";
-import { supabase } from "@/lib/database/client";
-import { Card } from "@/components/ui/card";
+import { supabase, debugRlsProblem } from "@/lib/database/client";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "../ui/loading-spinner";
 import { Suspense, useState, useEffect } from "react";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import MapLibreMap from "@/components/map/MapLibreMap";
 import { AuthModal } from "../../app/auth/login/AuthModal";
-import type { Database } from "@/lib/types/database.types";
-import { 
-  MapPin, 
-  Calendar,
-  Clock,
-  Car,
-  PackageCheck,
-  ArrowRight,
-  Route
-} from "lucide-react";
+import { pricingService } from "@/lib/services/pricingService";
 
 // Type de la table rides de Supabase
-type Ride = Database['public']['rides']['Row'];
+type Ride = Database['public']['Tables']['rides']['Row'];
 
 const SimpleSeparator = ({ className }: { className?: string }) => (
   <div className={`h-[1px] w-full bg-neutral-800 my-2 ${className || ''}`} />
@@ -34,6 +30,12 @@ export function ConfirmationDetails() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [priceDetails, setPriceDetails] = useState<{
+    basePrice: number;
+    optionsPrice: number;
+    totalPrice: number;
+  } | null>(null);
+  
   const {
     departure,
     destination,
@@ -80,20 +82,35 @@ export function ConfirmationDetails() {
     setIsLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // Récupération et vérification de l'utilisateur
+      const userResult = await supabase.auth.getUser();
+      const currentUser = userResult.data.user;
       
-      if (!user) {
+      if (!currentUser) {
         console.log("[DEBUG] Utilisateur non connecté, affichage du modal d'authentification");
         setIsLoading(false);
         setShowAuthModal(true);
         return;
       }
 
+      // Diagnostic détaillé de l'authentification
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log("[DEBUG] Session et rôle:", {
+        id: currentUser?.id,
+        email: currentUser?.email,
+        role: currentUser?.app_metadata?.role,
+        jwt_claims: session?.access_token ? JSON.parse(atob(session.access_token.split('.')[1])) : null,
+        authenticated: !!currentUser
+      });
+
       const dateObj = pickupDateTime instanceof Date ? pickupDateTime : new Date(pickupDateTime);
 
+      // Création directe de la réservation avec les données validées
+
       // Préparation des données conformes au type Ride
+      // Inclure le prix estimé calculé côté client
       const newRide: Partial<Ride> = {
-        user_id: user.id,
+        user_id: currentUser.id,
         pickup_address: departure.display_name,
         pickup_lat: departure.lat,
         pickup_lon: departure.lon,
@@ -105,10 +122,14 @@ export function ConfirmationDetails() {
         options: selectedOptions,
         distance: distance || null,
         duration: duration || null,
-        status: 'pending'
+        status: 'pending',
+        estimated_price: priceDetails?.totalPrice || null,
+        final_price: null // Sera calculé par l'edge function
       };
 
-      console.log("[DEBUG] Tentative de création de réservation:", newRide);
+      console.log("[DEBUG] Création reservation avec prix estimé:", newRide);
+
+      // Création de la réservation
 
       const { data, error } = await supabase
         .from('rides')
@@ -121,30 +142,30 @@ export function ConfirmationDetails() {
         throw error;
       }
 
-      console.log("[DEBUG] Réservation créée avec succès:", data);
-      
-      toast({
-        title: "✨ Réservation confirmée",
-        description: `Votre trajet de ${departure.display_name.split(',')[0]} à ${destination.display_name.split(',')[0]} a été enregistré pour le ${formattedDate} à ${formattedTime}. Un e-mail de confirmation vous a été envoyé.`,
-        variant: "success"
-      });
-      
-      if (data && data.id) {
-        sessionStorage.setItem('last_confirmed_reservation', data.id);
-      }
-      
-      setTimeout(() => {
-        try {
-          window.location.href = "/reservation/success";
-        } catch (e) {
-          console.error("[DEBUG] Erreur lors de la redirection:", e);
-          reset();
+      if (data) {
+        console.log("[DEBUG] Réservation créée avec succès:", {
+          id: data.id,
+          estimatedPrice: data.estimated_price,
+          finalPrice: data.final_price
+        });
+
+        toast({
+          title: "✨ Réservation confirmée",
+          description: `Votre trajet de ${departure.display_name.split(',')[0]} à ${destination.display_name.split(',')[0]} a été enregistré pour le ${formattedDate} à ${formattedTime}. Un e-mail de confirmation vous a été envoyé.`,
+          variant: "success"
+        });
+
+        if (data && data.id) {
+          sessionStorage.setItem('last_confirmed_reservation', data.id);
+          // Attendre que le toast soit visible avant la redirection
+          setTimeout(() => {
+            router.push("/reservation/success");
+          }, 2000);
         }
-      }, 100);
-      
-    } catch (error: any) {
+      }
+  } catch (error: any) {
       console.error("[DEBUG] Erreur détaillée lors de la création de la réservation:", error);
-      
+
       toast({
         title: "Erreur lors de la création de la réservation",
         description: error.message || "Une erreur est survenue lors de la création de la réservation. Veuillez réessayer.",
@@ -158,6 +179,25 @@ export function ConfirmationDetails() {
   const handleModify = () => {
     router.push("/reservation");
   };
+
+  // Calculer le prix dès que les informations nécessaires sont disponibles
+  useEffect(() => {
+    const calculatePrice = async () => {
+      if (departure && destination && selectedVehicle && distance) {
+        try {
+          const result = await pricingService.calculatePrice(
+            distance,
+            selectedVehicle,
+            selectedOptions || [],
+          );
+          setPriceDetails(result);
+        } catch (error) {
+          console.error("Erreur lors du calcul du prix:", error);
+        }
+      }
+    };
+    calculatePrice();
+  }, [departure, destination, selectedVehicle, selectedOptions, distance]);
 
   useEffect(() => {
     if (!departure || !destination || !pickupDateTime || !selectedVehicle) {
@@ -178,7 +218,7 @@ export function ConfirmationDetails() {
   };
 
   return (
-    <div className="container mx-auto py-8 mb-20">
+    <div className="container mx-auto py-6 md:py-8 mb-20 px-4 md:px-6">
       <AuthModal 
         open={showAuthModal} 
         onClose={() => setShowAuthModal(false)} 
@@ -186,14 +226,14 @@ export function ConfirmationDetails() {
         defaultTab="login"
       />
       
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold mb-2">Confirmation de réservation</h1>
+      <div className="mb-6 md:mb-8 text-center">
+        <h1 className="text-2xl md:text-3xl font-bold mb-2 bg-elegant-gradient bg-clip-text text-transparent">Confirmation de réservation</h1>
         <p className="text-neutral-400">Vérifiez les détails avant de confirmer votre trajet</p>
       </div>
 
-      <div className="grid gap-8 max-w-4xl mx-auto">
-        <Card className="p-6 bg-neutral-900 border-neutral-800">
-          <h2 className="text-xl font-semibold mb-6 flex items-center">
+      <div className="grid gap-6 md:gap-8 max-w-4xl mx-auto">
+        <Card className="p-4 md:p-6 bg-neutral-900 border-neutral-800 card-elegant">
+          <h2 className="text-lg md:text-xl font-semibold mb-4 md:mb-6 flex items-center">
             <Route className="w-5 h-5 mr-2 text-blue-500" />
             Détails du trajet
           </h2>
@@ -201,7 +241,7 @@ export function ConfirmationDetails() {
           <div className="grid gap-6">
             <div className="flex items-start gap-4">
               <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
-                <MapPin className="h-4 w-4 text-blue-500" />
+                <MapPinIcon className="h-4 w-4 text-blue-500" />
               </div>
               <div>
                 <p className="text-sm text-neutral-400 mb-1">Départ</p>
@@ -221,7 +261,7 @@ export function ConfirmationDetails() {
             
             <div className="flex items-start gap-4">
               <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
-                <Calendar className="h-4 w-4 text-blue-500" />
+                <CalendarIcon className="h-4 w-4 text-blue-500" />
               </div>
               <div>
                 <p className="text-sm text-neutral-400 mb-1">Date</p>
@@ -241,7 +281,7 @@ export function ConfirmationDetails() {
             
             <div className="flex items-start gap-4">
               <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
-                <Car className="h-4 w-4 text-blue-500" />
+                <CarIcon className="h-4 w-4 text-blue-500" />
               </div>
               <div>
                 <p className="text-sm text-neutral-400 mb-1">Type de véhicule</p>
@@ -257,9 +297,14 @@ export function ConfirmationDetails() {
                 <div>
                   <p className="text-sm text-neutral-400 mb-1">Options</p>
                   <ul className="space-y-1">
-                    {selectedOptions.map((option) => (
+                    {selectedOptions?.map((option) => (
                       <li key={option} className="text-neutral-100">
-                        {option === "accueil" ? "Accueil personnalisé" : "Boissons fraîches"}
+                        {option === "accueil"
+                          ? "Accueil personnalisé"
+                          : option === "boissons"
+                            ? "Boissons fraîches"
+                            : option // Fallback for unrecognized options
+                        }
                       </li>
                     ))}
                   </ul>
@@ -267,21 +312,40 @@ export function ConfirmationDetails() {
               </div>
             )}
 
-            {(distance || duration) && (
+            {(distance || duration || priceDetails) && (
               <>
-                <SimpleSeparator className="my-4" />
-                <div className="grid gap-2">
+                <SimpleSeparator className="my-3 md:my-4" />
+                <div className="grid gap-2 bg-neutral-800/40 p-3 rounded-lg">
                   {distance && (
                     <div className="flex justify-between">
                       <span className="text-neutral-400">Distance estimée</span>
-                      <span className="text-neutral-100">{distance} km</span>
+                      <span className="text-neutral-100 font-medium">{distance} km</span>
                     </div>
                   )}
                   {duration && (
                     <div className="flex justify-between">
                       <span className="text-neutral-400">Durée estimée</span>
-                      <span className="text-neutral-100">{duration} min</span>
+                      <span className="text-neutral-100 font-medium">{formatDuration(duration)}</span>
                     </div>
+                  )}
+                  {priceDetails && (
+                    <>
+                      <SimpleSeparator className="my-2" />
+                      <div className="flex justify-between">
+                        <span className="text-neutral-400">Prix de base</span>
+                        <span className="text-neutral-100 font-medium">{priceDetails.basePrice}€</span>
+                      </div>
+                      {priceDetails.optionsPrice > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-neutral-400">Options</span>
+                          <span className="text-neutral-100 font-medium">+{priceDetails.optionsPrice}€</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-semibold mt-2">
+                        <span className="text-neutral-300">Total estimé</span>
+                        <span className="text-blue-400">{priceDetails.totalPrice}€</span>
+                      </div>
+                    </>
                   )}
                 </div>
               </>
@@ -289,28 +353,30 @@ export function ConfirmationDetails() {
           </div>
         </Card>
 
-        <Suspense fallback={<Card className="p-6"><LoadingSpinner /></Card>}>
-          <Card className="p-0 overflow-hidden bg-neutral-900 border-neutral-800">
-            <MapLibreMap
-              departure={departure}
-              destination={destination}
-              onRouteCalculated={(distance, duration) => {}}
-            />
+        <Suspense fallback={<Card className="p-4 md:p-6"><LoadingSpinner /></Card>}>
+          <Card className="p-0 overflow-hidden bg-neutral-900 border-neutral-800 rounded-xl">
+            <div className="h-48 md:h-64 lg:h-80">
+              <MapLibreMap
+                departure={departure}
+                destination={destination}
+                onRouteCalculated={(distance, duration) => {}}
+              />
+            </div>
           </Card>
         </Suspense>
 
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-3 md:gap-4 mt-2 md:mt-4">
           <Button
             variant="outline"
             onClick={handleModify}
-            className="flex-1 bg-neutral-800 border-neutral-700 hover:bg-neutral-700 text-neutral-100"
+            className="flex-1 bg-neutral-800 border-neutral-700 hover:bg-neutral-700 text-neutral-100 py-3 md:py-3"
             disabled={isLoading}
           >
             Modifier
           </Button>
           <Button
             onClick={handleConfirm}
-            className="flex-1 btn-gradient hover:opacity-90 text-neutral-100"
+            className="flex-1 btn-gradient hover:opacity-90 text-neutral-100 py-4 md:py-3"
             disabled={isLoading}
           >
             {isLoading ? (

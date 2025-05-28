@@ -1,14 +1,14 @@
-"use client"
+'use client'
 
-import Link from "next/link"
+import { Card } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { ArrowUpRight } from "lucide-react"
+import Link from "next/link"
 
 interface DashboardActionCardProps {
   title: string
   description: string
-  href: string
   icon: React.ReactNode
+  href: string
   iconColor?: string
   className?: string
 }
@@ -16,35 +16,36 @@ interface DashboardActionCardProps {
 export function DashboardActionCard({
   title,
   description,
-  href,
   icon,
+  href,
   iconColor = "text-blue-500",
   className,
 }: DashboardActionCardProps) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "group relative flex h-full flex-col justify-between overflow-hidden rounded-lg border border-neutral-800 bg-neutral-900/90 p-6 text-neutral-50 transition-colors hover:border-neutral-700 hover:bg-neutral-900/95",
-        className
-      )}
-    >
-      <div>
-        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg border border-neutral-800 bg-neutral-900">
-          <div className={cn("h-6 w-6", iconColor)}>
-            {icon}
-          </div>
+  const content = (
+    <div className={cn(
+      "relative p-6 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-all duration-200 hover:border-blue-500/30 hover:shadow-md",
+      className
+    )}>
+      <div className="flex gap-4">
+        <div className={cn(
+          "p-2 rounded-full bg-blue-500/10",
+          iconColor
+        )}>
+          {icon}
         </div>
-        <h3 className="mb-2 font-semibold leading-none tracking-tight">
-          {title}
-        </h3>
-        <p className="text-sm text-neutral-400">
-          {description}
-        </p>
+        <div>
+          <h3 className="font-semibold">{title}</h3>
+          <p className="text-sm text-muted-foreground">
+            {description}
+          </p>
+        </div>
       </div>
-      <div className="absolute bottom-6 right-6">
-        <ArrowUpRight className="h-5 w-5 text-neutral-600 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-neutral-400" />
-      </div>
+    </div>
+  )
+
+  return (
+    <Link href={href}>
+      {content}
     </Link>
   )
 }

@@ -2,24 +2,25 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Car, Calendar, Home, User } from "lucide-react";
-import type { AuthUser } from "@/lib/types/database.types";
+import { Car, Calendar, Home, User as UserIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { User } from "@/lib/types/common.types";
+import { isCustomer } from "@/lib/types/common.types";
 
 interface ClientMobileNavProps {
-  user: AuthUser | null;
+  user: User | null;
 }
 
 export default function ClientMobileNav({ user }: ClientMobileNavProps) {
   const pathname = usePathname() || '';
 
-  if (!user) return null;
+  if (!user || !isCustomer(user)) return null;
 
   const isActive = (path: string) =>
     pathname === path || pathname.startsWith(`${path}/`);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-neutral-900/70 backdrop-blur-md z-[1000]">
+    <nav className="fixed bottom-0 left-0 right-0 bg-neutral-900/70 backdrop-blur-md z-[1000] md:hidden">
       <div className="h-20 px-6 flex justify-evenly items-center">
         {/* Home Link */}
         <Link
@@ -31,8 +32,8 @@ export default function ClientMobileNav({ user }: ClientMobileNavProps) {
               : "text-neutral-300 hover:text-neutral-100 hover:scale-105"
           )}
         >
-          <Home className="h-8 w-8" />
-          <span className="text-sm mt-1 font-medium">Accueil</span>
+          <Home className="h-6 w-6" />
+          <span className="text-xs mt-1 font-medium">Accueil</span>
         </Link>
 
         {/* Reservation Link */}
@@ -45,8 +46,8 @@ export default function ClientMobileNav({ user }: ClientMobileNavProps) {
               : "text-neutral-300 hover:text-neutral-100 hover:scale-105"
           )}
         >
-          <Car className="h-8 w-8" />
-          <span className="text-sm mt-1 font-medium">Réserver</span>
+          <Car className="h-6 w-6" />
+          <span className="text-xs mt-1 font-medium">Réserver</span>
         </Link>
 
         {/* My Reservations Link */}
@@ -59,8 +60,8 @@ export default function ClientMobileNav({ user }: ClientMobileNavProps) {
               : "text-neutral-300 hover:text-neutral-100 hover:scale-105"
           )}
         >
-          <Calendar className="h-8 w-8" />
-          <span className="text-sm mt-1 font-medium">Mes réservations</span>
+          <Calendar className="h-6 w-6" />
+          <span className="text-xs mt-1 font-medium">Mes réservations</span>
         </Link>
 
         {/* My Account Link */}
@@ -73,8 +74,8 @@ export default function ClientMobileNav({ user }: ClientMobileNavProps) {
               : "text-neutral-300 hover:text-neutral-100 hover:scale-105"
           )}
         >
-          <User className="h-8 w-8" />
-          <span className="text-sm mt-1 font-medium">Compte</span>
+          <UserIcon className="h-6 w-6" />
+          <span className="text-xs mt-1 font-medium">Compte</span>
         </Link>
       </div>
     </nav>

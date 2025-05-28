@@ -1,11 +1,9 @@
-"use server"
+'use server'
 
-import { redirect } from "next/navigation"
+import { DriverGuard } from "@/components/auth/RoleGuard"
+import { DriverHeader } from "@/components/layout/DriverHeader"
 import { getServerUser } from "@/lib/database/server"
-import { DriverHeader } from "@/components/layout"
-import type { Database } from "@/lib/types/database.types"
-
-type SupabaseRole = Database["auth"]["users"]["Row"]["role"]
+import { redirect } from "next/navigation"
 
 export default async function DriverPortalLayout({
   children,
@@ -14,28 +12,20 @@ export default async function DriverPortalLayout({
 }) {
   const user = await getServerUser()
   
+  // Le guard vérifiera aussi, mais on fait une vérification précoce
   if (!user) {
-    redirect('/login')
+    redirect("/auth/login?from=driver")
   }
-
-  // Cast du rôle pour la vérification de type
-  const role = user.role as SupabaseRole
-
-  // Vérifier si l'utilisateur a le rôle chauffeur
-  if (role !== 'app_driver') {
-    redirect('/unauthorized')
-  }
-
+  
   return (
-    <div className="flex h-screen flex-col bg-gradient-to-b from-emerald-950 to-neutral-950 text-neutral-100">
-      <DriverHeader />
-      <main className="flex-1 mobile-safe-area">{children}</main>
-    </div>
+    <DriverGuard>
+      <div className="min-h-screen bg-neutral-950 text-white">
+        {/* user est garanti non-null ici */}
+        <DriverHeader user={user} />
+        <main className="container mx-auto px-4 py-8">
+          {children}
+        </main>
+      </div>
+    </DriverGuard>
   )
 }
-
-// Opt-out du cache pour toujours vérifier les permissions
-export const revalidate = 0
-
-// Force le rendu dynamique
-export const dynamic = 'force-dynamic'

@@ -1,101 +1,140 @@
-/**
- * Service unifié pour gérer les statuts de réservation
- */
+import type { Database } from '@/lib/types/database.types'
+
+type DbStatus = Database['public']['Enums']['ride_status']
+
+// Types de statuts pour l'UI
+export type UiStatus = 
+  | 'pending'
+  | 'accepted'
+  | 'inProgress'
+  | 'completed'
+  | 'clientCanceled'
+  | 'driverCanceled'
+  | 'adminCanceled'
+  | 'noShow'
+  | 'delayed'
+  | 'unassigned'
+  | 'scheduled'
 
 // Mapping entre les valeurs affichées dans l'UI et les valeurs stockées en DB
-export const RIDE_STATUS_MAP = {
-  // Valeurs de l'interface - féminisées pour "réservation"
-  pending: 'pending',       // En attente
-  accepted: 'scheduled',    // Acceptée (nouveau statut)
-  inProgress: 'in-progress', // En cours
-  completed: 'completed',   // Terminée
-  // Suppression de 'canceled' obsolète
-  
-  // Ajout de statuts plus précis
-  driverCanceled: 'driver-canceled', // Annulée par le chauffeur
-  clientCanceled: 'client-canceled', // Annulée par le client
-  adminCanceled: 'admin-canceled',   // Annulée par l'admin
-  noShow: 'no-show',        // Client absent
-  delayed: 'delayed'        // Retardée
-};
+export const RIDE_STATUS_MAP: Record<UiStatus, DbStatus> = {
+  pending: 'pending',
+  accepted: 'scheduled',
+  inProgress: 'in-progress',
+  completed: 'completed',
+  clientCanceled: 'client-canceled',
+  driverCanceled: 'driver-canceled',
+  adminCanceled: 'admin-canceled',
+  noShow: 'no-show',
+  delayed: 'delayed',
+  unassigned: 'pending',
+  scheduled: 'scheduled'
+}
 
 // Mapping inverse de DB vers UI
-export const RIDE_STATUS_DB_TO_UI = {
-  'unassigned': 'pending',      // Non assignée → En attente
-  'pending': 'pending',         // En attente
-  'scheduled': 'accepted',      // Programmée → Acceptée
-  'in-progress': 'inProgress',  // En cours
-  'completed': 'completed',     // Terminée
-  // Suppression de 'canceled' obsolète
-  'client-canceled': 'clientCanceled', // Annulée par le client
-  'driver-canceled': 'driverCanceled', // Annulée par le chauffeur
-  'admin-canceled': 'adminCanceled',   // Annulée par l'admin
-  'no-show': 'noShow',          // Client absent
-  'delayed': 'delayed'          // Retardée
-};
+export const RIDE_STATUS_DB_TO_UI: Record<DbStatus, UiStatus> = {
+  'pending': 'pending',
+  'scheduled': 'accepted',
+  'in-progress': 'inProgress',
+  'completed': 'completed',
+  'client-canceled': 'clientCanceled',
+  'driver-canceled': 'driverCanceled',
+  'admin-canceled': 'adminCanceled',
+  'no-show': 'noShow',
+  'delayed': 'delayed'
+}
 
 // Labels pour l'affichage - Féminisés pour "réservation"
-export const STATUS_LABELS = {
+export const STATUS_LABELS: Record<UiStatus, string> = {
   pending: "En attente",
-  accepted: "Acceptée", 
+  accepted: "Acceptée",
   inProgress: "En cours",
   completed: "Terminée",
-  // Suppression de 'canceled' obsolète et utilisation des labels spécifiques
-  driverCanceled: "Annulée par chauffeur",
   clientCanceled: "Annulée par client",
+  driverCanceled: "Annulée par chauffeur",
   adminCanceled: "Annulée par admin",
   noShow: "Client absent",
   delayed: "Retardée",
+  scheduled: "Planifiée",
   unassigned: "Non assignée"
-};
-
-// Conversion d'un statut UI vers DB avec vérification
-export function mapStatusToDb(uiStatus: string): string {
-  if (!uiStatus) {
-    console.warn("mapStatusToDb: statut UI vide, utilisation de pending par défaut");
-    return 'pending';
-  }
-  
-  const statusKey = uiStatus.toString().toLowerCase().replace(/\s+/g, '');
-  const dbStatus = RIDE_STATUS_MAP[statusKey as keyof typeof RIDE_STATUS_MAP];
-  
-  if (!dbStatus) {
-    console.warn(`mapStatusToDb: statut UI inconnu "${uiStatus}", utilisation de pending par défaut`);
-    return 'pending';
-  }
-  
-  return dbStatus;
 }
 
-// Conversion d'un statut DB vers UI avec vérification
-export function mapStatusFromDb(dbStatus: string): string {
-  if (!dbStatus) {
-    console.warn("mapStatusFromDb: statut DB vide, utilisation de pending par défaut");
-    return 'pending';
-  }
-  
-  const statusKey = dbStatus.toString().toLowerCase().replace(/\s+/g, '');
-  const uiStatus = RIDE_STATUS_DB_TO_UI[statusKey as keyof typeof RIDE_STATUS_DB_TO_UI];
-  
+// Liste des statuts pour l'UI
+export const ALL_UI_STATUSES: UiStatus[] = [
+  "pending",
+  "accepted",
+  "inProgress",
+  "completed",
+  "clientCanceled",
+  "driverCanceled",
+  "adminCanceled",
+  "noShow",
+  "delayed"
+]
+
+// Liste des statuts pour la DB
+export const ALL_DB_STATUSES: DbStatus[] = [
+  "pending",
+  "scheduled",
+  "in-progress",
+  "completed",
+  "client-canceled",
+  "driver-canceled",
+  "admin-canceled",
+  "no-show",
+  "delayed"
+]
+
+/**
+ * Conversion d'un statut UI vers DB avec vérification
+ */
+export function mapStatusToDb(uiStatus: string): DbStatus {
   if (!uiStatus) {
-    console.warn(`mapStatusFromDb: statut DB inconnu "${dbStatus}", utilisation de pending par défaut`);
-    return 'pending';
+    console.warn("mapStatusToDb: statut UI vide, utilisation de pending par défaut")
+    return 'pending'
   }
   
-  return uiStatus;
+  const statusKey = uiStatus.toLowerCase().replace(/\s+/g, '')
+  const dbStatus = RIDE_STATUS_MAP[statusKey as UiStatus]
+  
+  if (!dbStatus) {
+    console.warn(`mapStatusToDb: statut UI inconnu "${uiStatus}", utilisation de pending par défaut`)
+    return 'pending'
+  }
+  
+  return dbStatus
 }
 
-// Liste des statuts pour l'UI (vérifiés pour être valides)
-export const ALL_UI_STATUSES = ["pending", "accepted", "inProgress", "completed", 
-                               "clientCanceled", "driverCanceled", "adminCanceled", "noShow", "delayed"];
+/**
+ * Conversion d'un statut DB vers UI avec vérification
+ */
+export function mapStatusFromDb(dbStatus: string): UiStatus {
+  if (!dbStatus) {
+    console.warn("mapStatusFromDb: statut DB vide, utilisation de pending par défaut")
+    return 'pending'
+  }
+  
+  const statusKey = dbStatus.toLowerCase().replace(/\s+/g, '')
+  const uiStatus = RIDE_STATUS_DB_TO_UI[statusKey as DbStatus]
+  
+  if (!uiStatus) {
+    console.warn(`mapStatusFromDb: statut DB inconnu "${dbStatus}", utilisation de pending par défaut`)
+    return 'pending'
+  }
+  
+  return uiStatus
+}
 
-// Liste des statuts pour la DB (vérifiés pour être valides en DB)
-// Corriger pour utiliser uniquement les valeurs qui existent vraiment dans Supabase
-export const ALL_DB_STATUSES = ["unassigned", "pending", "scheduled", "in-progress", "completed", 
-                               "client-canceled", "driver-canceled", "admin-canceled", 
-                               "no-show", "delayed"];
+/**
+ * Fonction utilitaire pour vérifier si un statut existe dans la BD
+ */
+export function isValidDbStatus(status: string): status is DbStatus {
+  return ALL_DB_STATUSES.includes(status as DbStatus)
+}
 
-// Fonction utilitaire pour vérifier si un statut existe dans la BD
-export function isValidDbStatus(status: string): boolean {
-  return ALL_DB_STATUSES.includes(status);
+/**
+ * Fonction utilitaire pour vérifier si un statut existe dans l'UI
+ */
+export function isValidUiStatus(status: string): status is UiStatus {
+  return ALL_UI_STATUSES.includes(status as UiStatus)
 }

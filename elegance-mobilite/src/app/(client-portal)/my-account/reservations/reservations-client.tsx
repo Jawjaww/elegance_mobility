@@ -6,29 +6,19 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useRouter } from "next/navigation";
 import { AlertCircle } from "lucide-react";
-import { supabase } from "@/lib/database";
+import { supabase } from "@/lib/database/client";
+import type { User } from "@/lib/types/common.types";
+import { reservationService } from "@/lib/services/reservationService";
 
-// Types
-interface Reservation {
-  id: string;
-  pickup_time: string;
-  pickup_address: string;
-  dropoff_address: string;
-  vehicle_type?: string;
-  status: string;
-  estimated_price?: number | null;
-  distance?: number | null;
-  duration?: number | null;
-  created_at: string;
-  user_id: string;
-}
+import type { Database } from "@/lib/types/database.types";
+type Reservation = Database["public"]["Tables"]["rides"]["Row"];
 
 // Components
 import ReservationCard from "@/components/reservation/ReservationCard";
 import DetailModal from "@/components/reservation/DetailModal";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import ReservationFilters from "@/components/reservation/ReservationFilters";
+import { ReservationFilters } from "@/components/reservation/ReservationFilters";
 import { useToast } from "@/hooks/useToast";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
@@ -36,7 +26,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ALL_DB_STATUSES, mapStatusToDb } from "@/lib/services/statusService";
 
 interface ReservationsClientProps {
-  user: { id: string };
+  user: User;
 }
 
 export default function ReservationsClient({ user }: ReservationsClientProps) {
@@ -49,51 +39,86 @@ export default function ReservationsClient({ user }: ReservationsClientProps) {
   const [selectedRide, setSelectedRide] = useState<Reservation | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-
   useEffect(() => {
     if (!user?.id) return;
     loadReservations();
-  }, [user]);
+  }, [user, selectedStatuses]);
 
   const loadReservations = async () => {
     setIsLoading(true);
     setError(null);
-    
-console.log('[DEBUG] Chargement des réservations pour user.id:', user.id);
+
     try {
       if (!user?.id) {
         setError("Utilisateur non connecté");
         return;
       }
-      
-      let dbStatusFilters: string[];
-      
-      if (selectedStatuses.length > 0) {
-        dbStatusFilters = selectedStatuses.map(mapStatusToDb);
-      } else {
-        dbStatusFilters = ["pending", "scheduled", "completed", "in-progress", 
-                          "client-canceled", "driver-canceled", "admin-canceled", 
-                          "no-show", "delayed"];
+
+      const sessionResult = await supabase.auth.getSession();
+      console.log("[DEBUG] Session Supabase côté client:", sessionResult);
+      if (sessionResult.error) {
+        console.error(
+          "Erreur lors de la récupération de la session:",
+          sessionResult.error
+        );
+        setError("Erreur lors de la récupération de la session");
+        return;
       }
-console.log('[DEBUG] Filtres status appliqués:', dbStatusFilters);
-      
-      if (!dbStatusFilters.length) {
-        dbStatusFilters = ["pending"];
+
+      let dbStatusFilters =
+        selectedStatuses.length > 0
+          ? selectedStatuses.map(mapStatusToDb)
+          : [
+              "pending",
+              "scheduled",
+              "completed",
+              "in-progress",
+              "client-canceled",
+              "driver-canceled",
+              "admin-canceled",
+              "no-show",
+              "delayed",
+            ];
+
+      console.log(
+        "[DEBUG] Tentative de récupération des réservations pour userId:",
+        user.id
+      );
+
+      // Utiliser reservationService qui gère les erreurs de rôle
+      const { success, data, error } =
+        await reservationService.getUserReservations(user.id);
+
+      if (!success) {
+        console.error(
+          "Erreur lors de la récupération des réservations:",
+          error
+        );
+        // Correction : gestion robuste du message d'erreur
+        let errorMessage = "Erreur lors de la récupération des réservations";
+        if (typeof error === "string") {
+          errorMessage = error;
+        } else if (error && typeof error === "object") {
+          if ("message" in error && typeof error.message === "string") {
+            errorMessage = error.message;
+          } else if ("code" in error && typeof error.code === "string") {
+            errorMessage = `Erreur Supabase [${error.code}]`;
+          } else {
+            errorMessage = JSON.stringify(error);
+          }
+        }
+        setError(errorMessage);
+        return;
       }
-      
-      const { data, error } = await supabase
-        .from('rides')
-        .select('*')
-        .eq('user_id', user.id)
-        .in('status', dbStatusFilters)
-        .order('pickup_time', { ascending: false });
-console.log('[DEBUG] Réponse Supabase data:', data);
-console.log('[DEBUG] Réponse Supabase error:', error);
-        
-      if (error) throw error;
-      
-      setReservations(data || []);
+
+      // Appliquer les filtres côté client si nécessaire
+      const filteredData = dbStatusFilters.length
+        ? (data || []).filter((ride) => dbStatusFilters.includes(ride.status))
+        : data;
+
+      setReservations(filteredData || []);
     } catch (err: any) {
+      console.error("Exception lors de la récupération:", err);
       setError(err.message || "Impossible de charger les réservations");
     } finally {
       setIsLoading(false);
@@ -101,23 +126,23 @@ console.log('[DEBUG] Réponse Supabase error:', error);
   };
 
   const handleEdit = (id: string) => {
-    router.push(`/reservation/edit?id=${id}`);
+    router.push(`/my-account/reservations/${id}/edit`);
   };
 
   const handleCancel = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('rides')
-        .update({ status: 'client-canceled' })
-        .eq('id', id);
-        
+        .from("rides")
+        .update({ status: "client-canceled" })
+        .eq("id", id);
+
       if (error) throw error;
-      
+
       toast({
         title: "Réservation annulée",
         description: "Votre réservation a été annulée avec succès",
       });
-      
+
       loadReservations();
     } catch (err: any) {
       toast({
@@ -129,15 +154,17 @@ console.log('[DEBUG] Réponse Supabase error:', error);
   };
 
   const handleDetails = (id: string) => {
-    const ride = reservations.find(r => r.id === id);
+    const ride = reservations.find((r) => r.id === id);
     if (ride) {
       setSelectedRide(ride);
       setIsDetailModalOpen(true);
     }
   };
 
-  const groupedReservations = reservations.reduce<Record<string, Reservation[]>>((groups, ride) => {
-    const dateKey = format(new Date(ride.pickup_time), 'yyyy-MM-dd');
+  const groupedReservations = reservations.reduce<
+    Record<string, Reservation[]>
+  >((groups, ride) => {
+    const dateKey = format(new Date(ride.pickup_time), "yyyy-MM-dd");
     groups[dateKey] = groups[dateKey] || [];
     groups[dateKey].push(ride);
     return groups;
@@ -146,10 +173,15 @@ console.log('[DEBUG] Réponse Supabase error:', error);
   return (
     <div className="container max-w-4xl py-8 px-4 sm:px-6">
       <h1 className="text-2xl font-bold text-white mb-6">Mes réservations</h1>
-      
-      <ReservationFilters 
-        onStatusChange={setSelectedStatuses}
-        selectedStatuses={selectedStatuses}
+
+      <ReservationFilters
+        onFilterChange={({ status }) => {
+          if (status && status !== "all") {
+            setSelectedStatuses([status]);
+          } else {
+            setSelectedStatuses([]);
+          }
+        }}
       />
 
       {isLoading ? (
@@ -168,8 +200,8 @@ console.log('[DEBUG] Réponse Supabase error:', error);
             Aucune réservation trouvée
           </h3>
           <p className="text-neutral-400 mb-6">
-            {selectedStatuses.length > 0 
-              ? "Aucune réservation ne correspond aux filtres sélectionnés" 
+            {selectedStatuses.length > 0
+              ? "Aucune réservation ne correspond aux filtres sélectionnés"
               : "Vous n'avez pas encore de réservation"}
           </p>
           <Button onClick={() => router.push("/reservation")}>
@@ -188,8 +220,16 @@ console.log('[DEBUG] Réponse Supabase error:', error);
                   <ReservationCard
                     key={ride.id}
                     ride={ride}
-                    onEdit={ride.status === "pending" ? () => handleEdit(ride.id) : undefined}
-                    onCancel={ride.status === "pending" ? () => handleCancel(ride.id) : undefined}
+                    onEdit={
+                      ride.status === "pending"
+                        ? () => handleEdit(ride.id)
+                        : undefined
+                    }
+                    onCancel={
+                      ride.status === "pending"
+                        ? () => handleCancel(ride.id)
+                        : undefined
+                    }
                     onDetails={() => handleDetails(ride.id)}
                   />
                 ))}
@@ -199,7 +239,7 @@ console.log('[DEBUG] Réponse Supabase error:', error);
         </div>
       )}
 
-      <DetailModal 
+      <DetailModal
         ride={selectedRide}
         open={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}

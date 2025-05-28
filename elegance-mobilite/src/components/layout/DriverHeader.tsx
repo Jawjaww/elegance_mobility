@@ -1,190 +1,140 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { logout } from "@/app/auth/login/actions";
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Car, Calendar, User2, LogOut } from "lucide-react"
+import type { User } from "@supabase/supabase-js"
+import { supabase } from "@/lib/database/client"
 
-import {
-  Menu,
-  X,
-  LogOut,
-  Calendar,
-  Map,
-  Clock,
-  User,
-  Home,
-} from "lucide-react";
+interface DriverHeaderProps {
+  user: User
+}
 
-export function DriverHeader() {
-  const pathname = usePathname();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+const NAV_ITEMS = [
+  {
+    name: "Courses du jour",
+    href: "/driver-portal/rides",
+    icon: Car,
+  },
+  {
+    name: "Planning",
+    href: "/driver-portal/schedule",
+    icon: Calendar,
+  },
+  {
+    name: "Profil",
+    href: "/driver-portal/profile",
+    icon: User2,
+  }
+]
 
+export function DriverHeader({ user }: DriverHeaderProps) {
+  const pathname = usePathname() ?? ''
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+      // La redirection sera gérée par le middleware
+    } catch (error) {
+      console.error('Erreur lors de la déconnexion:', error)
+    }
+  }
+
+  const getAvatarFallback = () => {
+    return user.email?.[0].toUpperCase() ?? 'D'
+  }
+
+  const isActive = (path: string) =>
+    pathname === path || pathname.startsWith(`${path}/`)
 
   return (
-    <header className="border-b bg-emerald-800 text-white sticky top-0 z-50">
-      <div className="container mx-auto px-4 flex items-center justify-between h-16">
-        <Link href="/driver-portal" className="flex items-center">
-          <span className="text-xl font-bold">Portail Chauffeur</span>
-        </Link>
-
-        {/* Navigation desktop */}
-        <nav className="hidden md:flex items-center gap-6">
-          <Link
-            href="/driver-portal"
-            className={
-              pathname === "/driver-portal"
-                ? "font-semibold text-emerald-300"
-                : ""
-            }
-          >
-            Mes courses
-          </Link>
-          <Link
-            href="/driver-portal/schedule"
-            className={
-              pathname === "/driver-portal/schedule"
-                ? "font-semibold text-emerald-300"
-                : ""
-            }
-          >
-            Planning
-          </Link>
-          <Link
-            href="/driver-portal/history"
-            className={
-              pathname === "/driver-portal/history"
-                ? "font-semibold text-emerald-300"
-                : ""
-            }
-          >
-            Historique
-          </Link>
-          <Link
-            href="/driver-portal/profile"
-            className={
-              pathname === "/driver-portal/profile"
-                ? "font-semibold text-emerald-300"
-                : ""
-            }
-          >
-            Mon profil
-          </Link>
-
-          <div className="flex items-center ml-4">
-            <form action={logout}>
-              <Button
-                type="submit"
-                variant="ghost"
-                className="text-white hover:text-gray-300"
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Déconnexion</span>
-              </Button>
-            </form>
-            <Button variant="outline" className="ml-4" asChild>
-              <Link href="/">
-                <Home className="mr-2 h-4 w-4" />
-                <span>Retour au site</span>
-              </Link>
-            </Button>
-          </div>
-        </nav>
-
-        {/* Menu mobile */}
-        <button
-          className="md:hidden"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          type="button"
-        >
-          {isMenuOpen ? <X /> : <Menu />}
-        </button>
-      </div>
-
-      {/* Navigation mobile */}
-      {isMenuOpen && (
-        <div className="md:hidden px-4 py-2 border-t border-emerald-700">
-          <nav className="flex flex-col space-y-4 py-4">
+    <header className="sticky top-0 z-50 w-full border-b border-neutral-700/30">
+      <div className="bg-gradient-to-r from-neutral-950/95 to-neutral-900/90 backdrop-blur-sm">
+        <div className="container flex h-16 max-w-screen-2xl items-center">
+          <div className="mr-8 flex-1">
             <Link
               href="/driver-portal"
-              className={
-                pathname === "/driver-portal"
-                  ? "font-semibold text-emerald-300"
-                  : ""
-              }
-              onClick={() => setIsMenuOpen(false)}
+              className="mr-8 flex items-center space-x-2"
             >
-              <div className="flex items-center">
-                <Map className="mr-2 h-5 w-5" />
-                <span>Mes courses</span>
-              </div>
+              <span className="bg-gradient-to-r from-green-600 to-green-800 bg-clip-text text-transparent font-bold text-xl">
+                Vector Elegans
+              </span>
+              <span className="text-neutral-400 font-medium">Chauffeur</span>
             </Link>
-            <Link
-              href="/driver-portal/schedule"
-              className={
-                pathname === "/driver-portal/schedule"
-                  ? "font-semibold text-emerald-300"
-                  : ""
-              }
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <div className="flex items-center">
-                <Calendar className="mr-2 h-5 w-5" />
-                <span>Planning</span>
-              </div>
-            </Link>
-            <Link
-              href="/driver-portal/history"
-              className={
-                pathname === "/driver-portal/history"
-                  ? "font-semibold text-emerald-300"
-                  : ""
-              }
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <div className="flex items-center">
-                <Clock className="mr-2 h-5 w-5" />
-                <span>Historique</span>
-              </div>
-            </Link>
-            <Link
-              href="/driver-portal/profile"
-              className={
-                pathname === "/driver-portal/profile"
-                  ? "font-semibold text-emerald-300"
-                  : ""
-              }
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <div className="flex items-center">
-                <User className="mr-2 h-5 w-5" />
-                <span>Mon profil</span>
-              </div>
-            </Link>
-
-            <div className="pt-4 border-t border-emerald-700 flex flex-col space-y-4">
-              <form action={logout}>
-                <button
-                  type="submit"
-                  className="flex items-center text-red-300"
+            <nav className="hidden md:flex items-center space-x-8 text-sm font-medium mt-2">
+              {NAV_ITEMS.map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center space-x-2 transition-all duration-200 hover:text-green-400",
+                    isActive(item.href)
+                      ? "text-green-400"
+                      : "text-neutral-400"
+                  )}
                 >
-                  <LogOut className="mr-2 h-5 w-5" />
+                  <div className={cn(
+                    "p-1.5 rounded-full transition-all duration-200",
+                    isActive(item.href)
+                      ? "bg-green-500/15 shadow-[0_0_8px_-2px_rgba(74,222,128,0.2)]"
+                      : "group-hover:bg-neutral-800/30"
+                  )}>
+                    <item.icon className={cn(
+                      "h-4 w-4",
+                      isActive(item.href) ? "text-green-400" : "text-neutral-400"
+                    )} />
+                  </div>
+                  <span>{item.name}</span>
+                </Link>
+              ))}
+            </nav>
+          </div>
+
+          <nav className="flex items-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="relative h-9 w-9 rounded-full"
+                >
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage
+                      src="/avatars/driver.png"
+                      alt="Avatar chauffeur"
+                    />
+                    <AvatarFallback className="bg-green-600 text-white">
+                      {getAvatarFallback()}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px] p-2">
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/driver-portal/profile"
+                    className="flex items-center gap-2"
+                  >
+                    <User2 className="h-4 w-4" />
+                    <span>Mon profil</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 text-red-500"
+                >
+                  <LogOut className="h-4 w-4" />
                   <span>Déconnexion</span>
-                </button>
-              </form>
-              <Link
-                href="/"
-                className="flex items-center"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <Home className="mr-2 h-5 w-5" />
-                <span>Retour au site</span>
-              </Link>
-            </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </nav>
         </div>
-      )}
+      </div>
     </header>
-  );
+  )
 }

@@ -21,7 +21,7 @@ export async function POST() {
       { 
         status: 200,
         headers: {
-          'Location': '/login'
+          'Location': '/auth/login'
         }
       }
     )

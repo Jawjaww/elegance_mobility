@@ -1,49 +1,33 @@
-import { MetricsService } from "@/lib/services/metricsService";
-import { AdminDashboardClient } from "@/components/admin/AdminDashboardClient";
-import { createServerSupabaseClient } from "@/lib/database/server";
-import { redirect } from "next/navigation";
-import type { AuthUser } from "@/lib/types/auth.types";
+'use server'
 
-export const revalidate = 0;
+import { MetricsService } from "@/lib/services/metricsService"
+import { AdminDashboardClient } from "@/components/admin/AdminDashboardClient"
+import { redirect } from "next/navigation"
+import { getServerUser } from "@/lib/database/server"
+import { User } from "@/lib/types/common.types"
+import { isAdmin } from "@/lib/types/common.types"
+
+export const revalidate = 0
 
 /**
  * Page d'accueil du backoffice
+ * La vérification des rôles est déjà faite dans le layout
  */
 export default async function BackofficeIndexPage() {
-  const supabase = await createServerSupabaseClient();
-  
-  // Vérifier si l'utilisateur est connecté et récupérer son rôle
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getServerUser()
   if (!user) {
-    redirect("/login");
+    redirect("/auth/login?redirectTo=/backoffice-portal/dashboard")
   }
-
-  // Le rôle est stocké dans user.role avec les rôles natifs PostgreSQL
-  const userRole = user.role as "app_super_admin" | "app_admin" | undefined;
   
-  // Vérifier si l'utilisateur a le bon rôle
-  if (!userRole || !["app_super_admin", "app_admin"].includes(userRole)) {
-    redirect("/");
-  }
-
-  // Créer un objet AuthUser correctement typé
-  const authUser: AuthUser = {
-    id: user.id,
-    email: user.email!,
-    role: userRole,
-    name: user.user_metadata.name || user.email!,
-    user_metadata: user.user_metadata
-  };
-
-  const metrics = await MetricsService.getDashboardMetrics();
+  const metrics = await MetricsService.getDashboardMetrics()
 
   return (
     <div className="container mx-auto py-8">
       <AdminDashboardClient
         initialMetrics={metrics}
-        user={authUser}
-        isAdmin={true}
+        user={user}
+        isAdmin={isAdmin(user)}
       />
     </div>
-  );
+  )
 }

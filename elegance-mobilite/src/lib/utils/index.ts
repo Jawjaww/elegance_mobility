@@ -8,17 +8,17 @@ export * from './date-format';
 
 // Export des fonctions utilitaires communes
 // export { cn } from './cn';
-export { extractDisplayName, getInitialsFromName } from './user-utils';
+// export { extractDisplayName, getInitialsFromName } from './user-utils';
 
 // Export des mappeurs de base de données
-export { 
-  normalizeUserRole,
-  normalizeAdminLevel,
-  dbVehicleTypeToEnum, 
-  enumToDbVehicleType,
-  dbOptionsToVehicleOptions,
-  vehicleOptionsToDbOptions
-} from './db-mapping';
+// export { 
+//   normalizeUserRole,
+//   normalizeAdminLevel,
+//   dbVehicleTypeToEnum, 
+//   enumToDbVehicleType,
+//   dbOptionsToVehicleOptions,
+//   vehicleOptionsToDbOptions
+// } from './db-mapping';
 
 // Fonction utilitaire pour formater les montants monétaires
 export function formatCurrency(value: number): string {

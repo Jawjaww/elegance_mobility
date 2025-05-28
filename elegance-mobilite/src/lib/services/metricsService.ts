@@ -36,7 +36,7 @@ export class MetricsService {
         supabase
           .from('rides')
           .select('count', { count: 'exact' })
-          .in('status', ['pending', 'confirmed']),
+          .in('status', ['pending', 'scheduled']),
 
         // Véhicules disponibles
         supabase

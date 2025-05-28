@@ -1,6 +1,7 @@
 import { Database } from './types/database.types'
 import { createClient } from '@supabase/supabase-js'
 
+// Utiliser les types corrects selon la structure de Database
 export type Vehicle = Database['public']['Tables']['vehicles']['Row']
 export type NewVehicle = Database['public']['Tables']['vehicles']['Insert']
 export type UpdateVehicle = Database['public']['Tables']['vehicles']['Update']

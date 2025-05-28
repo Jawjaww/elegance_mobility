@@ -15,10 +15,60 @@ Les rôles sont configurés une seule fois dans Supabase :
 - app_admin : Administrateurs
 - app_super_admin : Super administrateurs
 
-### 2. Attribution des Rôles
-- Via l'interface Supabase
-- Lors de l'inscription selon le contexte (portail client vs portail chauffeur)
-- Jamais modifié directement par l'application
+### 2. Stratégie de Création de Rôles Révisée
+
+#### 2.1 Inscription de l'Utilisateur
+- Création d'un enregistrement dans auth.users sans attribution immédiate de rôle
+- Les utilisateurs sont initialement créés sans rôle spécifique
+
+#### 2.2 Validation des Rôles
+
+Pour les Clients (app_customer):
+- Attribution automatique après vérification de l'email
+- Pas de validation administrative requise
+
+Pour les Conducteurs (app_driver):
+- Validation obligatoire par un administrateur
+- Notification envoyée à l'admin pour examen de la demande
+- Attribution du rôle uniquement après approbation
+
+#### 2.3 Processus d'Attribution
+
+1. Vérification de l'Email:
+   - Attribution automatique du rôle app_customer
+   - Déclenchement via Edge Function
+
+2. Notification Admin (Conducteurs):
+   - Edge Function pour notifier l'administrateur
+   - Interface de validation dans le backoffice
+
+3. Création du Rôle (Conducteurs):
+   ```typescript
+   // edge-function.ts
+   import { createClient } from '@supabase/supabase-js'
+   
+   export default async function handler(req) {
+     const { userId, role } = req.body
+     const supabase = createClient('your-supabase-url', 'your-anon-key')
+     
+     const { error } = await supabase.rpc('create_user_role', {
+       user_id: userId,
+       role: role,
+     })
+     
+     if (error) {
+       return new Response(
+         JSON.stringify({ error: error.message }), 
+         { status: 400 }
+       )
+     }
+     
+     return new Response(
+       JSON.stringify({ message: 'Role created successfully' }), 
+       { status: 200 }
+     )
+   }
+   ```
 
 ## Architecture Applicative
 
@@ -56,7 +106,7 @@ const { data, error } = await supabase
 ## À Ne Pas Faire
 
 1. Ne pas tenter de SET ROLE dans l'application
-2. Ne pas créer/modifier des rôles via le code
+2. Ne pas créer/modifier des rôles via le code (sauf via Edge Functions approuvées)
 3. Ne pas bypasser RLS avec service_role sauf nécessité absolue
 4. Ne pas stocker les rôles en double (base de données + JWT)
 
@@ -64,7 +114,7 @@ const { data, error } = await supabase
 
 1. Inscription utilisateur :
    - Via Supabase Auth UI ou API
-   - Rôle attribué automatiquement selon le contexte
+   - Attribution du rôle selon le processus de validation
 
 2. Authentification :
    - JWT contient le rôle
@@ -87,3 +137,4 @@ const { data, error } = await supabase
 3. Maintenabilité :
    - Logique centralisée dans Supabase
    - Code applicatif plus simple
+   - Process de validation clairement défini

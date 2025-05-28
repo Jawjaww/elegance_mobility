@@ -14,3 +14,18 @@ export function formatCurrency(amount: number): string {
     minimumFractionDigits: 2,
   }).format(amount);
 }
+
+// Formatage des durées en heures et minutes
+export function formatDuration(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = Math.round(minutes % 60);
+
+  if (hours === 0) {
+    // Pas d'heures, on affiche seulement les minutes sans zéro
+    return `${remainingMinutes} min`;
+  }
+
+  // Si heures ET minutes inférieures à 10, ajout d'un zéro
+  return `${hours}h${remainingMinutes < 10 ? `0${remainingMinutes}` : remainingMinutes}min`;
+}
+

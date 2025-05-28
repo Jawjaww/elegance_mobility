@@ -1,70 +1,57 @@
-import { supabase } from "@/lib/database/client";
-import type { Database } from "@/lib/types/database.types";
+import { createServerSupabaseClient } from "@/lib/database/server";
 
 interface UpdateProfileParams {
   userId: string;
-  name?: string;
   email?: string;
-  phone?: string;
+  phone?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
   currentPassword?: string;
   newPassword?: string;
-  user_metadata?: {
-    [key: string]: any;
-  };
 }
 
-export const updateProfile = async ({
-  userId,
-  name,
-  email,
-  phone,
-  currentPassword,
-  newPassword,
-  user_metadata
-}: UpdateProfileParams) => {
+export async function updateProfile(params: UpdateProfileParams) {
+  const supabase = await createServerSupabaseClient();
 
   try {
-    // Mise à jour des métadonnées de l'utilisateur
-    if (name || phone || user_metadata) {
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: {
-          name,
-          phone,
-          ...user_metadata
-        }
-      });
+    // Si le mot de passe doit être mis à jour
+    if (params.currentPassword && params.newPassword) {
+      const { error } = await supabase.auth.updateUser({
+        password: params.newPassword
+      })
 
-      if (updateError) {
-        return { error: updateError.message };
+      if (error) {
+        return { error: error.message };
       }
     }
 
-    // Mise à jour de l'email si fourni
-    if (email) {
-      const { error: emailError } = await supabase.auth.updateUser({
-        email
+    // Mise à jour des informations du profil via auth.updateUser
+    const updateData: any = {};
+    if (params.email) updateData.email = params.email;
+
+    // Les données de profil
+    const userData: {
+      data?: { [key: string]: any };
+    } = {};
+    
+    if (params.first_name !== undefined) userData.data = { ...userData.data, first_name: params.first_name };
+    if (params.last_name !== undefined) userData.data = { ...userData.data, last_name: params.last_name };
+    if (params.phone !== undefined) userData.data = { ...userData.data, phone: params.phone };
+
+    if (Object.keys(updateData).length > 0 || Object.keys(userData).length > 0) {
+      const { error } = await supabase.auth.updateUser({
+        ...updateData,
+        ...userData
       });
 
-      if (emailError) {
-        return { error: emailError.message };
-      }
-    }
-
-    // Mise à jour du mot de passe si fourni
-    if (currentPassword && newPassword) {
-      const { error: passwordError } = await supabase.auth.updateUser({
-        password: newPassword
-      });
-
-      if (passwordError) {
-        return { error: passwordError.message };
+      if (error) {
+        return { error: error.message };
       }
     }
 
     return { success: true };
   } catch (error: any) {
+    console.error('Error updating profile:', error);
     return { error: error.message };
   }
-};
-
-export default updateProfile;
+}

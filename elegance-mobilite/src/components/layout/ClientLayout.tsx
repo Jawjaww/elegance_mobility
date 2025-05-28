@@ -1,25 +1,21 @@
-"use client"
+'use client'
 
-import type { AuthUser } from "@/lib/types/database.types"
+import type { User } from "../../lib/types/common.types"
 import { ClientHeader } from "./ClientHeader"
 import ClientMobileNav from "./ClientMobileNav"
-import { Footer } from "./footer"
 
 interface ClientLayoutProps {
+  user: User
   children: React.ReactNode
-  user: AuthUser
 }
 
-export function ClientLayout({ children, user }: ClientLayoutProps) {
+export function ClientLayout({ user, children }: ClientLayoutProps) {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="min-h-screen bg-neutral-950 text-white">
       <ClientHeader user={user} />
-      <div className="flex-1 flex flex-col">
-        <main className="flex-1 mobile-safe-area">
-          {children}
-        </main>
-        <Footer />
-      </div>
+      <main className="flex-1">
+        {children}
+      </main>
       <ClientMobileNav user={user} />
     </div>
   )

@@ -1,41 +1,36 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Layout, Car, Users } from "lucide-react";
-import { cn } from "@/lib/utils";
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { Layout, Car, Users } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 const NAV_ITEMS = [
   {
-    href: "/backoffice/dashboard",
+    href: "/backoffice-portal/dashboard",
     label: "Dashboard",
     icon: Layout,
   },
   {
-    href: "/backoffice/rides",
-    label: "Réservations",
+    href: "/backoffice-portal/rides",
+    label: "Courses",
     icon: Car,
   },
   {
-    href: "/backoffice/drivers",
+    href: "/backoffice-portal/drivers",
     label: "Chauffeurs",
     icon: Users,
   },
-  {
-    href: "/backoffice/users",
-    label: "Utilisateurs",
-    icon: Users,
-  },
-];
+]
 
 export function MobileAdminNav() {
-  const pathname = usePathname() || '';
+  const pathname = usePathname() || ''
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-neutral-950/95 to-neutral-900/90 backdrop-blur-sm border-t border-neutral-700/30 shadow-md shadow-black/10 md:hidden">
       <nav className="flex justify-around items-center h-14 px-3">
         {NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
           return (
             <Link
               key={item.href}
@@ -66,9 +61,9 @@ export function MobileAdminNav() {
                 isActive ? "text-blue-400" : "text-neutral-400"
               )}>{item.label}</span>
             </Link>
-          );
+          )
         })}
       </nav>
     </div>
-  );
+  )
 }
