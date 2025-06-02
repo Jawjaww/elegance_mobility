@@ -116,7 +116,7 @@ export function ReservationFilters({
   };
 
   return (
-    <div className="flex flex-col sm:flex-row gap-4 mb-6 items-center w-full">
+    <div className="flex flex-col sm:flex-row gap-4 mb-1 items-center w-full pt-2 pb-2">
       <div className="flex items-center gap-2 w-full sm:flex-1">
         <Popover>
           <PopoverTrigger asChild>
@@ -124,8 +124,9 @@ export function ReservationFilters({
               variant="outline"
               className="w-full justify-start text-left font-normal"
               style={{
-                background: 'rgba(20, 20, 20, 0.72)',
-                backdropFilter: 'blur(16px)',
+                background: 'rgba(12, 12, 14, 0.25)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
                 border: '1.5px solid rgba(255,255,255,0.10)',
                 boxShadow: '0 4px 16px 0 rgba(0,0,0,0.15)',
                 color: 'white'
@@ -138,7 +139,7 @@ export function ReservationFilters({
                   height="16" 
                   fill="none" 
                   viewBox="0 0 20 20" 
-                  className="mr-2 cursor-pointer hover:text-blue-300 transition-colors"
+                  className="mr-2 cursor-pointer text-neutral-400 hover:text-blue-300 transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
                     if (viewMode === 'day') {
@@ -175,7 +176,7 @@ export function ReservationFilters({
                   height="16" 
                   fill="none" 
                   viewBox="0 0 20 20" 
-                  className="ml-2 cursor-pointer hover:text-blue-300 transition-colors"
+                  className="ml-2 cursor-pointer text-neutral-400 hover:text-blue-300 transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
                     if (viewMode === 'day') {
@@ -200,23 +201,25 @@ export function ReservationFilters({
             </Button>
           </PopoverTrigger>
           <PopoverContent
-            className="w-[var(--radix-popover-trigger-width)] justify-start text-left font-normal"
+            className="w-[var(--radix-popover-trigger-width)] justify-start text-left font-normal z-50 isolate"
             align="start"
             side="bottom"
             sideOffset={4}
             style={{
-              background: 'rgba(20, 20, 20, 0.85)',
+              background: 'rgba(12, 12, 14, 0.35)',
               backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
               border: '1.5px solid rgba(255,255,255,0.10)',
-              boxShadow: '0 8px 32px 0 rgba(0,0,0,0.25)',
+              boxShadow: '0 8px 32px 0 rgba(0,0,0,0.6)',
               borderRadius: 8,
-              padding: 0
+              padding: 0,
+              isolation: 'isolate'
             }}
           >
             {/* Sélecteur d'année en haut, toggle jour/mois, puis grille unique */}
-            <div className="flex flex-col gap-2 mb-2">
+            <div className="flex flex-col gap-1 mb-1.5">
               {/* Sélecteur d'année (toujours visible en haut) */}
-              <div className="flex items-center gap-2 justify-center mb-1 mt-3">
+              <div className="flex items-center gap-0.5 justify-center mb-0 mt-0">
                 <button
                   type="button"
                   aria-label="Année précédente"
@@ -242,10 +245,10 @@ export function ReservationFilters({
                   }}
                 >
                   <span className="sr-only">Année précédente</span>
-                  <svg width="20" height="20" fill="none" viewBox="0 0 20 20"><path d="M13 16l-5-6 5-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <svg width="20" height="20" fill="none" viewBox="0 0 20 20" className="text-neutral-400"><path d="M13 16l-5-6 5-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </button>
-                {/* Affichage de l'année sélectionnée */}
-                <span className="font-semibold text-lg w-[60px] text-center select-none text-white drop-shadow-sm">{year}</span>
+                {/* Affichage de l'année sélectionnée avec taille de police réduite */}
+                <span className="font-semibold text-sm w-[60px] text-center select-none text-white drop-shadow-sm">{year}</span>
                 <button
                   type="button"
                   aria-label="Année suivante"
@@ -271,13 +274,13 @@ export function ReservationFilters({
                   }}
                 >
                   <span className="sr-only">Année suivante</span>
-                  <svg width="20" height="20" fill="none" viewBox="0 0 20 20"><path d="M7 4l5 6-5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <svg width="20" height="20" fill="none" viewBox="0 0 20 20" className="text-neutral-400"><path d="M7 4l5 6-5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </button>
               </div>
               {/* Ligne Jour/Mois transparente */}
-              <div className="w-full flex justify-center gap-2 mb-3 px-0 py-2">
+              <div className="w-full flex justify-center gap-0.5 mb-0 px-0 py-0">
                 <span
-                  className={`cursor-pointer text-sm font-semibold transition-colors duration-200 select-none px-2 ${viewMode === 'day' ? 'text-blue-600' : 'text-neutral-500 hover:text-blue-500'}`}
+                  className={`cursor-pointer text-xs font-medium transition-colors duration-200 select-none px-1.5 ${viewMode === 'day' ? 'text-blue-600' : 'text-neutral-500 hover:text-blue-500'}`}
                   onClick={() => {
                     setViewMode('day');
                     if (selectedDate) {
@@ -293,7 +296,7 @@ export function ReservationFilters({
                   Jour
                 </span>
                 <span
-                  className={`cursor-pointer text-sm font-semibold transition-colors duration-200 select-none px-2 ${viewMode === 'month' ? 'text-blue-600' : 'text-neutral-500 hover:text-blue-500'}`}
+                  className={`cursor-pointer text-xs font-medium transition-colors duration-200 select-none px-1.5 ${viewMode === 'month' ? 'text-blue-600' : 'text-neutral-500 hover:text-blue-500'}`}
                   onClick={() => {
                     setViewMode('month');
                     if (selectedDate) {
@@ -311,11 +314,11 @@ export function ReservationFilters({
               </div>
               {/* En-tête des jours de la semaine (uniquement en mode jour) */}
               {viewMode === 'day' && (
-                <div className="w-full mx-auto grid grid-cols-7 gap-x-0.5 px-2 mb-1">
+                <div className="w-full mx-auto grid grid-cols-7 gap-x-0.5 px-2 mb-0.5">
                   {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((dayName) => (
                     <div
                       key={dayName}
-                      className="text-center text-xs font-medium text-neutral-400 py-1 select-none"
+                      className="text-center text-xs font-medium text-neutral-400 py-0.5 select-none"
                     >
                       {dayName}
                     </div>
@@ -325,7 +328,7 @@ export function ReservationFilters({
               
               {/* Grille factorisée pour jours/mois */}
               <div
-                className={`w-full mx-auto grid ${viewMode === 'month' ? 'grid-cols-3 gap-x-2 gap-y-3' : 'grid-cols-7 gap-x-0.5 gap-y-2'} px-2 py-1 mb-2`}
+                className={`w-full mx-auto grid ${viewMode === 'month' ? 'grid-cols-3 gap-x-2 gap-y-2' : 'grid-cols-7 gap-x-0.5 gap-y-1'} px-2 py-0.5 mb-1.5`}
               >
                 {viewMode === 'month'
                   ? months.map((m, idx) => {
@@ -333,7 +336,7 @@ export function ReservationFilters({
                       return (
                         <button
                           key={m}
-                        className={`w-full min-w-[32px] py-1.5 rounded-md font-medium text-sm transition-colors duration-200 select-none
+                        className={`w-full min-w-[32px] py-1 rounded-md font-medium text-sm transition-colors duration-200 select-none
                           ${isSelected ? 'bg-blue-500/25 text-blue-200' : 'bg-transparent text-white hover:bg-blue-500/15 hover:text-blue-200'}`}
                           onClick={() => {
                             setMonth(idx);
@@ -375,7 +378,7 @@ export function ReservationFilters({
                       return calendarDays.map((day, index) => {
                         if (day === null) {
                           // Cellule vide pour les jours précédents
-                          return <div key={`empty-${index}`} className="w-full min-w-[32px] py-1.5"></div>;
+                          return <div key={`empty-${index}`} className="w-full min-w-[32px] py-1"></div>;
                         }
                         
                         const isSelected = selectedDate &&
@@ -385,7 +388,7 @@ export function ReservationFilters({
                         return (
                           <button
                             key={day}
-                            className={`w-full min-w-[32px] py-1.5 rounded-md font-medium text-sm transition-colors duration-200 select-none ${isSelected ? 'bg-blue-500/25 text-blue-200' : 'bg-transparent text-white hover:bg-blue-500/15 hover:text-blue-200'}`}
+                            className={`w-full min-w-[32px] py-1 rounded-md font-medium text-sm transition-colors duration-200 select-none ${isSelected ? 'bg-blue-500/25 text-blue-200' : 'bg-transparent text-white hover:bg-blue-500/15 hover:text-blue-200'}`}
                             onClick={() => {
                               const newDate = new Date(year, month, day);
                               setSelectedDate(newDate);
@@ -410,8 +413,9 @@ export function ReservationFilters({
         <SelectTrigger 
           className="w-full sm:w-[200px] lg:w-[240px]"
           style={{
-            background: 'rgba(20, 20, 20, 0.72)',
-            backdropFilter: 'blur(16px)',
+            background: 'rgba(12, 12, 14, 0.25)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
             border: '1.5px solid rgba(255,255,255,0.10)',
             boxShadow: '0 4px 16px 0 rgba(0,0,0,0.15)',
             color: 'white'
@@ -421,8 +425,9 @@ export function ReservationFilters({
         </SelectTrigger>
         <SelectContent
           style={{
-            background: 'rgba(20, 20, 20, 0.85)',
-            backdropFilter: 'blur(16px)',
+            background: 'rgba(12, 12, 14, 0.25)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
             border: '1.5px solid rgba(255,255,255,0.10)',
             boxShadow: '0 8px 32px 0 rgba(0,0,0,0.25)'
           }}

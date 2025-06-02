@@ -223,8 +223,8 @@ export default function ReservationsClient({ user }: ReservationsClientProps) {
   const { dateFilter: activeDateFilter, statusFilter: activeStatusFilter } = getActiveFilters();
 
   return (
-    <div className="container max-w-4xl py-2 px-4 sm:px-2">
-      <div className="flex flex-col w-full gap-4 mb-2">
+    <div className="container max-w-4xl py-2 pt-0.5 px-4 sm:px-2">
+      <div className="flex flex-col w-full gap-4 mb-2 sticky top-[55px] z-40 pt-2 pb-2 bg-neutral-950/20 shadow-md">
         <ReservationFilters
           onFilterChange={({ status, startDate, endDate }) => {
             // Mettre à jour les filtres avec TanStack Table
@@ -240,33 +240,7 @@ export default function ReservationsClient({ user }: ReservationsClientProps) {
             
             setColumnFilters(newFilters);
           }}
-        />
-        
-        {/* Afficher un indicateur de filtrage actif pour une meilleure UX */}
-        {(activeDateFilter || activeStatusFilter) && (
-          <div className="flex items-center justify-between bg-neutral-800/40 p-3 rounded-md">
-            <div className="flex items-center text-sm">
-              <span className="text-neutral-300">
-                {filteredReservations.length} réservation{filteredReservations.length !== 1 ? 's' : ''} 
-                {activeDateFilter && activeDateFilter.value.startDate && activeDateFilter.value.startDate.getDate() === activeDateFilter.value.endDate?.getDate() 
-                  ? ` pour le ${format(activeDateFilter.value.startDate, "d MMMM yyyy", { locale: fr })}`
-                  : activeDateFilter && activeDateFilter.value.startDate 
-                    ? ` du ${format(activeDateFilter.value.startDate, "d MMMM", { locale: fr })} au ${format(activeDateFilter.value.endDate!, "d MMMM yyyy", { locale: fr })}`
-                    : ''}
-                {activeStatusFilter ? ` avec statut "${activeStatusFilter.value}"` : ''}
-              </span>
-            </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => {
-                setColumnFilters([]);
-              }}
-            >
-              Effacer les filtres
-            </Button>
-          </div>
-        )}
+        />   
       </div>
 
       {isLoading ? (
@@ -292,7 +266,9 @@ export default function ReservationsClient({ user }: ReservationsClientProps) {
           <Button onClick={() => router.push("/reservation")}>Faire une réservation</Button>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4 pt-4 pb-8 relative">
+          {/* Effet de transparence sur le bas */}
+          <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-neutral-950 to-transparent pointer-events-none"></div>
           {filteredReservations.map((ride: Reservation) => (
             <ReservationCard
               key={ride.id}
@@ -330,6 +306,31 @@ export default function ReservationsClient({ user }: ReservationsClientProps) {
           )}
         </div>
       )}
+      {/* Afficher un indicateur de filtrage actif pour une meilleure UX */}
+        {(activeDateFilter || activeStatusFilter) && (
+          <div className="flex items-center justify-between p-3 pb-12 rounded-md">
+            <div className="flex items-center text-sm">
+              <span className="text-neutral-300">
+                {filteredReservations.length} réservation{filteredReservations.length !== 1 ? 's' : ''} 
+                {activeDateFilter && activeDateFilter.value.startDate && activeDateFilter.value.startDate.getDate() === activeDateFilter.value.endDate?.getDate() 
+                  ? ` pour le ${format(activeDateFilter.value.startDate, "d MMMM yyyy", { locale: fr })}`
+                  : activeDateFilter && activeDateFilter.value.startDate 
+                    ? ` du ${format(activeDateFilter.value.startDate, "d MMMM", { locale: fr })} au ${format(activeDateFilter.value.endDate!, "d MMMM yyyy", { locale: fr })}`
+                    : ''}
+                {activeStatusFilter ? ` avec statut "${activeStatusFilter.value}"` : ''}
+              </span>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => {
+                setColumnFilters([]);
+              }}
+            >
+              Effacer les filtres
+            </Button>
+          </div>
+        )}
 
       <DetailModal
         ride={selectedRide}
