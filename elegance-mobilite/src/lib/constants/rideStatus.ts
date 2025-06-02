@@ -63,12 +63,12 @@ export const RIDE_STATUS_CONFIG: Record<string, {
     icon: XCircle
   },
   "client-canceled": {
-    label: "Annulée par client",
+    label: "Annulation du client",
     color: "bg-red-500/20 text-red-500",
     icon: XCircle
   },
   "driver-canceled": {
-    label: "Annulée par chauffeur",
+    label: "Annulation du chauffeur",
     color: "bg-red-500/20 text-red-500",
     icon: XCircle
   },

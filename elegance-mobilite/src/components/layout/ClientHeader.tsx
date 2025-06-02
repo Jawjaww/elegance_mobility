@@ -26,8 +26,8 @@ const NAV_ITEMS = [
     icon: Car,
   },
   {
-    name: "Mes courses",
-    href: "/my-rides",
+    name: "Mes réservations",
+    href: "/my-account/reservations",
     icon: History,
   },
   {
@@ -60,48 +60,51 @@ export function ClientHeader({ user }: ClientHeaderProps) {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-neutral-700/30">
       <div className="bg-gradient-to-r from-neutral-950/95 to-neutral-900/90 backdrop-blur-sm">
-        <div className="container flex h-16 max-w-screen-2xl items-center">
-          <div className="mr-8 flex-1">
-            <Link href="/" className="mr-8 flex items-center space-x-2">
+        <div className="container flex h-16 max-w-screen-2xl items-center justify-between">
+          {/* Logo à gauche */}
+          <div className="flex items-center">
+            <Link href="/" className="flex items-center space-x-2">
               <span className="btn-gradient bg-clip-text text-transparent font-bold text-xl">
                 Vector Elegans
               </span>
-              <span className="text-neutral-400 font-medium">Client</span>
             </Link>
-            <nav className="hidden md:flex items-center space-x-8 text-sm font-medium mt-2">
-              {NAV_ITEMS.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center space-x-2 transition-all duration-200 hover:text-blue-400",
-                    isActive(item.href) ? "text-blue-400" : "text-neutral-400"
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "p-1.5 rounded-full transition-all duration-200",
-                      isActive(item.href)
-                        ? "bg-blue-500/15 shadow-[0_0_8px_-2px_rgba(37,99,235,0.2)]"
-                        : "group-hover:bg-neutral-800/30"
-                    )}
-                  >
-                    <item.icon
-                      className={cn(
-                        "h-4 w-4",
-                        isActive(item.href)
-                          ? "text-blue-400"
-                          : "text-neutral-400"
-                      )}
-                    />
-                  </div>
-                  <span>{item.name}</span>
-                </Link>
-              ))}
-            </nav>
           </div>
 
-          <nav className="flex items-center">
+          {/* Navigation au centre - Desktop uniquement */}
+          <nav className="hidden md:flex items-center space-x-8 text-sm font-medium">
+            {NAV_ITEMS.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={cn(
+                  "flex items-center space-x-2 transition-all duration-200 hover:text-blue-400",
+                  isActive(item.href) ? "text-blue-400" : "text-neutral-400"
+                )}
+              >
+                <div
+                  className={cn(
+                    "p-1.5 rounded-full transition-all duration-200",
+                    isActive(item.href)
+                      ? "bg-blue-500/15 shadow-[0_0_8px_-2px_rgba(37,99,235,0.2)]"
+                      : "group-hover:bg-neutral-800/30"
+                  )}
+                >
+                  <item.icon
+                    className={cn(
+                      "h-4 w-4",
+                      isActive(item.href)
+                        ? "text-blue-400"
+                        : "text-neutral-400"
+                    )}
+                  />
+                </div>
+                <span>{item.name}</span>
+              </Link>
+            ))}
+          </nav>
+
+          {/* Avatar à droite avec espacement */}
+          <div className="flex items-center pr-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -141,7 +144,7 @@ export function ClientHeader({ user }: ClientHeaderProps) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </nav>
+          </div>
         </div>
       </div>
     </header>

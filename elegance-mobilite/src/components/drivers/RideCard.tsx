@@ -4,7 +4,7 @@ import { CalendarIcon, Clock, MapPinIcon, UserCircle2 } from "lucide-react"
 import { Button } from "../ui/button"
 import { Card, CardContent, CardFooter } from "../ui/card"
 import { Separator } from "../ui/separator"
-import { RideStatusBadge } from "./RideStatusBadge"
+import { StatusBadge } from "../reservation/StatusBadge"
 import type { Ride } from "@/lib/types/common.types" // Utilisez Ride au lieu de DbRide
 
 interface RideCardProps {
@@ -22,7 +22,7 @@ export function RideCard({ ride, editable = false, onDetailsClick, onAcceptClick
       <CardContent className="p-0">
         <div className="p-4 grid gap-3">
           <div className="flex items-center justify-between">
-            <RideStatusBadge status={ride.status} />
+            <StatusBadge status={ride.status} />
             {ride.estimated_price && (
               <span className="text-sm font-semibold text-white">{ride.estimated_price.toFixed(2)} €</span>
             )}

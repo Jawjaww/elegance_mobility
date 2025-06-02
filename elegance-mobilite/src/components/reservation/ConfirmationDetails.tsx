@@ -149,17 +149,58 @@ export function ConfirmationDetails() {
           finalPrice: data.final_price
         });
 
-        toast({
-          title: "✨ Réservation confirmée",
-          description: `Votre trajet de ${departure.display_name.split(',')[0]} à ${destination.display_name.split(',')[0]} a été enregistré pour le ${formattedDate} à ${formattedTime}. Un e-mail de confirmation vous a été envoyé.`,
-          variant: "success"
-        });
-
         if (data && data.id) {
+          // Déclenchement manuel de l'Edge Function pour calculer et enregistrer le tarif final
+          let finalPrice = null;
+          try {
+            const { data: edgeFunctionData, error: edgeFunctionError } = await supabase.functions.invoke(
+              'price-calculator',
+              {
+                body: {
+                  new: {
+                    id: data.id,
+                    vehicle_type: selectedVehicle,
+                    pickup_lat: departure.lat,
+                    pickup_lon: departure.lon,
+                    dropoff_lat: destination.lat,
+                    dropoff_lon: destination.lon,
+                    options: Array.isArray(selectedOptions) ? selectedOptions : [],
+                    distance: distance || null,
+                    duration: duration || null
+                  }
+                },
+                headers: session ? {
+                  Authorization: `Bearer ${session.access_token}`
+                } : undefined
+              }
+            );
+            if (edgeFunctionError) {
+              console.error("Erreur lors du calcul du tarif final (Edge Function):", edgeFunctionError);
+            } else {
+              console.log("Tarif final calculé et enregistré (Edge Function):", edgeFunctionData);
+              // Relire la réservation pour récupérer le prix final
+              const { data: refreshedRide, error: refreshError } = await supabase
+                .from('rides')
+                .select('final_price')
+                .eq('id', data.id)
+                .single();
+              if (!refreshError && refreshedRide?.final_price) {
+                finalPrice = refreshedRide.final_price;
+              }
+            }
+          } catch (err) {
+            console.error("Erreur inattendue lors de l'appel à l'Edge Function price-calculator:", err);
+          }
           sessionStorage.setItem('last_confirmed_reservation', data.id);
+          // Afficher le toast de confirmation avec le prix final si disponible
+          toast({
+            title: "✨ Réservation confirmée",
+            description: `Votre trajet de ${departure.display_name.split(',')[0]} à ${destination.display_name.split(',')[0]} a été enregistré pour le ${formattedDate} à ${formattedTime}.` + (finalPrice ? ` Prix final : ${finalPrice}€.` : " Un e-mail de confirmation vous a été envoyé."),
+            variant: "success"
+          });
           // Attendre que le toast soit visible avant la redirection
           setTimeout(() => {
-            router.push("/reservation/success");
+            router.push("/my-account/reservations/reservation-success");
           }, 2000);
         }
       }

@@ -68,13 +68,13 @@ export const RIDE_STATUS_CONFIG: Record<string, {
     description: "Course annulée"
   },
   "client-canceled": {
-    label: "Annulée par client",
+    label: "Annulation du client",
     color: "bg-red-500/20 text-red-500",
     icon: XCircle,
     description: "Course annulée par le client"
   },
   "driver-canceled": {
-    label: "Annulée par chauffeur",
+    label: "Annulation du chauffeur",
     color: "bg-red-500/20 text-red-500",
     icon: XCircle,
     description: "Course annulée par le chauffeur"

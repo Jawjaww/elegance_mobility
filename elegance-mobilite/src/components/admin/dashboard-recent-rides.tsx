@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/reservation/StatusBadge";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
@@ -46,26 +47,7 @@ export function DashboardRecentRides() {
   }, []);
 
   const getStatusBadge = (status: string) => {
-    // Définir les configurations pour chaque statut
-    const statusConfig: Record<string, { label: string, color: string }> = {
-      'pending': { label: 'En attente', color: 'bg-yellow-500/20 text-yellow-500' },
-      'scheduled': { label: 'Programmée', color: 'bg-purple-500/20 text-purple-500' },
-      'in-progress': { label: 'En cours', color: 'bg-blue-600/20 text-blue-400' },
-      'completed': { label: 'Terminée', color: 'bg-green-500/20 text-green-500' },
-      'client-canceled': { label: 'Annulée', color: 'bg-red-500/20 text-red-500' },
-      'driver-canceled': { label: 'Annulée', color: 'bg-red-500/20 text-red-500' },
-      'admin-canceled': { label: 'Annulée', color: 'bg-red-500/20 text-red-500' },
-      'no-show': { label: 'No-show', color: 'bg-orange-500/20 text-orange-500' },
-      'delayed': { label: 'Retardée', color: 'bg-orange-300/20 text-orange-300' }
-    };
-
-    const config = statusConfig[status] || { label: 'Inconnu', color: 'bg-gray-500/20 text-gray-500' };
-    
-    return (
-      <Badge className={`${config.color}`}>
-        {config.label}
-      </Badge>
-    );
+    return <StatusBadge status={status} showDetailedCancellation={true} />;
   };
 
   return (

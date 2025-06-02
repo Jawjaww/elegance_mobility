@@ -50,8 +50,8 @@ export const STATUS_LABELS: Record<UiStatus, string> = {
   accepted: "Acceptée",
   inProgress: "En cours",
   completed: "Terminée",
-  clientCanceled: "Annulée par client",
-  driverCanceled: "Annulée par chauffeur",
+  clientCanceled: "Annulation du client",
+  driverCanceled: "Annulation du chauffeur", 
   adminCanceled: "Annulée par admin",
   noShow: "Client absent",
   delayed: "Retardée",
@@ -63,13 +63,15 @@ export const STATUS_LABELS: Record<UiStatus, string> = {
 export const ALL_UI_STATUSES: UiStatus[] = [
   "pending",
   "accepted",
+  "scheduled",
   "inProgress",
   "completed",
   "clientCanceled",
   "driverCanceled",
   "adminCanceled",
   "noShow",
-  "delayed"
+  "delayed",
+  "unassigned"
 ]
 
 // Liste des statuts pour la DB

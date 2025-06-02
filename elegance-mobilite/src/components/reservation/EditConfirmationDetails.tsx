@@ -160,93 +160,22 @@ export function EditConfirmationDetails({ reservationId }: EditConfirmationDetai
 
   useEffect(() => {
     const calculatePrice = async () => {
-      if (departure && destination && selectedVehicle) {
+      if (departure && destination && selectedVehicle && distance) {
         try {
-          // Utiliser l'Edge Function pour calculer le prix côté serveur
-          const { data: { session } } = await supabase.auth.getSession();
-          const { data, error } = await supabase.functions.invoke('price-calculator', {
-            body: {
-              departure: {
-                lat: departure.lat,
-                lon: departure.lon
-              },
-              destination: {
-                lat: destination.lat,
-                lon: destination.lon
-              },
-              vehicleType: selectedVehicle,
-              options: selectedOptions || [],
-              rideId: reservationId
-            },
-            headers: session ? {
-              Authorization: `Bearer ${session.access_token}`
-            } : undefined
-          });
-          
-          if (error) {
-            // Silencieux si CORS ou indisponible, ne pas polluer la console ni l'UI
-            const err = error as { message?: string; code?: string } | undefined;
-            if (
-              err &&
-              (
-                (typeof err.message === "string" && err.message.toLowerCase().includes("cors")) ||
-                (typeof err.message === "string" && err.message.toLowerCase().includes("failed to send a request")) ||
-                (typeof err.code === "string" && err.code === "FunctionsFetchError")
-              )
-            ) {
-              // On ignore l'erreur, fallback automatique
-            } else {
-              console.error("Erreur lors du calcul du prix via Edge Function:", error);
-            }
-            throw error;
-          }
-          
-          if (data && data.pricing) {
-            setPriceDetails({
-              basePrice: data.pricing.basePrice,
-              optionsPrice: data.pricing.optionsPrice,
-              totalPrice: data.pricing.totalPrice
-            });
-            
-            // Si l'Edge Function renvoie aussi les infos de route, mettre à jour le store
-            if (data.route) {
-              useReservationStore.getState().setDistance(data.route.distance);
-              useReservationStore.getState().setDuration(data.route.duration);
-            }
-          }
+          // Utiliser uniquement le pricingService local pour l'estimation
+          const result = await pricingService.calculatePrice(
+            distance,
+            selectedVehicle,
+            selectedOptions || [],
+          );
+          setPriceDetails(result);
         } catch (error) {
-          // Silencieux si CORS ou indisponible, ne pas polluer la console ni l'UI
-          const err = error as { message?: string; code?: string } | undefined;
-          if (
-            !(
-              err &&
-              (
-                (typeof err.message === "string" && err.message.toLowerCase().includes("cors")) ||
-                (typeof err.message === "string" && err.message.toLowerCase().includes("failed to send a request")) ||
-                (typeof err.code === "string" && err.code === "FunctionsFetchError")
-              )
-            )
-          ) {
-            console.error("Échec de l'appel à l'Edge Function:", error);
-          }
-          // Fallback sur le service local si l'Edge Function échoue
-          try {
-            if (distance) {
-              const result = await pricingService.calculatePrice(
-                distance,
-                selectedVehicle,
-                selectedOptions || [],
-              );
-              setPriceDetails(result);
-            }
-          } catch (fallbackError) {
-            console.error("Échec du fallback local:", fallbackError);
-          }
+          console.error("Erreur lors du calcul du prix:", error);
         }
       }
     };
     calculatePrice();
-  }, [departure, destination, selectedVehicle, selectedOptions, reservationId]);
+  }, [departure, destination, selectedVehicle, selectedOptions, distance]);
 
   if (!departure || !destination || !pickupDateTime || !selectedVehicle) {
     return (

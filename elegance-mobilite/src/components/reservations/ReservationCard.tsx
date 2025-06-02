@@ -8,6 +8,7 @@ import {
   CardHeader, 
   CardTitle 
 } from '@/components/ui/card';
+import { StatusBadge } from '@/components/reservation/StatusBadge';
 import { 
   Badge, 
   Calendar, 
@@ -95,9 +96,10 @@ export function ReservationCard({ reservation, onCancel, onEdit, isPast = false 
                 {formattedDate}
               </p>
             </div>
-            <Badge className={`${status.color} px-2 py-1 rounded-md text-xs font-medium`}>
-              {status.label}
-            </Badge>
+            <StatusBadge 
+              status={reservation.status} 
+              className="px-2 py-1 rounded-md text-xs font-medium"
+            />
           </div>
         </CardHeader>
         

@@ -1,5 +1,4 @@
 import { Badge } from "@/components/ui/badge"
-import type { RideStatus } from "@/lib/types/common.types"
 
 interface RideStatusBadgeProps {
   status: string // Utiliser string pour accepter tout type de statut
@@ -40,11 +39,11 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
     color: "bg-red-500/20 text-red-500"
   },
   "client-canceled": {
-    label: "Annulée par client",
+    label: "Annulation du client",
     color: "bg-red-500/20 text-red-500"
   },
   "driver-canceled": {
-    label: "Annulée par chauffeur",
+    label: "Annulation du chauffeur",
     color: "bg-red-500/20 text-red-500"
   },
   "admin-canceled": {

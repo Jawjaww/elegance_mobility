@@ -7,6 +7,7 @@ import { useDriversStore } from "@/lib/stores/driversStore";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/reservation/StatusBadge";
 import { MapPin, AlertCircle, User, Car } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { Database } from "@/lib/types/database.types";
@@ -72,14 +73,11 @@ export function RidesList() {
                     })}
                   </p>
                 </div>
-                <Badge
-                  className={`${getStatusColor(
-                    ride.status
-                  )} flex items-center gap-1.5`}
-                >
-                  <StatusIcon className="w-3.5 h-3.5" />
-                  {getStatusLabel(ride.status)}
-                </Badge>
+                <StatusBadge 
+                  status={ride.status} 
+                  showDetailedCancellation={true}
+                  className="flex items-center gap-1.5"
+                />
               </div>
 
               <div className="space-y-3">
