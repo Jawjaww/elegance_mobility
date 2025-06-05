@@ -1,5 +1,3 @@
-'use server'
-
 import { AdminGuard } from "@/components/auth/RoleGuard"
 import { AdminHeader } from "@/components/layout/AdminHeader"
 import { MobileAdminNav } from "@/components/layout/MobileAdminNav"

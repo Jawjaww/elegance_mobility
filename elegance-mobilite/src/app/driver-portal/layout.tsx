@@ -1,5 +1,3 @@
-'use server'
-
 import { DriverGuard } from "@/components/auth/RoleGuard"
 import { DriverHeader } from "@/components/layout/DriverHeader"
 import { getServerUser } from "@/lib/database/server"

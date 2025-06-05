@@ -47,7 +47,7 @@ export function DashboardRecentRides() {
   }, []);
 
   const getStatusBadge = (status: string) => {
-    return <StatusBadge status={status} showDetailedCancellation={true} />;
+    return <StatusBadge status={status} showDetailed={true} />;
   };
 
   return (

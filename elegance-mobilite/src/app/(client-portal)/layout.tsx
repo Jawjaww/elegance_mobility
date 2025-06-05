@@ -1,5 +1,3 @@
-'use server'
-
 import { CustomerGuard } from "@/components/auth/RoleGuard"
 import { ClientLayout } from "@/components/layout"
 import { getServerUser } from "@/lib/database/server"

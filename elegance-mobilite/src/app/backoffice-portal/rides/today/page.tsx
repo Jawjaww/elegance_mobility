@@ -7,7 +7,7 @@ export default function TodayRidesPage() {
   const router = useRouter()
  
   useEffect(() => {
-    router.replace("/admin/rides")
+    router.replace("/backoffice-portal/rides")
   }, [router])
  
   return null

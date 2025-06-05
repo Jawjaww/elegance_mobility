@@ -16,11 +16,7 @@ export default function RidesPage() {
   }, [fetchDrivers, fetchRides])
 
   return (
-    <div className="py-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Gestion des Courses</h1>
-      </div>
-      
+    <div className="py-1 space-y-2">
       <RidesFilters />
       <RidesList />
     </div>

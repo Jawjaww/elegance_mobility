@@ -1,60 +1,90 @@
 import { Badge } from "@/components/ui/badge";
-import { STATUS_LABELS } from "@/lib/services/statusService";
+import { STATUS_LABELS, type UiStatus } from "@/lib/services/statusService";
 
 interface StatusBadgeProps {
-  status: string;
+  status: UiStatus | string;
   className?: string;
   size?: "default" | "sm" | "lg";
-  showDetailedCancellation?: boolean; // Option pour afficher les détails d'annulation (admin only)
+  showDetailed?: boolean; // Option pour afficher les labels détaillés (pour les sélecteurs)
 }
 
 export function StatusBadge({ 
   status, 
   className = "", 
   size = "default",
-  showDetailedCancellation = false 
+  showDetailed = false 
 }: StatusBadgeProps) {
-  // Normaliser le statut (en minuscules et sans espace)
-  const normalizedStatus = status?.toString().toLowerCase().replace(/\s+/g, '') || 'pending';
+  // Normaliser le statut pour correspondre aux types UiStatus
+  let normalizedStatus: UiStatus;
+  
+  // Conversion des statuts de base de données vers UI
+  switch (status) {
+    case 'client-canceled':
+      normalizedStatus = 'clientCanceled';
+      break;
+    case 'driver-canceled':
+      normalizedStatus = 'driverCanceled';
+      break;
+    case 'admin-canceled':
+      normalizedStatus = 'adminCanceled';
+      break;
+    case 'no-show':
+      normalizedStatus = 'noShow';
+      break;
+    case 'in-progress':
+      normalizedStatus = 'inProgress';
+      break;
+    case 'scheduled':
+      normalizedStatus = 'accepted';
+      break;
+    default:
+      normalizedStatus = status as UiStatus;
+  }
   
   // Mapper à une variante de badge
   let variant: string;
   
-  // Simplifier l'interface - tous les types d'annulation sont juste "canceled"
-  if (normalizedStatus.includes('canceled') || normalizedStatus.includes('cancelled')) {
-    variant = "canceled"; // Utiliser une seule variante pour tous les types d'annulation
-  } else {
-    switch (normalizedStatus) {
-      case 'pending':
-        variant = "pending";
-        break;
-      case 'accepted':
-      case 'scheduled':
-        variant = "accepted";
-        break;
-      case 'inprogress':
-      case 'in-progress':
-      case 'in_progress':
-        variant = "inProgress";
-        break;
-      case 'completed':
-        variant = "completed";
-        break;
-      default:
-        variant = "default";
-    }
+  switch (normalizedStatus) {
+    case 'pending':
+      variant = "pending";
+      break;
+    case 'accepted':
+      variant = "accepted";
+      break;
+    case 'inProgress':
+      variant = "inProgress";
+      break;
+    case 'completed':
+      variant = "completed";
+      break;
+    case 'noShow':
+      variant = "noShow"; // noShow a maintenant sa propre variante violette
+      break;
+    case 'delayed':
+      variant = "delayed"; // delayed a maintenant sa propre variante amber
+      break;
+    case 'clientCanceled':
+    case 'driverCanceled':
+    case 'adminCanceled':
+      variant = "canceled";
+      break;
+    default:
+      variant = "default";
   }
 
-  // Simplifier le label pour les annulations - afficher simplement "Annulée"
+  // Gérer l'affichage du label
   let displayLabel;
   
-  if (normalizedStatus.includes('canceled') || normalizedStatus.includes('cancelled')) {
-    // Afficher les détails seulement si demandé (mode admin)
-    displayLabel = showDetailedCancellation 
-      ? STATUS_LABELS[normalizedStatus as keyof typeof STATUS_LABELS] || "Annulée"
-      : "Annulée";
+  if (['clientCanceled', 'driverCanceled', 'adminCanceled'].includes(normalizedStatus)) {
+    // Pour les annulations, utiliser showDetailed pour décider du niveau de détail
+    if (showDetailed) {
+      displayLabel = STATUS_LABELS[normalizedStatus] || "Annulée";
+    } else {
+      displayLabel = "Annulée";
+    }
   } else {
-    displayLabel = STATUS_LABELS[normalizedStatus as keyof typeof STATUS_LABELS] || 
+    // Pour les autres statuts, toujours afficher le label complet
+    displayLabel = STATUS_LABELS[normalizedStatus] || 
                   (status?.charAt(0).toUpperCase() + status?.slice(1).toLowerCase());
   }
   

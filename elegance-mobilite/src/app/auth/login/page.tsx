@@ -18,7 +18,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="container flex items-center justify-center min-h-[600px] py-8">
+    // <div className="container flex items-center justify-center min-h-[600px] py-8">
       <Card className="w-full max-w-[425px]">
         <CardHeader>
           <CardTitle>Connexion</CardTitle>
@@ -34,6 +34,6 @@ export default function LoginPage() {
           />
         </CardContent>
       </Card>
-    </div>
+    // </div>
   )
 }

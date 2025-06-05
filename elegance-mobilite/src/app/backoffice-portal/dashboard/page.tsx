@@ -1,5 +1,3 @@
-'use server'
-
 import { getDashboardMetrics } from "@/lib/services/dashboard"
 import { AdminCardGrid } from "@/components/admin/admin-card-grid"
 import { DashboardActionCard } from "@/components/admin/dashboard-action-card"

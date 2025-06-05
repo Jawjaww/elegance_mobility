@@ -11,7 +11,7 @@ type RideWithDriver = DatabaseRide & {
   driver: DatabaseDriver | null
 }
 
-type FilterStatus = RideStatus | 'all' | 'unassigned'
+type FilterStatus = RideStatus | 'all'
 
 interface RidesState {
   // État
@@ -20,6 +20,8 @@ interface RidesState {
   selectedDate: Date
   selectedStatus: FilterStatus
   driverFilter: string | null
+  clientFilter: string | null
+  viewMode: 'day' | 'month'
   loading: boolean
   error: string | null
   
@@ -28,6 +30,8 @@ interface RidesState {
   setSelectedDate: (date: Date) => void
   setSelectedStatus: (status: FilterStatus) => void
   setDriverFilter: (driverId: string | null) => void
+  setClientFilter: (clientId: string | null) => void
+  setViewMode: (mode: 'day' | 'month') => void
   updateRideStatus: (rideId: string, status: RideStatus) => Promise<void>
   assignDriver: (rideId: string, driverId: string) => Promise<void>
   deleteRide: (rideId: string) => Promise<void>
@@ -44,27 +48,34 @@ const applyFilters = (
   rides: RideWithDriver[],
   selectedDate: Date,
   selectedStatus: FilterStatus,
-  driverFilter: string | null
+  driverFilter: string | null,
+  viewMode: 'day' | 'month',
+  clientFilter: string | null
 ): RideWithDriver[] => {
-  const startOfDay = new Date(selectedDate)
-  startOfDay.setHours(0, 0, 0, 0)
-  const endOfDay = new Date(selectedDate)
-  endOfDay.setHours(23, 59, 59, 999)
+  let start: Date, end: Date;
+  if (viewMode === 'month') {
+    start = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1, 0, 0, 0, 0);
+    end = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0, 23, 59, 59, 999);
+  } else {
+    start = new Date(selectedDate);
+    start.setHours(0, 0, 0, 0);
+    end = new Date(selectedDate);
+    end.setHours(23, 59, 59, 999);
+  }
 
   return rides.filter(ride => {
     const rideDate = new Date(ride.pickup_time)
-    const matchesDate = rideDate >= startOfDay && rideDate <= endOfDay
+    const matchesDate = rideDate >= start && rideDate <= end
 
     let matchesStatus = true
-    if (selectedStatus === 'unassigned') {
-      matchesStatus = !ride.driver_id
-    } else if (selectedStatus !== 'all') {
+    if (selectedStatus !== 'all') {
       matchesStatus = ride.status === selectedStatus
     }
 
     const matchesDriver = !driverFilter || ride.driver_id === driverFilter
+    const matchesClient = !clientFilter || ride.user_id === clientFilter
 
-    return matchesDate && matchesStatus && matchesDriver
+    return matchesDate && matchesStatus && matchesDriver && matchesClient
   })
 }
 
@@ -76,6 +87,8 @@ export const useUnifiedRidesStore = create<RidesState>()(
       selectedDate: new Date(),
       selectedStatus: 'all',
       driverFilter: null,
+      clientFilter: null,
+      viewMode: 'month',
       loading: false,
       error: null,
 
@@ -98,8 +111,8 @@ export const useUnifiedRidesStore = create<RidesState>()(
             driver: ride.driver as DatabaseDriver | null
           }))
 
-          const { selectedDate, selectedStatus, driverFilter } = get()
-          const filteredRides = applyFilters(rides, selectedDate, selectedStatus, driverFilter)
+          const { selectedDate, selectedStatus, driverFilter, viewMode, clientFilter } = get()
+          const filteredRides = applyFilters(rides, selectedDate, selectedStatus, driverFilter, viewMode, clientFilter)
 
           set({
             rides,
@@ -116,21 +129,33 @@ export const useUnifiedRidesStore = create<RidesState>()(
       },
 
       setSelectedDate: (date) => {
-        const { rides, selectedStatus, driverFilter } = get()
-        const filteredRides = applyFilters(rides, date, selectedStatus, driverFilter)
+        const { rides, selectedStatus, driverFilter, viewMode, clientFilter } = get()
+        const filteredRides = applyFilters(rides, date, selectedStatus, driverFilter, viewMode, clientFilter)
         set({ selectedDate: date, filteredRides })
       },
 
       setSelectedStatus: (status) => {
-        const { rides, selectedDate, driverFilter } = get()
-        const filteredRides = applyFilters(rides, selectedDate, status, driverFilter)
+        const { rides, selectedDate, driverFilter, viewMode, clientFilter } = get()
+        const filteredRides = applyFilters(rides, selectedDate, status, driverFilter, viewMode, clientFilter)
         set({ selectedStatus: status, filteredRides })
       },
 
       setDriverFilter: (driverId) => {
-        const { rides, selectedDate, selectedStatus } = get()
-        const filteredRides = applyFilters(rides, selectedDate, selectedStatus, driverId)
+        const { rides, selectedDate, selectedStatus, viewMode, clientFilter } = get()
+        const filteredRides = applyFilters(rides, selectedDate, selectedStatus, driverId, viewMode, clientFilter)
         set({ driverFilter: driverId, filteredRides })
+      },
+
+      setClientFilter: (clientId) => {
+        const { rides, selectedDate, selectedStatus, driverFilter, viewMode } = get()
+        const filteredRides = applyFilters(rides, selectedDate, selectedStatus, driverFilter, viewMode, clientId)
+        set({ clientFilter: clientId, filteredRides })
+      },
+
+      setViewMode: (mode) => {
+        const { rides, selectedDate, selectedStatus, driverFilter, clientFilter } = get()
+        const filteredRides = applyFilters(rides, selectedDate, selectedStatus, driverFilter, mode, clientFilter)
+        set({ viewMode: mode, filteredRides })
       },
 
       updateRideStatus: async (rideId, status) => {
@@ -154,8 +179,8 @@ export const useUnifiedRidesStore = create<RidesState>()(
             )
 
           const updatedRides = updateRide(get().rides)
-          const { selectedDate, selectedStatus, driverFilter } = get()
-          const filteredRides = applyFilters(updatedRides, selectedDate, selectedStatus, driverFilter)
+          const { selectedDate, selectedStatus, driverFilter, viewMode, clientFilter } = get()
+          const filteredRides = applyFilters(updatedRides, selectedDate, selectedStatus, driverFilter, viewMode, clientFilter)
 
           set({
             rides: updatedRides,
@@ -205,8 +230,8 @@ export const useUnifiedRidesStore = create<RidesState>()(
             )
 
           const updatedRides = updateRide(get().rides)
-          const { selectedDate, selectedStatus, driverFilter } = get()
-          const filteredRides = applyFilters(updatedRides, selectedDate, selectedStatus, driverFilter)
+          const { selectedDate, selectedStatus, driverFilter, viewMode, clientFilter } = get()
+          const filteredRides = applyFilters(updatedRides, selectedDate, selectedStatus, driverFilter, viewMode, clientFilter)
 
           set({
             rides: updatedRides,
@@ -229,8 +254,8 @@ export const useUnifiedRidesStore = create<RidesState>()(
           if (error) throw error
 
           const updatedRides = get().rides.filter(ride => ride.id !== rideId)
-          const { selectedDate, selectedStatus, driverFilter } = get()
-          const filteredRides = applyFilters(updatedRides, selectedDate, selectedStatus, driverFilter)
+          const { selectedDate, selectedStatus, driverFilter, viewMode, clientFilter } = get()
+          const filteredRides = applyFilters(updatedRides, selectedDate, selectedStatus, driverFilter, viewMode, clientFilter)
 
           set({
             rides: updatedRides,

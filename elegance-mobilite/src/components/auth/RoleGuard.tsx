@@ -1,5 +1,3 @@
-'use server'
-
 import { createServerSupabaseClient } from '@/lib/database/server'
 import { redirect } from 'next/navigation'
 import type { ReactNode } from 'react'

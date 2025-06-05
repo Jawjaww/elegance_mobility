@@ -1,5 +1,3 @@
-'use server'
-
 import { MetricsService } from "@/lib/services/metricsService"
 import { AdminDashboardClient } from "@/components/admin/AdminDashboardClient"
 import { redirect } from "next/navigation"

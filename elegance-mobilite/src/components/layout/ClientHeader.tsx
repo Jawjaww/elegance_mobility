@@ -59,7 +59,7 @@ export function ClientHeader({ user }: ClientHeaderProps) {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-neutral-700/30">
-      <div className="bg-gradient-to-r from-neutral-950/95 to-neutral-900/90 backdrop-blur-sm">
+      <div className="bg-gradient-to-r from-neutral-950/85 to-neutral-900/90 backdrop-blur-sm">
         <div className="container flex h-16 max-w-screen-2xl items-center justify-between">
           {/* Logo à gauche */}
           <div className="flex items-center">

@@ -171,7 +171,31 @@ export default function ReservationsClient({ user }: ReservationsClientProps) {
 
   const statusFilter = (row: any, columnId: string, value: string) => {
     if (!value || value === "all") return true;
-    return row.getValue(columnId) === value;
+    
+    const rowStatus = row.getValue(columnId);
+    
+    // Si la valeur est "canceled", on filtre tous les types d'annulation
+    if (value === "canceled") {
+      return rowStatus === "client-canceled" || 
+             rowStatus === "driver-canceled" || 
+             rowStatus === "admin-canceled";
+    }
+    
+    // Mapping des statuts UI vers DB pour la comparaison
+    const statusMapping: Record<string, string> = {
+      'pending': 'pending',
+      'accepted': 'scheduled',
+      'inProgress': 'in-progress',
+      'completed': 'completed',
+      'clientCanceled': 'client-canceled',
+      'driverCanceled': 'driver-canceled',
+      'adminCanceled': 'admin-canceled',
+      'noShow': 'no-show',
+      'delayed': 'delayed'
+    };
+    
+    const mappedValue = statusMapping[value] || value;
+    return rowStatus === mappedValue;
   };
 
   // Configuration des colonnes TanStack Table

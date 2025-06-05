@@ -13,7 +13,6 @@ export type UiStatus =
   | 'adminCanceled'
   | 'noShow'
   | 'delayed'
-  | 'unassigned'
   | 'scheduled'
 
 // Mapping entre les valeurs affichées dans l'UI et les valeurs stockées en DB
@@ -27,7 +26,6 @@ export const RIDE_STATUS_MAP: Record<UiStatus, DbStatus> = {
   adminCanceled: 'admin-canceled',
   noShow: 'no-show',
   delayed: 'delayed',
-  unassigned: 'pending',
   scheduled: 'scheduled'
 }
 
@@ -50,28 +48,25 @@ export const STATUS_LABELS: Record<UiStatus, string> = {
   accepted: "Acceptée",
   inProgress: "En cours",
   completed: "Terminée",
-  clientCanceled: "Annulation du client",
-  driverCanceled: "Annulation du chauffeur", 
-  adminCanceled: "Annulée par admin",
+  clientCanceled: "Annulée par le client",
+  driverCanceled: "Annulée par le chauffeur",
+  adminCanceled: "Annulée",
   noShow: "Client absent",
   delayed: "Retardée",
   scheduled: "Planifiée",
-  unassigned: "Non assignée"
 }
 
 // Liste des statuts pour l'UI
 export const ALL_UI_STATUSES: UiStatus[] = [
   "pending",
   "accepted",
-  "scheduled",
   "inProgress",
   "completed",
   "clientCanceled",
   "driverCanceled",
   "adminCanceled",
   "noShow",
-  "delayed",
-  "unassigned"
+  "delayed"
 ]
 
 // Liste des statuts pour la DB

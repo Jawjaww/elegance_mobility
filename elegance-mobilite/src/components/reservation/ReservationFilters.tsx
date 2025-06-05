@@ -23,6 +23,7 @@ import {
   STATUS_LABELS,
   type UiStatus,
 } from "@/lib/services/statusService";
+import { StatusBadge } from "./StatusBadge";
 
 type FilterStatus = UiStatus | "all";
 
@@ -424,30 +425,43 @@ export function ReservationFilters({
           <SelectValue placeholder="Statut" />
         </SelectTrigger>
         <SelectContent
-          style={{
-            background: 'rgba(12, 12, 14, 0.25)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            border: '1.5px solid rgba(255,255,255,0.10)',
-            boxShadow: '0 8px 32px 0 rgba(0,0,0,0.25)'
-          }}
-        >
-          {ALL_FILTER_STATUSES.map((status) => (
-            <SelectItem 
-              key={status} 
-              value={status}
-              style={{ 
-                color: 'white',
-                background: 'transparent'
-              }}
-              className="hover:bg-white/10 focus:bg-white/10"
-            >
-              {status === "all"
-                ? "Tous les statuts"
-                : STATUS_LABELS[status as UiStatus] || status}
-            </SelectItem>
-          ))}
-        </SelectContent>
+                  style={{
+                    background: 'rgba(12, 12, 14, 0.25)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    border: '1.5px solid rgba(255,255,255,0.10)',
+                    boxShadow: '0 8px 32px 0 rgba(0,0,0,0.25)',
+                    color: 'white',
+                    borderRadius: '8px'
+                  }}
+                >
+                  <SelectItem 
+                    value="all"
+                    style={{ color: 'white' }}
+                    className="hover:bg-white/10 text-size-sm font-medium flex items-center gap-2"
+                  >
+                    <span className="text-white">Tous les statuts</span>
+                  </SelectItem>
+                  {ALL_UI_STATUSES.filter(status => 
+                    !['clientCanceled', 'driverCanceled', 'adminCanceled'].includes(status)
+                  ).map((status) => (
+                    <SelectItem 
+                      key={status}
+                      value={status}
+                      style={{ color: 'white' }}
+                      className="hover:bg-white/10"
+                    >
+                      <StatusBadge status={status} size="default" />
+                    </SelectItem>
+                  ))}
+                  <SelectItem 
+                    value="canceled"
+                    style={{ color: 'white' }}
+                    className="hover:bg-white/10"
+                  >
+                    <StatusBadge status="clientCanceled" size="default" showDetailed={false} />
+                  </SelectItem>
+                </SelectContent>
       </Select>
     </div>
   );

@@ -40,9 +40,9 @@ export default function ReservationCard({
     
     const vehicleType = ride.vehicle_type.toLowerCase();
     
-    if (vehicleType.includes("van")) return "Trajet Van";
-    if (vehicleType.includes("premium")) return "Trajet Premium";
-    if (vehicleType.includes("standard")) return "Trajet Standard";
+    if (vehicleType.includes("van")) return "Van";
+    if (vehicleType.includes("premium")) return "Premium";
+    if (vehicleType.includes("standard")) return "Standard";
     
     // Capitaliser le type pour tout autre cas
     return `Trajet ${capitalize(vehicleType)}`;
@@ -56,7 +56,7 @@ export default function ReservationCard({
             <Car className="h-5 w-5 text-blue-500" />
             <h3 className="font-semibold text-neutral-100">{getVehicleTypeDisplay()}</h3>
           </div>
-          <StatusBadge status={ride.status} className="shadow-sm" />
+          <StatusBadge status={ride.status} className="shadow-sm" showDetailed={true} />
         </div>
       </CardHeader>
 
@@ -119,9 +119,9 @@ export default function ReservationCard({
           )}
           {onCancel && ride.status === 'pending' && (
             <Button
-              variant="destructive"
+              variant="outline"
               size="sm"
-              className="h-8 px-3 text-xs bg-red-700/10 border-red-700/90 text-red-400 hover:bg-red-700/30 hover:border-red-500 hover:text-red-300"
+              className="h-8 px-3 text-xs bg-red-700/10 border-red-700/70 text-red-400 hover:bg-red-700/30 hover:border-red-500 hover:text-red-300"
               onClick={() => onCancel(ride.id)}
             >
               Annuler

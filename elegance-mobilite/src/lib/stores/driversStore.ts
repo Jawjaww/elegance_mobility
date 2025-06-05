@@ -55,25 +55,39 @@ export const useDriversStore = create<DriversState>((set, get) => ({
   fetchDrivers: async () => {
     set({ loading: true, error: null })
     try {
-      const { data: drivers, error } = await supabase
+      // D'abord récupérer les chauffeurs
+      const { data: drivers, error: driversError } = await supabase
         .from('drivers')
-        .select(`
-          *,
-          vehicles (*)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (driversError) throw driversError
 
-      // Récupérer les informations utilisateur pour chaque chauffeur
+      if (!drivers) {
+        set({ drivers: [], loading: false })
+        return
+      }
+
+      // Récupérer les véhicules séparément si nécessaire
       const driversWithDetails: DriverWithDetails[] = await Promise.all(
         drivers.map(async (driver) => {
-          // Utilise le client browser pour l'authentification
-          const { data: { user } } = await supabase.auth.getUser()
+          let vehicle: VehicleRow | undefined
+
+          // Récupérer le véhicule si un ID est spécifié
+          if (driver.current_vehicle_id || driver.default_vehicle_id) {
+            const vehicleId = driver.current_vehicle_id || driver.default_vehicle_id
+            const { data: vehicleData } = await supabase
+              .from('vehicles')
+              .select('*')
+              .eq('id', vehicleId)
+              .single()
+            
+            vehicle = vehicleData || undefined
+          }
+
           return {
             ...driver,
-            user,
-            vehicle: driver.vehicles as VehicleRow
+            vehicle
           }
         })
       )
@@ -95,23 +109,31 @@ export const useDriversStore = create<DriversState>((set, get) => ({
     try {
       const { data: driver, error } = await supabase
         .from('drivers')
-        .select(`
-          *,
-          vehicles (*)
-        `)
+        .select('*')
         .eq('id', driverId)
         .single()
 
       if (error) throw error
 
-      // Utilise le client browser pour l'authentification
-      const { data: { user } } = await supabase.auth.getUser()
+      let vehicle: VehicleRow | undefined
+
+      // Récupérer le véhicule si un ID est spécifié
+      if (driver.current_vehicle_id || driver.default_vehicle_id) {
+        const vehicleId = driver.current_vehicle_id || driver.default_vehicle_id
+        const { data: vehicleData } = await supabase
+          .from('vehicles')
+          .select('*')
+          .eq('id', vehicleId)
+          .single()
+        
+        vehicle = vehicleData || undefined
+      }
       
       // Mise à jour du driver dans le state
       set((state) => ({
-        drivers: state.drivers.map(d => 
-          d.id === driverId 
-            ? { ...driver, user, vehicle: driver.vehicles as VehicleRow }
+        drivers: state.drivers.map(d =>
+          d.id === driverId
+            ? { ...driver, vehicle }
             : d
         )
       }))

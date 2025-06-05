@@ -1,4 +1,3 @@
-'use server'
 import { Card } from "@/components/ui/card"
 import { createServerSupabaseClient } from "@/lib/database/server"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
