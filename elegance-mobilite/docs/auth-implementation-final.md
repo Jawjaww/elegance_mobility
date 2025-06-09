@@ -53,7 +53,7 @@ const { data, error } = await supabase.auth.signInWithPassword({
 })
 
 // Vérification typée du rôle
-const userRole = data.user?.role as AppRole
+const userRole = (data.user?.raw_app_meta_data?.role ?? data.user?.user_metadata?.role) as AppRole
 ```
 
 ### 4. Callback d'Authentification

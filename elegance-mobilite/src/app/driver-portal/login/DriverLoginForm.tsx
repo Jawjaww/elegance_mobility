@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -9,12 +9,10 @@ import { supabase } from "@/lib/database/client"
 import { useToast } from "@/hooks/useToast"
 import { type AppRole } from "@/lib/types/common.types"
 
-export function LoginForm() {
+export function DriverLoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { toast } = useToast()
-  const from = searchParams?.get("from")
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -40,36 +38,25 @@ export function LoginForm() {
         throw error
       }
 
-      // Vérification typée du rôle
+      // Vérification typée du rôle pour les chauffeurs
       const userRole = (data.user?.app_metadata?.role ?? data.user?.user_metadata?.role) as AppRole
       
-      // Seuls les admins et super admins ne peuvent pas se connecter sur la page login normale
-      // Ils doivent utiliser la page login admin
-      if ((userRole === 'app_admin' || userRole === 'app_super_admin') && from !== 'admin') {
+      // Seuls les chauffeurs peuvent se connecter ici
+      if (userRole !== 'app_driver') {
         await supabase.auth.signOut()
-        throw new Error('Veuillez utiliser la page de connexion administrateur')
+        throw new Error('Accès réservé aux chauffeurs partenaires')
       }
 
       toast({
         title: "Connexion réussie",
-        description: "Vous êtes maintenant connecté",
+        description: "Bienvenue dans votre espace chauffeur",
       })
 
-      // Redirection basée sur le rôle
-      let redirectPath = '/my-account'
-      if (from) {
-        // Vérifier que la redirection est autorisée pour le rôle
-        if (
-          (from === 'driver' && userRole !== 'app_driver') ||
-          (from === 'admin' && !['app_admin', 'app_super_admin'].includes(userRole))
-        ) {
-          throw new Error('Accès non autorisé pour ce portail')
-        }
-        redirectPath = from === 'driver' ? '/driver-portal/dashboard' : from === 'admin' ? '/backoffice-portal' : '/my-account'
-      }
-
-      router.push(redirectPath)
-      router.refresh()
+      // Ajouter un délai pour s'assurer que la session est établie
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // Redirection complète vers le portail chauffeur
+      window.location.href = '/driver-portal/dashboard'
 
     } catch (error: any) {
       toast({
@@ -90,11 +77,10 @@ export function LoginForm() {
           id="email"
           name="email"
           type="email"
-          placeholder="exemple@email.com"
+          placeholder="chauffeur@exemple.com"
           required
           autoComplete="email"
           disabled={isLoading}
-          suppressHydrationWarning
         />
       </div>
       <div className="space-y-2">
@@ -106,7 +92,6 @@ export function LoginForm() {
           required
           autoComplete="current-password"
           disabled={isLoading}
-          suppressHydrationWarning
         />
       </div>
       

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -9,12 +9,10 @@ import { supabase } from "@/lib/database/client"
 import { useToast } from "@/hooks/useToast"
 import { type AppRole } from "@/lib/types/common.types"
 
-export function LoginForm() {
+export function AdminLoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { toast } = useToast()
-  const from = searchParams?.get("from")
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -40,14 +38,13 @@ export function LoginForm() {
         throw error
       }
 
-      // Vérification typée du rôle
+      // Vérification typée du rôle pour les admins
       const userRole = (data.user?.app_metadata?.role ?? data.user?.user_metadata?.role) as AppRole
       
-      // Seuls les admins et super admins ne peuvent pas se connecter sur la page login normale
-      // Ils doivent utiliser la page login admin
-      if ((userRole === 'app_admin' || userRole === 'app_super_admin') && from !== 'admin') {
+      // Seuls les admins et super admins peuvent se connecter ici
+      if (!['app_admin', 'app_super_admin'].includes(userRole)) {
         await supabase.auth.signOut()
-        throw new Error('Veuillez utiliser la page de connexion administrateur')
+        throw new Error('Accès réservé aux administrateurs')
       }
 
       toast({
@@ -55,20 +52,8 @@ export function LoginForm() {
         description: "Vous êtes maintenant connecté",
       })
 
-      // Redirection basée sur le rôle
-      let redirectPath = '/my-account'
-      if (from) {
-        // Vérifier que la redirection est autorisée pour le rôle
-        if (
-          (from === 'driver' && userRole !== 'app_driver') ||
-          (from === 'admin' && !['app_admin', 'app_super_admin'].includes(userRole))
-        ) {
-          throw new Error('Accès non autorisé pour ce portail')
-        }
-        redirectPath = from === 'driver' ? '/driver-portal/dashboard' : from === 'admin' ? '/backoffice-portal' : '/my-account'
-      }
-
-      router.push(redirectPath)
+      // Redirection vers le portail admin
+      router.push('/backoffice-portal')
       router.refresh()
 
     } catch (error: any) {
@@ -90,11 +75,10 @@ export function LoginForm() {
           id="email"
           name="email"
           type="email"
-          placeholder="exemple@email.com"
+          placeholder="admin@exemple.com"
           required
           autoComplete="email"
           disabled={isLoading}
-          suppressHydrationWarning
         />
       </div>
       <div className="space-y-2">
@@ -106,7 +90,6 @@ export function LoginForm() {
           required
           autoComplete="current-password"
           disabled={isLoading}
-          suppressHydrationWarning
         />
       </div>
       

@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -34,14 +35,21 @@ const NAV_ITEMS = [
 
 export function DriverHeader({ user }: DriverHeaderProps) {
   const pathname = usePathname() ?? ''
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const handleLogout = async () => {
+    if (isLoggingOut) return // Éviter les doubles clics
+    
+    setIsLoggingOut(true)
     try {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
-      // La redirection sera gérée par le middleware
+      
+      // Redirection immédiate pour éviter les erreurs de session
+      window.location.href = '/auth/login?from=driver'
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error)
+      setIsLoggingOut(false)
     }
   }
 
@@ -125,10 +133,11 @@ export function DriverHeader({ user }: DriverHeaderProps) {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={handleLogout}
+                  disabled={isLoggingOut}
                   className="flex items-center gap-2 text-red-500"
                 >
                   <LogOut className="h-4 w-4" />
-                  <span>Déconnexion</span>
+                  <span>{isLoggingOut ? 'Déconnexion...' : 'Déconnexion'}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

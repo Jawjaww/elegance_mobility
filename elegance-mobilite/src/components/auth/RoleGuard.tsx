@@ -2,7 +2,18 @@ import { createServerSupabaseClient } from '@/lib/database/server'
 import { redirect } from 'next/navigation'
 import type { ReactNode } from 'react'
 import type { AppRole } from '@/lib/types/common.types'
-import { getAppRole } from '@/lib/types/common.types'
+/**
+ * Récupère le rôle de l'utilisateur à partir du JWT (app_metadata.role)
+ */
+function extractRoleFromUser(user: any): string | undefined {
+  // Cohérent avec getAppRole dans common.types.ts
+  return (
+    user?.app_metadata?.role ||
+    user?.raw_app_meta_data?.role ||
+    user?.user_metadata?.role ||
+    user?.role
+  );
+}
 
 interface RoleGuardProps {
   children: ReactNode
@@ -21,7 +32,7 @@ export async function checkAccess(allowedRoles: AppRole[], redirectTo: string = 
     redirect(`${redirectTo}?from=${encodeURIComponent(redirectTo)}`)
   }
 
-  const userRole = getAppRole(user as any)
+  const userRole = extractRoleFromUser(user)
   if (!userRole || !allowedRoles.includes(userRole as AppRole)) {
     redirect('/unauthorized')
   }
@@ -42,7 +53,8 @@ export async function AdminGuard({ children }: { children: ReactNode }) {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user || !['app_admin', 'app_super_admin'].includes(getAppRole(user as any) as AppRole)) {
+  const userRole = extractRoleFromUser(user)
+  if (!user || !['app_admin', 'app_super_admin'].includes(userRole as AppRole)) {
     redirect('/auth/login?from=admin')
   }
   return <>{children}</>
@@ -52,7 +64,8 @@ export async function DriverGuard({ children }: { children: ReactNode }) {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user || getAppRole(user as any) !== 'app_driver') {
+  const userRole = extractRoleFromUser(user)
+  if (!user || userRole !== 'app_driver') {
     redirect('/auth/login?from=driver')
   }
   return <>{children}</>
@@ -62,7 +75,8 @@ export async function CustomerGuard({ children }: { children: ReactNode }) {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user || !['app_customer', 'app_admin', 'app_super_admin'].includes(getAppRole(user as any) as AppRole)) {
+  const userRole = extractRoleFromUser(user)
+  if (!user || !['app_customer', 'app_admin', 'app_super_admin'].includes(userRole as AppRole)) {
     redirect('/auth/login')
   }
   return <>{children}</>

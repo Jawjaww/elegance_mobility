@@ -156,8 +156,8 @@ export type VehicleType = 'STANDARD' | 'PREMIUM' | 'VAN' | 'ELECTRIC'
 
 export function getAppRole(user?: User | null): string | undefined {
   return (
-    (user as any)?.raw_app_meta_data?.role ||
     (user as any)?.app_metadata?.role ||
+    (user as any)?.raw_app_meta_data?.role ||
     (user as any)?.user_metadata?.role ||
     user?.role
   );

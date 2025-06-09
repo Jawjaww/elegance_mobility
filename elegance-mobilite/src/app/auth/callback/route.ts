@@ -6,8 +6,21 @@ export async function GET(request: NextRequest) {
   try {
     const requestUrl = new URL(request.url)
     const code = requestUrl.searchParams.get('code')
+    const from = requestUrl.searchParams.get('from')
     
+    // Si pas de code, vérifier s'il y a déjà une session active
     if (!code) {
+      const supabase = await createServerSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (session?.user) {
+        // Session active, rediriger selon le rôle
+        const userRole = (session.user.app_metadata?.role || (session.user as any).raw_app_meta_data?.role) as AppRole
+        console.log('Callback: Session active détectée, rôle:', userRole, 'from:', from)
+        await redirectToRoleHome(userRole, from)
+        return
+      }
+      
       return NextResponse.redirect(new URL('/auth/login', request.url))
     }
 
@@ -19,10 +32,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/auth/login', request.url))
     }
 
-    // Redirection avec le rôle et la redirection personnalisée si présente
-    const userRole = session.user.role as AppRole
-    const redirectTo = requestUrl.searchParams.get('redirectTo')
-    await redirectToRoleHome(userRole, redirectTo)
+    // Redirection avec le rôle et le contexte "from"
+    const userRole = (session.user.app_metadata?.role || (session.user as any).raw_app_meta_data?.role) as AppRole
+    console.log('Callback: Nouvelle session créée, rôle:', userRole, 'from:', from)
+    await redirectToRoleHome(userRole, from)
     return
 
   } catch (error) {
