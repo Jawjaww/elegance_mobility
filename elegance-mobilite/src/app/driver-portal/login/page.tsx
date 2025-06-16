@@ -5,14 +5,11 @@ import { DriverLoginForm } from "@/app/driver-portal/login/DriverLoginForm"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/database/client"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { AlreadyLoggedIn } from "@/components/ui/AlreadyLoggedIn"
 import Link from "next/link"
 
 export default function DriverLoginPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
-  const [role, setRole] = useState<string | undefined>()
   
   useEffect(() => {
     // Vérifier si l'utilisateur est déjà connecté
@@ -20,18 +17,19 @@ export default function DriverLoginPage() {
       try {
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
-          const userRole = (session.user as any).raw_app_meta_data?.role
-          setRole(userRole)
+          // Redirection silencieuse vers la page de déconnexion
+          router.replace('/auth/already-connected?redirect=login')
+          return
         }
+        setIsLoading(false)
       } catch (error) {
         console.error('Erreur vérification session:', error)
-      } finally {
         setIsLoading(false)
       }
     }
     
     checkSession()
-  }, [])
+  }, [router])
   
   const handleClose = () => {
     router.push('/') // Retour à l'accueil
@@ -40,15 +38,7 @@ export default function DriverLoginPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-neutral-950 flex items-center justify-center py-8">
-        <LoadingSpinner />
-      </div>
-    )
-  }
-
-  if (role) {
-    return (
-      <div className="min-h-screen bg-neutral-950 flex items-center justify-center py-8">
-        <AlreadyLoggedIn role={role} />
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
       </div>
     )
   }

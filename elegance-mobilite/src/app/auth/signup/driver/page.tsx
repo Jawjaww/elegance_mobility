@@ -2,37 +2,36 @@
 
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/database/client"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { AlreadyLoggedIn } from "@/components/ui/AlreadyLoggedIn"
+import { useRouter } from "next/navigation"
 import ModernDriverSignup from "@/components/auth/ModernDriverSignup"
+import { PageLoading } from "@/components/ui/loading"
 
 export default function DriverSignupPage() {
-  const [checking, setChecking] = useState(true)
-  const [role, setRole] = useState<string | undefined>()
+  const [isChecking, setIsChecking] = useState(true)
+  const router = useRouter()
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setRole((session.user as any).raw_app_meta_data?.role)
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          // Redirection silencieuse vers la page de déconnexion
+          router.replace('/auth/already-connected?redirect=signup')
+          return
+        }
+        setIsChecking(false)
+      } catch (error) {
+        console.error('Erreur vérification session:', error)
+        setIsChecking(false)
       }
-      setChecking(false)
-    })
-  }, [])
+    }
+    
+    checkSession()
+  }, [router])
 
-  if (checking) {
-    return (
-      <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    )
-  }
-
-  if (role) {
-    return (
-      <div className="min-h-screen bg-neutral-950 flex items-center justify-center py-8">
-        <AlreadyLoggedIn role={role} />
-      </div>
-    )
+  // Loading minimal
+  if (isChecking) {
+    return <PageLoading />
   }
 
   return <ModernDriverSignup />

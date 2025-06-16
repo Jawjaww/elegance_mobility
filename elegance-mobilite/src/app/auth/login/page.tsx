@@ -3,11 +3,33 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AuthModal } from "./AuthModal"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useEffect, useState } from "react"
+import { supabase } from "@/lib/database/client"
 
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const from = searchParams?.get("from")
+  const [isChecking, setIsChecking] = useState(true)
+
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          // Redirection silencieuse vers la page de déconnexion
+          router.replace('/auth/already-connected?redirect=login')
+          return
+        }
+        setIsChecking(false)
+      } catch (error) {
+        console.error('Erreur vérification session:', error)
+        setIsChecking(false)
+      }
+    }
+    
+    checkSession()
+  }, [router])
   
   const handleClose = () => {
     if (from) {
@@ -17,23 +39,30 @@ export default function LoginPage() {
     }
   }
 
+  // Loading minimal et moderne
+  if (isChecking) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
+      </div>
+    )
+  }
+
   return (
-    // <div className="container flex items-center justify-center min-h-[600px] py-8">
-      <Card className="w-full max-w-[425px]">
-        <CardHeader>
-          <CardTitle>Connexion</CardTitle>
-          <CardDescription>
-            Entrez vos identifiants pour accéder à votre compte
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AuthModal 
-            open={true}
-            onClose={handleClose}
-            embedded={true}
-          />
-        </CardContent>
-      </Card>
-    // </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Connexion</CardTitle>
+        <CardDescription>
+          Entrez vos identifiants pour accéder à votre compte
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <AuthModal 
+          open={true}
+          onClose={handleClose}
+          embedded={true}
+        />
+      </CardContent>
+    </Card>
   )
 }
