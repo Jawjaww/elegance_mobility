@@ -9,12 +9,14 @@ import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
+import { PageLoading, ButtonLoading } from "@/components/ui/loading"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/useToast"
 import { useUnifiedRidesStore } from "@/lib/stores/unifiedRidesStore"
 import { useDriversStore } from "@/lib/stores/driversStore"
 import { supabase } from "@/lib/database/client"
 import type { Database } from "@/lib/types/database.types"
+import { syncExistingDrivers, checkDriversTable } from "@/lib/utils/driver-sync"
 
 // Définir les types à partir de la Database
 type Driver = Database['public']['Tables']['drivers']['Row']
@@ -24,8 +26,7 @@ export default function AssignDriverPage() {
   const router = useRouter()
   const params = useParams()
   const { toast } = useToast()
-  const fetchDrivers = useDriversStore(state => state.fetchDrivers)
-  const drivers = useDriversStore(state => state.drivers)
+  const { fetchDrivers, drivers, loading: driversLoading } = useDriversStore()
   const [loading, setLoading] = useState(true)
   const [assigning, setAssigning] = useState(false)
   const [ride, setRide] = useState<Ride | null>(null)
@@ -36,13 +37,38 @@ export default function AssignDriverPage() {
   // Trouver tous les conducteurs disponibles
   const availableDrivers = drivers.filter(d => d.status === 'active')
 
+  console.log('Drivers:', drivers) // Debug
+  console.log('Available drivers:', availableDrivers) // Debug
+
   useEffect(() => {
     // Vérifier si params et params.id existent
     if (params && params.id) {
-      fetchRide()
-      fetchDrivers()
+      initializePage()
     }
   }, [params])
+
+  const initializePage = async () => {
+    setLoading(true)
+    try {
+      // Test simple de connectivité Supabase
+      console.log('🔧 Test connectivité Supabase...')
+      const { data: testData, error: testError } = await supabase
+        .from('drivers')
+        .select('count(*)')
+        .limit(1)
+      
+      console.log('🔧 Test result:', { testData, testError })
+
+      await Promise.all([
+        fetchRide(),
+        fetchDrivers()
+      ])
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'initialisation:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Récupérer les détails du trajet
   const fetchRide = async () => {
@@ -55,7 +81,6 @@ export default function AssignDriverPage() {
       return
     }
 
-    setLoading(true)
     try {
       const { data, error } = await supabase
         .from('rides')
@@ -65,6 +90,7 @@ export default function AssignDriverPage() {
 
       if (error) throw error
       setRide(data)
+      console.log('Ride loaded:', data) // Debug
     } catch (error) {
       console.error("Erreur lors de la récupération du trajet:", error)
       toast({
@@ -72,8 +98,6 @@ export default function AssignDriverPage() {
         title: "Erreur",
         description: "Impossible de charger les détails du trajet."
       })
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -133,12 +157,8 @@ export default function AssignDriverPage() {
     return fullName.includes(searchQuery.toLowerCase())
   })
 
-  if (loading) {
-    return (
-      <div className="py-8 px-4 sm:px-6 text-center">
-        <p className="text-neutral-400">Chargement...</p>
-      </div>
-    )
+  if (loading || driversLoading) {
+    return <PageLoading text="Chargement de la page d'assignation..." />;
   }
 
   if (!ride) {
@@ -214,8 +234,73 @@ export default function AssignDriverPage() {
         {/* Sélection du chauffeur */}
         <Card className="md:col-span-2">
           <CardHeader>
-            <CardTitle>Chauffeurs disponibles</CardTitle>
-            <CardDescription>Sélectionnez un chauffeur pour ce trajet</CardDescription>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>Chauffeurs disponibles</CardTitle>
+                <CardDescription>Sélectionnez un chauffeur pour ce trajet</CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchDrivers()}
+                disabled={driversLoading}
+              >
+                {driversLoading ? "Chargement..." : "Actualiser"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  console.log('🧪 Test direct de la table drivers...')
+                  try {
+                    const { data, error } = await supabase
+                      .from('drivers')
+                      .select('id, first_name, last_name, status')
+                      .limit(5)
+                    console.log('🧪 Résultat test direct:', { data, error })
+                    if (error) {
+                      toast({
+                        variant: "destructive",
+                        title: "Erreur test",
+                        description: error.message
+                      })
+                    } else {
+                      toast({
+                        title: "Test réussi",
+                        description: `${data?.length || 0} chauffeurs trouvés`
+                      })
+                    }
+                  } catch (err) {
+                    console.error('🧪 Erreur test:', err)
+                  }
+                }}
+              >
+                Test direct
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    const result = await syncExistingDrivers()
+                    toast({
+                      title: "Synchronisation réussie",
+                      description: result.message || "Chauffeurs synchronisés"
+                    })
+                    // Recharger les drivers après synchronisation
+                    await fetchDrivers()
+                  } catch (err: any) {
+                    toast({
+                      variant: "destructive",
+                      title: "Erreur de synchronisation",
+                      description: err.message
+                    })
+                  }
+                }}
+              >
+                Sync Drivers
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="list" className="w-full" value={tab} onValueChange={setTab}>
@@ -228,36 +313,75 @@ export default function AssignDriverPage() {
                   <input
                     type="text"
                     placeholder="Rechercher un chauffeur..."
-                    className="w-full py-2 px-4 rounded-md bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full py-2 px-4 rounded-md bg-neutral-900 border border-neutral-700 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
 
+                {/* Debug info */}
+                <div className="text-xs text-neutral-500 p-2 bg-neutral-900 rounded">
+                  Total chauffeurs: {drivers.length} | Actifs: {availableDrivers.length} | Filtrés: {filteredDrivers.length}
+                </div>
+
                 <div className="mt-4 space-y-2 max-h-[400px] overflow-y-auto">
                   {filteredDrivers.length === 0 ? (
-                    <p className="text-center py-8 text-neutral-400">Aucun chauffeur disponible</p>
+                    <div className="text-center py-8">
+                      <p className="text-neutral-400">
+                        {drivers.length === 0 
+                          ? "Aucun chauffeur trouvé dans la base de données"
+                          : availableDrivers.length === 0
+                          ? "Aucun chauffeur actif"
+                          : "Aucun chauffeur trouvé pour cette recherche"
+                        }
+                      </p>
+                      {searchQuery && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="mt-2"
+                          onClick={() => setSearchQuery("")}
+                        >
+                          Effacer la recherche
+                        </Button>
+                      )}
+                    </div>
                   ) : (
                     filteredDrivers.map((driver) => (
                       <div
                         key={driver.id}
-                        className={`p-4 rounded-md cursor-pointer transition-colors ${
+                        className={`p-4 rounded-md cursor-pointer transition-colors border ${
                           selectedDriverId === driver.id
-                            ? "bg-primary/20 border border-primary"
-                            : "bg-neutral-800 hover:bg-neutral-700"
+                            ? "bg-primary/20 border-primary shadow-md"
+                            : "bg-neutral-800 hover:bg-neutral-700 border-neutral-700"
                         }`}
-                        onClick={() => setSelectedDriverId(driver.id)}
+                        onClick={() => {
+                          setSelectedDriverId(driver.id)
+                          console.log('Selected driver:', driver) // Debug
+                        }}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
-                            <div className="h-10 w-10 rounded-full bg-neutral-700 flex items-center justify-center">
-                              <User className="h-6 w-6 text-neutral-300" />
+                            <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+                              <User className="h-6 w-6 text-primary" />
                             </div>
                             <div>
-                              <p className="font-medium">{driver.first_name} {driver.last_name}</p>
-                              <p className="text-sm text-neutral-400">{driver.phone}</p>
+                              <p className="font-medium text-white">
+                                {driver.first_name} {driver.last_name}
+                              </p>
+                              <p className="text-sm text-neutral-400">
+                                {driver.phone || 'Téléphone non renseigné'}
+                              </p>
+                              <p className="text-xs text-neutral-500">
+                                Statut: {driver.status}
+                              </p>
                             </div>
                           </div>
+                          {selectedDriverId === driver.id && (
+                            <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
+                              <div className="h-2 w-2 rounded-full bg-white" />
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))
@@ -271,14 +395,31 @@ export default function AssignDriverPage() {
               </TabsContent>
             </Tabs>
 
-            <div className="mt-6">
+            <div className="mt-6 space-y-4">
+              {selectedDriverId && (
+                <div className="p-3 bg-primary/10 border border-primary/20 rounded-md">
+                  <p className="text-sm text-primary">
+                    Chauffeur sélectionné: {filteredDrivers.find(d => d.id === selectedDriverId)?.first_name} {filteredDrivers.find(d => d.id === selectedDriverId)?.last_name}
+                  </p>
+                </div>
+              )}
+              
               <Button
                 className="w-full"
                 size="lg"
                 disabled={!selectedDriverId || assigning}
                 onClick={assignDriver}
               >
-                {assigning ? "Assignation en cours..." : "Assigner ce chauffeur"}
+                {assigning ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Assignation en cours...
+                  </>
+                ) : selectedDriverId ? (
+                  "Assigner ce chauffeur"
+                ) : (
+                  "Sélectionnez d'abord un chauffeur"
+                )}
               </Button>
             </div>
           </CardContent>

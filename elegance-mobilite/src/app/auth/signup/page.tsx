@@ -4,11 +4,14 @@ import { useState, useEffect } from "react"
 import { supabase } from "@/lib/database/client"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { AlreadyLoggedIn } from "@/components/ui/AlreadyLoggedIn"
-import ModernDriverSignup from "@/components/auth/ModernDriverSignup"
+import { useSearchParams } from "next/navigation"
+import CustomerSignup from "@/components/auth/CustomerSignup"
 
-export default function DriverSignupPage() {
+export default function SignupPage() {
   const [checking, setChecking] = useState(true)
   const [role, setRole] = useState<string | undefined>()
+  const searchParams = useSearchParams()
+  const from = searchParams?.get("from")
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -35,5 +38,15 @@ export default function DriverSignupPage() {
     )
   }
 
-  return <ModernDriverSignup />
+  // Si from=driver, rediriger vers la page d'inscription chauffeur
+  if (from === 'driver') {
+    window.location.href = '/auth/signup/driver'
+    return (
+      <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    )
+  }
+
+  return <CustomerSignup />
 }

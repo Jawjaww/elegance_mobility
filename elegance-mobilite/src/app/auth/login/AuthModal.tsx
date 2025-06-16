@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { LoginForm } from "./LoginForm"
 import { Card } from "@/components/ui/card"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 
 interface AuthModalProps {
   open: boolean
@@ -25,6 +26,12 @@ export function AuthModal({
   description = "Connectez-vous ou créez un compte pour continuer",
   embedded = false
 }: AuthModalProps) {
+  const searchParams = useSearchParams();
+  const from = searchParams?.get('from');
+  
+  // Déterminer le lien d'inscription selon le contexte
+  const signupUrl = from === 'driver' ? '/auth/signup?from=driver' : '/auth/signup';
+  
   const content = (
     <div className="space-y-6">
       <LoginForm />
@@ -40,7 +47,7 @@ export function AuthModal({
         <div className="text-sm text-muted-foreground">
           Pas encore de compte ?{' '}
           <Link
-            href="/auth/signup"
+            href={signupUrl}
             className="font-medium text-primary hover:underline"
           >
             S'inscrire

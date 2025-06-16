@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { RideCard } from "./RideCard"
 import { RideFilters } from "./RideFilters"
 import { Separator } from "@/components/ui/separator"
+import { SectionLoading } from "@/components/ui/loading"
 import type { RideStatus, FilterRideStatus } from '@/lib/types/common.types'
 
 // Définition des props
@@ -98,7 +99,7 @@ export function DriverDashboardClient({ driverId }: DriverDashboardClientProps) 
           
           <div className="p-6">
             {loading ? (
-              <p className="text-center py-8 text-sm text-neutral-400">Chargement...</p>
+              <SectionLoading text="Chargement de vos courses..." />
             ) : filteredRides.length === 0 ? (
               <p className="text-center py-8 text-sm text-neutral-400">
                 Aucune course {filter !== 'all' ? `avec le statut "${filter}"` : ''}

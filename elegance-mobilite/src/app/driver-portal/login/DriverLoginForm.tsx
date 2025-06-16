@@ -39,7 +39,7 @@ export function DriverLoginForm() {
       }
 
       // Vérification typée du rôle pour les chauffeurs
-      const userRole = (data.user?.app_metadata?.role ?? data.user?.user_metadata?.role) as AppRole
+      const userRole = (data.user as any)?.raw_app_meta_data?.role
       
       // Seuls les chauffeurs peuvent se connecter ici
       if (userRole !== 'app_driver') {

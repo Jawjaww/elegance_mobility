@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/reservation/StatusBadge";
+import { SectionLoading } from "@/components/ui/loading";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
@@ -58,7 +59,7 @@ export function DashboardRecentRides() {
       </CardHeader>
       <CardContent>
         {loading ? (
-          <p className="text-center py-4 text-sm text-neutral-400">Chargement...</p>
+          <SectionLoading text="Chargement des dernières courses..." />
         ) : recentRides.length === 0 ? (
           <p className="text-center py-4 text-sm text-neutral-400">Aucune course récente</p>
         ) : (

@@ -6,6 +6,7 @@ import { Location } from '../../lib/types/map-types';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '@/styles/map.css';
 import { useReservationStore } from "@/lib/stores/reservationStore";
+import { SectionLoading } from "@/components/ui/loading";
 
 // Version légère et optimisée pour les pages d'édition
 export default function EditReservationMap() {
@@ -202,7 +203,7 @@ export default function EditReservationMap() {
   if (!departure || !destination) {
     return (
       <div className="w-full h-60 bg-neutral-800/50 rounded flex items-center justify-center">
-        <p className="text-neutral-400">Chargement des données de trajet...</p>
+        <SectionLoading text="Chargement des données de trajet..." />
       </div>
     );
   }

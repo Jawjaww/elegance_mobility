@@ -55,18 +55,28 @@ export const useDriversStore = create<DriversState>((set, get) => ({
   fetchDrivers: async () => {
     set({ loading: true, error: null })
     try {
+      console.log('🔍 Tentative de récupération des chauffeurs...')
+      
       // D'abord récupérer les chauffeurs
       const { data: drivers, error: driversError } = await supabase
         .from('drivers')
         .select('*')
         .order('created_at', { ascending: false })
 
-      if (driversError) throw driversError
+      console.log('📊 Résultat requête drivers:', { drivers, driversError })
+
+      if (driversError) {
+        console.error('❌ Erreur drivers:', driversError)
+        throw driversError
+      }
 
       if (!drivers) {
+        console.log('⚠️ Aucun driver trouvé')
         set({ drivers: [], loading: false })
         return
       }
+
+      console.log(`✅ ${drivers.length} drivers trouvés:`, drivers)
 
       // Récupérer les véhicules séparément si nécessaire
       const driversWithDetails: DriverWithDetails[] = await Promise.all(
@@ -92,12 +102,14 @@ export const useDriversStore = create<DriversState>((set, get) => ({
         })
       )
 
+      console.log('🚗 Drivers avec détails:', driversWithDetails)
+
       set({
         drivers: driversWithDetails,
         loading: false
       })
     } catch (error: any) {
-      console.error('Erreur lors de la récupération des chauffeurs:', error)
+      console.error('❌ Erreur lors de la récupération des chauffeurs:', error)
       set({
         error: error.message || 'Erreur lors de la récupération des chauffeurs',
         loading: false
