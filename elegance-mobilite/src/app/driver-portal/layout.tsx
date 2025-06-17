@@ -1,5 +1,6 @@
 import { DriverGuard } from "@/components/auth/RoleGuard"
-import { DriverHeader } from "@/components/layout/DriverHeader"
+import { DriverHeaderWrapper } from "@/components/layout/DriverHeaderWrapper"
+import { DriverProvider } from "@/contexts/DriverContext"
 import { getServerUser } from "@/lib/database/server"
 import { redirect } from "next/navigation"
 
@@ -17,13 +18,17 @@ export default async function DriverPortalLayout({
   
   return (
     <DriverGuard>
-      <div className="min-h-screen bg-neutral-950 text-white">
-        {/* user est garanti non-null ici */}
-        <DriverHeader user={user} />
-        <main className="container mx-auto px-4 py-8">
-          {children}
-        </main>
-      </div>
+      <DriverProvider>
+        <div className="min-h-screen">
+          {/* Header transparent */}
+          <DriverHeaderWrapper user={user} />
+          
+          {/* Main content - plein écran sans padding pour laisser la carte en background */}
+          <main className="min-h-screen relative">
+            {children}
+          </main>
+        </div>
+      </DriverProvider>
     </DriverGuard>
   )
 }

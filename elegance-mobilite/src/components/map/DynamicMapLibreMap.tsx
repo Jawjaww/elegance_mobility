@@ -84,20 +84,22 @@ export default function DynamicMapLibreMap({
   }
 
   return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center w-full h-full bg-neutral-800/30">
-          <LoadingSpinner size="lg" />
-        </div>
-      }
-    >
-      <MapLibreMap
-        key={mapKey}
-        departure={origin}
-        destination={destination}
-        onRouteCalculated={onRouteCalculated}
-        enableRouting={enableRouting}
-      />
-    </Suspense>
+    <div className="fixed inset-0 w-full h-full">
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center w-full h-full bg-neutral-800/30">
+            <LoadingSpinner size="lg" />
+          </div>
+        }
+      >
+        <MapLibreMap
+          key={mapKey}
+          departure={origin}
+          destination={destination}
+          onRouteCalculated={onRouteCalculated}
+          enableRouting={enableRouting}
+        />
+      </Suspense>
+    </div>
   );
 }

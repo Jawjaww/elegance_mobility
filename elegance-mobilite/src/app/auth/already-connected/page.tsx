@@ -86,7 +86,7 @@ export default function AlreadyConnectedPage() {
         <CardContent className="space-y-4">
           <Button 
             onClick={handleGoToDashboard}
-            className="w-full"
+            className="w-full btn-gradient text-white"
             size="lg"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />

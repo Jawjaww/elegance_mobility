@@ -41,7 +41,7 @@ export function LoginForm() {
       }
 
       // Vérification typée du rôle
-      const userRole = (data.user?.app_metadata?.role ?? data.user?.user_metadata?.role) as AppRole
+      const userRole = (data.user?.app_metadata?.role ) as AppRole
       
       // Seuls les admins et super admins ne peuvent pas se connecter sur la page login normale
       // Ils doivent utiliser la page login admin
@@ -110,7 +110,7 @@ export function LoginForm() {
         />
       </div>
       
-      <Button type="submit" className="w-full" disabled={isLoading}>
+      <Button className="btn-gradient text-white w-full" type="submit" disabled={isLoading}>
         {isLoading ? "Connexion en cours..." : "Se connecter"}
       </Button>
     </form>

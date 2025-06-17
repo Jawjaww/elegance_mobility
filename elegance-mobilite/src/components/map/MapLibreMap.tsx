@@ -793,8 +793,9 @@ export default function MapLibreMap({
   return (
     <div
       ref={mapContainer}
-      className={`w-full h-96 map-container map-instance-${mapInstanceIdRef.current}`}
+      className={`w-full h-full map-container map-instance-${mapInstanceIdRef.current}`}
       data-testid="map-container"
+      style={{ margin: 0, padding: 0, border: 'none', outline: 'none' }}
     />
   );
 }

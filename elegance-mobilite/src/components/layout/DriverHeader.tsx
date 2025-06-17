@@ -1,51 +1,81 @@
 'use client'
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Car, Calendar, User2, LogOut } from "lucide-react"
-import type { User } from "@supabase/supabase-js"
+import { 
+  Wifi, 
+  WifiOff, 
+  Euro, 
+  Clock, 
+  Star, 
+  Navigation,
+  Menu,
+  Bell,
+  Settings,
+  LogOut,
+  User2,
+  Calendar
+} from "lucide-react"
+import type { Database } from "@/lib/types/database.types"
+import type { User } from "@/lib/types/common.types"
 import { supabase } from "@/lib/database/client"
 
 interface DriverHeaderProps {
   user: User
+  isOnline?: boolean
+  onToggleOnline?: () => void
+  todayEarnings?: number
+  todayRides?: number
+  currentRating?: number
 }
 
-const NAV_ITEMS = [
-  {
-    name: "Courses du jour",
-    href: "/driver-portal/rides",
-    icon: Car,
-  },
-  {
-    name: "Planning",
-    href: "/driver-portal/schedule",
-    icon: Calendar,
-  },
-  {
-    name: "Profil",
-    href: "/driver-portal/profile",
-    icon: User2,
-  }
-]
+interface DailyStats {
+  earnings: number
+  rides: number
+  hours: number
+}
 
-export function DriverHeader({ user }: DriverHeaderProps) {
-  const pathname = usePathname() ?? ''
+export function DriverHeader({ 
+  user, 
+  isOnline = false, 
+  onToggleOnline,
+  todayEarnings = 0,
+  todayRides = 0,
+  currentRating = 4.8
+}: DriverHeaderProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [dailyStats, setDailyStats] = useState<DailyStats>({
+    earnings: todayEarnings,
+    rides: todayRides,
+    hours: 0
+  })
+  const [hasNotifications, setHasNotifications] = useState(true)
+
+  // Simulation du temps de travail (en production, cela viendrait de l'état global)
+  useEffect(() => {
+    let interval: NodeJS.Timeout
+    if (isOnline) {
+      interval = setInterval(() => {
+        setDailyStats(prev => ({
+          ...prev,
+          hours: prev.hours + 0.01 // Incrémente de 0.01h = 36 secondes
+        }))
+      }, 36000) // Toutes les 36 secondes = 0.01h
+    }
+    return () => clearInterval(interval)
+  }, [isOnline])
 
   const handleLogout = async () => {
-    if (isLoggingOut) return // Éviter les doubles clics
+    if (isLoggingOut) return
     
     setIsLoggingOut(true)
     try {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
-      
-      // Redirection immédiate pour éviter les erreurs de session
       window.location.href = '/auth/login?from=driver'
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error)
@@ -57,91 +87,84 @@ export function DriverHeader({ user }: DriverHeaderProps) {
     return user.email?.[0].toUpperCase() ?? 'D'
   }
 
-  const isActive = (path: string) =>
-    pathname === path || pathname.startsWith(`${path}/`)
+  const formatEarnings = (amount: number) => {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount / 100)
+  }
+
+  const formatHours = (hours: number) => {
+    const h = Math.floor(hours)
+    const m = Math.floor((hours - h) * 60)
+    return `${h}h${m.toString().padStart(2, '0')}`
+  }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-neutral-700/30">
-      <div className="bg-gradient-to-r from-neutral-950/95 to-neutral-900/90 backdrop-blur-sm">
-        <div className="container flex h-16 max-w-screen-2xl items-center">
-          <div className="mr-8 flex-1">
-            <Link
-              href="/driver-portal"
-              className="mr-8 flex items-center space-x-2"
-            >
-              <span className="bg-gradient-to-r from-green-600 to-green-800 bg-clip-text text-transparent font-bold text-xl">
-                Vector Elegans
-              </span>
-              <span className="text-neutral-400 font-medium">Chauffeur</span>
-            </Link>
-            <nav className="hidden md:flex items-center space-x-8 text-sm font-medium mt-2">
-              {NAV_ITEMS.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center space-x-2 transition-all duration-200 hover:text-green-400",
-                    isActive(item.href)
-                      ? "text-green-400"
-                      : "text-neutral-400"
-                  )}
-                >
-                  <div className={cn(
-                    "p-1.5 rounded-full transition-all duration-200",
-                    isActive(item.href)
-                      ? "bg-green-500/15 shadow-[0_0_8px_-2px_rgba(74,222,128,0.2)]"
-                      : "group-hover:bg-neutral-800/30"
-                  )}>
-                    <item.icon className={cn(
-                      "h-4 w-4",
-                      isActive(item.href) ? "text-green-400" : "text-neutral-400"
-                    )} />
-                  </div>
-                  <span>{item.name}</span>
-                </Link>
-              ))}
-            </nav>
-          </div>
+    <header className="fixed top-0 left-0 right-0 z-30 bg-transparent">
+      <div className="flex items-center justify-between px-4 h-16">
+        {/* Section gauche : vide pour laisser la carte visible */}
+        <div></div>
 
-          <nav className="flex items-center">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="relative h-9 w-9 rounded-full"
-                >
-                  <Avatar className="h-9 w-9">
-                    <AvatarImage
-                      src="/avatars/driver.png"
-                      alt="Avatar chauffeur"
-                    />
-                    <AvatarFallback className="bg-green-600 text-white">
-                      {getAvatarFallback()}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[200px] p-2">
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/driver-portal/profile"
-                    className="flex items-center gap-2"
-                  >
-                    <User2 className="h-4 w-4" />
-                    <span>Mon profil</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={handleLogout}
-                  disabled={isLoggingOut}
-                  className="flex items-center gap-2 text-red-500"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>{isLoggingOut ? 'Déconnexion...' : 'Déconnexion'}</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </nav>
+        {/* Section droite : Avatar simple et transparent */}
+        <div className="flex items-center">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="relative h-10 w-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20"
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src="/avatars/driver.png" />
+                  <AvatarFallback className="bg-neutral-700 text-white">
+                    {getAvatarFallback()}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56 bg-black/90 backdrop-blur-sm border-neutral-700" align="end">
+              <div className="flex items-center gap-3 p-3 border-b border-neutral-700">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src="/avatars/driver.png" />
+                  <AvatarFallback className="bg-neutral-700 text-white">
+                    {getAvatarFallback()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">
+                    {user.user_metadata?.full_name || user.email}
+                  </p>
+                  <div className="flex items-center space-x-1">
+                    <Star className="h-3 w-3 text-yellow-500 fill-current" />
+                    <span className="text-xs text-neutral-400">{currentRating.toFixed(1)}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <DropdownMenuItem className="flex items-center gap-2 text-white hover:bg-neutral-800">
+                <User2 className="h-4 w-4" />
+                <span>Mon profil</span>
+              </DropdownMenuItem>
+              
+              <DropdownMenuItem className="flex items-center gap-2 text-white hover:bg-neutral-800">
+                <Settings className="h-4 w-4" />
+                <span>Paramètres</span>
+              </DropdownMenuItem>
+              
+              <div className="border-t border-neutral-700 my-2" />
+              
+              <DropdownMenuItem
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="flex items-center gap-2 text-red-400 hover:bg-neutral-800 focus:text-red-400"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>{isLoggingOut ? 'Déconnexion...' : 'Déconnexion'}</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>
