@@ -17,13 +17,24 @@ export default function SignupPage() {
       try {
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
-          // Redirection silencieuse vers la page de déconnexion
+          // Vérifier si l'utilisateur existe toujours dans auth.users
+          const { data: { user }, error } = await supabase.auth.getUser()
+          
+          if (error || !user) {
+            console.log('🔄 Session fantôme détectée - utilisateur supprimé, nettoyage...')
+            await supabase.auth.signOut()
+            setIsChecking(false)
+            return
+          }
+          
+          // L'utilisateur existe vraiment, rediriger
           router.replace('/auth/already-connected?redirect=signup')
           return
         }
         setIsChecking(false)
       } catch (error) {
         console.error('Erreur vérification session:', error)
+        await supabase.auth.signOut()
         setIsChecking(false)
       }
     }

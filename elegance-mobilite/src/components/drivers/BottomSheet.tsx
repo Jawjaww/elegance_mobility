@@ -20,7 +20,7 @@ export function BottomSheet({
   children, 
   title,
   minHeight = 120,
-  maxHeight = window.innerHeight * 0.85, // 85% de la hauteur de l'écran
+  maxHeight = 800, // Valeur fixe SSR-safe
   defaultHeight = 200,
   className,
   showProfileAlert = false,
@@ -110,7 +110,7 @@ export function BottomSheet({
       {/* Bottom Sheet */}
       <motion.div
         className={cn(
-          "fixed bottom-0 left-0 right-0 bg-neutral-900/95 border-t border-neutral-800/50 rounded-t-3xl shadow-2xl z-50",
+          "fixed bottom-0 left-0 right-0 bg-neutral-950/98 border-t border-neutral-800/30 rounded-t-lg shadow-2xl z-50",
           "backdrop-blur-xl",
           isDragging && "transition-none",
           className
@@ -164,20 +164,27 @@ export function BottomSheet({
             </div>
           )}
           
-          {/* Alerte profil incomplet */}
+          {/* Alerte profil incomplet - Zone NON draggable */}
           {showProfileAlert && profileAlert && (
             <motion.div 
-              className="mt-2 mb-1"
+              className="mt-2 mb-1 relative z-10"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
+              onPointerDown={(e) => e.stopPropagation()} // Empêcher le drag sur cette zone
+              onClick={(e) => e.stopPropagation()} // Empêcher le tap sur cette zone
             >
               {profileAlert}
             </motion.div>
           )}
           
-          {/* Zone de touch élargie pour le drag */}
-          <div className="absolute inset-0 -top-2 -bottom-2" />
+          {/* Zone de touch élargie pour le drag - Exclut la zone du ProfileAlert */}
+          {!showProfileAlert && (
+            <div className="absolute inset-0 -top-2 -bottom-2" />
+          )}
+          {showProfileAlert && (
+            <div className="absolute inset-0 -top-2" style={{ bottom: '50px' }} />
+          )}
         </motion.div>
         
         {/* Content avec gestion du scroll intelligent */}

@@ -2,7 +2,7 @@
 
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
-import { useDriversStore } from "@/lib/stores/driversStore"
+import { useDriversAdmin } from "@/hooks/queries"
 import {
   Card,
   CardContent,
@@ -47,7 +47,7 @@ interface RideCardProps {
 }
 
 export function RideCard({ ride, onAssignDriver, onAssignVehicle, onDetails }: RideCardProps) {
-  const { drivers } = useDriversStore()
+  const { data: drivers = [] } = useDriversAdmin()
   const driver = drivers.find(d => d.id === ride.driverId)
   const StatusIcon = statusConfig[ride.status]?.icon || AlertCircle
 

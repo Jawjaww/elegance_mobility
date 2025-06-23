@@ -13,7 +13,7 @@ import { PageLoading, ButtonLoading } from "@/components/ui/loading"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/useToast"
 import { useUnifiedRidesStore } from "@/lib/stores/unifiedRidesStore"
-import { useDriversStore } from "@/lib/stores/driversStore"
+import { useDriversAdmin } from "@/hooks/queries"
 import { supabase } from "@/lib/database/client"
 import type { Database } from "@/lib/types/database.types"
 import { syncExistingDrivers, checkDriversTable } from "@/lib/utils/driver-sync"
@@ -26,7 +26,7 @@ export default function AssignDriverPage() {
   const router = useRouter()
   const params = useParams()
   const { toast } = useToast()
-  const { fetchDrivers, drivers, loading: driversLoading } = useDriversStore()
+  const { data: drivers = [], isLoading: driversLoading } = useDriversAdmin()
   const [loading, setLoading] = useState(true)
   const [assigning, setAssigning] = useState(false)
   const [ride, setRide] = useState<Ride | null>(null)

@@ -3,6 +3,7 @@
 import { ThemeProvider } from "./ThemeProvider";
 import { ReactNode } from "react";
 import { ToastProvider } from "@/hooks/useToast";
+import { QueryProvider } from "./providers/QueryProvider";
 
 interface ClientProvidersProps {
   children: ReactNode;
@@ -15,9 +16,11 @@ export function ClientProviders({ children }: ClientProvidersProps) {
       defaultTheme="dark"
       enableSystem
     >
-      <ToastProvider>
-        {children}
-      </ToastProvider>
+      <QueryProvider>
+        <ToastProvider>
+          {children}
+        </ToastProvider>
+      </QueryProvider>
     </ThemeProvider>
   );
 }

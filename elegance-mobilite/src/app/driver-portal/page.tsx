@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
+import { ProfileCompletionModal } from "@/components/drivers/ProfileCompletionModal"
+import { supabase } from '@/lib/database/client'
 import { ProfileAlert } from "@/components/drivers/ProfileAlert"
+import { useDriverProfileCompleteness } from "@/hooks/useDriverProfileCompleteness"
 import { StatsIsland } from "@/components/drivers/StatsIsland"
 import { BottomSheet } from "@/components/drivers/BottomSheet"
 import { SwipeableTabs } from "@/components/drivers/SwipeableTabs"
@@ -13,16 +16,28 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Car, BarChart3 } from "lucide-react"
 import { useToast } from "@/hooks/useToast"
-import { useDriver } from "@/contexts/DriverContext"
+import { useDriverUIStore } from "@/stores/driverUIStore"
+import { useDriverProfile, useAvailableRides, useScheduledRides, useDriverStats } from "@/hooks/queries"
+import { useDriverRealtime } from "@/hooks/queries/useRealtime"
 import { cn } from "@/lib/utils"
 import type { Database } from "@/lib/types/database.types"
 
 type RideRow = Database["public"]["Tables"]["rides"]["Row"]
 
-// Mock data - à remplacer par de vraies données Supabase
-const mockProfile = {
-  isComplete: false,
-  missingFields: ['Permis de conduire', 'Assurance véhicule', 'Photo de profil']
+// Hook pour gérer la hauteur de l'écran de manière sécurisée (SSR-safe)
+function useViewportHeight() {
+  const [height, setHeight] = useState(800) // Valeur par défaut pour SSR
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const updateHeight = () => setHeight(window.innerHeight)
+      updateHeight() // Set initial height
+      window.addEventListener('resize', updateHeight)
+      return () => window.removeEventListener('resize', updateHeight)
+    }
+  }, [])
+
+  return height
 }
 
 // Mock statistiques pour l'île
@@ -126,48 +141,137 @@ const mockTodayRides: RideRow[] = [
 ]
 
 export default function DriverDashboard() {
-  const [availableRides, setAvailableRides] = useState(mockAvailableRides)
-  const [todayRides, setTodayRides] = useState(mockTodayRides)
+  // Hook pour la hauteur de l'écran (SSR-safe)
+  const viewportHeight = useViewportHeight()
+  
+  // État d'authentification
+  const [user, setUser] = useState<any>(null)
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true)
+  const [showProfileModal, setShowProfileModal] = useState(false)
+  
+  // Hook pour vérifier la complétude du profil
+  const { data: profileCompleteness, isLoading: isLoadingProfile } = useDriverProfileCompleteness(user?.id)
+  const isProfileComplete = profileCompleteness?.is_complete || false
+  
+  // Récupérer l'utilisateur authentifié
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user }, error } = await supabase.auth.getUser()
+      if (user) {
+        console.log('✅ Utilisateur authentifié dans dashboard:', user)
+        setUser(user)
+      }
+      setIsLoadingAuth(false)
+    }
+    getUser()
+  }, [])
+  
+  // Temporary driver ID - in real app, get from auth
+  const driverId = user?.id || "temp-driver-id"
+  
+  // TanStack Query hooks for server state
+  const { data: driverProfile } = useDriverProfile(driverId)
+  const { data: availableRides = mockAvailableRides } = useAvailableRides(driverId)
+  const { data: todayRides = mockTodayRides } = useScheduledRides(driverId)
+  const { data: todayStats = mockStatsData.todayStats } = useDriverStats(driverId, 'today')
+  
+  // Zustand store for UI state
+  const { isOnline, setIsOnline } = useDriverUIStore()
+  
+  // Setup realtime synchronization
+  useDriverRealtime(driverId)
+  
+  // Legacy state (to be removed once fully migrated)
+  const [availableRidesLocal, setAvailableRidesLocal] = useState(mockAvailableRides)
+  const [todayRidesLocal, setTodayRidesLocal] = useState(mockTodayRides)
   const { toast } = useToast()
-  const { isOnline, todayStats, setTodayStats, toggleOnlineStatus } = useDriver()
+  
+  // Use real data when available, fallback to mocks
+  const currentAvailableRides = availableRides?.length ? availableRides : availableRidesLocal
+  const currentTodayRides = todayRides?.length ? todayRides : todayRidesLocal
+  const currentStats = todayStats || mockStatsData.todayStats
+  
+  const toggleOnlineStatus = () => {
+    // Vérifier si le profil est complet avant de passer en ligne
+    if (!isProfileComplete && !isOnline) {
+      toast({
+        variant: "destructive", 
+        title: "Profil incomplet",
+        description: "Vous devez compléter votre profil à 100% pour passer en ligne"
+      })
+      setShowProfileModal(true)
+      return
+    }
+    
+    setIsOnline(!isOnline)
+    
+    // Nouvel état après changement
+    const newOnlineState = !isOnline
+    
+    toast({
+      variant: newOnlineState ? "success" : "destructive",
+      title: newOnlineState ? "En ligne" : "Hors ligne",
+      description: newOnlineState ? "Vous êtes maintenant disponible pour recevoir des courses" : "Vous ne recevrez plus de nouvelles courses"
+    })
+  }
 
   const handleCompleteProfile = () => {
     console.log("Redirection vers profil")
   }
 
   const handleAcceptRide = (rideId: string) => {
+    const ride = currentAvailableRides.find(r => r.id === rideId)
+    const isScheduledRide = ride?.status === 'scheduled'
+    
+    // Règles de cohérence pour accepter une course
+    if (!isProfileComplete) {
+      toast({
+        variant: "destructive",
+        title: "Profil incomplet", 
+        description: "Vous devez compléter votre profil pour accepter des courses"
+      })
+      setShowProfileModal(true)
+      return
+    }
+    
+    if (!isScheduledRide && !isOnline) {
+      toast({
+        variant: "destructive",
+        title: "Statut hors ligne",
+        description: "Vous devez être en ligne pour accepter des courses immédiates"
+      })
+      return
+    }
+    
     toast({
       variant: "success",
       title: "Course acceptée",
       description: "La course a été ajoutée à votre planning"
     })
     
-    const acceptedRide = availableRides.find(r => r.id === rideId)
+    const acceptedRide = currentAvailableRides.find(r => r.id === rideId)
     if (acceptedRide) {
-      setAvailableRides(prev => prev.filter(r => r.id !== rideId))
-      setTodayRides(prev => [...prev, { ...acceptedRide, status: "scheduled", driver_id: "current-driver" }])
+      setAvailableRidesLocal(prev => prev.filter(r => r.id !== rideId))
+      setTodayRidesLocal(prev => [...prev, { ...acceptedRide, status: "scheduled", driver_id: "current-driver" }])
       
-      // Mettre à jour les statistiques
-      setTodayStats({
-        ...todayStats,
-        rides: todayStats.rides + 1,
-        earnings: todayStats.earnings + (acceptedRide.estimated_price || 0)
-      })
+      // TODO: Replace with TanStack Query mutation
+      // useAcceptRide.mutate({ rideId, driverId })
     }
   }
 
   const handleDeclineRide = (rideId: string) => {
-    setAvailableRides(prev => prev.filter(r => r.id !== rideId))
+    setAvailableRidesLocal(prev => prev.filter(r => r.id !== rideId))
     toast({
       variant: "destructive",
       title: "Course refusée",
       description: "Une nouvelle course sera proposée sous peu"
     })
+    // TODO: Replace with TanStack Query mutation
+    // useDeclineRide.mutate({ rideId, driverId })
   }
 
   const handleStartRide = (rideId: string) => {
-    setTodayRides(prev => 
-      prev.map(ride => 
+    setTodayRidesLocal(prev =>      prev.map(ride =>
         ride.id === rideId 
           ? { ...ride, status: "in-progress" }
           : ride
@@ -178,10 +282,12 @@ export default function DriverDashboard() {
       title: "Course démarrée",
       description: "Bon voyage !"
     })
+    // TODO: Replace with TanStack Query mutation
+    // useStartRide.mutate({ rideId, driverId })
   }
 
   const handleCompleteRide = (rideId: string) => {
-    setTodayRides(prev => 
+    setTodayRidesLocal(prev => 
       prev.map(ride => 
         ride.id === rideId 
           ? { ...ride, status: "completed" }
@@ -193,6 +299,133 @@ export default function DriverDashboard() {
       title: "Course terminée",
       description: "Merci pour votre service !"
     })
+    // TODO: Replace with TanStack Query mutation
+    // useCompleteRide.mutate({ rideId, driverId })
+  }
+
+  // Composant wrapper pour conditionner l'affichage des courses
+  const AvailableRidesWithProfileCheck = () => {
+    if (!user) return <div className="text-center py-8 text-white">Connexion...</div>
+    
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-white">Courses disponibles</h3>
+          {currentAvailableRides.length > 0 && (
+            <Badge className="bg-blue-600">
+              {currentAvailableRides.length}
+            </Badge>
+          )}
+        </div>
+        
+        {/* Vérification profil avec composant de blocage */}
+        <ProfileCheckWrapper userId={user.id}>
+          {/* Notification de statut si profil complet mais hors ligne */}
+          {isProfileComplete && !isOnline && currentAvailableRides.length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 text-center">
+              <div className="flex justify-center mb-2">
+                <svg className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h4 className="text-sm font-medium text-blue-800 mb-1">Vous êtes hors ligne</h4>
+              <p className="text-xs text-blue-600">
+                Passez en ligne pour accepter des courses immédiates ou consultez les courses planifiées
+              </p>
+            </div>
+          )}
+          
+          {currentAvailableRides.length === 0 ? (
+            <div className="text-center py-8">
+              <Car className="h-12 w-12 text-neutral-500 mx-auto mb-4" />
+              <p className="text-neutral-400">Aucune course disponible</p>
+              <p className="text-sm text-neutral-500 mt-1">
+                {isProfileComplete 
+                  ? (isOnline ? "Nouvelles courses bientôt..." : "Passez en ligne pour voir plus de courses")
+                  : "Complétez votre profil pour voir les courses"
+                }
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {currentAvailableRides.map((ride) => (
+                <EnhancedAvailableRideCard
+                  key={ride.id}
+                  ride={ride}
+                  onAccept={handleAcceptRide}
+                  onDecline={handleDeclineRide}
+                  isProfileComplete={isProfileComplete}
+                  isOnline={isOnline}
+                />
+              ))}
+            </div>
+          )}
+        </ProfileCheckWrapper>
+      </div>
+    )
+  }
+  
+  // Composant de vérification profil
+  const ProfileCheckWrapper = ({ userId, children }: { userId: string, children: React.ReactNode }) => {
+    const { data: completeness, isLoading } = useDriverProfileCompleteness(userId)
+    
+    if (isLoading) {
+      return <div className="text-center py-4 text-white">Vérification du profil...</div>
+    }
+    
+    if (!completeness?.is_complete) {
+      return (
+        <div className="p-4">
+          <ProfileAlert 
+            userId={userId}
+            onCompleteProfile={() => setShowProfileModal(true)}
+          />
+        </div>
+      )
+    }
+    
+    return <>{children}</>
+  }
+  
+  // Composant enhanced pour les courses avec logique de cohérence
+  const EnhancedAvailableRideCard = ({ 
+    ride, 
+    onAccept, 
+    onDecline, 
+    isProfileComplete, 
+    isOnline 
+  }: { 
+    ride: RideRow
+    onAccept: (id: string) => void
+    onDecline: (id: string) => void
+    isProfileComplete: boolean
+    isOnline: boolean
+  }) => {
+    const isScheduledRide = ride.status === 'scheduled'
+    const canAccept = isProfileComplete && (isOnline || isScheduledRide)
+    
+    return (
+      <div className="relative">
+        <AvailableRideCard
+          ride={ride}
+          onAccept={canAccept ? onAccept : () => {}}
+          onDecline={onDecline}
+        />
+        
+        {/* Overlay de blocage si conditions non remplies */}
+        {!canAccept && (
+          <div className="absolute inset-0 bg-black/20 rounded-lg flex items-center justify-center">
+            <div className="bg-white/90 backdrop-blur-sm px-3 py-2 rounded-md text-xs text-center">
+              {!isProfileComplete ? (
+                <span className="text-orange-700 font-medium">Profil incomplet</span>
+              ) : !isOnline && !isScheduledRide ? (
+                <span className="text-blue-700 font-medium">Passez en ligne</span>
+              ) : null}
+            </div>
+          </div>
+        )}
+      </div>
+    )
   }
 
   // Contenu des onglets modernisés
@@ -203,7 +436,7 @@ export default function DriverDashboard() {
       content: (
         <div className="space-y-4">
           <StatsIsland
-            todayStats={todayStats}
+            todayStats={currentStats}
             weekStats={mockStatsData.weekStats}
             monthStats={mockStatsData.monthStats}
           />
@@ -213,39 +446,7 @@ export default function DriverDashboard() {
     {
       id: "available",
       label: "Disponibles",
-      content: (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-white">Courses disponibles</h3>
-            {availableRides.length > 0 && (
-              <Badge className="bg-blue-600">
-                {availableRides.length}
-              </Badge>
-            )}
-          </div>
-          
-          {availableRides.length === 0 ? (
-            <div className="text-center py-8">
-              <Car className="h-12 w-12 text-neutral-500 mx-auto mb-4" />
-              <p className="text-neutral-400">Aucune course disponible</p>
-              <p className="text-sm text-neutral-500 mt-1">
-                {isOnline ? "Nouvelles courses bientôt..." : "Passez en ligne pour voir les courses"}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3 max-h-64 overflow-y-auto">
-              {availableRides.map((ride) => (
-                <AvailableRideCard
-                  key={ride.id}
-                  ride={ride}
-                  onAccept={handleAcceptRide}
-                  onDecline={handleDeclineRide}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )
+      content: <AvailableRidesWithProfileCheck />
     },
     {
       id: "scheduled",
@@ -254,14 +455,14 @@ export default function DriverDashboard() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-white">Mes prochaines courses</h3>
-            {todayRides.length > 0 && (
+            {currentTodayRides.length > 0 && (
               <Badge className="bg-green-600">
-                {todayRides.length}
+                {currentTodayRides.length}
               </Badge>
             )}
           </div>
           
-          {todayRides.length === 0 ? (
+          {currentTodayRides.length === 0 ? (
             <div className="text-center py-8">
               <Car className="h-12 w-12 text-neutral-500 mx-auto mb-4" />
               <p className="text-neutral-400">Aucune course programmée</p>
@@ -271,14 +472,24 @@ export default function DriverDashboard() {
             </div>
           ) : (
             <div className="space-y-3">
-              {todayRides.map((ride) => (
-                <TodayRideCard
-                  key={ride.id}
-                  ride={ride}
-                  onStart={handleStartRide}
-                  onComplete={handleCompleteRide}
-                  onNavigate={(id) => console.log(`Navigation vers ${id}`)}
-                />
+              {currentTodayRides.map((ride) => (
+                <div key={ride.id} className="relative">
+                  <TodayRideCard
+                    ride={ride}
+                    onStart={isProfileComplete ? handleStartRide : () => {}}
+                    onComplete={isProfileComplete ? handleCompleteRide : () => {}}
+                    onNavigate={(id) => console.log(`Navigation vers ${id}`)}
+                  />
+                  
+                  {/* Overlay si profil incomplet */}
+                  {!isProfileComplete && (
+                    <div className="absolute inset-0 bg-black/20 rounded-lg flex items-center justify-center">
+                      <div className="bg-orange-500/90 backdrop-blur-sm px-3 py-2 rounded-md text-xs text-white text-center">
+                        <span className="font-medium">Complétez votre profil pour gérer cette course</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -299,36 +510,52 @@ export default function DriverDashboard() {
       {/* Bottom Sheet amélioré avec gestion gestuelle */}
       <BottomSheet
         minHeight={120}
-        maxHeight={window.innerHeight * 0.85}
+        maxHeight={viewportHeight * 0.85}
         defaultHeight={200}
-        showProfileAlert={!mockProfile.isComplete}
-        profileAlert={
-          <ProfileAlert
-            isProfileComplete={mockProfile.isComplete}
-            missingFields={mockProfile.missingFields}
-            onCompleteProfile={handleCompleteProfile}
-          />
-        }
+        showProfileAlert={false}
+        profileAlert={null}
       >
+        {/* Notification profil global - UNE SEULE SOURCE DE VÉRITÉ */}
+        {!isLoadingAuth && user && (
+          <>
+            <div className="p-4">
+              <ProfileAlert 
+                userId={user.id}
+                onCompleteProfile={() => setShowProfileModal(true)}
+              />
+            </div>
+            
+            <ProfileCompletionModal
+              userId={user.id}
+              isOpen={showProfileModal}
+              onClose={() => setShowProfileModal(false)}
+            />
+          </>
+        )}
+        
         {/* Bouton en ligne/hors ligne plus discret, placé au-dessus des tabs */}
         <div className="flex items-center justify-center mb-2 px-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={toggleOnlineStatus}
-            className={cn(
-              "transition-all duration-300 border-2",
-              isOnline 
-                ? "bg-green-500/20 border-green-500/50 text-green-100 hover:bg-green-500/30" 
-                : "bg-red-500/20 border-red-500/50 text-red-100 hover:bg-red-500/30"
-            )}
-          >
-            <div className={cn(
-              "h-2 w-2 rounded-full mr-2 animate-pulse",
-              isOnline ? "bg-green-400" : "bg-red-400"
-            )} />
-            {isOnline ? "En ligne" : "Hors ligne"}
-          </Button>
+          <div className="relative">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleOnlineStatus}
+              disabled={!isProfileComplete && !isOnline}
+              className={cn(
+                "transition-all duration-300 border-2",
+                !isProfileComplete && !isOnline && "opacity-50 cursor-not-allowed",
+                isOnline 
+                  ? "bg-green-500/20 border-green-500/50 text-green-100 hover:bg-green-500/30" 
+                  : "bg-red-500/20 border-red-500/50 text-red-100 hover:bg-red-500/30"
+              )}
+            >
+              <div className={cn(
+                "h-2 w-2 rounded-full mr-2 animate-pulse",
+                isOnline ? "bg-green-400" : "bg-red-400"
+              )} />
+              {isOnline ? "En ligne" : "Hors ligne"}
+            </Button>
+          </div>
         </div>
         <SwipeableTabs
           tabs={tabsContent}

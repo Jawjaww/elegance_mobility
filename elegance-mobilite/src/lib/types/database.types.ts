@@ -160,83 +160,83 @@ export type Database = {
         Row: {
           availability_hours: Json | null
           avatar_url: string | null
-          company_name: string
-          company_phone: string
+          company_name: string | null
+          company_phone: string | null
           created_at: string
           current_vehicle_id: string | null
-          driving_license_expiry_date: string
-          driving_license_number: string
-          employee_name: string
-          employee_phone: string
-          first_name: string
+          driving_license_expiry_date: string | null
+          driving_license_number: string | null
+          employee_name: string | null
+          employee_phone: string | null
+          first_name: string | null
           id: string
           insurance_expiry_date: string | null
           insurance_number: string | null
           languages_spoken: string[] | null
-          last_name: string
-          phone: string
+          last_name: string | null
+          phone: string | null
           preferred_zones: string[] | null
           rating: number | null
           status: Database["public"]["Enums"]["driver_status"]
           total_rides: number | null
           updated_at: string
           user_id: string
-          vtc_card_expiry_date: string
-          vtc_card_number: string
+          vtc_card_expiry_date: string | null
+          vtc_card_number: string | null
         }
         Insert: {
           availability_hours?: Json | null
           avatar_url?: string | null
-          company_name?: string
-          company_phone?: string
+          company_name?: string | null
+          company_phone?: string | null
           created_at?: string
           current_vehicle_id?: string | null
-          driving_license_expiry_date: string
-          driving_license_number: string
-          employee_name?: string
-          employee_phone?: string
-          first_name: string
+          driving_license_expiry_date?: string | null
+          driving_license_number?: string | null
+          employee_name?: string | null
+          employee_phone?: string | null
+          first_name?: string | null
           id?: string
           insurance_expiry_date?: string | null
           insurance_number?: string | null
           languages_spoken?: string[] | null
-          last_name?: string
-          phone: string
+          last_name?: string | null
+          phone?: string | null
           preferred_zones?: string[] | null
           rating?: number | null
           status?: Database["public"]["Enums"]["driver_status"]
           total_rides?: number | null
           updated_at?: string
           user_id: string
-          vtc_card_expiry_date: string
-          vtc_card_number: string
+          vtc_card_expiry_date?: string | null
+          vtc_card_number?: string | null
         }
         Update: {
           availability_hours?: Json | null
           avatar_url?: string | null
-          company_name?: string
-          company_phone?: string
+          company_name?: string | null
+          company_phone?: string | null
           created_at?: string
           current_vehicle_id?: string | null
-          driving_license_expiry_date?: string
-          driving_license_number?: string
-          employee_name?: string
-          employee_phone?: string
-          first_name?: string
+          driving_license_expiry_date?: string | null
+          driving_license_number?: string | null
+          employee_name?: string | null
+          employee_phone?: string | null
+          first_name?: string | null
           id?: string
           insurance_expiry_date?: string | null
           insurance_number?: string | null
           languages_spoken?: string[] | null
-          last_name?: string
-          phone?: string
+          last_name?: string | null
+          phone?: string | null
           preferred_zones?: string[] | null
           rating?: number | null
           status?: Database["public"]["Enums"]["driver_status"]
           total_rides?: number | null
           updated_at?: string
           user_id?: string
-          vtc_card_expiry_date?: string
-          vtc_card_number?: string
+          vtc_card_expiry_date?: string | null
+          vtc_card_number?: string | null
         }
         Relationships: [
           {
@@ -813,6 +813,10 @@ export type Database = {
       create_user_profile: {
         Args: { user_id: string; user_role: string }
         Returns: boolean
+      }
+      delete_user_and_associated_data: {
+        Args: { p_user_id: string }
+        Returns: undefined
       }
       delete_user_by_id: {
         Args: { p_user_id: string }

@@ -1,46 +1,60 @@
 'use client'
 
-import { AlertTriangle, CheckCircle2, User } from "lucide-react"
+import { AlertTriangle, User } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { useDriverProfileCompleteness } from "@/hooks/useDriverProfileCompleteness"
 
 interface ProfileAlertProps {
-  isProfileComplete: boolean
-  missingFields?: string[]
+  userId: string
   onCompleteProfile: () => void
 }
 
 export function ProfileAlert({ 
-  isProfileComplete, 
-  missingFields = [], 
+  userId,
   onCompleteProfile 
 }: ProfileAlertProps) {
-  if (isProfileComplete) {
-    return (
-      <Card className="border-green-800 bg-green-900/20">
-        <CardContent className="flex items-center gap-3 p-4">
-          <CheckCircle2 className="h-5 w-5 text-green-400" />
-          <div className="flex-1">
-            <p className="font-medium text-green-200">Profil complet</p>
-            <p className="text-sm text-green-300">Vous pouvez accepter des courses</p>
-          </div>
-        </CardContent>
-      </Card>
-    )
+  const { data: completeness, isLoading } = useDriverProfileCompleteness(userId)
+  
+  // Ne rien afficher pendant le chargement pour éviter l'affichage prématuré
+  if (isLoading || !completeness) {
+    return null
   }
+  
+  if (completeness.is_complete) {
+    return null // Ne rien afficher si le profil est complet
+  }
+
+  const missingFieldsLabels: Record<string, string> = {
+    first_name: 'Prénom',
+    phone: 'Téléphone', 
+    company_name: 'Entreprise',
+    company_phone: 'Tél. entreprise',
+    driving_license_number: 'Permis',
+    driving_license_expiry_date: 'Expiration permis',
+    vtc_card_number: 'Carte VTC',
+    vtc_card_expiry_date: 'Expiration VTC'
+  }
+
+  const missingLabels = completeness.missing_fields
+    .map(field => missingFieldsLabels[field] || field)
+    .slice(0, 3) // Limiter à 3 pour l'affichage
+    .join(', ')
 
   return (
     <Card className="border-amber-800 bg-amber-900/20">
       <CardContent className="flex items-center gap-3 p-4">
         <AlertTriangle className="h-5 w-5 text-amber-400" />
         <div className="flex-1">
-          <p className="font-medium text-amber-200">Profil incomplet</p>
+          <p className="font-medium text-amber-200">
+            Profil incomplet ({completeness.completion_percentage}%)
+          </p>
           <p className="text-sm text-amber-300">
             Complétez votre profil pour accepter des courses
           </p>
-          {missingFields.length > 0 && (
+          {completeness.missing_fields.length > 0 && (
             <p className="text-xs text-amber-400 mt-1">
-              Manque: {missingFields.join(', ')}
+              Manque: {missingLabels}{completeness.missing_fields.length > 3 ? '...' : ''}
             </p>
           )}
         </div>

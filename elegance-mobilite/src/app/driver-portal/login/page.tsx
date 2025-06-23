@@ -12,18 +12,31 @@ export default function DriverLoginPage() {
   const [isLoading, setIsLoading] = useState(true)
   
   useEffect(() => {
-    // Vérifier si l'utilisateur est déjà connecté
+    // Vérifier si l'utilisateur est déjà connecté ET qu'il existe toujours
     const checkSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
-          // Redirection silencieuse vers la page de déconnexion
+          // Vérifier si l'utilisateur existe toujours dans auth.users via getUser()
+          const { data: { user }, error } = await supabase.auth.getUser()
+          
+          if (error || !user) {
+            console.log('🔄 Session fantôme détectée - utilisateur supprimé, nettoyage...')
+            // L'utilisateur a été supprimé, nettoyer la session
+            await supabase.auth.signOut()
+            setIsLoading(false)
+            return
+          }
+          
+          // L'utilisateur existe vraiment, rediriger
           router.replace('/auth/already-connected?redirect=login')
           return
         }
         setIsLoading(false)
       } catch (error) {
         console.error('Erreur vérification session:', error)
+        // En cas d'erreur, nettoyer la session par sécurité
+        await supabase.auth.signOut()
         setIsLoading(false)
       }
     }

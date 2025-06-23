@@ -3,7 +3,7 @@
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { useUnifiedRidesStore } from "@/lib/stores/unifiedRidesStore"
-import { useDriversStore } from "@/lib/stores/driversStore"
+import { useDriversAdmin } from "@/hooks/queries"
 import { Calendar } from "@/components/ui/calendar"
 import { StatusBadge } from "@/components/reservation/StatusBadge"
 import { ALL_UI_STATUSES, type UiStatus } from "@/lib/services/statusService"
@@ -38,7 +38,7 @@ export function RidesFilters() {
     setViewMode,
     rides
   } = useUnifiedRidesStore()
-  const { drivers } = useDriversStore()
+  const { data: drivers = [] } = useDriversAdmin()
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   

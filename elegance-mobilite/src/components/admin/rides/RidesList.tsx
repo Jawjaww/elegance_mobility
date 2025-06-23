@@ -3,7 +3,7 @@
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useUnifiedRidesStore } from "@/lib/stores/unifiedRidesStore";
-import { useDriversStore } from "@/lib/stores/driversStore";
+import { useDriversAdmin } from "@/hooks/queries";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +22,7 @@ type Ride = Database["public"]["Tables"]["rides"]["Row"];
 
 export function RidesList() {
   const { filteredRides, loading } = useUnifiedRidesStore();
-  const { drivers } = useDriversStore();
+  const { data: drivers = [] } = useDriversAdmin();
   const router = useRouter();
 
   if (loading) {

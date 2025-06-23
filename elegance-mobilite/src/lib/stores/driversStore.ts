@@ -5,8 +5,40 @@ import { supabase } from '@/lib/database/client'
 import type { Database, User } from '@/lib/types/common.types'
 
 // Types de base
-type RideRow = Database['public']['rides']['Row']
-type VehicleRow = Database['public']['vehicles']['Row']
+type RideRow = Database['public']['Tables']['rides']['Row']
+type VehicleRow = Database['public']['Tables']['vehicles']['Row']
+
+// Nouveau: Types pour le portail chauffeur individuel
+interface DriverStats {
+  rides: number
+  earnings: number
+  hours: number
+  rating: number
+}
+
+interface DriverPortalState {
+  // Status du chauffeur connecté
+  isOnline: boolean
+  location: { lat: number; lon: number } | null
+  
+  // Courses pour le chauffeur connecté
+  availableRides: RideRow[]
+  scheduledRides: RideRow[]
+  completedRides: RideRow[]
+  
+  // UI State
+  selectedRidePreview: string | null // ID de la course à prévisualiser sur la carte
+  bottomSheetHeight: number
+  
+  // Stats pour le chauffeur connecté
+  todayStats: DriverStats
+  weekStats: DriverStats
+  monthStats: DriverStats
+  
+  // Loading states
+  ridesLoading: boolean
+  statsLoading: boolean
+}
 
 interface Driver {
   id: string

@@ -1,19 +1,20 @@
 "use client"
 
 import { useEffect } from "react"
-import { useDriversStore } from "@/lib/stores/driversStore"
+import { useDriversAdmin } from "@/hooks/queries"
 import { RidesList } from "@/components/admin/rides/RidesList"
 import { RidesFilters } from "@/components/admin/rides/RidesFilters"
 import { useUnifiedRidesStore } from "@/lib/stores/unifiedRidesStore"
 
 export default function RidesPage() {
-  const { fetchDrivers } = useDriversStore()
+  const { data: drivers, isLoading } = useDriversAdmin()
   const { fetchRides } = useUnifiedRidesStore()
 
   useEffect(() => {
-    fetchDrivers()
+    // TanStack Query handles driver fetching automatically
+    // Only need to fetch rides from the legacy store
     fetchRides()
-  }, [fetchDrivers, fetchRides])
+  }, [fetchRides])
 
   return (
     <div className="py-1 space-y-2">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { LocateFixed, Navigation, Car, Clock, Euro } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -24,7 +24,7 @@ interface UserLocation {
   accuracy?: number
 }
 
-export function DriverMap({ 
+function DriverMapComponent({ 
   availableRides, 
   onAcceptRide, 
   onDeclineRide,
@@ -169,15 +169,31 @@ export function DriverMap({
   return (
     <>
       {/* Carte principale plein écran - Background complet */}
-      <DynamicMapLibreMap
-        origin={mapLocation}
-        destination={selectedRide ? {
-          lat: selectedRide.pickup_lat || 0,
-          lon: selectedRide.pickup_lon || 0,
-          display_name: selectedRide.pickup_address
-        } : null}
-        enableRouting={!!selectedRide}
-      />
+      {/* Uniquement render si on a une position valide */}
+      {mapLocation && (
+        <DynamicMapLibreMap
+          origin={mapLocation}
+          destination={selectedRide ? {
+            lat: selectedRide.pickup_lat || 0,
+            lon: selectedRide.pickup_lon || 0,
+            display_name: selectedRide.pickup_address
+          } : null}
+          enableRouting={!!selectedRide}
+        />
+      )}
+
+      {/* Fond de carte par défaut si pas de géolocalisation */}
+      {!mapLocation && (
+        <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 to-black flex items-center justify-center">
+          <div className="text-center text-neutral-400">
+            <Navigation className="h-12 w-12 mx-auto mb-4" />
+            <p>Chargement de la carte...</p>
+            {locationError && (
+              <p className="text-red-400 text-sm mt-2">{locationError}</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Contrôles de la carte */}
       <div className="absolute top-4 right-4 z-20 space-y-3">
@@ -430,3 +446,7 @@ export function DriverMap({
     </>
   )
 }
+
+// Mémoïser le composant pour éviter les re-renders inutiles qui causent le reload de la carte
+export const DriverMap = React.memo(DriverMapComponent)
+export default DriverMap
