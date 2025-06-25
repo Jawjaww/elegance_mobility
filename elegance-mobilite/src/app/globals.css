@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import MapLibre GL CSS */
+@import 'maplibre-gl/dist/maplibre-gl.css';
+
 @layer utilities {
   .animate-slideDown {
     animation: slideDown 200ms cubic-bezier(0.87, 0, 0.13, 1);
@@ -237,6 +240,33 @@
   .content-container {
     @apply container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl;
   }
+
+/* Style pour les marqueurs personnalisés */
+.custom-ride-icon,
+.custom-driver-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Animation pour l'icône du chauffeur */
+@keyframes pulse-driver {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.custom-driver-icon div {
+  animation: pulse-driver 2s infinite;
+}
 }
 
 @layer utilities {

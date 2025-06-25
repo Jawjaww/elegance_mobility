@@ -27,7 +27,7 @@ export function adaptVehicleType(type: string): VehicleTypeEnum {
 export type { VehicleTypeEnum as VehicleType, VehicleOptionsStrict as VehicleOptions };
 
 /**
- * Types pour MapLibre GL (remplace les anciens types Leaflet)
+ * Types pour MapLibre GL
  */
 
 // Interface pour les marques sur la carte

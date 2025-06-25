@@ -1,0 +1,88 @@
+/* Styles personnalisés pour MapLibre GL */
+
+/* Style des popups et tooltips */
+.maplibregl-popup {
+  z-index: 100;
+}
+
+.maplibregl-popup-content {
+  padding: 12px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  font-family: inherit;
+}
+
+/* Style des contrôles de navigation */
+.maplibregl-ctrl-bottom-right {
+  bottom: 160px !important; /* Placement plus haut pour avoir une marge entre les boutons et le bottom sheet */
+  right: 12px;
+}
+
+.maplibregl-ctrl-group {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(4px);
+  border-radius: 8px !important;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1) !important;
+  margin: 0 0 8px 0 !important;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.maplibregl-ctrl button {
+  width: 36px !important;
+  height: 36px !important;
+  padding: 6px !important;
+  opacity: 0.75;
+  transition: opacity 0.2s ease;
+}
+
+/* Style spécifique pour le bouton de géolocalisation */
+.maplibregl-ctrl-geolocate {
+  color: #4766a9 !important;
+}
+
+/* Animation subtile au survol des contrôles */
+.maplibregl-ctrl button:hover {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  opacity: 1;
+}
+
+/* Style des icônes dans les boutons */
+.maplibregl-ctrl button .maplibregl-ctrl-icon {
+  opacity: 0.75;
+}
+
+/* Pour cacher les contrôles en doublon */
+.maplibregl-ctrl-hidden {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Marqueurs et animations */
+.ride-marker {
+  cursor: pointer;
+}
+
+.ride-marker:hover {
+  z-index: 10;
+}
+
+/* Style des lignes de trajet */
+.route-line {
+  stroke-dasharray: 10, 5;
+  animation: dash 30s linear infinite;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -1000;
+  }
+}
+
+/* Retirer le texte "Powered by MapLibre" si besoin */
+.maplibregl-ctrl-attrib-inner {
+  display: none;
+}

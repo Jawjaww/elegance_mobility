@@ -24,13 +24,18 @@ interface UserLocation {
   accuracy?: number
 }
 
-function DriverMapComponent({ 
+export function DriverMap({ 
   availableRides, 
   onAcceptRide, 
   onDeclineRide,
   onRecenterMap,
-  className 
+  className = ''
 }: DriverMapProps) {
+  console.log('🚗 DriverMap render:', { 
+    availableRidesCount: availableRides.length,
+    timestamp: new Date().toISOString() 
+  })
+  
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null)
   const [locationError, setLocationError] = useState<string | null>(null)
   const [isLocating, setIsLocating] = useState(false)
@@ -169,31 +174,15 @@ function DriverMapComponent({
   return (
     <>
       {/* Carte principale plein écran - Background complet */}
-      {/* Uniquement render si on a une position valide */}
-      {mapLocation && (
-        <DynamicMapLibreMap
-          origin={mapLocation}
-          destination={selectedRide ? {
-            lat: selectedRide.pickup_lat || 0,
-            lon: selectedRide.pickup_lon || 0,
-            display_name: selectedRide.pickup_address
-          } : null}
-          enableRouting={!!selectedRide}
-        />
-      )}
-
-      {/* Fond de carte par défaut si pas de géolocalisation */}
-      {!mapLocation && (
-        <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 to-black flex items-center justify-center">
-          <div className="text-center text-neutral-400">
-            <Navigation className="h-12 w-12 mx-auto mb-4" />
-            <p>Chargement de la carte...</p>
-            {locationError && (
-              <p className="text-red-400 text-sm mt-2">{locationError}</p>
-            )}
-          </div>
-        </div>
-      )}
+      <DynamicMapLibreMap
+        origin={mapLocation}
+        destination={selectedRide ? {
+          lat: selectedRide.pickup_lat || 0,
+          lon: selectedRide.pickup_lon || 0,
+          display_name: selectedRide.pickup_address
+        } : null}
+        enableRouting={!!selectedRide}
+      />
 
       {/* Contrôles de la carte */}
       <div className="absolute top-4 right-4 z-20 space-y-3">
@@ -447,6 +436,32 @@ function DriverMapComponent({
   )
 }
 
-// Mémoïser le composant pour éviter les re-renders inutiles qui causent le reload de la carte
-export const DriverMap = React.memo(DriverMapComponent)
-export default DriverMap
+// Mémoriser le composant avec une comparaison intelligente
+const DriverMapMemo = React.memo(DriverMap, (prevProps, nextProps) => {
+  // Comparaison en profondeur pour les rides
+  const prevRideIds = prevProps.availableRides.map(r => r.id).sort()
+  const nextRideIds = nextProps.availableRides.map(r => r.id).sort()
+  
+  const ridesEqual = prevRideIds.length === nextRideIds.length && 
+    prevRideIds.every((id, index) => id === nextRideIds[index])
+    
+  const propsEqual = ridesEqual && 
+    prevProps.onAcceptRide === nextProps.onAcceptRide &&
+    prevProps.onDeclineRide === nextProps.onDeclineRide &&
+    prevProps.onRecenterMap === nextProps.onRecenterMap &&
+    prevProps.className === nextProps.className
+    
+  if (!propsEqual) {
+    console.log('🚗 DriverMap props changed:', {
+      ridesChanged: !ridesEqual,
+      prevCount: prevProps.availableRides.length,
+      nextCount: nextProps.availableRides.length,
+      prevIds: prevRideIds,
+      nextIds: nextRideIds
+    })
+  }
+  
+  return propsEqual
+})
+
+export default DriverMapMemo

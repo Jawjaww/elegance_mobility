@@ -12,7 +12,7 @@ import { LoadingSpinner } from "../ui/loading-spinner";
 import { Suspense, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
-import MapLibreMap from "@/components/map/MapLibreMap";
+import ClientDynamicMap from "@/components/map/ClientDynamicMap";
 import { pricingService } from "@/lib/services/pricingService";
 import { supabase } from "@/lib/database/client";
 
@@ -308,13 +308,11 @@ export function EditConfirmationDetails({ reservationId }: EditConfirmationDetai
         </Card>
         <Suspense fallback={<Card className="p-4 md:p-6"><LoadingSpinner /></Card>}>
           <Card className="p-0 overflow-hidden bg-neutral-900 border-neutral-800 rounded-xl">
-            <div className="h-48 md:h-64 lg:h-80">
-              <MapLibreMap
-                departure={departure}
-                destination={destination}
-                onRouteCalculated={() => {}}
-              />
-            </div>
+            <ClientDynamicMap
+              origin={departure ? { lat: departure.lat, lon: departure.lon } : null}
+              destination={destination ? { lat: destination.lat, lon: destination.lon } : null}
+              className="client-map-confirmation"
+            />
           </Card>
         </Suspense>
         <div className="flex flex-col sm:flex-row gap-3 md:gap-4 mt-2 md:mt-4">

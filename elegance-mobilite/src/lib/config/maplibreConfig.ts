@@ -1,4 +1,4 @@
-// Configuration pour MapLibre GL JS (remplace leafletConfig.ts)
+// Configuration pour MapLibre GL JS
 
 export const maplibreConfig = {
   defaultCenter: [2.3522, 48.8566], // [lon, lat] - Paris

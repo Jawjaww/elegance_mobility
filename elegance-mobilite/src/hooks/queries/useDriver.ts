@@ -3,14 +3,13 @@ import { driversApi, driverKeys } from '@/lib/api/drivers'
 import { useToast } from '@/hooks/useToast'
 
 // Hook pour le profil du chauffeur
-export function useDriverProfile(userId: string) {
+export function useDriverProfile(driverId: string) {
   return useQuery({
-    queryKey: driverKeys.profile(userId),
-    queryFn: () => driversApi.getDriverProfile(userId),
-    enabled: !!userId,
+    queryKey: driverKeys.profile(driverId),
+    queryFn: () => driversApi.getDriverProfile(driverId),
+    enabled: !!driverId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnReconnect: true,
-    retry: false, // Ne pas essayer de récupérer un profil inexistant
   })
 }
 
@@ -20,7 +19,8 @@ export function useDriverStats(driverId: string, period: 'today' | 'week' | 'mon
     queryKey: driverKeys.stats(driverId, period),
     queryFn: () => driversApi.getDriverStats(driverId, period),
     enabled: !!driverId,
-    staleTime: 5 * 60 * 1000, // 5 minutes - Realtime mettra à jour au besoin
+    staleTime: 2 * 60 * 1000, // 2 minutes pour les stats
+    refetchInterval: 60000, // Refetch toutes les minutes
   })
 }
 

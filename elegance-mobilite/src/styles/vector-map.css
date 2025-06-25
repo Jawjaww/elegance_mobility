@@ -1,0 +1,109 @@
+/**
+ * Styles optimisés pour cartes vectorielles
+ * Améliore le rendu et les performances des tuiles vectorielles MapLibre
+ */
+
+/* Améliorer le rendu des cartes vectorielles */
+.maplibregl-canvas {
+  image-rendering: high-quality;
+  transform: translate3d(0,0,0);
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+  contain: paint; /* Isolation du rendu */
+  filter: contrast(1.05) saturate(1.05); /* Améliore légèrement le contraste visuel */
+}
+
+/* Optimiser les étiquettes de texte des cartes vectorielles */
+.maplibregl-map {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "kern", "liga", "clig", "calt"; /* Améliore le rendu des glyphes */
+}
+
+/* État de chargement plus élégant */
+.maplibregl-map.maplibregl-map-loading::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255,255,255,0.5);
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Améliorer les marqueurs */
+.client-marker {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  background-size: contain;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.client-marker:hover {
+  transform: scale(1.1);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+}
+
+.client-marker-departure {
+  background-color: #3b82f6; /* Bleu */
+}
+
+.client-marker-destination {
+  background-color: #ef4444; /* Rouge */
+}
+
+/* Améliorer les performances des routes vectorielles */
+.maplibregl-canvas-container {
+  will-change: transform;
+  transform: translate3d(0,0,0);
+}
+
+/* Optimisation pour éviter le flickering sur les textures */
+.maplibregl-canvas-container canvas {
+  image-rendering: auto;
+}
+
+/* Optimiser les étiquettes des cartes */
+.maplibregl-marker {
+  will-change: transform;
+}
+
+/* Transitions fluides des calques */
+.maplibregl-layer {
+  will-change: opacity;
+  transition: opacity 0.2s ease;
+}
+
+/* Améliorer le rendu des lignes (routes) */
+.maplibregl-layer-route-line,
+.maplibregl-layer-route-casing {
+  transition: opacity 0.2s ease-out;
+  will-change: opacity, transform;
+}
+
+/* Style plus discret pour les contrôles */
+.maplibregl-ctrl-group {
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(5px);
+}
+
+.maplibregl-ctrl button {
+  width: 30px;
+  height: 30px;
+}
+
+/* Amélioration du rendu sur appareils haute résolution */
+@media (min-resolution: 192dpi) {
+  .maplibregl-canvas {
+    image-rendering: crisp-edges;
+  }
+}

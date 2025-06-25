@@ -1,9 +1,14 @@
-import { EditConfirmationDetails } from '@/components/reservation/EditConfirmationDetails';
+'use client';
 
-export default async function Page({ params }: { params: { id: string } }) {
-  // Si tu dois faire un fetch ou autre ici, tu peux utiliser await
-  const reservationId = params.id;
-  if (!reservationId) {
+import { EditConfirmationDetails } from '@/components/reservation/EditConfirmationDetails';
+import { useParams } from 'next/navigation';
+
+export default function Page() {
+  // Utiliser useParams hook pour récupérer l'id côté client
+  const params = useParams();
+  const id = params?.id as string;
+  
+  if (!id) {
     return (
       <div className="container mx-auto py-8 text-center">
         <h1 className="text-xl font-bold text-red-500">Erreur</h1>
@@ -11,5 +16,6 @@ export default async function Page({ params }: { params: { id: string } }) {
       </div>
     );
   }
-  return <EditConfirmationDetails reservationId={reservationId} />;
+  
+  return <EditConfirmationDetails reservationId={id} />;
 }

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import maplibregl from "maplibre-gl";
 import { Location } from '../../lib/types/map-types';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import '@/styles/map.css';
+import '@/styles/client-map.css';
 
 // Compteur global de cartes actives et singleton de gestion
 let activeMapInstances = 0;
@@ -557,17 +557,17 @@ export default function MapLibreMap({
     routeTracedRef.current = null;
     isMountedRef.current = true;
     
-    // Nettoyage au démontage ou après un timeout
-    const cleanupTimeout = setTimeout(() => {
-      if (map.current) {
-        console.log(`[MapLibre ${mapInstanceIdRef.current}] Force cleanup après timeout`);
-        cleanupMap();
-      }
-    }, 60000); // 1 minute de délai maximum
+    // ❌ SUPPRIMÉ: Plus de timeout automatique qui casse l'expérience utilisateur
+    // const cleanupTimeout = setTimeout(() => {
+    //   if (map.current) {
+    //     console.log(`[MapLibre ${mapInstanceIdRef.current}] Force cleanup après timeout`);
+    //     cleanupMap();
+    //   }
+    // }, 60000); // 1 minute de délai maximum
     
     return () => {
       isMountedRef.current = false;
-      clearTimeout(cleanupTimeout);
+      // clearTimeout(cleanupTimeout); // Plus nécessaire
       cleanupMap();
       
       // Nettoyer les éléments orphelins
@@ -764,22 +764,10 @@ export default function MapLibreMap({
       mapRegistry.ensureSingleInstance(mapInstanceIdRef.current);
     });
 
-    // Force cleanup si jamais la carte ne se charge pas correctement
-    const timeoutId = setTimeout(() => {
-      // Éviter de nettoyer une carte correctement chargée
-      if (!fullyLoadedRef.current && mapInstance) {
-        console.warn(`[MapLibre ${mapInstanceIdRef.current}] Carte non chargée après délai, nettoyage forcé`);
-        try {
-          mapInstance.remove();
-          activeMapInstances = Math.max(0, activeMapInstances - 1);
-        } catch (e) {
-          console.error("Erreur lors du nettoyage forcé:", e);
-        }
-      }
-    }, 10000); // 10 secondes
+    // Note: Removed automatic 10s timeout that was causing unnecessary map re-creates
+    // Map cleanup should only happen when component unmounts or data actually changes
 
     return () => {
-      clearTimeout(timeoutId);
       if (!fullyLoadedRef.current && mapInstance) {
         try {
           mapInstance.remove();

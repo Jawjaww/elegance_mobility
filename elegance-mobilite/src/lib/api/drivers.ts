@@ -6,22 +6,15 @@ type DriverUpdate = Database['public']['Tables']['drivers']['Update']
 
 // Query functions centralisées pour les drivers
 export const driversApi = {
-  // Récupérer le profil d'un chauffeur par son user_id
-  getDriverProfile: async (userId: string): Promise<DriverRow | null> => {
+  // Récupérer le profil d'un chauffeur
+  getDriverProfile: async (driverId: string): Promise<DriverRow> => {
     const { data, error } = await supabase
       .from('drivers')
       .select('*')
-      .eq('user_id', userId)
+      .eq('id', driverId)
       .single()
     
-    // Si le profil n'existe pas encore (erreur PGRST116), retourner null
-    if (error) {
-      if (error.code === 'PGRST116') {
-        console.warn(`Profil driver inexistant pour user_id: ${userId}`)
-        return null
-      }
-      throw error
-    }
+    if (error) throw error
     return data
   },
 
@@ -114,6 +107,6 @@ export const driversApi = {
 // Query keys structurées pour les drivers
 export const driverKeys = {
   all: ['drivers'] as const,
-  profile: (userId: string) => [...driverKeys.all, 'profile', userId] as const,
+  profile: (driverId: string) => [...driverKeys.all, 'profile', driverId] as const,
   stats: (driverId: string, period: string) => [...driverKeys.all, 'stats', driverId, period] as const,
 }

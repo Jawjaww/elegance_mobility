@@ -11,7 +11,7 @@ import { Coordinates } from "@/lib/types/map-types";
 import DateTimeStep from "@/components/reservation/DateTimeStep";
 import { formatDuration } from "@/lib/utils";
 
-// Import dynamique de MapLibre à la place de Leaflet
+// Import dynamique de MapLibre
 import DynamicMapLibreMap from "@/components/map/DynamicMapLibreMap";
 
 // Interface complète avec toutes les props nécessaires
@@ -103,9 +103,12 @@ export function LocationStep({
     const hasValidPoints = Boolean(store.departure || store.destination);
 
     if (hasValidPoints && !showMap) {
+      // Légère attente pour être certain que le DOM est prêt
       const timer = setTimeout(() => {
         setShowMap(true);
-      }, 100);
+        // Forcer un nouveau rendu du mapKey pour garantir l'initialisation correcte
+        setMapKey(`map-${Date.now()}`);
+      }, 250);
       return () => clearTimeout(timer);
     } else if (!hasValidPoints && showMap) {
       setShowMap(false);
@@ -259,17 +262,23 @@ export function LocationStep({
       </div>
 
       {/* Modifié: Afficher la carte avec une clé stable et un état de contrôle */}
-      {showMap && (
-        <Card className="p-0 h-[400px] overflow-hidden">
-          <DynamicMapLibreMap
-            key={mapKey}
-            origin={store.departure}
-            destination={store.destination}
-            onRouteCalculated={handleRouteCalculated}
-            enableRouting={Boolean(store.departure && store.destination)}
-          />
-        </Card>
-      )}
+      <Card className="p-0 overflow-hidden">
+        <div className="client-map-container">
+          {showMap ? (
+            <DynamicMapLibreMap
+              key={mapKey}
+              origin={store.departure}
+              destination={store.destination}
+              onRouteCalculated={handleRouteCalculated}
+              enableRouting={Boolean(store.departure && store.destination)}
+            />
+          ) : (
+            <div className="flex items-center justify-center w-full h-full bg-neutral-800/30 client-map-container">
+              <p className="text-neutral-400">Chargement de la carte...</p>
+            </div>
+          )}
+        </div>
+      </Card>
 
       {/* Détails de la route si disponibles */}
       {store.distance !== null &&

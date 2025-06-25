@@ -20,8 +20,8 @@ export function BottomSheet({
   children, 
   title,
   minHeight = 120,
-  maxHeight = 800, // Valeur fixe SSR-safe
-  defaultHeight = 200,
+  maxHeight = window.innerHeight * 0.9, // 90% de la hauteur de l'écran, plus grand que avant
+  defaultHeight = 300, // Hauteur par défaut augmentée pour montrer plus de contenu
   className,
   showProfileAlert = false,
   profileAlert
@@ -31,8 +31,8 @@ export function BottomSheet({
   const [isDragging, setIsDragging] = useState(false)
   const y = useMotionValue(0)
   
-  // États de hauteur possibles (comme Uber/Bolt)
-  const snapPoints = [minHeight, defaultHeight, maxHeight]
+  // États de hauteur possibles (comme Uber/Bolt) - ajout d'un état intermédiaire
+  const snapPoints = [minHeight, defaultHeight, maxHeight * 0.6, maxHeight]
   
   // Animation de l'opacité du backdrop
   const backdropOpacity = useTransform(
@@ -63,38 +63,62 @@ export function BottomSheet({
     const velocity = info.velocity.y
     const newHeight = currentHeight
     
-    // Logique de snap améliorée
+    // Logique de snap améliorée avec transitions plus intelligentes
     let targetHeight: number
     
     if (Math.abs(velocity) > 800) {
-      // Geste rapide
+      // Geste rapide - comportement plus intuitif
       if (velocity > 0) {
-        // Swipe vers le bas
-        const lowerSnaps = snapPoints.filter(point => point < newHeight)
-        targetHeight = lowerSnaps.length > 0 ? Math.max(...lowerSnaps) : minHeight
+        // Swipe rapide vers le bas = fermer à la hauteur minimum
+        targetHeight = minHeight
       } else {
-        // Swipe vers le haut
-        const higherSnaps = snapPoints.filter(point => point > newHeight)
-        targetHeight = higherSnaps.length > 0 ? Math.min(...higherSnaps) : maxHeight
+        // Swipe rapide vers le haut = ouvrir au maximum
+        targetHeight = maxHeight
       }
     } else {
-      // Snap au point le plus proche
+      // Geste lent - trouver le point de snap le plus proche
       targetHeight = findNearestSnapPoint(newHeight)
+      
+      // Amélioration: si on est à 75% vers le point suivant, y aller directement
+      const currentIndex = snapPoints.indexOf(targetHeight)
+      if (currentIndex < snapPoints.length - 1) {
+        const nextPoint = snapPoints[currentIndex + 1]
+        const threshold = targetHeight + (nextPoint - targetHeight) * 0.25
+        if (newHeight > threshold) {
+          targetHeight = nextPoint
+        }
+      }
     }
     
+    // Mettre à jour la hauteur avec animation
     setCurrentHeight(targetHeight)
     setIsExpanded(targetHeight === maxHeight)
+    
+    // Sauvegarder la hauteur utilisateur (pour une meilleure UX)
+    if (targetHeight !== minHeight && targetHeight !== maxHeight) {
+      localStorage.setItem('preferredBottomSheetHeight', targetHeight.toString())
+    }
   }
   
-  
   const toggleSheet = () => {
-    const newHeight = isExpanded ? defaultHeight : maxHeight
+    // Comportement plus intelligent pour le toggle
+    let newHeight = defaultHeight
+    
+    // Si déjà en mode expanded, revenir à l'état moyen ou par défaut
+    if (isExpanded) {
+      newHeight = snapPoints[2] || defaultHeight
+    } 
+    // Sinon, passer en mode expanded
+    else {
+      newHeight = maxHeight
+    }
+    
     setCurrentHeight(newHeight)
     setIsExpanded(!isExpanded)
   }
 
-  // Double tap pour expand/collapse
-  const handleDoubleTap = () => {
+  // Un simple tap sur la poignée pour expand/collapse
+  const handleTap = () => {
     toggleSheet()
   }
 
@@ -110,7 +134,7 @@ export function BottomSheet({
       {/* Bottom Sheet */}
       <motion.div
         className={cn(
-          "fixed bottom-0 left-0 right-0 bg-neutral-950/98 border-t border-neutral-800/30 rounded-t-lg shadow-2xl z-50",
+          "fixed bottom-0 left-0 right-0 bg-neutral-900/95 border-t border-neutral-800/50 rounded-t-3xl shadow-2xl z-50",
           "backdrop-blur-xl",
           isDragging && "transition-none",
           className
@@ -139,7 +163,7 @@ export function BottomSheet({
           dragElastic={0.1}
           onDrag={handleDrag}
           onDragEnd={handleDragEnd}
-          onTap={handleDoubleTap}
+          onTap={handleTap}
           whileTap={{ scale: 0.98 }}
         >
           {/* Indicateur visuel de drag */}
@@ -164,27 +188,20 @@ export function BottomSheet({
             </div>
           )}
           
-          {/* Alerte profil incomplet - Zone NON draggable */}
+          {/* Alerte profil incomplet */}
           {showProfileAlert && profileAlert && (
             <motion.div 
-              className="mt-2 mb-1 relative z-10"
+              className="mt-2 mb-1"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              onPointerDown={(e) => e.stopPropagation()} // Empêcher le drag sur cette zone
-              onClick={(e) => e.stopPropagation()} // Empêcher le tap sur cette zone
             >
               {profileAlert}
             </motion.div>
           )}
           
-          {/* Zone de touch élargie pour le drag - Exclut la zone du ProfileAlert */}
-          {!showProfileAlert && (
-            <div className="absolute inset-0 -top-2 -bottom-2" />
-          )}
-          {showProfileAlert && (
-            <div className="absolute inset-0 -top-2" style={{ bottom: '50px' }} />
-          )}
+          {/* Zone de touch élargie pour le drag */}
+          <div className="absolute inset-0 -top-2 -bottom-2" />
         </motion.div>
         
         {/* Content avec gestion du scroll intelligent */}

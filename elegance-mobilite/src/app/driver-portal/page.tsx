@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { motion } from "framer-motion"
 import { ProfileCompletionModal } from "@/components/drivers/ProfileCompletionModal"
 import { supabase } from '@/lib/database/client'
@@ -9,16 +9,20 @@ import { useDriverProfileCompleteness } from "@/hooks/useDriverProfileCompletene
 import { StatsIsland } from "@/components/drivers/StatsIsland"
 import { BottomSheet } from "@/components/drivers/BottomSheet"
 import { SwipeableTabs } from "@/components/drivers/SwipeableTabs"
-import { DriverMap } from "@/components/drivers/DriverMap"
+import MapLibreWrapper from "@/components/map/MapLibreWrapper"
 import { AvailableRideCard } from "@/components/drivers/AvailableRideCard"
 import { TodayRideCard } from "@/components/drivers/TodayRideCard"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Car, BarChart3 } from "lucide-react"
 import { useToast } from "@/hooks/useToast"
-import { useDriverUIStore } from "@/stores/driverUIStore"
+import { useDriverUIStore } from "@/lib/stores/driverUIStore"
+import { useQueryClient } from '@tanstack/react-query'
 import { useDriverProfile, useAvailableRides, useScheduledRides, useDriverStats } from "@/hooks/queries"
+import { useAcceptRide, useStartRide, useCompleteRide } from "@/hooks/queries/useRides"
 import { useDriverRealtime } from "@/hooks/queries/useRealtime"
+import { useStableRides, useStableMapRides } from "@/hooks/useStableRides"
+import { rideKeys } from '@/lib/api/rides'
 import { cn } from "@/lib/utils"
 import type { Database } from "@/lib/types/database.types"
 
@@ -62,87 +66,15 @@ const mockStatsData = {
   }
 }
 
-const mockAvailableRides: RideRow[] = [
-  {
-    id: "ride-1",
-    pickup_time: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-    pickup_address: "Gare de Lyon, 75012 Paris",
-    pickup_lat: 48.8447,
-    pickup_lon: 2.3738,
-    dropoff_address: "Aéroport Charles de Gaulle, Terminal 2E",
-    dropoff_lat: 49.0097,
-    dropoff_lon: 2.5479,
-    estimated_price: 4580,
-    vehicle_type: "premium",
-    status: "pending",
-    user_id: "customer-1",
-    driver_id: null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    distance: null,
-    duration: null,
-    final_price: null,
-    options: null,
-    override_vehicle_id: null,
-    pickup_notes: null,
-    price: null
-  },
-  {
-    id: "ride-2",
-    pickup_time: new Date(Date.now() + 45 * 60 * 1000).toISOString(),
-    pickup_address: "Place de la République, 75011 Paris",
-    pickup_lat: 48.8676,
-    pickup_lon: 2.3631,
-    dropoff_address: "La Défense, 92400 Courbevoie",
-    dropoff_lat: 48.8922,
-    dropoff_lon: 2.2389,
-    estimated_price: 2750,
-    vehicle_type: "standard",
-    status: "pending",
-    user_id: "customer-2",
-    driver_id: null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    distance: null,
-    duration: null,
-    final_price: null,
-    options: null,
-    override_vehicle_id: null,
-    pickup_notes: null,
-    price: null
-  }
-]
-
-const mockTodayRides: RideRow[] = [
-  {
-    id: "ride-today-1",
-    pickup_time: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-    pickup_address: "Hôtel Le Bristol, 112 Rue du Faubourg Saint-Honoré",
-    pickup_lat: 48.8721,
-    pickup_lon: 2.3165,
-    dropoff_address: "Musée du Louvre, 99 Rue de Rivoli",
-    dropoff_lat: 48.8606,
-    dropoff_lon: 2.3376,
-    estimated_price: 1850,
-    vehicle_type: "premium",
-    status: "scheduled",
-    user_id: "customer-3",
-    driver_id: "current-driver",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    distance: null,
-    duration: null,
-    final_price: null,
-    options: null,
-    override_vehicle_id: null,
-    pickup_notes: null,
-    price: null
-  }
-]
+// Les courses sont maintenant fournies par useAvailableRides et useScheduledRides
+// via TanStack Query + Supabase Realtime
 
 export default function DriverDashboard() {
   // Hook pour la hauteur de l'écran (SSR-safe)
   const viewportHeight = useViewportHeight()
+  
+  // TanStack QueryClient pour les invalidations manuelles
+  const queryClient = useQueryClient()
   
   // État d'authentification
   const [user, setUser] = useState<any>(null)
@@ -166,29 +98,49 @@ export default function DriverDashboard() {
     getUser()
   }, [])
   
-  // Temporary driver ID - in real app, get from auth
-  const driverId = user?.id || "temp-driver-id"
-  
-  // TanStack Query hooks for server state
-  const { data: driverProfile } = useDriverProfile(driverId)
-  const { data: availableRides = mockAvailableRides } = useAvailableRides(driverId)
-  const { data: todayRides = mockTodayRides } = useScheduledRides(driverId)
-  const { data: todayStats = mockStatsData.todayStats } = useDriverStats(driverId, 'today')
+  // TanStack Query hooks for server state - seulement si user existe
+  const { data: driverProfile } = useDriverProfile(user?.id || '')
+  const { data: availableRides = [], isLoading: isLoadingAvailableRides } = useAvailableRides(user?.id || '')
+  const { data: todayRides = [], isLoading: isLoadingTodayRides } = useScheduledRides(user?.id || '')
+  const { data: todayStats } = useDriverStats(user?.id || '', 'today')
   
   // Zustand store for UI state
   const { isOnline, setIsOnline } = useDriverUIStore()
   
-  // Setup realtime synchronization
-  useDriverRealtime(driverId)
+  // Setup realtime synchronization - seulement si user existe
+  useDriverRealtime(user?.id || '')
   
-  // Legacy state (to be removed once fully migrated)
-  const [availableRidesLocal, setAvailableRidesLocal] = useState(mockAvailableRides)
-  const [todayRidesLocal, setTodayRidesLocal] = useState(mockTodayRides)
+  // État local pour gérer les courses entre les appels API
+  const [availableRidesLocal, setAvailableRidesLocal] = useState<RideRow[]>([])
+  const [todayRidesLocal, setTodayRidesLocal] = useState<RideRow[]>([])
   const { toast } = useToast()
   
-  // Use real data when available, fallback to mocks
-  const currentAvailableRides = availableRides?.length ? availableRides : availableRidesLocal
-  const currentTodayRides = todayRides?.length ? todayRides : todayRidesLocal
+  // Use real data - STABLE REFERENCE STRATEGY
+  const stableAvailableRides = useStableRides(availableRides)
+  const stableTodayRides = useStableRides(todayRides)
+  
+  // Utilisez uniquement les données de l'API avec fallback local pour les mutations temporaires
+  const currentAvailableRides = useMemo(() => {
+    return stableAvailableRides?.length ? stableAvailableRides : availableRidesLocal
+  }, [stableAvailableRides, availableRidesLocal])
+  
+  const currentTodayRides = useMemo(() => {
+    return stableTodayRides?.length ? stableTodayRides : todayRidesLocal
+  }, [stableTodayRides, todayRidesLocal])
+  
+  // Mettre à jour l'état local lorsque les données de l'API changent
+  useEffect(() => {
+    if (stableAvailableRides?.length) {
+      setAvailableRidesLocal(stableAvailableRides)
+    }
+  }, [stableAvailableRides])
+  
+  useEffect(() => {
+    if (stableTodayRides?.length) {
+      setTodayRidesLocal(stableTodayRides)
+    }
+  }, [stableTodayRides])
+  
   const currentStats = todayStats || mockStatsData.todayStats
   
   const toggleOnlineStatus = () => {
@@ -219,7 +171,12 @@ export default function DriverDashboard() {
     console.log("Redirection vers profil")
   }
 
-  const handleAcceptRide = (rideId: string) => {
+  // Mutations TanStack Query pour les opérations de course
+  const acceptRideMutation = useAcceptRide()
+  const startRideMutation = useStartRide()
+  const completeRideMutation = useCompleteRide()
+  
+  const handleAcceptRide = useCallback((rideId: string) => {
     const ride = currentAvailableRides.find(r => r.id === rideId)
     const isScheduledRide = ride?.status === 'scheduled'
     
@@ -243,65 +200,67 @@ export default function DriverDashboard() {
       return
     }
     
-    toast({
-      variant: "success",
-      title: "Course acceptée",
-      description: "La course a été ajoutée à votre planning"
-    })
-    
+    // Optimistic UI update
     const acceptedRide = currentAvailableRides.find(r => r.id === rideId)
-    if (acceptedRide) {
+    if (acceptedRide && user?.id) {
       setAvailableRidesLocal(prev => prev.filter(r => r.id !== rideId))
-      setTodayRidesLocal(prev => [...prev, { ...acceptedRide, status: "scheduled", driver_id: "current-driver" }])
+      setTodayRidesLocal(prev => [...prev, { ...acceptedRide, status: "scheduled", driver_id: user.id }])
       
-      // TODO: Replace with TanStack Query mutation
-      // useAcceptRide.mutate({ rideId, driverId })
+      // Exécution de la mutation TanStack Query
+      acceptRideMutation.mutate({ rideId, driverId: user.id })
     }
-  }
+  }, [currentAvailableRides, isProfileComplete, isOnline, toast, setShowProfileModal, user, acceptRideMutation])
 
-  const handleDeclineRide = (rideId: string) => {
+  const handleDeclineRide = useCallback((rideId: string) => {
+    // Mise à jour optimiste de l'UI
     setAvailableRidesLocal(prev => prev.filter(r => r.id !== rideId))
+    
     toast({
       variant: "destructive",
       title: "Course refusée",
       description: "Une nouvelle course sera proposée sous peu"
     })
-    // TODO: Replace with TanStack Query mutation
-    // useDeclineRide.mutate({ rideId, driverId })
-  }
+    
+    // TODO: Implémenter useDeclineRide dans useRides.ts et l'utiliser ici
+    // useDeclineRide.mutate({ rideId, driverId: user?.id })
+    
+    // Pour l'instant, on rafraîchit simplement les courses disponibles
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: rideKeys.available(user?.id) })
+    }, 500)
+  }, [toast, user?.id, queryClient])
 
-  const handleStartRide = (rideId: string) => {
-    setTodayRidesLocal(prev =>      prev.map(ride =>
+  const handleStartRide = useCallback((rideId: string) => {
+    // Mise à jour optimiste de l'UI
+    setTodayRidesLocal(prev => 
+      prev.map(ride =>
         ride.id === rideId 
           ? { ...ride, status: "in-progress" }
           : ride
       )
     )
-    toast({
-      variant: "success",
-      title: "Course démarrée",
-      description: "Bon voyage !"
-    })
-    // TODO: Replace with TanStack Query mutation
-    // useStartRide.mutate({ rideId, driverId })
-  }
-
-  const handleCompleteRide = (rideId: string) => {
-    setTodayRidesLocal(prev => 
-      prev.map(ride => 
-        ride.id === rideId 
-          ? { ...ride, status: "completed" }
-          : ride
-      )
-    )
+    
+    // Exécution de la mutation TanStack Query
+    if (user?.id) {
+      startRideMutation.mutate(rideId)
+    }
+  }, [startRideMutation, user?.id, setTodayRidesLocal])
+  
+  const handleCompleteRide = useCallback((rideId: string) => {
+    // Mise à jour optimiste de l'UI
+    setTodayRidesLocal(prev => prev.filter(ride => ride.id !== rideId))
+    
     toast({
       variant: "success",
       title: "Course terminée",
       description: "Merci pour votre service !"
     })
-    // TODO: Replace with TanStack Query mutation
-    // useCompleteRide.mutate({ rideId, driverId })
-  }
+    
+    // Exécution de la mutation TanStack Query
+    if (user?.id) {
+      completeRideMutation.mutate({ rideId, finalPrice: undefined })
+    }
+  }, [completeRideMutation, user?.id, setTodayRidesLocal, toast])
 
   // Composant wrapper pour conditionner l'affichage des courses
   const AvailableRidesWithProfileCheck = () => {
@@ -320,20 +279,6 @@ export default function DriverDashboard() {
         
         {/* Vérification profil avec composant de blocage */}
         <ProfileCheckWrapper userId={user.id}>
-          {/* Notification de statut si profil complet mais hors ligne */}
-          {isProfileComplete && !isOnline && currentAvailableRides.length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 text-center">
-              <div className="flex justify-center mb-2">
-                <svg className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h4 className="text-sm font-medium text-blue-800 mb-1">Vous êtes hors ligne</h4>
-              <p className="text-xs text-blue-600">
-                Passez en ligne pour accepter des courses immédiates ou consultez les courses planifiées
-              </p>
-            </div>
-          )}
           
           {currentAvailableRides.length === 0 ? (
             <div className="text-center py-8">
@@ -348,7 +293,11 @@ export default function DriverDashboard() {
             </div>
           ) : (
             <div className="space-y-3 max-h-64 overflow-y-auto">
-              {currentAvailableRides.map((ride) => (
+              {isLoadingAvailableRides ? (
+                <div className="text-center py-10 text-muted-foreground">
+                  <p>Recherche de courses disponibles...</p>
+                </div>
+              ) : currentAvailableRides.map((ride) => (
                 <EnhancedAvailableRideCard
                   key={ride.id}
                   ride={ride}
@@ -358,6 +307,13 @@ export default function DriverDashboard() {
                   isOnline={isOnline}
                 />
               ))}
+              
+              {!isLoadingAvailableRides && currentAvailableRides.length === 0 && (
+                <div className="text-center py-10 text-muted-foreground">
+                  <p>Aucune course disponible pour le moment</p>
+                  <p className="text-sm">Restez en ligne pour recevoir de nouvelles propositions</p>
+                </div>
+              )}
             </div>
           )}
         </ProfileCheckWrapper>
@@ -472,7 +428,11 @@ export default function DriverDashboard() {
             </div>
           ) : (
             <div className="space-y-3">
-              {currentTodayRides.map((ride) => (
+              {isLoadingTodayRides ? (
+                <div className="text-center py-10 text-muted-foreground">
+                  <p>Chargement des courses planifiées...</p>
+                </div>
+              ) : currentTodayRides.map((ride) => (
                 <div key={ride.id} className="relative">
                   <TodayRideCard
                     ride={ride}
@@ -498,14 +458,37 @@ export default function DriverDashboard() {
     }
   ]
 
+  // Mémoriser les props de la carte pour éviter les re-renders - STABLE REFERENCE STRATEGY
+  const mapRides = useStableMapRides(currentAvailableRides, isOnline)
+  
+  // État pour la course sélectionnée
+  const [selectedRide, setSelectedRide] = useState<RideRow | null>(null)
+  
+  // Gestion des clics sur les courses sur la carte
+  const handleRideSelect = useCallback((ride: RideRow | null) => {
+    console.log('🎯 Course sélectionnée:', ride?.id || 'none')
+    setSelectedRide(ride)
+  }, [])
+  
+  // Gestionnaire d'acceptation de course sur la carte
+  const handleRideAcceptFromMap = useCallback((ride: RideRow) => {
+    console.log('🚗 Acceptation de course depuis la carte:', ride.id)
+    handleAcceptRide(ride.id)
+    setSelectedRide(null)
+  }, [handleAcceptRide])
+
   return (
     <div className="fixed inset-0 w-screen h-screen overflow-hidden">
       {/* Carte principale - plein écran avec géolocalisation - Background absolu */}
-      <DriverMap
-        availableRides={isOnline ? availableRides : []}
-        onAcceptRide={handleAcceptRide}
-        onDeclineRide={handleDeclineRide}
-      />
+      <div className="absolute inset-0 z-0">
+        <MapLibreWrapper
+          availableRides={mapRides}
+          selectedRide={selectedRide}
+          isOnline={isOnline}
+          onRideSelect={handleRideSelect}
+          onRideAccept={handleRideAcceptFromMap}
+        />
+      </div>
 
       {/* Bottom Sheet amélioré avec gestion gestuelle */}
       <BottomSheet
@@ -533,29 +516,35 @@ export default function DriverDashboard() {
           </>
         )}
         
-        {/* Bouton en ligne/hors ligne plus discret, placé au-dessus des tabs */}
-        <div className="flex items-center justify-center mb-2 px-2">
-          <div className="relative">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleOnlineStatus}
-              disabled={!isProfileComplete && !isOnline}
-              className={cn(
-                "transition-all duration-300 border-2",
-                !isProfileComplete && !isOnline && "opacity-50 cursor-not-allowed",
-                isOnline 
-                  ? "bg-green-500/20 border-green-500/50 text-green-100 hover:bg-green-500/30" 
-                  : "bg-red-500/20 border-red-500/50 text-red-100 hover:bg-red-500/30"
-              )}
-            >
-              <div className={cn(
-                "h-2 w-2 rounded-full mr-2 animate-pulse",
-                isOnline ? "bg-green-400" : "bg-red-400"
-              )} />
-              {isOnline ? "En ligne" : "Hors ligne"}
-            </Button>
-          </div>
+        {/* Bannière de statut avec bouton en haut du bottom sheet */}
+        <div className="sticky top-0 z-10 bg-neutral-900/95 backdrop-blur-xl border-b border-neutral-800/50 px-4 pt-2 pb-3">
+          <Button
+            variant="outline"
+            onClick={toggleOnlineStatus}
+            disabled={!isProfileComplete && !isOnline}
+            className={cn(
+              "w-full transition-all duration-300 border-2 py-2 h-auto",
+              !isProfileComplete && !isOnline && "opacity-50 cursor-not-allowed",
+              isOnline 
+                ? "bg-green-500/10 border-green-500/30 text-green-100 hover:bg-green-500/20" 
+                : "bg-red-500/10 border-red-500/30 text-red-100 hover:bg-red-500/20"
+            )}
+          >
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center">
+                <div className={cn(
+                  "h-3 w-3 rounded-full mr-2 animate-pulse",
+                  isOnline ? "bg-green-400" : "bg-red-400"
+                )} />
+                <span className="font-medium">
+                  {isOnline ? "Disponible" : "Indisponible"}
+                </span>
+              </div>
+              <span className="text-sm opacity-80">
+                {isOnline ? "Passer hors ligne" : "Passer en ligne"}
+              </span>
+            </div>
+          </Button>
         </div>
         <SwipeableTabs
           tabs={tabsContent}

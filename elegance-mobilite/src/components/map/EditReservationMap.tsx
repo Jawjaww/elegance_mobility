@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import { Location } from '../../lib/types/map-types';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import '@/styles/map.css';
+import '@/styles/client-map.css'; // Utiliser les styles client pour cohérence
 import { useReservationStore } from "@/lib/stores/reservationStore";
 import { SectionLoading } from "@/components/ui/loading";
 
@@ -40,28 +40,114 @@ export default function EditReservationMap() {
     );
   };
 
-  // Effet pour gérer l'initialisation et les mises à jour de la carte
+  // Force la création de la carte au démarrage, même si les coordonnées ne sont pas encore prêtes
   useEffect(() => {
-    // Valider les coordonnées
-    if (!departure || !destination || !isValidLocation(departure) || !isValidLocation(destination)) {
-      return;
-    }
-
-    // À ce stade, TypeScript sait que departure et destination sont valides
-    const validDeparture = departure as Location;
-    const validDestination = destination as Location;
-
-    console.log("[EditMap] Initialisation/mise à jour de la carte MapLibre");
+    // Forcer le rendu initial de la carte même sans coordonnées
+    const renderMap = () => {
+      // Si la carte existe déjà, ne pas la recréer
+      if (map.current) return;
+      
+      console.log("[EditMap] Forcer le rendu initial de la carte");
+      
+      if (!mapContainer.current) return;
+      
+      // Créer une carte avec Paris comme position par défaut
+      const mapInstance = new maplibregl.Map({
+        container: mapContainer.current as HTMLElement,
+        style: {
+          version: 8,
+          // Ajouter la propriété glyphs requise pour text-field
+          glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+          sources: {
+            "osm-tiles": {
+              type: "raster",
+              tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+              tileSize: 256,
+              attribution: '© OpenStreetMap Contributors',
+            }
+          },
+          layers: [
+            {
+              id: "osm-tiles-layer",
+              type: "raster",
+              source: "osm-tiles",
+            }
+          ]
+        },
+        center: [2.3522, 48.8566] as [number, number], // Paris par défaut
+        zoom: 10,
+        attributionControl: false
+      });
+      
+      mapInstance.on('load', () => {
+        console.log("[EditMap] Carte initiale chargée");
+        map.current = mapInstance;
+        setMapReady(true);
+      });
+    };
     
-    // Si la carte existe déjà, nettoyer les marqueurs existants
-    if (map.current) {
+    // Forcer le rendu initial
+    renderMap();
+    
+    // Nettoyage
+    return () => {
       markersRef.current.forEach(marker => marker.remove());
       markersRef.current = [];
       
-      // Si on a une nouvelle route valide, mettre à jour la source existante
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+    };
+  }, []);
+
+  // Mise à jour de la carte quand les coordonnées changent
+  useEffect(() => {
+    // Valider les coordonnées
+    if (!departure || !destination || !isValidLocation(departure) || !isValidLocation(destination) || !map.current || !mapReady) {
+      return;
+    }
+
+    console.log("[EditMap] Mise à jour de la carte avec nouvelles coordonnées");
+    
+    // À ce stade, TypeScript sait que departure et destination sont valides
+    const validDeparture = departure as Location;
+    const validDestination = destination as Location;
+    
+    // Nettoyer les marqueurs existants
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
+    
+    // Ajouter les nouveaux marqueurs
+    if (map.current) {
+      // Marqueur de départ
+      const depEl = document.createElement('div');
+      depEl.className = 'marker map-marker';
+      depEl.style.backgroundColor = '#28a745';
+      
+      const depMarker = new maplibregl.Marker(depEl)
+        .setLngLat([validDeparture.lon, validDeparture.lat])
+        .addTo(map.current);
+      
+      markersRef.current.push(depMarker);
+      
+      // Marqueur de destination
+      const destEl = document.createElement('div');
+      destEl.className = 'marker map-marker';
+      destEl.style.backgroundColor = '#dc3545';
+      
+      const destMarker = new maplibregl.Marker(destEl)
+        .setLngLat([validDestination.lon, validDestination.lat])
+        .addTo(map.current);
+      
+      markersRef.current.push(destMarker);
+      
+      // Mettre à jour ou créer la source pour la route
       try {
-        const source = map.current.getSource('route') as maplibregl.GeoJSONSource;
+        let source = map.current.getSource('route') as maplibregl.GeoJSONSource;
+        
         if (source) {
+          // Mettre à jour la source existante
           source.setData({
             type: 'Feature',
             properties: {},
@@ -73,137 +159,89 @@ export default function EditReservationMap() {
               ]
             }
           });
+        } else {
+          // Créer une nouvelle source et couche
+          map.current.addSource('route', {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {},
+              geometry: {
+                type: 'LineString',
+                coordinates: [
+                  [validDeparture.lon, validDeparture.lat],
+                  [validDestination.lon, validDestination.lat]
+                ]
+              }
+            }
+          });
           
-          // Ajuster la vue aux nouveaux points
-          const bounds = new maplibregl.LngLatBounds()
-            .extend([validDeparture.lon, validDeparture.lat])
-            .extend([validDestination.lon, validDestination.lat]);
-          map.current.fitBounds(bounds, { padding: 50 });
+          map.current.addLayer({
+            id: 'route-line',
+            type: 'line',
+            source: 'route',
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round'
+            },
+            paint: {
+              'line-color': '#0078d4',
+              'line-width': 4,
+              'line-opacity': 0.7
+            }
+          });
         }
+        
+        // Ajuster la vue aux nouveaux points
+        const bounds = new maplibregl.LngLatBounds()
+          .extend([validDeparture.lon, validDeparture.lat])
+          .extend([validDestination.lon, validDestination.lat]);
+        
+        map.current.fitBounds(bounds, { padding: 50 });
+        
       } catch (e) {
         console.error("[EditMap] Erreur lors de la mise à jour de la route:", e);
       }
-      return;
     }
+  }, [departure, destination, mapReady]);
 
-    if (!mapContainer.current) return;
-
-    // Création initiale de la carte
-    const mapInstance = new maplibregl.Map({
-      container: mapContainer.current as HTMLElement,
-      style: {
-        version: 8,
-        sources: {
-          "osm-tiles": {
-            type: "raster",
-            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-            tileSize: 256,
-            attribution: '© OpenStreetMap Contributors',
-          }
-        },
-        layers: [
-          {
-            id: "osm-tiles-layer",
-            type: "raster",
-            source: "osm-tiles",
-          }
-        ]
-      },
-      // Centrer la carte entre le départ et la destination
-      center: [
-        (validDeparture.lon + validDestination.lon) / 2,
-        (validDeparture.lat + validDestination.lat) / 2
-      ] as [number, number],
-      zoom: 10,
-      attributionControl: false
-    });
-
-    mapInstance.on('load', () => {
-      console.log("[EditMap] Carte chargée");
-      map.current = mapInstance;
-      setMapReady(true);
+  // Hack pour forcer l'affichage de la carte après le montage initial
+  useEffect(() => {
+    // Force le rafraîchissement de la carte après le montage complet
+    if (mapReady && map.current) {
+      console.log("[EditMap] Force refresh après montage complet");
       
-      // Ajouter les marqueurs une seule fois
-      if (departure) {
-        const el = document.createElement('div');
-        el.className = 'marker map-marker';
-        el.style.backgroundColor = '#28a745';
+      // Attendre que tout soit bien monté et rendu
+      const forceRefreshTimer = setTimeout(() => {
+        if (!map.current) return;
         
-        const marker = new maplibregl.Marker(el)
-          .setLngLat([validDeparture.lon, validDeparture.lat])
-          .addTo(mapInstance);
+        // Forcer un resize pour garantir que la carte est correctement dimensionnée
+        map.current.resize();
         
-        markersRef.current.push(marker);
-      }
-
-      if (destination) {
-        const el = document.createElement('div');
-        el.className = 'marker map-marker';
-        el.style.backgroundColor = '#dc3545';
-        
-        const marker = new maplibregl.Marker(el)
-          .setLngLat([validDestination.lon, validDestination.lat])
-          .addTo(mapInstance);
-        
-        markersRef.current.push(marker);
-      }
-      
-      // Tracer une ligne simple entre les points
-      mapInstance.addSource('route', {
-        type: 'geojson',
-        data: {
-          type: 'Feature',
-          properties: {},
-          geometry: {
-            type: 'LineString',
-            coordinates: [
-              [validDeparture.lon, validDeparture.lat],
-              [validDestination.lon, validDestination.lat]
-            ]
+        // Si on a des coordonnées valides, ajuster la vue
+        if (departure && destination && 
+            isValidLocation(departure) && isValidLocation(destination)) {
+          try {
+            const bounds = new maplibregl.LngLatBounds()
+              .extend([departure.lon, departure.lat])
+              .extend([destination.lon, destination.lat]);
+            
+            map.current.fitBounds(bounds, { padding: 50 });
+          } catch (e) {
+            console.error("Erreur lors de l'ajustement de la vue:", e);
           }
         }
-      });
+      }, 500);
       
-      mapInstance.addLayer({
-        id: 'route-line',
-        type: 'line',
-        source: 'route',
-        layout: {
-          'line-join': 'round',
-          'line-cap': 'round'
-        },
-        paint: {
-          'line-color': '#0078d4',
-          'line-width': 4,
-          'line-opacity': 0.7
-        }
-      });
-      
-      // Ajuster la vue aux marqueurs
-      const bounds = new maplibregl.LngLatBounds()
-        .extend([validDeparture.lon, validDeparture.lat])
-        .extend([validDestination.lon, validDestination.lat]);
-        
-      mapInstance.fitBounds(bounds, { padding: 50 });
-    });
-
-    // Nettoyage à la fin
-    return () => {
-      markersRef.current.forEach(marker => marker.remove());
-      markersRef.current = [];
-      
-      if (map.current) {
-        map.current.remove();
-        map.current = null;
-      }
-    };
-  }, [departure, destination]);
+      return () => clearTimeout(forceRefreshTimer);
+    }
+  }, [mapReady, departure, destination]);
 
   // Afficher un placeholder pendant le chargement
-  if (!departure || !destination) {
+  if (!mapReady || !departure || !destination) {
     return (
       <div className="w-full h-60 bg-neutral-800/50 rounded flex items-center justify-center">
-        <SectionLoading text="Chargement des données de trajet..." />
+        <SectionLoading text="Chargement de la carte..." />
       </div>
     );
   }
@@ -211,7 +249,8 @@ export default function EditReservationMap() {
   return (
     <div
       ref={mapContainer}
-      className="w-full h-60 map-container-minimal rounded-lg overflow-hidden"
+      className="client-map-edit client-portal-map"
+      style={{ height: '280px', visibility: 'visible', display: 'block' }}
     />
   );
 }

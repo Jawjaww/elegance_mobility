@@ -10,10 +10,12 @@ export function useAvailableRides(driverId?: string) {
   return useQuery({
     queryKey: rideKeys.available(driverId),
     queryFn: () => ridesApi.getAvailableRides(driverId),
-    enabled: !!driverId,
-    staleTime: 30000, // 30s de cache - les invalidations Realtime actualiseront automatiquement
+    enabled: !!driverId, // Prevent query when no driverId
+    // Retirer refetchInterval - utiliser realtime à la place
+    // refetchInterval: 10000, // Refetch toutes les 10 secondes
     refetchOnReconnect: true,
     refetchOnWindowFocus: true,
+    staleTime: 30 * 1000, // Les données sont considérées fraîches pendant 30s
   })
 }
 
@@ -23,7 +25,7 @@ export function useScheduledRides(driverId: string) {
     queryKey: rideKeys.scheduled(driverId),
     queryFn: () => ridesApi.getScheduledRides(driverId),
     enabled: !!driverId,
-    staleTime: 60000, // 1 minute de cache - Realtime gère les mises à jour
+    refetchInterval: 30000, // Refetch toutes les 30 secondes
     refetchOnReconnect: true,
   })
 }

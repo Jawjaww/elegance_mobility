@@ -1,6 +1,6 @@
 "use client";
 
-import DynamicLeafletMap from './DynamicLeafletMap';
+import ClientDynamicMap from './ClientDynamicMap';
 import type { MapMarker } from '@/lib/types/types';
 
 interface ConfirmationMapProps {
@@ -25,10 +25,10 @@ export function ConfirmationMap({ departure, destination }: ConfirmationMapProps
   ];
 
   return (
-    <DynamicLeafletMap
-      markers={markers}
-      enableRouting={markers.length === 2}
-      className="h-full"
+    <ClientDynamicMap
+      origin={departure ? {lat: departure.lat, lon: departure.lon} : null}
+      destination={destination ? {lat: destination.lat, lon: destination.lon} : null}
+      className="client-map-confirmation"
     />
   );
 }

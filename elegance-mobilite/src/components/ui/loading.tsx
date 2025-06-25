@@ -202,4 +202,20 @@ export const LoadingOverlay: React.FC<{ show: boolean; text?: string }> = ({
   );
 };
 
+// Composant de loading spécialement conçu pour les cartes
+export const MapLoading: React.FC<{ show: boolean; text?: string }> = ({ 
+  show, 
+  text = 'Chargement de la carte...' 
+}) => {
+  if (!show) return null;
+
+  return (
+    <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
+      <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-lg">
+        <LoadingSpinner size="md" variant="spinner" text={text} />
+      </div>
+    </div>
+  );
+};
+
 export default LoadingSpinner;

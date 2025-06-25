@@ -1,0 +1,223 @@
+/* Styles spécifiques pour les cartes MapLibre dans le portail client */
+
+/* Conteneur standard pour les cartes client */
+.client-map-container {
+  height: 300px;
+  max-height: 300px;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Conteneur pour les cartes de confirmation/édition */
+.client-map-confirmation {
+  height: 250px;
+  max-height: 250px;
+  width: 100%;
+  border-radius: 8px;
+  margin: 0;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Style pour les cartes sur page d'édition */
+.client-map-edit {
+  height: 280px !important;
+  min-height: 280px !important;
+  max-height: 280px !important;
+  visibility: visible !important;
+  display: block !important;
+  position: relative !important;
+  z-index: 1 !important;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Styles des contrôles pour portail client */
+.client-map-container .maplibregl-ctrl-bottom-right,
+.client-map-confirmation .maplibregl-ctrl-bottom-right,
+.client-map-edit .maplibregl-ctrl-bottom-right {
+  bottom: 10px !important;
+  right: 10px !important;
+}
+
+/* Marqueurs spécifiques client */
+.client-marker {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  cursor: pointer;
+  z-index: 5;
+}
+
+.client-marker-departure {
+  background-color: #10b981;
+}
+
+.client-marker-destination {
+  background-color: #ef4444;
+}
+
+/* État de chargement des cartes client */
+.client-map-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  background-color: #f9fafb;
+  border-radius: 8px;
+}
+
+/* Containment pour fix les problèmes de layout */
+.client-portal-map {
+  contain: strict;
+  position: relative !important;
+  z-index: 1;
+  height: 300px !important;
+  max-height: 300px !important;
+}
+
+/* Correction des problèmes de z-index et de positionnement */
+.client-map-container .maplibregl-map,
+.client-map-edit .maplibregl-map,
+.client-map-confirmation .maplibregl-map {
+  position: absolute !important;
+  z-index: 1 !important;
+  height: 100% !important;
+  width: 100% !important;
+  contain: layout;
+}
+
+/* Correction spécifique pour la page d'édition de réservation */
+.client-map-container .mapboxgl-canvas-container,
+.client-map-container .maplibregl-canvas-container {
+  height: 100% !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Assurer que les contrôles restent accessibles mais ne débordent pas */
+.client-portal-map .maplibregl-ctrl-top-right,
+.client-portal-map .maplibregl-ctrl-bottom-right {
+  max-width: 90px;
+}
+
+/* Optimisations de performance pour réduire les violations de requestAnimationFrame */
+.client-map-container,
+.client-map-edit,
+.client-map-confirmation {
+  /* Utiliser les optimisations GPU */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000;
+  /* Réduire le nombre de repaints */
+  contain: content;
+  /* Réduire les reflows */
+  will-change: transform;
+}
+
+/* Optimiser les opérations de rendu sur la carte MapLibre */
+.client-portal-map .maplibregl-canvas {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* Optimisations spécifiques pour les tuiles vectorielles */
+.client-portal-map .maplibregl-canvas {
+  image-rendering: high-quality;
+  transform: translate3d(0,0,0);
+}
+
+/* Améliorer le rendu des lignes vectorielles */
+.client-portal-map .maplibregl-canvas {
+  filter: blur(0);
+  -webkit-filter: blur(0);
+  touch-action: none;
+}
+
+/* Optimiser les polices et labels */
+.client-portal-map {
+  text-rendering: optimizeSpeed;
+  font-display: swap;
+}
+
+/* Améliorer les performances des layers */
+.maplibregl-layer {
+  will-change: opacity, visibility;
+}
+
+/* Optimiser les contrôles pour éviter les reflows */
+.client-portal-map .maplibregl-ctrl-group {
+  contain: layout style;
+}
+
+/* Stabiliser les marqueurs pour éviter les reflows */
+.client-marker {
+  transform: translateZ(0);
+  will-change: transform;
+  contain: layout style;
+}
+
+/* Forcer la visibilité de la carte lors de l'édition */
+.client-map-container,
+.client-map-confirmation,
+.client-map-edit {
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: block !important;
+}
+
+/* Fix pour Canvas WebGL */
+.client-portal-map .maplibregl-canvas-container {
+  position: absolute !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 1 !important;
+  visibility: visible !important;
+}
+
+/* Optimisation pour le rendu initial */
+[class*="client-"] .maplibregl-canvas {
+  visibility: visible !important;
+  display: block !important;
+  will-change: transform;
+}
+
+/* Optimisation pour le chargement forcé */
+[class*="client-"] .maplibregl-canvas:not([width]),
+[class*="client-"] .maplibregl-canvas:not([height]) {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Fix crucial pour la page d'édition de réservation */
+.client-map-edit {
+  height: 280px !important;
+  min-height: 280px !important;
+  max-height: 280px !important;
+  visibility: visible !important;
+  display: block !important;
+  position: relative !important;
+  z-index: 1 !important;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Garantir que les cartes sont toujours visibles */
+[class*="client-"] .maplibregl-canvas-container {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Hack pour forcer le rerendu correct */
+.client-portal-map {
+  contain: content;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
