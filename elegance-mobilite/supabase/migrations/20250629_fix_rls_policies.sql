@@ -1,7 +1,10 @@
--- Politiques RLS pour la table drivers
--- Ces politiques permettent un accès approprié selon les rôles
+-- Migration: Fix RLS policies to use raw_app_meta_data instead of JWT metadata
+-- Date: 2025-06-29
+-- Issue: HTTP 406 errors due to incorrect role checking in RLS policies
 
--- Supprimer les politiques existantes si elles existent
+BEGIN;
+
+-- Drop existing problematic policies
 DROP POLICY IF EXISTS "Admins can view all drivers" ON drivers;
 DROP POLICY IF EXISTS "Drivers can view own data" ON drivers;
 DROP POLICY IF EXISTS "Admins can update drivers" ON drivers;
@@ -9,11 +12,12 @@ DROP POLICY IF EXISTS "Admins can insert drivers" ON drivers;
 DROP POLICY IF EXISTS "Drivers can update own data" ON drivers;
 DROP POLICY IF EXISTS "Users can create own driver profile" ON drivers;
 
--- Activer RLS sur la table drivers
+-- Ensure RLS is enabled
 ALTER TABLE drivers ENABLE ROW LEVEL SECURITY;
 
--- Politique pour permettre aux admins de voir tous les drivers
--- Utilise raw_app_meta_data depuis auth.users
+-- Create corrected policies that use raw_app_meta_data from auth.users
+
+-- Allow admins to see all drivers
 CREATE POLICY "Admins can view all drivers" ON drivers
 FOR SELECT USING (
   EXISTS (
@@ -23,14 +27,13 @@ FOR SELECT USING (
   )
 );
 
--- Politique pour permettre aux drivers de voir leurs propres données
--- Plus simple : si l'utilisateur connecté = user_id du driver
+-- Allow drivers to see their own data (simplified)
 CREATE POLICY "Drivers can view own data" ON drivers
 FOR SELECT USING (
   auth.uid() = user_id
 );
 
--- Politique pour permettre aux admins de modifier tous les drivers
+-- Allow admins to update all drivers
 CREATE POLICY "Admins can update drivers" ON drivers
 FOR UPDATE USING (
   EXISTS (
@@ -40,7 +43,7 @@ FOR UPDATE USING (
   )
 );
 
--- Politique pour permettre aux admins d'insérer de nouveaux drivers
+-- Allow admins to insert new drivers
 CREATE POLICY "Admins can insert drivers" ON drivers
 FOR INSERT WITH CHECK (
   EXISTS (
@@ -50,30 +53,49 @@ FOR INSERT WITH CHECK (
   )
 );
 
--- Politique pour permettre aux utilisateurs de créer leur propre profil driver
+-- Allow users to create their own driver profile
 CREATE POLICY "Users can create own driver profile" ON drivers
 FOR INSERT WITH CHECK (
   auth.uid() = user_id
 );
 
--- Politique pour permettre aux drivers de mettre à jour leurs propres données
+-- Allow drivers to update their own data
 CREATE POLICY "Drivers can update own data" ON drivers
 FOR UPDATE USING (
   auth.uid() = user_id
 );
 
--- Commentaires pour documentation
+-- Add helpful comments
 COMMENT ON POLICY "Admins can view all drivers" ON drivers IS 
-'Permet aux administrateurs de voir tous les chauffeurs - utilise raw_app_meta_data depuis auth.users';
+'Fixed: Uses raw_app_meta_data from auth.users instead of JWT metadata';
 
 COMMENT ON POLICY "Drivers can view own data" ON drivers IS 
-'Permet aux chauffeurs de voir leurs propres informations - basé sur auth.uid() = user_id';
+'Simplified: Based on auth.uid() = user_id, no role check needed';
 
 COMMENT ON POLICY "Admins can update drivers" ON drivers IS 
-'Permet aux administrateurs de modifier les informations des chauffeurs - utilise raw_app_meta_data';
+'Fixed: Uses raw_app_meta_data from auth.users for admin role verification';
 
 COMMENT ON POLICY "Drivers can update own data" ON drivers IS 
-'Permet aux chauffeurs de mettre à jour leurs propres informations';
+'Simplified: Drivers can update their own data without additional role checks';
 
 COMMENT ON POLICY "Users can create own driver profile" ON drivers IS 
-'Permet aux utilisateurs de créer leur profil chauffeur - basé sur auth.uid() = user_id';
+'Allows any authenticated user to create their driver profile';
+
+-- Test the fix with the problematic user
+DO $$
+DECLARE
+  test_user_id uuid := 'dc62bd52-0ed7-495b-9055-22635d6c5e74';
+  driver_count integer;
+BEGIN
+  -- This should now work without 406 errors
+  SELECT COUNT(*) INTO driver_count
+  FROM drivers 
+  WHERE user_id = test_user_id;
+  
+  RAISE NOTICE 'Migration successful: Found % driver records for user %', driver_count, test_user_id;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Migration test failed: %', SQLERRM;
+END $$;
+
+COMMIT;

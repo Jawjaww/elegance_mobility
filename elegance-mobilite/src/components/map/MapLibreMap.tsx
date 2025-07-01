@@ -187,6 +187,9 @@ export default function MapLibreMap({
   // ID unique pour cette instance de carte
   const mapInstanceIdRef = useRef(`map-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`);
 
+  // Ajouter une référence pour indiquer si la carte est complètement chargée
+  const fullyLoadedRef = useRef(false);
+
   // Fonction utilitaire pour valider un objet Location
   const isValidLocation = (loc: Location | null): loc is Location => {
     try {
@@ -377,7 +380,7 @@ export default function MapLibreMap({
       setMapLoaded(false);
       setStyleLoaded(false);
     }
-  }, [mapInstanceIdRef]);
+  }, []);
 
   // Fonction pour nettoyer et ajouter des marqueurs
   const updateMarkers = useCallback(() => {
@@ -601,9 +604,6 @@ export default function MapLibreMap({
     }
   }, []);
 
-  // Ajouter une référence pour indiquer si la carte est complètement chargée
-  const fullyLoadedRef = useRef(false);
-
   // Initialiser la carte
   useEffect(() => {
     // Vérifier si on peut créer une nouvelle carte
@@ -614,28 +614,27 @@ export default function MapLibreMap({
     
     // Nettoyer les instances orphelines ou trop nombreuses
     cleanOldInstances();
-    
-    // Limiter le nombre de cartes actives
-    if (activeMapInstances >= MAX_ACTIVE_MAPS) {
-      console.warn(`[MapLibre] Trop de cartes actives (${activeMapInstances}). Nettoyage forcé...`);
-      // Forcer le nettoyage de toutes les instances sauf une
-      const allCanvases = document.querySelectorAll('.maplibregl-canvas');
-      allCanvases.forEach((canvas, index) => {
-        // Garder la dernière pour éviter les flashs
-        if (index < allCanvases.length - 1) {
-          try {
+
+    // Compteur d'instances actives géré par le registre
+    if (mapRegistry.getSize() >= MAX_ACTIVE_MAPS) {
+      mapRegistry.forceCleanupOldest();
+      
+      // Nettoyage supplémentaire des contextes WebGL
+      const canvases = document.querySelectorAll('.maplibregl-canvas');
+      canvases.forEach((canvas, index) => {
+        try {
+          if (index < canvases.length - 1) { // Laisser la plus récente
             const gl = (canvas as HTMLCanvasElement).getContext('webgl');
             if (gl) gl.getExtension('WEBGL_lose_context')?.loseContext();
-          } catch (e) {
-            console.warn("Impossible de nettoyer le contexte WebGL:", e);
           }
+        } catch (e) {
+          console.warn("Impossible de nettoyer le contexte WebGL:", e);
         }
       });
       
       // Forcer la libération des marqueurs orphelins
       document.querySelectorAll('.maplibregl-marker').forEach(el => {
-        el.classList.add('map-marker-orphaned');
-        setTimeout(() => el.remove(), 100);
+        if (!el.isConnected) el.remove();
       });
       
       activeMapInstances = 1; // Reset le compteur forcément

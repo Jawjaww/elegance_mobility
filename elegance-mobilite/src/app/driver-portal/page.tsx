@@ -18,9 +18,9 @@ import { Car, BarChart3 } from "lucide-react"
 import { useToast } from "@/hooks/useToast"
 import { useDriverUIStore } from "@/lib/stores/driverUIStore"
 import { useQueryClient } from '@tanstack/react-query'
-import { useDriverProfile, useAvailableRides, useScheduledRides, useDriverStats } from "@/hooks/queries"
+import { useCurrentDriverProfile, useAvailableRides, useScheduledRides, useCurrentDriverStats } from "@/hooks/queries"
 import { useAcceptRide, useStartRide, useCompleteRide } from "@/hooks/queries/useRides"
-import { useDriverRealtime } from "@/hooks/queries/useRealtime"
+import { useCurrentDriverRealtime } from "@/hooks/queries/useRealtime"
 import { useStableRides, useStableMapRides } from "@/hooks/useStableRides"
 import { rideKeys } from '@/lib/api/rides'
 import { cn } from "@/lib/utils"
@@ -99,16 +99,16 @@ export default function DriverDashboard() {
   }, [])
   
   // TanStack Query hooks for server state - seulement si user existe
-  const { data: driverProfile } = useDriverProfile(user?.id || '')
-  const { data: availableRides = [], isLoading: isLoadingAvailableRides } = useAvailableRides(user?.id || '')
-  const { data: todayRides = [], isLoading: isLoadingTodayRides } = useScheduledRides(user?.id || '')
-  const { data: todayStats } = useDriverStats(user?.id || '', 'today')
+  const { data: driverProfile } = useCurrentDriverProfile()
+  const { data: availableRides = [], isLoading: isLoadingAvailableRides } = useAvailableRides()
+  const { data: todayRides = [], isLoading: isLoadingTodayRides } = useScheduledRides()
+  const { data: todayStats } = useCurrentDriverStats('today')
   
   // Zustand store for UI state
   const { isOnline, setIsOnline } = useDriverUIStore()
   
-  // Setup realtime synchronization - seulement si user existe
-  useDriverRealtime(user?.id || '')
+  // Setup realtime synchronization for current driver
+  useCurrentDriverRealtime()
   
   // État local pour gérer les courses entre les appels API
   const [availableRidesLocal, setAvailableRidesLocal] = useState<RideRow[]>([])

@@ -5,21 +5,40 @@ type DriverRow = Database['public']['Tables']['drivers']['Row']
 type DriverUpdate = Database['public']['Tables']['drivers']['Update']
 
 // Query functions centralisées pour les drivers
+// Ces APIs sont conçues pour le portail chauffeur et utilisent auth.uid()
 export const driversApi = {
-  // Récupérer le profil d'un chauffeur
-  getDriverProfile: async (driverId: string): Promise<DriverRow> => {
+  // Récupérer le profil du chauffeur connecté (basé sur auth.uid())
+  getCurrentDriverProfile: async (): Promise<DriverRow> => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Utilisateur non connecté')
+
     const { data, error } = await supabase
       .from('drivers')
       .select('*')
-      .eq('id', driverId)
+      .eq('user_id', user.id) // ✅ Utilise user_id depuis auth
       .single()
     
     if (error) throw error
     return data
   },
 
-  // Mettre à jour le statut en ligne/hors ligne
-  updateOnlineStatus: async (driverId: string, isOnline: boolean): Promise<DriverRow> => {
+  // Récupérer le profil d'un chauffeur par son drivers.id (pour les relations)
+  getDriverProfile: async (driverId: string): Promise<DriverRow> => {
+    const { data, error } = await supabase
+      .from('drivers')
+      .select('*')
+      .eq('id', driverId) // ✅ Utilise l'ID du driver pour les relations
+      .single()
+    
+    if (error) throw error
+    return data
+  },
+
+  // Mettre à jour le statut en ligne/hors ligne du chauffeur connecté
+  updateOnlineStatus: async (isOnline: boolean): Promise<DriverRow> => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Utilisateur non connecté')
+
     const { data, error } = await supabase
       .from('drivers')
       .update({ 
@@ -27,7 +46,7 @@ export const driversApi = {
         last_seen: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
-      .eq('id', driverId)
+      .eq('user_id', user.id) // ✅ Utilise user_id depuis auth
       .select()
       .single()
     
@@ -35,12 +54,14 @@ export const driversApi = {
     return data
   },
 
-  // Mettre à jour la position du chauffeur
+  // Mettre à jour la position du chauffeur connecté
   updateLocation: async (
-    driverId: string, 
     lat: number, 
     lon: number
   ): Promise<DriverRow> => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Utilisateur non connecté')
+
     const { data, error } = await supabase
       .from('drivers')
       .update({ 
@@ -49,7 +70,7 @@ export const driversApi = {
         last_seen: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
-      .eq('id', driverId)
+      .eq('user_id', user.id) // ✅ Utilise user_id depuis auth
       .select()
       .single()
     
@@ -57,8 +78,20 @@ export const driversApi = {
     return data
   },
 
-  // Calculer les statistiques d'un chauffeur
-  getDriverStats: async (driverId: string, period: 'today' | 'week' | 'month') => {
+  // Calculer les statistiques du chauffeur connecté
+  getCurrentDriverStats: async (period: 'today' | 'week' | 'month') => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Utilisateur non connecté')
+
+    // D'abord récupérer le driver ID
+    const { data: driver } = await supabase
+      .from('drivers')
+      .select('id')
+      .eq('user_id', user.id)
+      .single()
+
+    if (!driver) throw new Error('Profil chauffeur non trouvé')
+
     const now = new Date()
     let startDate: Date
 
@@ -79,7 +112,7 @@ export const driversApi = {
     const { data, error } = await supabase
       .from('rides')
       .select('id, estimated_price, final_price, pickup_time')
-      .eq('driver_id', driverId)
+      .eq('driver_id', driver.id) // ✅ Utilise driver.id pour la relation rides
       .eq('status', 'completed')
       .gte('pickup_time', startDate.toISOString())
       .order('pickup_time', { ascending: false })
@@ -107,6 +140,26 @@ export const driversApi = {
 // Query keys structurées pour les drivers
 export const driverKeys = {
   all: ['drivers'] as const,
+  current: () => [...driverKeys.all, 'current'] as const,
   profile: (driverId: string) => [...driverKeys.all, 'profile', driverId] as const,
-  stats: (driverId: string, period: string) => [...driverKeys.all, 'stats', driverId, period] as const,
+  stats: (period: string) => [...driverKeys.all, 'stats', period] as const,
 }
+
+/*
+ * ARCHITECTURE NOTES:
+ * 
+ * Ce fichier contient les APIs pour le portail chauffeur.
+ * 
+ * DEUX TYPES D'ID DANS LE SYSTÈME:
+ * 1. auth.users.id (UUID de l'utilisateur Supabase) 
+ * 2. drivers.id (UUID du profil chauffeur)
+ * 
+ * RELATION: drivers.user_id -> auth.users.id (1:1)
+ * 
+ * RÈGLES D'USAGE:
+ * - getCurrentDriverProfile(): Utilise auth.uid() → drivers.user_id 
+ * - getDriverProfile(driverId): Utilise drivers.id pour les relations (rides.driver_id)
+ * - updateOnlineStatus()/updateLocation(): Utilise auth.uid() → drivers.user_id
+ * 
+ * Pour les APIs admin qui manipulent drivers.id directement, voir drivers-admin.ts
+ */

@@ -39,7 +39,7 @@ export function AdminLoginForm() {
       }
 
       // Vérification typée du rôle pour les admins
-      const userRole = (data.user?.app_metadata?.role ?? data.user?.user_metadata?.role) as AppRole
+      const userRole = (data.user?.app_metadata?.role) as AppRole
       
       // Seuls les admins et super admins peuvent se connecter ici
       if (!['app_admin', 'app_super_admin'].includes(userRole)) {

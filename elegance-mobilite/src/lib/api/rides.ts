@@ -123,6 +123,7 @@ export const rideKeys = {
   all: ['rides'] as const,
   available: (driverId?: string) => [...rideKeys.all, 'available', driverId] as const,
   scheduled: (driverId: string) => [...rideKeys.all, 'scheduled', driverId] as const,
+  scheduledCurrent: () => [...rideKeys.all, 'scheduled', 'current'] as const,
   history: (driverId: string) => [...rideKeys.all, 'history', driverId] as const,
   route: (rideId: string) => [...rideKeys.all, 'route', rideId] as const,
 }

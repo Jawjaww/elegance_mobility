@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { useToast } from '@/hooks/useToast'
+import { useCurrentDriverId } from '@/hooks/useCurrentDriver'
 import type { Database } from '@/lib/types/database.types'
 
 type RideRow = Database["public"]["Tables"]["rides"]["Row"]
@@ -41,11 +42,17 @@ export function useAvailableRidesQuery() {
 
 // Hook pour récupérer les courses programmées du chauffeur
 export function useScheduledRidesQuery() {
+  const { driverId, isLoading: isLoadingDriver } = useCurrentDriverId()
+  
   return useQuery({
-    queryKey: ['scheduled-rides'],
+    queryKey: ['scheduled-rides', driverId],
     queryFn: async () => {
-      // TODO: Remplacer par l'ID du chauffeur actuel
-      const driverId = 'current-driver'
+      if (!driverId) {
+        console.log('⚠️ Aucun ID de chauffeur disponible pour récupérer les courses')
+        return []
+      }
+      
+      console.log('🔍 Récupération des courses pour le chauffeur:', driverId)
       
       const { data, error } = await supabase
         .from('rides')
@@ -54,9 +61,15 @@ export function useScheduledRidesQuery() {
         .in('status', ['scheduled', 'in-progress'])
         .order('pickup_time', { ascending: true })
       
-      if (error) throw error
+      if (error) {
+        console.error('❌ Erreur lors de la récupération des courses:', error)
+        throw error
+      }
+      
+      console.log('✅ Courses récupérées:', data?.length || 0)
       return data || []
     },
+    enabled: !!driverId && !isLoadingDriver,
     refetchInterval: 60000, // Refetch toutes les minutes
     staleTime: 30000,
   })
@@ -159,7 +172,7 @@ export function useUpdateRideStatusMutation() {
 // Hook pour l'abonnement temps réel aux courses
 export function useRealtimeRides() {
   const queryClient = useQueryClient()
-  // const { addAvailableRide, removeAvailableRide } = useDriverStore() // TODO: Implement
+  const { driverId } = useCurrentDriverId()
   
   useEffect(() => {
     const channel = supabase
@@ -173,9 +186,6 @@ export function useRealtimeRides() {
         }, 
         (payload) => {
           console.log('Nouvelle course disponible:', payload.new)
-          
-          // Ajouter à l'état local
-          // addAvailableRide(payload.new as RideRow) // TODO: Implement
           
           // Invalider le cache TanStack Query
           queryClient.invalidateQueries({ queryKey: ['available-rides'] })
@@ -191,13 +201,14 @@ export function useRealtimeRides() {
           console.log('Course mise à jour:', payload.new)
           
           // Si la course a été acceptée par un autre chauffeur, la supprimer des disponibles
-          if (payload.new.driver_id && payload.new.driver_id !== 'current-driver') {
-            // removeAvailableRide(payload.new.id) // TODO: Implement
+          if (payload.new.driver_id && payload.new.driver_id !== driverId) {
+            // Invalider les courses disponibles
+            queryClient.invalidateQueries({ queryKey: ['available-rides'] })
           }
           
           // Invalider les caches
           queryClient.invalidateQueries({ queryKey: ['available-rides'] })
-          queryClient.invalidateQueries({ queryKey: ['scheduled-rides'] })
+          queryClient.invalidateQueries({ queryKey: ['scheduled-rides', driverId] })
         }
       )
       .on('postgres_changes',
@@ -208,7 +219,6 @@ export function useRealtimeRides() {
         },
         (payload) => {
           console.log('Course supprimée:', payload.old)
-          // removeAvailableRide(payload.old.id) // TODO: Implement
           queryClient.invalidateQueries({ queryKey: ['available-rides'] })
         }
       )
@@ -217,7 +227,7 @@ export function useRealtimeRides() {
     return () => {
       channel.unsubscribe()
     }
-  }, [queryClient]) // TODO: Add dependencies when store is implemented
+  }, [queryClient, driverId])
 }
 
 // Hook pour calculer l'itinéraire d'une course (pour l'aperçu)

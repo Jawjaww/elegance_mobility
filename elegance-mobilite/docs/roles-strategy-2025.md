@@ -1,24 +1,63 @@
-# Stratégie de Gestion des Rôles avec Supabase et Next.js 15 (2025)
+# 🛡️ ARCHITECTURE COMPLÈTE - RÔLES ET RLS (2025)
 
-## Principes Fondamentaux
+## 🎯 **STRATÉGIE VALIDÉE ET FONCTIONNELLE**
 
-1. Les rôles sont gérés exclusivement dans Supabase
-2. L'application ne fait que vérifier les rôles existants
-3. RLS s'occupe de filtrer les données selon les rôles
+**✅ Architecture debuggée et corrigée le 30 juin 2025**  
+**🚀 Erreurs 403 définitivement résolues**
+**🎉 Interface admin pleinement opérationnelle le 1er juillet 2025**
 
-## Configuration dans Supabase
+### **🔧 CORRECTIONS FINALES APPLIQUÉES (1er juillet 2025)**
 
-### 1. Définition des Rôles
-Les rôles sont configurés une seule fois dans Supabase :
-- app_customer : Utilisateurs standards
-- app_driver : Chauffeurs
-- app_admin : Administrateurs
-- app_super_admin : Super administrateurs
+#### **Problème résolu : Permissions RLS sur auth.users**
+- **Symptôme** : `permission denied for table users`
+- **Cause** : Politiques RLS manquantes pour `auth.users`
+- **Solution** : Politiques JWT créées pour `app_super_admin` et `app_admin`
 
-### 2. Stratégie de Création de Rôles Révisée
+```sql
+-- Politiques opérationnelles
+CREATE POLICY "Super admins can view all auth users" ON auth.users
+FOR SELECT TO authenticated
+USING (((auth.jwt() -> 'app_metadata'::text)::jsonb ->> 'role'::text) = 'app_super_admin');
 
-#### 2.1 Inscription de l'Utilisateur
-- Création d'un enregistrement dans auth.users sans attribution immédiate de rôle
+CREATE POLICY "Admins can view all auth users" ON auth.users  
+FOR SELECT TO authenticated
+USING (((auth.jwt() -> 'app_metadata'::text)::jsonb ->> 'role'::text) = 'app_admin');
+```
+
+#### **Architecture finale confirmée**
+- **`auth.users`** : Authentification + rôles (`app_metadata.role`)
+- **`public.drivers`** : Profils détaillés des chauffeurs  
+- **Relation** : `drivers.user_id` → `auth.users.id`
+- **Interface admin** : Accès complet via politiques JWT
+
+## 📊 **VISION D'ENSEMBLE DE L'ARCHITECTURE**
+
+### **🔑 Architecture d'Authentification**
+
+```
+Frontend (Next.js) 
+    ↓ JWT Token
+Supabase Auth
+    ↓ app_metadata.role
+Politiques RLS 
+    ↓ Autorisation
+Tables (drivers, rides, users)
+```
+
+## 🎯 **RÔLES DÉFINIS DANS LE SYSTÈME**
+
+### **📋 Hiérarchie des Rôles**
+
+1. **`app_driver`** - Chauffeurs de la plateforme
+2. **`app_customer`** - Clients qui réservent des courses  
+3. **`app_admin`** - Administrateurs avec accès étendu
+4. **`app_super_admin`** - Super administrateurs (accès total)
+
+### **📍 Localisation des Rôles**
+
+- **🔐 Dans le JWT** : `app_metadata.role = "app_driver"`
+- **💾 En base** : `auth.users.raw_app_meta_data ->> 'role'`
+- **⚡ Temps réel** : Les politiques RLS utilisent le JWT
 - Les utilisateurs sont initialement créés sans rôle spécifique
 
 #### 2.2 Validation des Rôles

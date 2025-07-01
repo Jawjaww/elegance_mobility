@@ -2,7 +2,24 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { driversApi, driverKeys } from '@/lib/api/drivers'
 import { useToast } from '@/hooks/useToast'
 
-// Hook pour le profil du chauffeur
+// Hook pour le profil du chauffeur connecté (utilise auth.uid())
+export function useCurrentDriverProfile() {
+  return useQuery({
+    queryKey: driverKeys.current(),
+    queryFn: () => driversApi.getCurrentDriverProfile(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnReconnect: true,
+    retry: (failureCount, error: any) => {
+      // Ne pas retry si c'est un problème d'autorisation ou pas de profil
+      if (error?.message?.includes('403') || error?.code === 'PGRST116') {
+        return false
+      }
+      return failureCount < 3
+    }
+  })
+}
+
+// Hook pour le profil d'un chauffeur spécifique (par drivers.id)
 export function useDriverProfile(driverId: string) {
   return useQuery({
     queryKey: driverKeys.profile(driverId),
@@ -13,34 +30,33 @@ export function useDriverProfile(driverId: string) {
   })
 }
 
-// Hook pour les statistiques du chauffeur
-export function useDriverStats(driverId: string, period: 'today' | 'week' | 'month') {
+// Hook pour les statistiques du chauffeur connecté
+export function useCurrentDriverStats(period: 'today' | 'week' | 'month') {
   return useQuery({
-    queryKey: driverKeys.stats(driverId, period),
-    queryFn: () => driversApi.getDriverStats(driverId, period),
-    enabled: !!driverId,
+    queryKey: driverKeys.stats(period),
+    queryFn: () => driversApi.getCurrentDriverStats(period),
     staleTime: 2 * 60 * 1000, // 2 minutes pour les stats
     refetchInterval: 60000, // Refetch toutes les minutes
   })
 }
 
-// Mutation pour mettre à jour le statut en ligne/hors ligne
+// Mutation pour mettre à jour le statut en ligne/hors ligne du chauffeur connecté
 export function useUpdateOnlineStatus() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
   return useMutation({
-    mutationFn: ({ driverId, isOnline }: { driverId: string; isOnline: boolean }) =>
-      driversApi.updateOnlineStatus(driverId, isOnline),
+    mutationFn: ({ isOnline }: { isOnline: boolean }) =>
+      driversApi.updateOnlineStatus(isOnline),
     onSuccess: (data, { isOnline }) => {
       // Mettre à jour le cache du profil
       queryClient.setQueryData(
-        driverKeys.profile(data.id),
+        driverKeys.current(),
         (oldData: any) => ({ ...oldData, is_online: isOnline })
       )
       
       toast({
-        variant: isOnline ? "success" : "destructive",
+        variant: isOnline ? "success" : "default",
         title: isOnline ? "Vous êtes en ligne" : "Vous êtes hors ligne",
         description: isOnline 
           ? "Vous pouvez maintenant recevoir des courses" 
@@ -57,17 +73,28 @@ export function useUpdateOnlineStatus() {
   })
 }
 
-// Mutation pour mettre à jour la localisation (stockée dans l'UI state uniquement)
+// Mutation pour mettre à jour la localisation du chauffeur connecté
 export function useUpdateLocation() {
-  // Note: La localisation est stockée dans l'UI state pour l'instant
-  // Si nécessaire, on peut ajouter des champs de localisation à la table drivers plus tard
+  const queryClient = useQueryClient()
+  
   return useMutation({
-    mutationFn: async ({ driverId, lat, lon }: { driverId: string; lat: number; lon: number }) => {
-      // Pour l'instant, on retourne juste les coordonnées
-      // Dans le futur, on pourrait stocker cela dans une table locations séparée
-      console.log(`📍 Driver ${driverId} location updated: ${lat}, ${lon}`)
-      return { driverId, lat, lon, timestamp: Date.now() }
+    mutationFn: ({ lat, lon }: { lat: number; lon: number }) =>
+      driversApi.updateLocation(lat, lon),
+    onSuccess: (data, { lat, lon }) => {
+      // Mettre à jour le cache du profil
+      queryClient.setQueryData(
+        driverKeys.current(),
+        (oldData: any) => ({ 
+          ...oldData, 
+          current_lat: lat, 
+          current_lon: lon,
+          last_seen: new Date().toISOString()
+        })
+      )
+      console.log(`📍 Location updated: ${lat}, ${lon}`)
     },
-    // Les mises à jour de localisation sont gérées par l'UI store
+    onError: (error) => {
+      console.error('❌ Erreur mise à jour localisation:', error)
+    }
   })
 }

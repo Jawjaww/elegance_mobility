@@ -1,26 +1,45 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ridesApi, rideKeys } from '@/lib/api/rides'
+import { driversApi } from '@/lib/api/drivers'
 import { useToast } from '@/hooks/useToast'
 import type { Database } from '@/lib/types/database.types'
 
 type RideRow = Database['public']['Tables']['rides']['Row']
 
-// Hook pour les courses disponibles
-export function useAvailableRides(driverId?: string) {
+// Hook pour les courses disponibles (global - pas spécifique à un driver)
+export function useAvailableRides() {
   return useQuery({
-    queryKey: rideKeys.available(driverId),
-    queryFn: () => ridesApi.getAvailableRides(driverId),
-    enabled: !!driverId, // Prevent query when no driverId
-    // Retirer refetchInterval - utiliser realtime à la place
-    // refetchInterval: 10000, // Refetch toutes les 10 secondes
+    queryKey: rideKeys.available(),
+    queryFn: () => ridesApi.getAvailableRides(),
     refetchOnReconnect: true,
     refetchOnWindowFocus: true,
     staleTime: 30 * 1000, // Les données sont considérées fraîches pendant 30s
   })
 }
 
-// Hook pour les courses programmées
-export function useScheduledRides(driverId: string) {
+// Hook pour les courses programmées du driver connecté (utilise auth.uid())
+export function useScheduledRides() {
+  return useQuery({
+    queryKey: rideKeys.scheduledCurrent(),
+    queryFn: async () => {
+      // Récupérer le profil driver depuis l'utilisateur connecté
+      const driverProfile = await driversApi.getCurrentDriverProfile()
+      return ridesApi.getScheduledRides(driverProfile.id)
+    },
+    refetchInterval: 30000, // Refetch toutes les 30 secondes
+    refetchOnReconnect: true,
+    retry: (failureCount, error: any) => {
+      // Ne pas retry si c'est un problème d'autorisation
+      if (error?.message?.includes('403') || error?.code === 'PGRST116') {
+        return false
+      }
+      return failureCount < 3
+    }
+  })
+}
+
+// Hook pour les courses programmées d'un chauffeur spécifique (par driver.id)
+export function useScheduledRidesForDriver(driverId: string) {
   return useQuery({
     queryKey: rideKeys.scheduled(driverId),
     queryFn: () => ridesApi.getScheduledRides(driverId),

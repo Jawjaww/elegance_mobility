@@ -725,6 +725,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_profiles: {
+        Row: {
+          app_metadata: Json | null
+          created_at: string | null
+          id: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          app_metadata?: Json | null
+          created_at?: string | null
+          id?: never
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          app_metadata?: Json | null
+          created_at?: string | null
+          id?: never
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           created_at: string
@@ -784,9 +808,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_driver_accept_rides: {
+        Args: { driver_user_id: string }
+        Returns: {
+          can_accept: boolean
+          reason: string
+          profile_status: string
+          validation_status: string
+        }[]
+      }
       check_admin_access: {
         Args: { user_id: string }
         Returns: Json
+      }
+      check_driver_profile_completeness: {
+        Args: { driver_user_id: string }
+        Returns: {
+          is_complete: boolean
+          missing_fields: string[]
+          completion_percentage: number
+        }[]
       }
       check_user_role_update: {
         Args: Record<PropertyKey, never>
@@ -814,6 +855,15 @@ export type Database = {
         Args: { user_id: string; user_role: string }
         Returns: boolean
       }
+      debug_check_driver_profile_completeness: {
+        Args: { driver_user_id: string }
+        Returns: {
+          is_complete: boolean
+          completion_percentage: number
+          missing_fields: string[]
+          debug_info: Json
+        }[]
+      }
       delete_user_and_associated_data: {
         Args: { p_user_id: string }
         Returns: undefined
@@ -821,6 +871,10 @@ export type Database = {
       delete_user_by_id: {
         Args: { p_user_id: string }
         Returns: undefined
+      }
+      ensure_driver_profile: {
+        Args: { driver_user_id: string }
+        Returns: string
       }
       get_admin_level: {
         Args: Record<PropertyKey, never>
@@ -830,12 +884,24 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_incomplete_drivers_report: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          first_name: string
+          last_name: string
+          status: Database["public"]["Enums"]["driver_status"]
+          is_complete: boolean
+          completion_percentage: number
+          missing_fields: string[]
+        }[]
+      }
       get_safe_email: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
       get_user_app_role: {
-        Args: Record<PropertyKey, never>
+        Args: { user_id?: string }
         Returns: string
       }
       get_user_profile: {
@@ -862,6 +928,10 @@ export type Database = {
         Args: { admin_id: string }
         Returns: undefined
       }
+      update_driver_status_based_on_completeness: {
+        Args: { driver_user_id: string }
+        Returns: string
+      }
       validate_driver: {
         Args: {
           driver_id: string
@@ -879,6 +949,7 @@ export type Database = {
         | "inactive"
         | "on_vacation"
         | "suspended"
+        | "incomplete"
       promo_type_enum: "percentage" | "fixed_amount"
       reward_type_enum: "bonus" | "commission_increase"
       ride_status:
@@ -1014,6 +1085,7 @@ export const Constants = {
         "inactive",
         "on_vacation",
         "suspended",
+        "incomplete",
       ],
       promo_type_enum: ["percentage", "fixed_amount"],
       reward_type_enum: ["bonus", "commission_increase"],

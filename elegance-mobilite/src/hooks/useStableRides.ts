@@ -30,7 +30,8 @@ export function useStableRides(rides: RideRow[] | undefined): RideRow[] {
   const lastKeyRef = useRef<string>('')
   
   return useMemo(() => {
-    const currentRides = rides || []
+    // Gestion défensive pour les cas undefined/null
+    const currentRides = Array.isArray(rides) ? rides : []
     const currentKey = createRideStabilityKey(currentRides)
     
     // Si la clé n'a pas changé, retourner la référence stable

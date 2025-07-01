@@ -70,7 +70,9 @@ export function useRealtime({ driverId, enabled = true }: UseRealtimeOptions = {
           if (changedDriverId && typeof changedDriverId === 'string') {
             // Invalidate specific driver queries
             queryClient.invalidateQueries({ queryKey: driverKeys.profile(changedDriverId) })
-            queryClient.invalidateQueries({ queryKey: driverKeys.stats(changedDriverId, 'today') })
+            queryClient.invalidateQueries({ queryKey: driverKeys.stats('today') })
+            queryClient.invalidateQueries({ queryKey: driverKeys.stats('week') })
+            queryClient.invalidateQueries({ queryKey: driverKeys.stats('month') })
             
             // Invalidate admin queries
             queryClient.invalidateQueries({ queryKey: driversAdminKeys.detail(changedDriverId) })
@@ -122,6 +124,13 @@ export function useRealtime({ driverId, enabled = true }: UseRealtimeOptions = {
  */
 export function useDriverRealtime(driverId: string) {
   return useRealtime({ driverId, enabled: !!driverId })
+}
+
+/**
+ * Hook for current driver portal realtime updates (uses auth.uid())
+ */
+export function useCurrentDriverRealtime() {
+  return useRealtime({ enabled: true })
 }
 
 /**

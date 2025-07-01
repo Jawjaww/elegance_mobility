@@ -1,24 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🚀 Elegance Mobilité - Plateforme de Transport
 
-## Getting Started
+Application Next.js complète pour la gestion de courses de transport avec chauffeurs.
 
-First, run the development server:
+## ✅ Statut du Projet
+
+- ✅ **Erreurs 403 Supabase** : Résolues définitivement (30 juin 2025)
+- ✅ **Authentification** : Fonctionnelle avec RLS
+- ✅ **Driver Portal** : Opérationnel
+- ✅ **Mapping** : MapLibre intégré et stable
+
+## 🚀 Démarrage Rapide
 
 ```bash
+# Installation des dépendances
+npm install
+
+# Démarrage en mode développement
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Ouvrir http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 📁 Architecture
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+src/
+├── app/                 # Pages Next.js (App Router)
+├── components/          # Composants React réutilisables
+├── hooks/              # Hooks personnalisés (TanStack Query)
+├── lib/                # Configuration et utilitaires
+├── store/              # Gestion d'état (Zustand)
+└── types/              # Types TypeScript
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+docs/                   # Documentation technique
+scripts/                # Scripts de maintenance DB
+```
+
+## 🛡️ Sécurité & RLS
+
+Les politiques Row Level Security (RLS) de Supabase utilisent le JWT pour l'autorisation :
+
+```sql
+-- ✅ Politique correcte (utilise le JWT)
+(auth.jwt() ->> 'app_metadata')::jsonb ->> 'role' = 'app_driver'
+```
+
+**📖 Documentation complète :** `docs/SOLUTION-ERREURS-403-FINALE.md`
+
+## 🧹 Maintenance
+
+```bash
+# Nettoyage des fichiers obsolètes
+chmod +x scripts/cleanup-obsolete-files.sh
+./scripts/cleanup-obsolete-files.sh
+```
 
 ## Learn More
 

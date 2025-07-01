@@ -5,7 +5,10 @@ import "./globals.css";
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-plus-jakarta'
+  variable: '--font-plus-jakarta',
+  display: 'swap', // Améliore les performances de chargement
+  preload: true,   // Explicitement preload
+  fallback: ['system-ui', 'arial'] // Fallback amélioré
 });
 
 export const metadata = {
