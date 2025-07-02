@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/useToast"
 import { AlertTriangle, CheckCircle, XCircle, Eye, User, Phone, Loader2 } from "lucide-react"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import type { Database } from "@/lib/types/database.types"
 import { useDriversAdminSimple } from "@/hooks/useDriversAdminSimple"
 
@@ -159,9 +160,12 @@ export default function AdminChauffeursPage() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                <User className="w-5 h-5 text-gray-600" />
-              </div>
+              <Avatar className="w-10 h-10">
+                <AvatarImage src={driver.avatar_url || undefined} />
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                  {(driver.first_name?.[0] || '') + (driver.last_name?.[0] || '') || 'CH'}
+                </AvatarFallback>
+              </Avatar>
               <div>
                 <CardTitle className="text-lg">
                   {driver.first_name} {driver.last_name}

@@ -31,6 +31,11 @@ interface DriverHeaderProps {
   todayEarnings?: number
   todayRides?: number
   currentRating?: number
+  driverProfile?: {
+    avatar_url?: string | null
+    first_name?: string | null
+    last_name?: string | null
+  } | null
 }
 
 interface DailyStats {
@@ -45,7 +50,8 @@ export function DriverHeader({
   onToggleOnline,
   todayEarnings = 0,
   todayRides = 0,
-  currentRating = 4.8
+  currentRating = 4.8,
+  driverProfile = null
 }: DriverHeaderProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [dailyStats, setDailyStats] = useState<DailyStats>({
@@ -84,7 +90,17 @@ export function DriverHeader({
   }
 
   const getAvatarFallback = () => {
+    if (driverProfile?.first_name && driverProfile?.last_name) {
+      return (driverProfile.first_name[0] + driverProfile.last_name[0]).toUpperCase()
+    }
     return user.email?.[0].toUpperCase() ?? 'D'
+  }
+
+  const getDriverName = () => {
+    if (driverProfile?.first_name && driverProfile?.last_name) {
+      return `${driverProfile.first_name} ${driverProfile.last_name}`
+    }
+    return user.user_metadata?.full_name || user.email
   }
 
   const formatEarnings = (amount: number) => {
@@ -117,7 +133,7 @@ export function DriverHeader({
                 className="relative h-10 w-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20"
               >
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src="/avatars/driver.png" />
+                  <AvatarImage src={driverProfile?.avatar_url || undefined} />
                   <AvatarFallback className="bg-neutral-700 text-white">
                     {getAvatarFallback()}
                   </AvatarFallback>
@@ -127,14 +143,14 @@ export function DriverHeader({
             <DropdownMenuContent className="w-56 bg-black/90 backdrop-blur-sm border-neutral-700" align="end">
               <div className="flex items-center gap-3 p-3 border-b border-neutral-700">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src="/avatars/driver.png" />
+                  <AvatarImage src={driverProfile?.avatar_url || undefined} />
                   <AvatarFallback className="bg-neutral-700 text-white">
                     {getAvatarFallback()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white truncate">
-                    {user.user_metadata?.full_name || user.email}
+                    {getDriverName()}
                   </p>
                   <div className="flex items-center space-x-1">
                     <Star className="h-3 w-3 text-yellow-500 fill-current" />

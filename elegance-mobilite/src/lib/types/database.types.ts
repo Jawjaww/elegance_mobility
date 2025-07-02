@@ -106,6 +106,56 @@ export type Database = {
           },
         ]
       }
+      driver_documents: {
+        Row: {
+          created_at: string | null
+          document_type: string
+          driver_id: string | null
+          expiry_date: string | null
+          file_name: string | null
+          file_size: number | null
+          file_url: string
+          id: string
+          rejection_reason: string | null
+          upload_date: string | null
+          validation_status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          document_type: string
+          driver_id?: string | null
+          expiry_date?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          file_url: string
+          id?: string
+          rejection_reason?: string | null
+          upload_date?: string | null
+          validation_status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          document_type?: string
+          driver_id?: string | null
+          expiry_date?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          rejection_reason?: string | null
+          upload_date?: string | null
+          validation_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_documents_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_rewards: {
         Row: {
           claimed_at: string | null
@@ -156,16 +206,82 @@ export type Database = {
           },
         ]
       }
+      driver_vehicles: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          documents: Json | null
+          driver_id: string | null
+          id: string
+          is_primary: boolean | null
+          license_plate: string
+          make: string
+          model: string
+          photos: Json | null
+          seats: number | null
+          updated_at: string | null
+          vehicle_type: Database["public"]["Enums"]["vehicle_type_enum"] | null
+          year: number | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          documents?: Json | null
+          driver_id?: string | null
+          id?: string
+          is_primary?: boolean | null
+          license_plate: string
+          make: string
+          model: string
+          photos?: Json | null
+          seats?: number | null
+          updated_at?: string | null
+          vehicle_type?: Database["public"]["Enums"]["vehicle_type_enum"] | null
+          year?: number | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          documents?: Json | null
+          driver_id?: string | null
+          id?: string
+          is_primary?: boolean | null
+          license_plate?: string
+          make?: string
+          model?: string
+          photos?: Json | null
+          seats?: number | null
+          updated_at?: string | null
+          vehicle_type?: Database["public"]["Enums"]["vehicle_type_enum"] | null
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_vehicles_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drivers: {
         Row: {
+          address_line1: string | null
+          address_line2: string | null
           availability_hours: Json | null
           avatar_url: string | null
+          city: string | null
           company_name: string | null
           company_phone: string | null
           created_at: string
           current_vehicle_id: string | null
+          date_of_birth: string | null
+          document_urls: Json | null
           driving_license_expiry_date: string | null
           driving_license_number: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
           employee_name: string | null
           employee_phone: string | null
           first_name: string | null
@@ -175,6 +291,7 @@ export type Database = {
           languages_spoken: string[] | null
           last_name: string | null
           phone: string | null
+          postal_code: string | null
           preferred_zones: string[] | null
           rating: number | null
           status: Database["public"]["Enums"]["driver_status"]
@@ -185,14 +302,21 @@ export type Database = {
           vtc_card_number: string | null
         }
         Insert: {
+          address_line1?: string | null
+          address_line2?: string | null
           availability_hours?: Json | null
           avatar_url?: string | null
+          city?: string | null
           company_name?: string | null
           company_phone?: string | null
           created_at?: string
           current_vehicle_id?: string | null
+          date_of_birth?: string | null
+          document_urls?: Json | null
           driving_license_expiry_date?: string | null
           driving_license_number?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           employee_name?: string | null
           employee_phone?: string | null
           first_name?: string | null
@@ -202,6 +326,7 @@ export type Database = {
           languages_spoken?: string[] | null
           last_name?: string | null
           phone?: string | null
+          postal_code?: string | null
           preferred_zones?: string[] | null
           rating?: number | null
           status?: Database["public"]["Enums"]["driver_status"]
@@ -212,14 +337,21 @@ export type Database = {
           vtc_card_number?: string | null
         }
         Update: {
+          address_line1?: string | null
+          address_line2?: string | null
           availability_hours?: Json | null
           avatar_url?: string | null
+          city?: string | null
           company_name?: string | null
           company_phone?: string | null
           created_at?: string
           current_vehicle_id?: string | null
+          date_of_birth?: string | null
+          document_urls?: Json | null
           driving_license_expiry_date?: string | null
           driving_license_number?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           employee_name?: string | null
           employee_phone?: string | null
           first_name?: string | null
@@ -229,6 +361,7 @@ export type Database = {
           languages_spoken?: string[] | null
           last_name?: string | null
           phone?: string | null
+          postal_code?: string | null
           preferred_zones?: string[] | null
           rating?: number | null
           status?: Database["public"]["Enums"]["driver_status"]
@@ -829,6 +962,14 @@ export type Database = {
           completion_percentage: number
         }[]
       }
+      check_driver_profile_completeness_simple: {
+        Args: { driver_user_id: string }
+        Returns: {
+          is_complete: boolean
+          completion_percentage: number
+          missing_fields: string[]
+        }[]
+      }
       check_user_role_update: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -927,6 +1068,14 @@ export type Database = {
       setup_admin_policies: {
         Args: { admin_id: string }
         Returns: undefined
+      }
+      update_driver_document_url: {
+        Args: {
+          p_driver_id: string
+          p_document_type: string
+          p_file_url: string
+        }
+        Returns: boolean
       }
       update_driver_status_based_on_completeness: {
         Args: { driver_user_id: string }

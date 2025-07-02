@@ -2,6 +2,7 @@
 
 import { DriverHeader } from "./DriverHeader"
 import { useDriver } from "@/contexts/DriverContext"
+import { useCurrentDriverProfile } from "@/hooks/queries/useDriver"
 import type { User } from "@/lib/types/common.types"
 
 interface DriverHeaderWrapperProps {
@@ -10,6 +11,7 @@ interface DriverHeaderWrapperProps {
 
 export function DriverHeaderWrapper({ user }: DriverHeaderWrapperProps) {
   const { isOnline, todayStats, toggleOnlineStatus } = useDriver()
+  const { data: driverProfile } = useCurrentDriverProfile()
 
   return (
     <DriverHeader
@@ -19,6 +21,7 @@ export function DriverHeaderWrapper({ user }: DriverHeaderWrapperProps) {
       todayEarnings={todayStats.earnings}
       todayRides={todayStats.rides}
       currentRating={todayStats.rating}
+      driverProfile={driverProfile}
     />
   )
 }
