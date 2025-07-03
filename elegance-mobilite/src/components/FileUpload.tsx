@@ -1,7 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { supabase } from '@/lib/database/client'
 import { useToast } from '@/hooks/useToast'
-import { setupStorageBuckets, getStorageUrl, getSignedUrl } from '@/lib/supabase-storage-setup'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Card, CardContent } from '@/components/ui/card'
@@ -61,127 +60,21 @@ export function FileUpload({
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null)
   const [showPreview, setShowPreview] = useState(false)
   const [dragActive, setDragActive] = useState(false)
-  const [viewableUrl, setViewableUrl] = useState<string | null>(null) // Pour les URLs signées
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
   // Initialiser avec le fichier actuel s'il existe
   useEffect(() => {
-    const loadCurrentFileData = async () => {
-      if (currentFile) {
-        // Essayer de récupérer les vraies informations du fichier depuis la base
-        let realFileData = null
-        
-        if (fileType === 'document' && documentType) {
-          try {
-            const { data: documentData } = await supabase
-              .from('driver_documents')
-              .select('file_name, file_size, file_url')
-              .eq('driver_id', driverId)
-              .eq('document_type', documentType)
-              .single()
-            
-            if (documentData) {
-              realFileData = {
-                url: documentData.file_url,
-                name: documentData.file_name,
-                size: documentData.file_size,
-                type: documentData.file_name.endsWith('.pdf') ? 'application/pdf' : 'image',
-                uploadedAt: new Date()
-              }
-            }
-          } catch (error) {
-            console.warn('⚠️ Impossible de récupérer les infos du document:', error)
-          }
-        }
-        
-        // Fallback sur currentFile si pas de données en base
-        const fileData = realFileData || {
-          url: currentFile.url,
-          name: currentFile.name || extractFileNameFromUrl(currentFile.url) || 'Document',
-          size: currentFile.size || 0,
-          type: currentFile.url.includes('.pdf') ? 'application/pdf' : 'image',
-          uploadedAt: new Date()
-        }
-        
-        setUploadedFile(fileData)
-        
-        // Générer l'URL d'affichage appropriée
-        updateViewableUrl(fileData)
-      }
+    if (currentFile) {
+      setUploadedFile({
+        url: currentFile.url,
+        name: currentFile.name || 'Document',
+        size: currentFile.size || 0,
+        type: currentFile.url.includes('.pdf') ? 'application/pdf' : 'image',
+        uploadedAt: new Date()
+      })
     }
-    
-    loadCurrentFileData()
-  }, [currentFile, driverId, documentType, fileType])
-
-  // Fonction helper pour extraire le nom de fichier depuis l'URL
-  const extractFileNameFromUrl = (url: string) => {
-    try {
-      const parts = url.split('/')
-      const fileName = parts[parts.length - 1]
-      // Enlever les paramètres de query s'il y en a
-      return fileName.split('?')[0]
-    } catch (error) {
-      return null
-    }
-  }
-
-  // Fonction pour mettre à jour l'URL d'affichage
-  const updateViewableUrl = useCallback(async (file: UploadedFile) => {
-    const bucketName = getBucketName()
-    
-    if (bucketName === 'driver-documents') {
-      // Pour les documents privés, essayer de générer une URL signée
-      try {
-        const fileName = file.url.split('/').pop()
-        if (fileName) {
-          const signedUrl = await getSignedUrl(bucketName, `${driverId}/${fileName}`)
-          setViewableUrl(signedUrl || file.url)
-        } else {
-          setViewableUrl(file.url)
-        }
-      } catch (error) {
-        console.warn('⚠️ Impossible de générer l\'URL signée, utilisation de l\'URL publique:', error)
-        setViewableUrl(file.url)
-      }
-    } else {
-      // Pour les buckets publics, utiliser l'URL directement
-      setViewableUrl(file.url)
-    }
-  }, [driverId, fileType])
-
-  // Générer l'URL viewable (signée si nécessaire) quand le fichier change
-  useEffect(() => {
-    const generateViewableUrl = async () => {
-      if (uploadedFile) {
-        const bucketName = getBucketName()
-        // Extraire le chemin du fichier depuis l'URL
-        const urlParts = uploadedFile.url.split('/')
-        const fileName = urlParts[urlParts.length - 1]
-        const filePath = `${driverId}/${fileName}`
-        
-        // Générer l'URL appropriée selon le type de bucket
-        let url: string
-        if (bucketName === 'driver-documents') {
-          // Pour les documents privés, essayer de générer une URL signée
-          try {
-            const signedUrl = await getSignedUrl(bucketName, filePath)
-            url = signedUrl || uploadedFile.url
-          } catch (error) {
-            console.warn('⚠️ Impossible de générer l\'URL signée:', error)
-            url = uploadedFile.url
-          }
-        } else {
-          // Pour les buckets publics, utiliser l'URL directement
-          url = uploadedFile.url
-        }
-        
-        setViewableUrl(url)
-      }
-    }
-    
-    generateViewableUrl()
-  }, [uploadedFile, driverId])
+  }, [currentFile])
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes'
@@ -207,38 +100,11 @@ export function FileUpload({
   }
 
   const generateFileName = (originalName: string) => {
+    const timestamp = Date.now()
     const extension = originalName.split('.').pop()
     const prefix = documentType || fileType
-    // Utiliser un nom fixe pour permettre le remplacement automatique
-    return `${driverId}/${prefix}.${extension}`
+    return `${driverId}/${prefix}_${timestamp}.${extension}`
   }
-
-  // Fonction pour supprimer l'ancien fichier avant d'uploader le nouveau
-  const deleteOldFile = useCallback(async (bucketName: string, driverId: string, documentType?: string) => {
-    try {
-      // Lister les fichiers existants pour ce driver et ce type de document
-      const { data: existingFiles } = await supabase.storage
-        .from(bucketName)
-        .list(driverId)
-      
-      if (existingFiles && existingFiles.length > 0) {
-        const prefix = documentType || fileType
-        const filesToDelete = existingFiles
-          .filter(file => file.name.startsWith(prefix))
-          .map(file => `${driverId}/${file.name}`)
-        
-        if (filesToDelete.length > 0) {
-          console.log('🗑️ Suppression des anciens fichiers:', filesToDelete)
-          await supabase.storage
-            .from(bucketName)
-            .remove(filesToDelete)
-        }
-      }
-    } catch (error) {
-      console.warn('Erreur lors de la suppression des anciens fichiers:', error)
-      // Ne pas bloquer l'upload pour autant
-    }
-  }, [fileType])
 
   const deleteFile = useCallback(async () => {
     if (!uploadedFile) return
@@ -331,43 +197,33 @@ export function FileUpload({
         setProgress(prev => Math.min(prev + 10, 90))
       }, 100)
 
-      // 🗑️ Supprimer l'ancien fichier s'il existe (pour remplacer)
-      await deleteOldFile(bucketName, driverId, documentType)
-
-      // Upload vers Supabase Storage avec upsert: true pour remplacer
-      console.log(`📤 Upload vers bucket: ${bucketName}/${fileName}`)
+      // Upload vers Supabase Storage
       const { data, error } = await supabase.storage
         .from(bucketName)
         .upload(fileName, file, {
           cacheControl: '3600',
-          upsert: true // Permet de remplacer le fichier existant
+          upsert: false
         })
 
       clearInterval(progressInterval)
 
-      if (error) {
-        console.error('❌ Erreur upload Storage:', error)
-        throw new Error(`Erreur Storage: ${error.message}`)
-      }
+      if (error) throw error
 
-      // Obtenir l'URL publique avec notre fonction helper
-      const publicUrl = getStorageUrl(bucketName, fileName)
-      console.log(`✅ Fichier uploadé: ${publicUrl}`)
+      // Obtenir l'URL publique
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(fileName)
 
       setProgress(100)
 
       // Enregistrer les informations du fichier uploadé
-      const newFileData = {
+      setUploadedFile({
         url: publicUrl,
         name: file.name,
         size: file.size,
         type: file.type,
         uploadedAt: new Date()
-      }
-      setUploadedFile(newFileData)
-
-      // Générer l'URL d'affichage appropriée
-      await updateViewableUrl(newFileData)
+      })
 
       // Mise à jour de la base de données selon le type
       if (fileType === 'avatar') {
@@ -376,15 +232,8 @@ export function FileUpload({
           .update({ avatar_url: publicUrl })
           .eq('id', driverId)
       } else if (fileType === 'document') {
-        // Supprimer l'ancien enregistrement s'il existe
+        // Enregistrer dans driver_documents
         await supabase
-          .from('driver_documents')
-          .delete()
-          .eq('driver_id', driverId)
-          .eq('document_type', documentType)
-
-        // Insérer le nouveau enregistrement
-        const { error: insertError } = await supabase
           .from('driver_documents')
           .insert({
             driver_id: driverId,
@@ -393,10 +242,6 @@ export function FileUpload({
             file_name: file.name,
             file_size: file.size
           })
-
-        if (insertError) {
-          console.error('❌ Erreur insertion driver_documents:', insertError)
-        }
 
         // Mettre à jour document_urls dans drivers
         const { data: driver } = await supabase
@@ -409,11 +254,6 @@ export function FileUpload({
           ...(driver?.document_urls as any || {}),
           [documentType!]: publicUrl
         }
-
-        await supabase
-          .from('drivers')
-          .update({ document_urls: updatedUrls })
-          .eq('id', driverId)
 
         await supabase
           .from('drivers')
@@ -526,13 +366,9 @@ export function FileUpload({
                   {isImage ? (
                     <div className="w-14 h-14 bg-green-100 rounded-lg flex items-center justify-center overflow-hidden ring-2 ring-green-200">
                       <img 
-                        src={viewableUrl || uploadedFile.url} 
+                        src={uploadedFile.url} 
                         alt={uploadedFile.name}
                         className="w-full h-full object-cover"
-                        onError={() => {
-                          // Si l'image ne charge pas, utiliser l'URL de base
-                          console.warn('⚠️ Erreur chargement image, utilisation URL de base')
-                        }}
                       />
                     </div>
                   ) : (
@@ -563,62 +399,17 @@ export function FileUpload({
               </div>
             </div>
             
-            {/* Actions - Layout adaptatif mobile/desktop */}
+            {/* Actions - Layout mobile avec boutons empilés */}
             <div className="border-t border-neutral-700 pt-4">
-              {/* Desktop: Layout 2 colonnes avec 2 boutons par ligne */}
-              <div className="hidden lg:grid lg:grid-cols-2 gap-3">
-                {/* Première ligne */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowPreview(true)}
-                  className="border-neutral-600 text-neutral-300 hover:bg-neutral-700"
-                >
-                  <Eye className="w-4 h-4 mr-2" />
-                  <span className="font-medium">Aperçu</span>
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.open(viewableUrl || uploadedFile.url, '_blank')}
-                  className="border-neutral-600 text-neutral-300 hover:bg-neutral-700"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  <span className="font-medium">Télécharger</span>
-                </Button>
-                
-                {/* Deuxième ligne */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={openFileDialog}
-                  className="border-blue-600 text-blue-300 hover:bg-blue-900/20"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  <span className="font-medium">Remplacer</span>
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={deleteFile}
-                  className="border-red-600 text-red-300 hover:bg-red-900/20"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  <span className="font-medium">Supprimer</span>
-                </Button>
-              </div>
-              
-              {/* Mobile et Tablet: Layout vertical */}
-              <div className="lg:hidden space-y-3">
-                {/* Actions principales */}
-                <div className="grid grid-cols-2 gap-2">
+              {/* Mobile: Actions primaires en premier */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                {/* Actions principales - largeur pleine sur mobile */}
+                <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 flex-1">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setShowPreview(true)}
-                    className="border-neutral-600 text-neutral-300 hover:bg-neutral-700"
+                    className="border-neutral-600 text-neutral-300 hover:bg-neutral-700 flex-1"
                   >
                     <Eye className="w-4 h-4 mr-1.5" />
                     <span className="font-medium">Aperçu</span>
@@ -627,8 +418,8 @@ export function FileUpload({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => window.open(viewableUrl || uploadedFile.url, '_blank')}
-                    className="border-neutral-600 text-neutral-300 hover:bg-neutral-700"
+                    onClick={() => window.open(uploadedFile.url, '_blank')}
+                    className="border-neutral-600 text-neutral-300 hover:bg-neutral-700 flex-1"
                   >
                     <Download className="w-4 h-4 mr-1.5" />
                     <span className="font-medium">Télécharger</span>
@@ -636,12 +427,12 @@ export function FileUpload({
                 </div>
                 
                 {/* Actions secondaires */}
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={openFileDialog}
-                    className="border-blue-600 text-blue-300 hover:bg-blue-900/20"
+                    className="border-blue-600 text-blue-300 hover:bg-blue-900/20 flex-1"
                   >
                     <RefreshCw className="w-4 h-4 mr-1.5" />
                     <span className="font-medium">Remplacer</span>
@@ -651,7 +442,7 @@ export function FileUpload({
                     variant="outline"
                     size="sm"
                     onClick={deleteFile}
-                    className="border-red-600 text-red-300 hover:bg-red-900/20"
+                    className="border-red-600 text-red-300 hover:bg-red-900/20 flex-1"
                   >
                     <Trash2 className="w-4 h-4 mr-1.5" />
                     <span className="font-medium">Supprimer</span>
@@ -686,17 +477,10 @@ export function FileUpload({
               {isImage ? (
                 <div className="flex justify-center">
                   <img 
-                    src={viewableUrl || uploadedFile.url} 
+                    src={uploadedFile.url} 
                     alt={uploadedFile.name}
                     className="max-w-full h-auto rounded-lg border shadow-lg"
                     style={{ maxHeight: '70vh' }}
-                    onError={() => {
-                      toast({
-                        variant: "destructive",
-                        title: "❌ Impossible d'afficher l'image",
-                        description: "Vérifiez les permissions du fichier"
-                      })
-                    }}
                   />
                 </div>
               ) : (
@@ -711,10 +495,9 @@ export function FileUpload({
                     </p>
                   </div>
                   <Button 
-                    onClick={() => window.open(viewableUrl || uploadedFile.url, '_blank')}
+                    onClick={() => window.open(uploadedFile.url, '_blank')}
                     className="bg-blue-600 hover:bg-blue-700"
                     size="lg"
-                    disabled={!viewableUrl && !uploadedFile.url}
                   >
                     <Download className="w-5 h-5 mr-2" />
                     Ouvrir le document

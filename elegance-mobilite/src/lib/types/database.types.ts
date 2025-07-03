@@ -950,25 +950,21 @@ export type Database = {
           validation_status: string
         }[]
       }
-      check_admin_access: {
-        Args: { user_id: string }
-        Returns: Json
-      }
       check_driver_profile_completeness: {
         Args: { driver_user_id: string }
         Returns: {
           is_complete: boolean
-          missing_fields: string[]
           completion_percentage: number
+          missing_fields: string[]
         }[]
       }
-      check_driver_profile_completeness_simple: {
-        Args: { driver_user_id: string }
-        Returns: {
-          is_complete: boolean
-          completion_percentage: number
-          missing_fields: string[]
-        }[]
+      check_is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      check_is_super_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
       }
       check_user_role_update: {
         Args: Record<PropertyKey, never>
@@ -1005,6 +1001,24 @@ export type Database = {
           debug_info: Json
         }[]
       }
+      debug_driver_completeness: {
+        Args: { driver_user_id: string }
+        Returns: {
+          check_name: string
+          field_value: string
+          is_valid: boolean
+          field_category: string
+        }[]
+      }
+      delete_driver_file: {
+        Args: {
+          file_bucket: string
+          file_path: string
+          driver_id_param: string
+          document_type_param?: string
+        }
+        Returns: boolean
+      }
       delete_user_and_associated_data: {
         Args: { p_user_id: string }
         Returns: undefined
@@ -1017,13 +1031,49 @@ export type Database = {
         Args: { driver_user_id: string }
         Returns: string
       }
-      get_admin_level: {
+      fix_all_driver_statuses: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          updated_count: number
+          incomplete_count: number
+          pending_validation_count: number
+          active_count: number
+          inactive_count: number
+          rejected_count: number
+          suspended_count: number
+        }[]
+      }
+      force_update_driver_status: {
+        Args: { driver_user_id: string }
+        Returns: {
+          driver_id: string
+          old_status: Database["public"]["Enums"]["driver_status"]
+          new_status: Database["public"]["Enums"]["driver_status"]
+          is_complete: boolean
+          completion_percentage: number
+        }[]
+      }
+      get_driver_completeness_details: {
+        Args: { target_user_id?: string }
+        Returns: {
+          section: string
+          info: string
+          details: Json
+        }[]
+      }
+      get_driver_id_from_auth: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
-      get_effective_role: {
+      get_drivers_completeness_stats: {
         Args: Record<PropertyKey, never>
-        Returns: string
+        Returns: {
+          total_drivers: number
+          complete_drivers: number
+          incomplete_drivers: number
+          pending_validation: number
+          average_completion_percentage: number
+        }[]
       }
       get_incomplete_drivers_report: {
         Args: Record<PropertyKey, never>
@@ -1039,10 +1089,6 @@ export type Database = {
       }
       get_safe_email: {
         Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_user_app_role: {
-        Args: { user_id?: string }
         Returns: string
       }
       get_user_profile: {
@@ -1069,6 +1115,14 @@ export type Database = {
         Args: { admin_id: string }
         Returns: undefined
       }
+      test_driver_completeness_full: {
+        Args: { target_user_id?: string }
+        Returns: {
+          section: string
+          info: string
+          details: Json
+        }[]
+      }
       update_driver_document_url: {
         Args: {
           p_driver_id: string
@@ -1077,7 +1131,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      update_driver_status_based_on_completeness: {
+      update_driver_status_auto: {
         Args: { driver_user_id: string }
         Returns: string
       }

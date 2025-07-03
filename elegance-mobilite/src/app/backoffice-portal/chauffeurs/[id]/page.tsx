@@ -107,8 +107,39 @@ export default function DriverProfilePageModern() {
     }
   }), [])
 
-  // Optimisation de la validation des champs - Memoized
-  const validateDriverProfile = useCallback((driverData: DriverRow) => {
+  // Optimisation de la validation des champs - Utilise maintenant la fonction SQL
+  const validateDriverProfile = useCallback(async (driverData: DriverRow) => {
+    try {
+      // Utiliser la fonction SQL qui vérifie TOUS les critères (16 champs)
+      const { data: validationResult, error } = await supabase
+        .rpc('check_driver_profile_completeness', { driver_user_id: driverData.user_id })
+      
+      if (error) {
+        console.error('Erreur validation SQL:', error)
+        // Fallback vers validation locale simplifiée
+        return validateDriverProfileLocal(driverData)
+      }
+
+      if (validationResult && validationResult.length > 0) {
+        const result = validationResult[0]
+        return {
+          missingFields: result.missing_fields || [],
+          completionPercentage: result.completion_percentage || 0,
+          isComplete: result.is_complete || false
+        }
+      }
+      
+      // Fallback si pas de résultat
+      return validateDriverProfileLocal(driverData)
+      
+    } catch (error) {
+      console.error('Erreur lors de la validation:', error)
+      return validateDriverProfileLocal(driverData)
+    }
+  }, [])
+
+  // Validation locale simplifiée en fallback
+  const validateDriverProfileLocal = useCallback((driverData: DriverRow) => {
     const requiredFields = [
       'first_name', 'last_name', 'phone', 'company_name', 
       'address_line1', 'vtc_card_number', 'driving_license_number', 
@@ -163,8 +194,8 @@ export default function DriverProfilePageModern() {
         throw new Error("Chauffeur introuvable")
       }
 
-      // Validation rapide du profil
-      const validation = validateDriverProfile(driverData)
+      // Validation avec la fonction SQL complète
+      const validation = await validateDriverProfile(driverData)
 
       const finalValidationData: DriverValidationData = {
         driver: driverData,
@@ -203,21 +234,43 @@ export default function DriverProfilePageModern() {
 
       if (error) throw error
 
-      setDriver(editedDriver)
+      // Forcer la mise à jour du statut côté Supabase après modification
+      const { error: statusError } = await supabase
+        .rpc('force_update_driver_status', { driver_user_id: editedDriver.user_id })
+      
+      if (statusError) {
+        console.warn('Erreur mise à jour statut:', statusError)
+      }
+
+      // Recharger les données depuis la DB pour avoir le statut correct
+      const { data: updatedDriver, error: reloadError } = await supabase
+        .from('drivers')
+        .select('*')
+        .eq('id', editedDriver.id)
+        .single()
+
+      if (!reloadError && updatedDriver) {
+        setDriver(updatedDriver)
+        setEditedDriver({ ...updatedDriver })
+        
+        // Recalcul de la validation avec la fonction SQL
+        const validation = await validateDriverProfile(updatedDriver)
+        setValidationData(prev => prev ? {
+          ...prev,
+          ...validation,
+          driver: updatedDriver
+        } : null)
+      } else {
+        // Fallback si le rechargement échoue
+        setDriver(editedDriver)
+      }
+
       setEditing(false)
       
       toast({
         title: "✅ Sauvegardé",
         description: "Profil mis à jour"
       })
-      
-      // Recalcul de la validation
-      const validation = validateDriverProfile(editedDriver)
-      setValidationData(prev => prev ? {
-        ...prev,
-        ...validation,
-        driver: editedDriver
-      } : null)
       
     } catch (error) {
       console.error("Erreur:", error)
@@ -230,6 +283,12 @@ export default function DriverProfilePageModern() {
       setSaving(false)
     }
   }, [editedDriver, toast, validateDriverProfile])
+
+  // Annuler l'édition
+  const cancelEditing = useCallback(() => {
+    setEditedDriver(driver ? { ...driver } : null)
+    setEditing(false)
+  }, [driver])
 
   // Valider un driver - Optimisé
   const handleValidateDriver = useCallback(async (approved: boolean, reason?: string) => {
@@ -272,10 +331,47 @@ export default function DriverProfilePageModern() {
     }
   }, [driver, toast])
 
-  const cancelEditing = useCallback(() => {
-    setEditedDriver(driver ? { ...driver } : null)
-    setEditing(false)
-  }, [driver])
+  // Callback pour recalculer la validation après upload de document
+  const handleDocumentUpload = useCallback(async (documentType: string) => {
+    if (!driver) return
+    
+    // Recharger les données du driver depuis la DB
+    try {
+      // Forcer la mise à jour du statut côté Supabase AVANT de recharger
+      const { error: statusError } = await supabase
+        .rpc('force_update_driver_status', { driver_user_id: driver.user_id })
+      
+      if (statusError) {
+        console.warn('Erreur mise à jour statut:', statusError)
+      }
+
+      const { data: updatedDriver, error } = await supabase
+        .from('drivers')
+        .select('*')
+        .eq('id', driver.id)
+        .single()
+
+      if (!error && updatedDriver) {
+        setDriver(updatedDriver)
+        setEditedDriver({ ...updatedDriver })
+        
+        // Recalculer la validation avec les nouveaux données
+        const validation = await validateDriverProfile(updatedDriver)
+        setValidationData(prev => prev ? {
+          ...prev,
+          ...validation,
+          driver: updatedDriver
+        } : null)
+        
+        toast({
+          title: "✅ Document uploadé",
+          description: "Validation du profil mise à jour"
+        })
+      }
+    } catch (error) {
+      console.error('Erreur lors du rechargement:', error)
+    }
+  }, [driver, validateDriverProfile, toast])
 
   useEffect(() => {
     if (driverId) {
@@ -284,10 +380,17 @@ export default function DriverProfilePageModern() {
   }, [driverId, loadDriver])
 
   // Calculs memoized pour éviter les re-renders
-  const config = useMemo(() => 
-    statusConfig[driver?.status || 'inactive'], 
-    [driver?.status, statusConfig]
-  )
+  const config = useMemo(() => {
+    // Si le statut est en attente mais que le profil est incomplet, 
+    // afficher "Incomplet" au lieu de "En attente"
+    let effectiveStatus = driver?.status || 'inactive'
+    
+    if (effectiveStatus === 'pending_validation' && validationData && !validationData.isComplete) {
+      effectiveStatus = 'incomplete'
+    }
+    
+    return statusConfig[effectiveStatus]
+  }, [driver?.status, validationData?.isComplete, statusConfig])
   
   const StatusIcon = config.icon
 
@@ -363,7 +466,7 @@ export default function DriverProfilePageModern() {
             {/* Actions - Responsive */}
             <div className="flex items-center gap-1 shrink-0">
               {/* Validation Button - Desktop only in header */}
-              {driver.status === 'pending_validation' && validationData.isComplete && (
+              {driver.status === 'pending_validation' && validationData?.isComplete && (
                 <Button
                   onClick={() => setValidationModal(true)}
                   size="sm"
@@ -400,7 +503,7 @@ export default function DriverProfilePageModern() {
           </div>
 
           {/* Mobile-only Quick Actions Bar */}
-          {driver.status === 'pending_validation' && validationData.isComplete && (
+          {driver.status === 'pending_validation' && validationData?.isComplete && (
             <div className="lg:hidden mt-3 pt-3 border-t border-neutral-700">
               <Button
                 onClick={() => setValidationModal(true)}
@@ -647,6 +750,7 @@ export default function DriverProfilePageModern() {
                         id="date_of_birth"
                         type="date"
                         value={editedDriver?.date_of_birth || ""}
+                        max={new Date().toISOString().split('T')[0]} // Empêche la sélection de dates futures
                         onChange={(e) => setEditedDriver(prev => 
                           prev ? { ...prev, date_of_birth: e.target.value } : null
                         )}
@@ -786,6 +890,96 @@ export default function DriverProfilePageModern() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Informations professionnelles */}
+              <Card className="border-neutral-800 shadow-lg bg-gradient-to-br from-neutral-900 to-neutral-800">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg text-white">
+                    <FileText className="w-5 h-5 text-green-400" />
+                    Informations professionnelles
+                  </CardTitle>
+                  <CardDescription className="text-neutral-300">
+                    Numéros de documents professionnels
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="company_name" className="text-sm font-medium text-neutral-300">Nom de l'entreprise</Label>
+                    {editing ? (
+                      <Input
+                        id="company_name"
+                        value={editedDriver?.company_name || ""}
+                        onChange={(e) => setEditedDriver(prev => 
+                          prev ? { ...prev, company_name: e.target.value } : null
+                        )}
+                        className="bg-neutral-800 text-neutral-100 border-neutral-600 transition-all focus:ring-2 focus:ring-green-500"
+                        placeholder="SARL Transport Excellence"
+                      />
+                    ) : (
+                      <div className="p-3 bg-neutral-800/50 rounded-lg border border-neutral-700">
+                        <p className="font-medium text-neutral-100">{driver.company_name || "Non renseigné"}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="vtc_card_number" className="text-sm font-medium text-neutral-300">Numéro carte VTC</Label>
+                    {editing ? (
+                      <Input
+                        id="vtc_card_number"
+                        value={editedDriver?.vtc_card_number || ""}
+                        onChange={(e) => setEditedDriver(prev => 
+                          prev ? { ...prev, vtc_card_number: e.target.value } : null
+                        )}
+                        className="bg-neutral-800 text-neutral-100 border-neutral-600 transition-all focus:ring-2 focus:ring-green-500"
+                        placeholder="VTC123456789"
+                      />
+                    ) : (
+                      <div className="p-3 bg-neutral-800/50 rounded-lg border border-neutral-700">
+                        <p className="font-medium text-neutral-100">{driver.vtc_card_number || "Non renseigné"}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="driving_license_number" className="text-sm font-medium text-neutral-300">Numéro permis de conduire</Label>
+                    {editing ? (
+                      <Input
+                        id="driving_license_number"
+                        value={editedDriver?.driving_license_number || ""}
+                        onChange={(e) => setEditedDriver(prev => 
+                          prev ? { ...prev, driving_license_number: e.target.value } : null
+                        )}
+                        className="bg-neutral-800 text-neutral-100 border-neutral-600 transition-all focus:ring-2 focus:ring-green-500"
+                        placeholder="123456789ABC"
+                      />
+                    ) : (
+                      <div className="p-3 bg-neutral-800/50 rounded-lg border border-neutral-700">
+                        <p className="font-medium text-neutral-100">{driver.driving_license_number || "Non renseigné"}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="insurance_number" className="text-sm font-medium text-neutral-300">Numéro d'assurance</Label>
+                    {editing ? (
+                      <Input
+                        id="insurance_number"
+                        value={editedDriver?.insurance_number || ""}
+                        onChange={(e) => setEditedDriver(prev => 
+                          prev ? { ...prev, insurance_number: e.target.value } : null
+                        )}
+                        className="bg-neutral-800 text-neutral-100 border-neutral-600 transition-all focus:ring-2 focus:ring-green-500"
+                        placeholder="ASS987654321"
+                      />
+                    ) : (
+                      <div className="p-3 bg-neutral-800/50 rounded-lg border border-neutral-700">
+                        <p className="font-medium text-neutral-100">{driver.insurance_number || "Non renseigné"}</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
@@ -805,52 +999,85 @@ export default function DriverProfilePageModern() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Carte VTC */}
-                  <Suspense fallback={<div className="h-24 bg-neutral-800 rounded-lg animate-pulse" />}>
-                    <DocumentUpload
-                      driverId={driverId}
-                      documentType="vtc_card"
-                      label="Carte VTC"
-                      currentUrl={(driver.document_urls as any)?.vtc_card}
-                      onUploadComplete={(url) => {
-                        toast({
-                          title: "✅ Document VTC uploadé",
-                          description: "Document enregistré"
-                        })
-                      }}
-                    />
-                  </Suspense>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium text-neutral-300">Carte VTC</Label>
+                      {driver.vtc_card_number && (
+                        <Badge variant="outline" className="text-xs text-green-400 border-green-400">
+                          N° {driver.vtc_card_number}
+                        </Badge>
+                      )}
+                    </div>
+                    <Suspense fallback={<div className="h-24 bg-neutral-800 rounded-lg animate-pulse" />}>
+                      <DocumentUpload
+                        driverId={driverId}
+                        documentType="vtc_card"
+                        label=""
+                        currentUrl={(driver.document_urls as any)?.vtc_card}
+                        onUploadComplete={(url) => {
+                          handleDocumentUpload('vtc_card')
+                          toast({
+                            title: "✅ Document VTC uploadé",
+                            description: "Document enregistré"
+                          })
+                        }}
+                      />
+                    </Suspense>
+                  </div>
 
                   {/* Permis de conduire */}
-                  <Suspense fallback={<div className="h-24 bg-neutral-800 rounded-lg animate-pulse" />}>
-                    <DocumentUpload
-                      driverId={driverId}
-                      documentType="driving_license"
-                      label="Permis de conduire"
-                      currentUrl={(driver.document_urls as any)?.driving_license}
-                      onUploadComplete={(url) => {
-                        toast({
-                          title: "✅ Permis uploadé",
-                          description: "Document enregistré"
-                        })
-                      }}
-                    />
-                  </Suspense>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium text-neutral-300">Permis de conduire</Label>
+                      {driver.driving_license_number && (
+                        <Badge variant="outline" className="text-xs text-green-400 border-green-400">
+                          N° {driver.driving_license_number}
+                        </Badge>
+                      )}
+                    </div>
+                    <Suspense fallback={<div className="h-24 bg-neutral-800 rounded-lg animate-pulse" />}>
+                      <DocumentUpload
+                        driverId={driverId}
+                        documentType="driving_license"
+                        label=""
+                        currentUrl={(driver.document_urls as any)?.driving_license}
+                        onUploadComplete={(url) => {
+                          handleDocumentUpload('driving_license')
+                          toast({
+                            title: "✅ Permis uploadé",
+                            description: "Document enregistré"
+                          })
+                        }}
+                      />
+                    </Suspense>
+                  </div>
 
                   {/* Assurance */}
-                  <Suspense fallback={<div className="h-24 bg-neutral-800 rounded-lg animate-pulse" />}>
-                    <DocumentUpload
-                      driverId={driverId}
-                      documentType="insurance"
-                      label="Assurance"
-                      currentUrl={(driver.document_urls as any)?.insurance}
-                      onUploadComplete={(url) => {
-                        toast({
-                          title: "✅ Assurance uploadée",
-                          description: "Document enregistré"
-                        })
-                      }}
-                    />
-                  </Suspense>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium text-neutral-300">Assurance</Label>
+                      {driver.insurance_number && (
+                        <Badge variant="outline" className="text-xs text-green-400 border-green-400">
+                          N° {driver.insurance_number}
+                        </Badge>
+                      )}
+                    </div>
+                    <Suspense fallback={<div className="h-24 bg-neutral-800 rounded-lg animate-pulse" />}>
+                      <DocumentUpload
+                        driverId={driverId}
+                        documentType="insurance"
+                        label=""
+                        currentUrl={(driver.document_urls as any)?.insurance}
+                        onUploadComplete={(url) => {
+                          handleDocumentUpload('insurance')
+                          toast({
+                            title: "✅ Assurance uploadée",
+                            description: "Document enregistré"
+                          })
+                        }}
+                      />
+                    </Suspense>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -873,6 +1100,7 @@ export default function DriverProfilePageModern() {
                       label="Certificat médical"
                       currentUrl={(driver.document_urls as any)?.medical_certificate}
                       onUploadComplete={(url) => {
+                        handleDocumentUpload('medical_certificate')
                         toast({
                           title: "✅ Certificat médical uploadé",
                           description: "Document enregistré"
@@ -937,7 +1165,7 @@ export default function DriverProfilePageModern() {
       </div>
 
       {/* Mobile Validation Button */}
-      {driver.status === 'pending_validation' && validationData.isComplete && (
+      {driver.status === 'pending_validation' && validationData?.isComplete && (
         <div className="md:hidden fixed bottom-4 left-4 right-4 z-50">
           <Button
             onClick={() => setValidationModal(true)}
