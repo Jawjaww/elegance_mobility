@@ -100,6 +100,23 @@ export function FileUpload({
     return `driver-documents/${pathId}_${documentType}_${timestamp}.${extension}`
   }
 
+  // Fonction utilitaire pour détecter le type MIME depuis l'URL ou le nom de fichier
+  const detectFileType = (fileUrl: string, fileName?: string): string => {
+    const url = fileUrl.toLowerCase()
+    const name = fileName?.toLowerCase() || ''
+    
+    // Détecter le type par extension
+    if (url.includes('.pdf') || name.includes('.pdf')) return 'application/pdf'
+    if (url.includes('.png') || name.includes('.png')) return 'image/png'
+    if (url.includes('.jpg') || url.includes('.jpeg') || name.includes('.jpg') || name.includes('.jpeg')) return 'image/jpeg'
+    if (url.includes('.gif') || name.includes('.gif')) return 'image/gif'
+    if (url.includes('.webp') || name.includes('.webp')) return 'image/webp'
+    if (url.includes('.svg') || name.includes('.svg')) return 'image/svg+xml'
+    
+    // Par défaut, si on ne peut pas détecter
+    return 'application/octet-stream'
+  }
+
   // Récupérer le document existant depuis la table driver_documents (structure correcte)
   const fetchExistingDocument = useCallback(async () => {
     if (fileType === 'document' && documentType) {
@@ -120,11 +137,13 @@ export function FileUpload({
         if (document) {
           console.log('✅ Document trouvé dans driver_documents:', document)
           
+          const detectedType = detectFileType(document.file_url, document.file_name)
+          
           setUploadedFile({
             url: document.file_url,
             name: document.file_name || `${documentType}`,
             size: document.file_size || 0,
-            type: document.file_url.includes('.pdf') ? 'application/pdf' : 'image',
+            type: detectedType,
             uploadedAt: new Date(document.created_at)
           })
         }
@@ -137,11 +156,13 @@ export function FileUpload({
   // Initialiser avec le fichier actuel s'il existe ou récupérer depuis la DB
   useEffect(() => {
     if (currentFile) {
+      const detectedType = detectFileType(currentFile.url, currentFile.name)
+      
       setUploadedFile({
         url: currentFile.url,
         name: currentFile.name || 'Document',
         size: currentFile.size || 0,
-        type: currentFile.url.includes('.pdf') ? 'application/pdf' : 'image',
+        type: detectedType,
         uploadedAt: new Date()
       })
     } else {
@@ -402,15 +423,27 @@ export function FileUpload({
               <div className="flex items-center space-x-3 flex-1">
                 <div className="shrink-0">
                   {isImage ? (
-                    <div className="w-14 h-14 bg-green-100 rounded-lg flex items-center justify-center overflow-hidden ring-2 ring-green-200">
+                    <div className="w-14 h-14 rounded-lg overflow-hidden border-2 border-green-200 bg-green-50">
                       <img 
                         src={uploadedFile.url} 
                         alt={uploadedFile.name}
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          console.log('Erreur chargement image:', uploadedFile.url)
+                          // Fallback vers l'icône si l'image ne charge pas
+                          e.currentTarget.style.display = 'none'
+                          e.currentTarget.parentElement!.innerHTML = `
+                            <div class="w-full h-full bg-green-100 rounded-lg flex items-center justify-center">
+                              <svg class="w-7 h-7 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                              </svg>
+                            </div>
+                          `
+                        }}
                       />
                     </div>
                   ) : (
-                    <div className="w-14 h-14 bg-blue-100 rounded-lg flex items-center justify-center ring-2 ring-blue-200">
+                    <div className="w-14 h-14 bg-blue-100 rounded-lg flex items-center justify-center border-2 border-blue-200">
                       <FileIcon className="w-7 h-7 text-blue-600" />
                     </div>
                   )}
@@ -437,48 +470,38 @@ export function FileUpload({
               </div>
             </div>
             
-            {/* Actions - Layout mobile avec boutons empilés */}
+            {/* Actions */}
             <div className="border-t border-neutral-700 pt-4">
-              {/* Actions - Interface simplifiée */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                {/* Action principale - Aperçu */}
-                <div className="sm:flex sm:items-center gap-2 flex-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowPreview(true)}
-                    className="border-neutral-600 text-neutral-300 hover:bg-neutral-700 w-full sm:flex-1"
-                    title="Voir l'aperçu du document"
-                  >
-                    <Eye className="w-4 h-4 mr-1.5" />
-                    <span className="font-medium">Aperçu</span>
-                  </Button>
-                </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPreview(true)}
+                  className="border-neutral-600 text-neutral-300 hover:bg-neutral-700 flex-1"
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  Aperçu
+                </Button>
                 
-                {/* Actions secondaires */}
-                <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={openFileDialog}
-                    className="border-blue-600 text-blue-300 hover:bg-blue-900/20 flex-1"
-                    title="Remplacer le fichier"
-                  >
-                    <RefreshCw className="w-4 h-4 mr-1.5" />
-                    <span className="font-medium">Remplacer</span>
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={deleteFile}
-                    className="border-red-600 text-red-300 hover:bg-red-900/20 flex-1"
-                    title="Supprimer le fichier"
-                  >
-                    <Trash2 className="w-4 h-4 mr-1.5" />
-                    <span className="font-medium">Supprimer</span>
-                  </Button>
-                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={openFileDialog}
+                  className="border-blue-600 text-blue-300 hover:bg-blue-900/20 flex-1"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Remplacer
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={deleteFile}
+                  className="border-red-600 text-red-300 hover:bg-red-900/20 flex-1"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Supprimer
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -494,47 +517,93 @@ export function FileUpload({
           disabled={uploading}
         />
 
-        {/* Modal d'aperçu - Mobile optimisé */}
+        {/* Modal d'aperçu - Thème sombre et mobile optimisé */}
         <Dialog open={showPreview} onOpenChange={setShowPreview}>
-          <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-auto">
+          <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] bg-neutral-900 border-neutral-700 text-neutral-100 overflow-auto">
             <DialogHeader>
-              <DialogTitle className="flex items-center space-x-2 text-left break-words">
-                <FileIcon className="w-5 h-5 shrink-0" />
+              <DialogTitle className="flex items-center space-x-2 text-left break-words text-neutral-100">
+                <FileIcon className="w-5 h-5 shrink-0 text-neutral-400" />
                 <span className="truncate">{uploadedFile.name}</span>
               </DialogTitle>
             </DialogHeader>
             
-            <div className="mt-4">
+            <div className="mt-4 space-y-6">
               {isImage ? (
-                <div className="flex justify-center">
-                  <img 
-                    src={uploadedFile.url} 
-                    alt={uploadedFile.name}
-                    className="max-w-full h-auto rounded-lg border shadow-lg"
-                    style={{ maxHeight: '70vh' }}
-                  />
-                </div>
-              ) : (
-                <div className="text-center py-8 space-y-4">
-                  <div className="w-20 h-20 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
-                    <FileText className="w-10 h-10 text-blue-600" />
+                <div className="space-y-4">
+                  {/* Miniature optimisée pour mobile */}
+                  <div className="flex justify-center">
+                    <div className="relative">
+                      <img 
+                        src={uploadedFile.url} 
+                        alt={uploadedFile.name}
+                        className="max-w-full max-h-64 sm:max-h-80 object-contain rounded-lg border border-neutral-600 bg-neutral-800"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <p className="text-lg font-semibold">{uploadedFile.name}</p>
-                    <p className="text-sm text-neutral-500">
-                      {formatFileSize(uploadedFile.size)} • PDF Document
+                  
+                  {/* Informations du fichier */}
+                  <div className="text-center space-y-2 p-4 bg-neutral-800 rounded-lg border border-neutral-700">
+                    <p className="text-sm text-neutral-300">
+                      {formatFileSize(uploadedFile.size)} • Image
+                    </p>
+                    <p className="text-xs text-neutral-400">
+                      Uploadé le {uploadedFile.uploadedAt.toLocaleDateString('fr-FR')}
                     </p>
                   </div>
-                  <Button 
-                    onClick={() => window.open(uploadedFile.url, '_blank')}
-                    className="bg-blue-600 hover:bg-blue-700"
-                    size="lg"
-                  >
-                    <Download className="w-5 h-5 mr-2" />
-                    Ouvrir le document
-                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Miniature PDF - Thème sombre */}
+                  <div className="flex flex-col items-center py-8 space-y-4 bg-neutral-800 rounded-lg border border-neutral-700">
+                    <div className="relative">
+                      <div className="w-20 h-26 bg-neutral-700 rounded-lg border-2 border-neutral-600 flex items-center justify-center">
+                        <FileText className="w-10 h-10 text-neutral-400" />
+                      </div>
+                      <div className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">
+                        PDF
+                      </div>
+                    </div>
+                    
+                    <div className="text-center space-y-2">
+                      <h3 className="text-base font-semibold text-neutral-200 max-w-xs truncate">
+                        {uploadedFile.name}
+                      </h3>
+                      <p className="text-sm text-neutral-400">
+                        {formatFileSize(uploadedFile.size)} • Document PDF
+                      </p>
+                      <p className="text-xs text-neutral-500">
+                        Uploadé le {uploadedFile.uploadedAt.toLocaleDateString('fr-FR')}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
+
+              {/* Actions - Thème sombre uniforme */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-neutral-700">
+                <Button 
+                  onClick={() => {
+                    const link = document.createElement('a')
+                    link.href = uploadedFile.url
+                    link.download = uploadedFile.name
+                    link.click()
+                  }}
+                  variant="outline"
+                  className="border-green-600 text-green-300 hover:bg-green-900/20 flex-1"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Télécharger
+                </Button>
+                
+                <Button 
+                  onClick={() => window.open(uploadedFile.url, '_blank')}
+                  variant="outline"
+                  className="border-blue-600 text-blue-300 hover:bg-blue-900/20 flex-1"
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  Ouvrir dans un nouvel onglet
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
