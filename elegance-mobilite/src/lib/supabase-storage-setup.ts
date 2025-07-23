@@ -176,3 +176,57 @@ export async function getFileUrl(bucket: string, path: string) {
   
   return getStorageUrl(bucket, path)
 }
+
+// Helper pour extraire le chemin d'un fichier depuis une URL Supabase Storage
+export function extractFilePathFromUrl(url: string, bucketName: string): string | null {
+  try {
+    const urlParts = url.split('/')
+    const bucketIndex = urlParts.findIndex((part: string) => part === bucketName)
+    
+    if (bucketIndex === -1) {
+      return null
+    }
+    
+    // Le chemin est tout ce qui vient après le nom du bucket
+    return urlParts.slice(bucketIndex + 1).join('/')
+  } catch (error) {
+    console.error('Erreur extraction chemin fichier:', error)
+    return null
+  }
+}
+
+// Helper pour régénérer une URL signée depuis une URL publique existante
+export async function getSignedUrlFromPublicUrl(publicUrl: string, bucketName: string = 'driver-documents', expiresIn: number = 3600): Promise<string | null> {
+  try {
+    const filePath = extractFilePathFromUrl(publicUrl, bucketName)
+    
+    if (!filePath) {
+      console.error('Impossible d\'extraire le chemin du fichier depuis:', publicUrl)
+      return null
+    }
+    
+    console.log('🔍 Chemin extrait:', filePath, 'depuis URL:', publicUrl)
+    
+    // Vérifier d'abord si le fichier existe
+    const { data: fileExists, error: listError } = await supabase.storage
+      .from(bucketName)
+      .list(filePath.split('/').slice(0, -1).join('/') || '', {
+        search: filePath.split('/').pop()
+      })
+    
+    if (listError) {
+      console.error('Erreur lors de la vérification du fichier:', listError)
+      return null
+    }
+    
+    if (!fileExists || fileExists.length === 0) {
+      console.error('Fichier non trouvé dans le storage:', filePath)
+      return null
+    }
+    
+    return await getSignedUrl(bucketName, filePath, expiresIn)
+  } catch (error) {
+    console.error('Erreur génération URL signée depuis URL publique:', error)
+    return null
+  }
+}

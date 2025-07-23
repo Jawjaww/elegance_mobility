@@ -258,7 +258,7 @@ export default function AdminChauffeursPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="py-8">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto" />
@@ -271,7 +271,7 @@ export default function AdminChauffeursPage() {
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="py-8">
         <div className="text-center">
           <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Erreur de chargement</h2>
@@ -285,7 +285,7 @@ export default function AdminChauffeursPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Gestion des chauffeurs</h1>
         <p className="text-gray-600 mt-2">

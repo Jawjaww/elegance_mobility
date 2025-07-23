@@ -74,7 +74,8 @@ export function useDriverProfileCompleteness(userId: string) {
     queryKey: ['driver-profile-completeness', userId],
     queryFn: async (): Promise<ProfileCompletenessResult> => {
       const { data, error } = await supabase
-        .rpc('check_driver_profile_completeness', { driver_user_id: userId })
+  // Voir la section "Vérification de Complétude : check_driver_profile_completeness" dans ARCHITECTURE-COMPLETE-SYSTEM-2025.md pour la logique détaillée
+  .rpc('check_driver_profile_completeness', { driver_user_id: userId })
         .single()
 
       if (error) {

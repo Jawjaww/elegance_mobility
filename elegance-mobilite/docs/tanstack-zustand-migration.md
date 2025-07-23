@@ -171,8 +171,7 @@ supabase
 ### **Database as API Layer**
 ```sql
 -- Complex business logic at database level
-CREATE FUNCTION check_driver_profile_completeness(driver_user_id uuid)
-RETURNS TABLE (is_complete boolean, missing_fields text[], completion_percentage integer)
+-- Voir la section centralisée "Vérification de Complétude : check_driver_profile_completeness" dans ARCHITECTURE-COMPLETE-SYSTEM-2025.md pour la description, la signature et les exemples d'appel. Évitez de dupliquer la logique ou les exemples ici.
 ```
 
 **Advantages**:

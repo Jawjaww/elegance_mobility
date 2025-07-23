@@ -48,6 +48,7 @@ const { isOnline, setIsOnline } = useDriverUIStore()
 ```typescript
 // Frontend calls SQL functions directly
 const { data } = await supabase
+  // Voir la section "Vérification de Complétude : check_driver_profile_completeness" dans ARCHITECTURE-COMPLETE-SYSTEM-2025.md pour l'appel et la logique complète
   .rpc('check_driver_profile_completeness', { driver_user_id: userId })
 ```
 

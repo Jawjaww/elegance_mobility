@@ -18,17 +18,17 @@ interface AdminHeaderProps {
 const NAV_ITEMS = [
   {
     name: "Dashboard",
-    href: "/backoffice-portal/dashboard",
+    href: "/backoffice-portal",
     icon: Layout,
   },
   {
     name: "Courses",
-    href: "/backoffice-portal/rides",
+    href: "/backoffice-portal/courses",
     icon: Car,
   },
   {
     name: "Chauffeurs",
-    href: "/backoffice-portal/drivers",
+    href: "/backoffice-portal/chauffeurs",
     icon: Users,
   }
 ]
@@ -63,18 +63,17 @@ export function AdminHeader({ user }: AdminHeaderProps) {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-neutral-700/30">
       <div className="bg-gradient-to-r from-neutral-950/95 to-neutral-900/90 backdrop-blur-sm">
-        <div className="container flex h-16 max-w-screen-2xl items-center">
+        <div className="mx-4 flex h-16 items-center">
           <div className="mr-8 hidden md:flex">
             <Link
-              href="/backoffice-portal/dashboard"
-              className="mr-8 flex items-center space-x-2"
+              href="/backoffice-portal"
+              className="mr-10 flex items-center space-x-2"
             >
               <span className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent font-bold text-xl">
                 Vector Elegans
               </span>
-              <span className="text-neutral-400 font-medium">Administration</span>
             </Link>
-            <nav className="flex items-center space-x-8 text-sm font-medium">
+            <nav className="flex items-center space-x-10 text-sm font-medium">
               {NAV_ITEMS.map((item) => (
                 <Link
                   key={item.name}

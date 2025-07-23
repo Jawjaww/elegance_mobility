@@ -12,8 +12,6 @@ interface BottomSheetProps {
   maxHeight?: number
   defaultHeight?: number
   className?: string
-  showProfileAlert?: boolean
-  profileAlert?: React.ReactNode
 }
 
 export function BottomSheet({ 
@@ -22,9 +20,7 @@ export function BottomSheet({
   minHeight = 120,
   maxHeight = window.innerHeight * 0.9, // 90% de la hauteur de l'écran, plus grand que avant
   defaultHeight = 300, // Hauteur par défaut augmentée pour montrer plus de contenu
-  className,
-  showProfileAlert = false,
-  profileAlert
+  className
 }: BottomSheetProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [currentHeight, setCurrentHeight] = useState(defaultHeight)
@@ -186,18 +182,6 @@ export function BottomSheet({
                 <ChevronUp className="h-4 w-4 text-neutral-400" />
               </motion.div>
             </div>
-          )}
-          
-          {/* Alerte profil incomplet */}
-          {showProfileAlert && profileAlert && (
-            <motion.div 
-              className="mt-2 mb-1"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              {profileAlert}
-            </motion.div>
           )}
           
           {/* Zone de touch élargie pour le drag */}

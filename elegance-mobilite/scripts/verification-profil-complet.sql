@@ -2,80 +2,133 @@
 -- Script à exécuter dans l'interface Supabase SQL Editor
 
 -- 🔍 FONCTION : Vérifier si un profil driver est complet
+
 CREATE OR REPLACE FUNCTION check_driver_profile_completeness(driver_user_id uuid)
 RETURNS TABLE (
   is_complete boolean,
-  missing_fields text[],
-  completion_percentage integer
+  completion_percentage integer,
+  missing_fields text[]
 ) AS $$
 DECLARE
-  driver_record record;
-  missing_list text[] := '{}';
-  total_fields integer := 8;
-  completed_fields integer := 0;
+  driver_record drivers%ROWTYPE;
+  missing_list TEXT[] := '{}';
+  total_fields INTEGER := 16; -- Ajusté : certificat médical optionnel
+  completed_fields INTEGER := 0;
 BEGIN
-  -- Récupérer le driver
-  SELECT * INTO driver_record FROM public.drivers WHERE user_id = driver_user_id;
+  SELECT * INTO driver_record FROM drivers WHERE user_id = driver_user_id;
   
   IF NOT FOUND THEN
-    RETURN QUERY SELECT false, ARRAY['profil_inexistant'], 0;
+    RETURN QUERY SELECT false, 0, ARRAY['profil_inexistant']::TEXT[];
     RETURN;
   END IF;
   
-  -- Vérifier chaque champ obligatoire
-  IF driver_record.first_name IS NULL OR driver_record.first_name = '' THEN
-    missing_list := array_append(missing_list, 'first_name');
-  ELSE
+  -- 🆔 IDENTITÉ (4 champs)
+  IF driver_record.first_name IS NOT NULL AND driver_record.first_name != '' THEN
     completed_fields := completed_fields + 1;
+  ELSE
+    missing_list := array_append(missing_list, 'Prénom');
   END IF;
   
-  IF driver_record.phone IS NULL OR driver_record.phone = '' THEN
-    missing_list := array_append(missing_list, 'phone');
-  ELSE
+  IF driver_record.last_name IS NOT NULL AND driver_record.last_name != '' THEN
     completed_fields := completed_fields + 1;
+  ELSE
+    missing_list := array_append(missing_list, 'Nom');
   END IF;
   
-  IF driver_record.company_name IS NULL OR driver_record.company_name = '' THEN
-    missing_list := array_append(missing_list, 'company_name');
-  ELSE
+  IF driver_record.phone IS NOT NULL AND driver_record.phone != '' THEN
     completed_fields := completed_fields + 1;
+  ELSE
+    missing_list := array_append(missing_list, 'Téléphone');
   END IF;
   
-  IF driver_record.company_phone IS NULL OR driver_record.company_phone = '' THEN
-    missing_list := array_append(missing_list, 'company_phone');
-  ELSE
+  IF driver_record.date_of_birth IS NOT NULL THEN
     completed_fields := completed_fields + 1;
+  ELSE
+    missing_list := array_append(missing_list, 'Date de naissance');
   END IF;
   
-  IF driver_record.driving_license_number IS NULL OR driver_record.driving_license_number = '' THEN
-    missing_list := array_append(missing_list, 'driving_license_number');
-  ELSE
+  -- 🏢 ENTREPRISE (1 champ)
+  IF driver_record.company_name IS NOT NULL AND driver_record.company_name != '' THEN
     completed_fields := completed_fields + 1;
+  ELSE
+    missing_list := array_append(missing_list, 'Nom entreprise');
   END IF;
   
-  IF driver_record.driving_license_expiry_date IS NULL THEN
-    missing_list := array_append(missing_list, 'driving_license_expiry_date');
-  ELSE
+  -- 🏠 ADRESSE (3 champs)
+  IF driver_record.address_line1 IS NOT NULL AND driver_record.address_line1 != '' THEN
     completed_fields := completed_fields + 1;
+  ELSE
+    missing_list := array_append(missing_list, 'Adresse');
   END IF;
   
-  IF driver_record.vtc_card_number IS NULL OR driver_record.vtc_card_number = '' THEN
-    missing_list := array_append(missing_list, 'vtc_card_number');
-  ELSE
+  IF driver_record.city IS NOT NULL AND driver_record.city != '' THEN
     completed_fields := completed_fields + 1;
+  ELSE
+    missing_list := array_append(missing_list, 'Ville');
   END IF;
   
-  IF driver_record.vtc_card_expiry_date IS NULL THEN
-    missing_list := array_append(missing_list, 'vtc_card_expiry_date');
-  ELSE
+  IF driver_record.postal_code IS NOT NULL AND driver_record.postal_code != '' THEN
     completed_fields := completed_fields + 1;
+  ELSE
+    missing_list := array_append(missing_list, 'Code postal');
   END IF;
   
-  -- Retourner les résultats
+  -- 📄 NUMÉROS DE DOCUMENTS (3 champs)
+  IF driver_record.vtc_card_number IS NOT NULL AND driver_record.vtc_card_number != '' THEN
+    completed_fields := completed_fields + 1;
+  ELSE
+    missing_list := array_append(missing_list, 'Numéro carte VTC');
+  END IF;
+  
+  IF driver_record.driving_license_number IS NOT NULL AND driver_record.driving_license_number != '' THEN
+    completed_fields := completed_fields + 1;
+  ELSE
+    missing_list := array_append(missing_list, 'Numéro permis');
+  END IF;
+  
+  IF driver_record.insurance_number IS NOT NULL AND driver_record.insurance_number != '' THEN
+    completed_fields := completed_fields + 1;
+  ELSE
+    missing_list := array_append(missing_list, 'Numéro assurance');
+  END IF;
+  
+  -- 📷 PHOTO DE PROFIL (1 champ)
+  IF driver_record.avatar_url IS NOT NULL THEN
+    completed_fields := completed_fields + 1;
+  ELSE
+    missing_list := array_append(missing_list, 'Photo de profil');
+  END IF;
+  
+  -- 🚗 VÉHICULE (1 champ)
+  IF EXISTS(SELECT 1 FROM driver_vehicles WHERE driver_id = driver_record.id) THEN
+    completed_fields := completed_fields + 1;
+  ELSE
+    missing_list := array_append(missing_list, 'Véhicule');
+  END IF;
+  
+  -- 📁 DOCUMENTS PHYSIQUES OBLIGATOIRES (3 champs)
+  IF EXISTS(SELECT 1 FROM driver_documents WHERE driver_id = driver_record.id AND document_type = 'driving_license') THEN
+    completed_fields := completed_fields + 1;
+  ELSE
+    missing_list := array_append(missing_list, 'Document permis');
+  END IF;
+  
+  IF EXISTS(SELECT 1 FROM driver_documents WHERE driver_id = driver_record.id AND document_type = 'vtc_card') THEN
+    completed_fields := completed_fields + 1;
+  ELSE
+    missing_list := array_append(missing_list, 'Document carte VTC');
+  END IF;
+  
+  IF EXISTS(SELECT 1 FROM driver_documents WHERE driver_id = driver_record.id AND document_type = 'insurance') THEN
+    completed_fields := completed_fields + 1;
+  ELSE
+    missing_list := array_append(missing_list, 'Document assurance');
+  END IF;
+  
   RETURN QUERY SELECT 
-    array_length(missing_list, 1) IS NULL OR array_length(missing_list, 1) = 0,
-    missing_list,
-    ROUND((completed_fields::float / total_fields::float) * 100)::integer;
+    (array_length(missing_list, 1) IS NULL OR array_length(missing_list, 1) = 0),
+    (completed_fields * 100 / total_fields),
+    COALESCE(missing_list, '{}');
 END;
 $$ LANGUAGE plpgsql;
 

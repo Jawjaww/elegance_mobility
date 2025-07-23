@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { supabase } from '@/lib/database/client'
+import { extractFilePathFromUrl } from '@/lib/supabase-storage-setup'
 import { useToast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -23,6 +24,7 @@ import {
 
 interface FileUploadProps {
   driverId: string
+  userId?: string  // Ajouter userId pour les politiques RLS
   fileType: 'avatar' | 'document' | 'vehicle_photo'
   documentType?: string
   onUploadComplete: (url: string) => void
@@ -44,8 +46,18 @@ interface UploadedFile {
   uploadedAt: Date
 }
 
+// Fonction utilitaire pour formater la taille des fichiers
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+}
+
 export function FileUpload({ 
   driverId, 
+  userId,
   fileType, 
   documentType,
   onUploadComplete,
@@ -63,27 +75,7 @@ export function FileUpload({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
-  // Initialiser avec le fichier actuel s'il existe
-  useEffect(() => {
-    if (currentFile) {
-      setUploadedFile({
-        url: currentFile.url,
-        name: currentFile.name || 'Document',
-        size: currentFile.size || 0,
-        type: currentFile.url.includes('.pdf') ? 'application/pdf' : 'image',
-        uploadedAt: new Date()
-      })
-    }
-  }, [currentFile])
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes'
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-  }
-
+  // Fonctions utilitaires
   const getFileIcon = (type: string) => {
     if (type.startsWith('image/')) return ImageIcon
     if (type === 'application/pdf') return FileText
@@ -100,28 +92,88 @@ export function FileUpload({
   }
 
   const generateFileName = (originalName: string) => {
-    const timestamp = Date.now()
+    const pathId = userId || driverId
     const extension = originalName.split('.').pop()
-    const prefix = documentType || fileType
-    return `${driverId}/${prefix}_${timestamp}.${extension}`
+    const timestamp = Date.now()
+    
+    // Format: driverId_documentType_timestamp.extension
+    return `driver-documents/${pathId}_${documentType}_${timestamp}.${extension}`
   }
+
+  // Récupérer le document existant depuis la table driver_documents (structure correcte)
+  const fetchExistingDocument = useCallback(async () => {
+    if (fileType === 'document' && documentType) {
+      try {
+        // Récupérer depuis driver_documents (la vraie structure Supabase)
+        const { data: document, error } = await supabase
+          .from('driver_documents')
+          .select('file_url, file_name, file_size, created_at')
+          .eq('driver_id', driverId)
+          .eq('document_type', documentType)
+          .single()
+
+        if (error && error.code !== 'PGRST116') { // PGRST116 = pas de résultat
+          console.error('Erreur récupération document:', error)
+          return
+        }
+
+        if (document) {
+          console.log('✅ Document trouvé dans driver_documents:', document)
+          
+          setUploadedFile({
+            url: document.file_url,
+            name: document.file_name || `${documentType}`,
+            size: document.file_size || 0,
+            type: document.file_url.includes('.pdf') ? 'application/pdf' : 'image',
+            uploadedAt: new Date(document.created_at)
+          })
+        }
+      } catch (error) {
+        console.error('Erreur lors de la récupération du document:', error)
+      }
+    }
+  }, [driverId, fileType, documentType])
+
+  // Initialiser avec le fichier actuel s'il existe ou récupérer depuis la DB
+  useEffect(() => {
+    if (currentFile) {
+      setUploadedFile({
+        url: currentFile.url,
+        name: currentFile.name || 'Document',
+        size: currentFile.size || 0,
+        type: currentFile.url.includes('.pdf') ? 'application/pdf' : 'image',
+        uploadedAt: new Date()
+      })
+    } else {
+      // Si pas de currentFile, essayer de récupérer depuis la DB
+      fetchExistingDocument()
+    }
+  }, [currentFile, fetchExistingDocument])
 
   const deleteFile = useCallback(async () => {
     if (!uploadedFile) return
     
     try {
-      // Extraire le nom du fichier depuis l'URL
-      const fileName = uploadedFile.url.split('/').pop()
-      if (!fileName) throw new Error('Nom de fichier invalide')
-      
       const bucketName = getBucketName()
+      
+      // Extraire le chemin complet du fichier depuis l'URL
+      const filePath = extractFilePathFromUrl(uploadedFile.url, bucketName)
+      
+      if (!filePath) {
+        throw new Error('Impossible de trouver le chemin du fichier')
+      }
+      
+      console.log('🗑️ Suppression du fichier:', filePath, 'dans le bucket:', bucketName)
       
       // Supprimer de Supabase Storage
       const { error } = await supabase.storage
         .from(bucketName)
-        .remove([`${driverId}/${fileName}`])
+        .remove([filePath])
       
-      if (error) throw error
+      if (error) {
+        console.error('Erreur Storage:', error)
+        throw error
+      }
       
       // Mettre à jour la base de données selon le type
       if (fileType === 'avatar') {
@@ -130,27 +182,17 @@ export function FileUpload({
           .update({ avatar_url: null })
           .eq('id', driverId)
       } else if (fileType === 'document' && documentType) {
-        // Supprimer de driver_documents
-        await supabase
+        // Supprimer de la table driver_documents (structure correcte)
+        const { error: deleteError } = await supabase
           .from('driver_documents')
           .delete()
           .eq('driver_id', driverId)
           .eq('document_type', documentType)
 
-        // Mettre à jour document_urls dans drivers
-        const { data: driver } = await supabase
-          .from('drivers')
-          .select('document_urls')
-          .eq('id', driverId)
-          .single()
-
-        const updatedUrls = { ...(driver?.document_urls as any || {}) }
-        delete updatedUrls[documentType]
-
-        await supabase
-          .from('drivers')
-          .update({ document_urls: updatedUrls })
-          .eq('id', driverId)
+        if (deleteError) {
+          console.error('❌ Erreur suppression base de données:', deleteError)
+          throw deleteError
+        }
       }
       
       setUploadedFile(null)
@@ -169,7 +211,7 @@ export function FileUpload({
         description: error.message
       })
     }
-  }, [uploadedFile, driverId, fileType, documentType, onUploadComplete, toast])
+  }, [uploadedFile, driverId, fileType, documentType, onUploadComplete, toast, getBucketName])
 
   const uploadFile = useCallback(async (file: File) => {
     try {
@@ -199,10 +241,11 @@ export function FileUpload({
 
       // Upload vers Supabase Storage
       const { data, error } = await supabase.storage
-        .from(bucketName)
+        .from('driver-documents')
         .upload(fileName, file, {
           cacheControl: '3600',
-          upsert: false
+          upsert: true,
+          contentType: file.type // Spécifier le type MIME
         })
 
       clearInterval(progressInterval)
@@ -211,53 +254,48 @@ export function FileUpload({
 
       // Obtenir l'URL publique
       const { data: { publicUrl } } = supabase.storage
-        .from(bucketName)
+        .from('driver-documents')
         .getPublicUrl(fileName)
 
       setProgress(100)
 
-      // Enregistrer les informations du fichier uploadé
-      setUploadedFile({
-        url: publicUrl,
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        uploadedAt: new Date()
-      })
+      // Enregistrer dans la table driver_documents (structure correcte)
+      if (fileType === 'document' && documentType) {
+        // D'abord supprimer l'ancien document s'il existe
+        const { error: deleteError } = await supabase
+          .from('driver_documents')
+          .delete()
+          .eq('driver_id', driverId)
+          .eq('document_type', documentType)
 
-      // Mise à jour de la base de données selon le type
-      if (fileType === 'avatar') {
-        await supabase
-          .from('drivers')
-          .update({ avatar_url: publicUrl })
-          .eq('id', driverId)
-      } else if (fileType === 'document') {
-        // Enregistrer dans driver_documents
-        await supabase
+        if (deleteError) {
+          console.warn('⚠️ Erreur suppression ancien document:', deleteError)
+        }
+
+        // Insérer le nouveau document avec métadonnées complètes
+        const { data: insertData, error: dbError } = await supabase
           .from('driver_documents')
           .insert({
             driver_id: driverId,
             document_type: documentType,
             file_url: publicUrl,
-            file_name: file.name,
-            file_size: file.size
+            file_name: file.name, // Nom de fichier original
+            file_size: file.size, // Taille réelle du fichier
+            validation_status: 'pending'
           })
+          .select()
 
-        // Mettre à jour document_urls dans drivers
-        const { data: driver } = await supabase
-          .from('drivers')
-          .select('document_urls')
-          .eq('id', driverId)
-          .single()
-
-        const updatedUrls = {
-          ...(driver?.document_urls as any || {}),
-          [documentType!]: publicUrl
+        if (dbError) {
+          console.error('❌ Erreur insertion base de données:', dbError)
+          throw dbError
         }
 
+        console.log('✅ Document enregistré en base:', insertData)
+      } else if (fileType === 'avatar') {
+        // Mise à jour avatar dans drivers
         await supabase
           .from('drivers')
-          .update({ document_urls: updatedUrls })
+          .update({ avatar_url: publicUrl })
           .eq('id', driverId)
       }
 
@@ -289,7 +327,7 @@ export function FileUpload({
       setProgress(0)
       setTimeout(() => setPreview(null), 2000)
     }
-  }, [driverId, fileType, documentType, maxSize, onUploadComplete, toast])
+  }, [driverId, fileType, documentType, maxSize, onUploadComplete, toast, generateFileName, getBucketName])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -401,28 +439,19 @@ export function FileUpload({
             
             {/* Actions - Layout mobile avec boutons empilés */}
             <div className="border-t border-neutral-700 pt-4">
-              {/* Mobile: Actions primaires en premier */}
+              {/* Actions - Interface simplifiée */}
               <div className="flex flex-col sm:flex-row gap-3">
-                {/* Actions principales - largeur pleine sur mobile */}
-                <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 flex-1">
+                {/* Action principale - Aperçu */}
+                <div className="sm:flex sm:items-center gap-2 flex-1">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setShowPreview(true)}
-                    className="border-neutral-600 text-neutral-300 hover:bg-neutral-700 flex-1"
+                    className="border-neutral-600 text-neutral-300 hover:bg-neutral-700 w-full sm:flex-1"
+                    title="Voir l'aperçu du document"
                   >
                     <Eye className="w-4 h-4 mr-1.5" />
                     <span className="font-medium">Aperçu</span>
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open(uploadedFile.url, '_blank')}
-                    className="border-neutral-600 text-neutral-300 hover:bg-neutral-700 flex-1"
-                  >
-                    <Download className="w-4 h-4 mr-1.5" />
-                    <span className="font-medium">Télécharger</span>
                   </Button>
                 </div>
                 
@@ -433,6 +462,7 @@ export function FileUpload({
                     size="sm"
                     onClick={openFileDialog}
                     className="border-blue-600 text-blue-300 hover:bg-blue-900/20 flex-1"
+                    title="Remplacer le fichier"
                   >
                     <RefreshCw className="w-4 h-4 mr-1.5" />
                     <span className="font-medium">Remplacer</span>
@@ -443,6 +473,7 @@ export function FileUpload({
                     size="sm"
                     onClick={deleteFile}
                     className="border-red-600 text-red-300 hover:bg-red-900/20 flex-1"
+                    title="Supprimer le fichier"
                   >
                     <Trash2 className="w-4 h-4 mr-1.5" />
                     <span className="font-medium">Supprimer</span>
@@ -663,35 +694,31 @@ export function AvatarUpload({
 // Composant Document Upload spécialisé
 export function DocumentUpload({ 
   driverId, 
+  userId,
   documentType, 
   label,
   currentUrl,
   onUploadComplete 
 }: {
   driverId: string
+  userId?: string
   documentType: string
   label: string
   currentUrl?: string | null
   onUploadComplete: (url: string) => void
 }) {
-  const currentFile = currentUrl ? {
-    url: currentUrl,
-    name: `${label}.pdf`,
-    size: 0
-  } : undefined
-
   return (
     <div className="space-y-3">
-      <label className="text-sm font-medium text-neutral-300">{label}</label>
+      <label className="text-xs font-medium text-neutral-400">{label}</label>
       
       <FileUpload
         driverId={driverId}
+        userId={userId}
         fileType="document"
         documentType={documentType}
         onUploadComplete={onUploadComplete}
         acceptedTypes=".pdf,image/*"
         maxSize={10}
-        currentFile={currentFile}
       />
     </div>
   )

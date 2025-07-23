@@ -438,240 +438,156 @@ export default function DriverProfilePageModern() {
 
   return (
     <div className="min-h-screen bg-neutral-950">
-      {/* Header Mobile-First */}
-      <div className="sticky top-12 z-50 bg-neutral-900/95 backdrop-blur-md border-b rounded-lg border-neutral-700">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center gap-3">
-            {/* Single Back Button - Works for both mobile and desktop */}
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => router.push("/backoffice-portal/chauffeurs")}
-              className="text-neutral-100 hover:bg-neutral-800 shrink-0"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-
-            {/* Driver Info - Responsive */}
-            <div className="flex-1 min-w-0">
-              <h1 className="text-lg md:text-xl font-bold truncate text-neutral-100">
-                {driver.first_name} {driver.last_name}
-              </h1>
-              <p className="text-xs text-neutral-400 truncate">
-                <span className="hidden sm:inline">Inscrit le </span>
-                {new Date(driver.created_at).toLocaleDateString()}
-              </p>
-            </div>
-
-            {/* Actions - Responsive */}
-            <div className="flex items-center gap-1 shrink-0">
-              {/* Validation Button - Desktop only in header */}
-              {driver.status === 'pending_validation' && validationData?.isComplete && (
-                <Button
-                  onClick={() => setValidationModal(true)}
-                  size="sm"
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 hidden lg:flex"
-                >
-                  <CheckCircle className="w-4 h-4 mr-1" />
-                  <span className="hidden xl:inline">Valider</span>
-                </Button>
-              )}
-              
-              {/* Edit/Save Actions */}
-              {editing ? (
-                <div className="flex gap-1">
-                  <Button variant="outline" size="sm" onClick={cancelEditing} className="border-neutral-600 text-neutral-100 hover:bg-neutral-800">
-                    <XCircle className="w-4 h-4" />
-                    <span className="hidden sm:inline ml-1">Annuler</span>
-                  </Button>
-                  <Button size="sm" onClick={saveChanges} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
-                    {saving ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Save className="w-4 h-4" />
-                    )}
-                    <span className="hidden sm:inline ml-1">Sauvegarder</span>
-                  </Button>
-                </div>
-              ) : (
-                <Button onClick={() => setEditing(true)} variant="outline" size="sm" className="border-neutral-600 text-neutral-100 hover:bg-neutral-800">
-                  <Edit className="w-4 h-4" />
-                  <span className="hidden sm:inline ml-1">Modifier</span>
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Mobile-only Quick Actions Bar */}
-          {driver.status === 'pending_validation' && validationData?.isComplete && (
-            <div className="lg:hidden mt-3 pt-3 border-t border-neutral-700">
-              <Button
-                onClick={() => setValidationModal(true)}
-                size="sm"
-                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+      {/* Navigation sticky moderne avec onglets - positionné sous le menu principal */}
+      <Tabs defaultValue="profile" className="w-full">
+        <div className="sticky top-16 z-40 bg-neutral-900/95 backdrop-blur-md border-b border-neutral-700 shadow-lg rounded-b-xl mx-4">
+          <div className="px-4">
+            <TabsList className="grid w-full grid-cols-4 bg-transparent border-0 h-14 rounded-none">
+              <TabsTrigger 
+                value="profile" 
+                className="flex items-center justify-center gap-2 text-neutral-300 data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 transition-all h-full rounded-none border-b-2 border-transparent hover:text-white hover:bg-neutral-800/50"
               >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Valider ce chauffeur
-              </Button>
-            </div>
-          )}
+                <User className="w-4 h-4" />
+                <span className="hidden sm:inline font-medium">Profil</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="documents" 
+                className="flex items-center justify-center gap-2 text-neutral-300 data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 transition-all h-full rounded-none border-b-2 border-transparent hover:text-white hover:bg-neutral-800/50"
+              >
+                <FileText className="w-4 h-4" />
+                <span className="hidden sm:inline font-medium">Docs</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="activity" 
+                className="flex items-center justify-center gap-2 text-neutral-300 data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 transition-all h-full rounded-none border-b-2 border-transparent hover:text-white hover:bg-neutral-800/50"
+              >
+                <History className="w-4 h-4" />
+                <span className="hidden sm:inline font-medium">Activité</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="settings" 
+                className="flex items-center justify-center gap-2 text-neutral-300 data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 transition-all h-full rounded-none border-b-2 border-transparent hover:text-white hover:bg-neutral-800/50"
+              >
+                <Settings className="w-4 h-4" />
+                <span className="hidden sm:inline font-medium">Config</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
         </div>
-      </div>
 
-      <div className="container mx-auto px-4 py-6 space-y-6">
-        {/* Status Badge - Prominent placement */}
-        <div className="flex justify-center">
-          <Badge className={`${config.color} flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full shadow-lg`}>
-            <StatusIcon className="w-4 h-4" />
-            {config.label}
-          </Badge>
-        </div>
-        {/* Profile Header Card */}
-        <Card className="border-neutral-800 shadow-xl bg-gradient-to-br from-neutral-900 to-neutral-800">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row items-center gap-6">
-              {/* Avatar Section */}
-              <div className="relative">
-                {editing ? (
-                  <Suspense fallback={
-                    <div className="w-24 h-24 md:w-32 md:h-32 bg-neutral-800 rounded-full animate-pulse ring-4 ring-neutral-700" />
-                  }>
-                    <AvatarUpload
-                      driverId={driverId}
-                      currentAvatarUrl={driver.avatar_url}
-                      onUploadComplete={(url) => {
-                        setEditedDriver(prev => prev ? { ...prev, avatar_url: url } : null)
-                        setDriver(prev => prev ? { ...prev, avatar_url: url } : null)
-                        toast({
-                          title: "✅ Photo mise à jour",
-                          description: "Photo de profil modifiée"
-                        })
-                      }}
-                    />
-                  </Suspense>
-                ) : (
-                  <Avatar className="w-24 h-24 md:w-32 md:h-32 ring-4 ring-neutral-700 shadow-xl">
-                    <AvatarImage src={driver.avatar_url || undefined} />
-                    <AvatarFallback className={`text-2xl font-bold bg-gradient-to-br ${config.gradient} text-white`}>
-                      {driver.first_name?.[0]}{driver.last_name?.[0]}
-                    </AvatarFallback>
-                  </Avatar>
+        {/* Contenu des onglets */}
+        <div className="container mx-auto px-4 pt-8 pb-6">
+              {/* Onglet Profil */}
+              <TabsContent value="profile" className="mt-0 space-y-6">
+                {/* Header avec informations du driver */}
+                <div className="space-y-4">
+                  {/* Layout compact avec avatar à gauche et infos à droite */}
+                  <div className="flex items-center gap-6 relative">
+                    {/* Photo de profil à gauche */}
+                    <div className="flex-shrink-0">
+                      {editing ? (
+                        <Suspense fallback={
+                          <div className="w-20 h-20 md:w-24 md:h-24 bg-neutral-800 rounded-full animate-pulse ring-4 ring-neutral-700" />
+                        }>
+                          <AvatarUpload
+                            driverId={driverId}
+                            currentAvatarUrl={driver.avatar_url}
+                            onUploadComplete={(url) => {
+                              setEditedDriver(prev => prev ? { ...prev, avatar_url: url } : null)
+                              setDriver(prev => prev ? { ...prev, avatar_url: url } : null)
+                              toast({
+                                title: "✅ Photo mise à jour",
+                                description: "Photo de profil modifiée"
+                              })
+                            }}
+                          />
+                        </Suspense>
+                      ) : (
+                        <Avatar className="w-20 h-20 md:w-24 md:h-24 ring-4 ring-neutral-700 shadow-xl">
+                          <AvatarImage src={driver.avatar_url || undefined} />
+                          <AvatarFallback className={`text-lg md:text-xl font-bold bg-gradient-to-br ${config.gradient} text-white`}>
+                            {driver.first_name?.[0]}{driver.last_name?.[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
+                    </div>
+
+                    {/* Informations à droite */}
+                    <div className="flex-1 space-y-1">
+                      <p className="text-sm text-neutral-400">{driver.company_name || "Chauffeur indépendant"}</p>
+                      <h1 className="text-2xl md:text-3xl font-bold text-white">
+                        {driver.first_name} {driver.last_name}
+                      </h1>
+                      <p className="text-sm text-neutral-400">
+                        Inscrit le {new Date(driver.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+
+                    {/* Bouton modifier discret en haut à droite */}
+                    <div className="absolute top-0 right-0">
+                      {editing ? (
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm" onClick={cancelEditing} className="text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800">
+                            <XCircle className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" onClick={saveChanges} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
+                            {saving ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Save className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button variant="ghost" size="sm" onClick={() => setEditing(true)} className="text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800">
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions principales centrées */}
+                  {driver.status === 'pending_validation' && validationData?.isComplete && (
+                    <div className="flex justify-center pt-2">
+                      <Button
+                        onClick={() => setValidationModal(true)}
+                        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                      >
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Valider ce chauffeur
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Missing Fields Alert - remontée intelligemment */}
+                {validationData.missingFields.length > 0 && (
+                  <Card className="border-neutral-800 shadow-lg bg-gradient-to-br from-neutral-900 to-neutral-800 border-l-4 border-l-orange-500">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-orange-400 flex items-center gap-2">
+                        <AlertTriangle className="w-5 h-5" />
+                        Profil incomplet ({validationData.completionPercentage}% complété)
+                      </CardTitle>
+                      <CardDescription className="text-orange-300">
+                        {validationData.missingFields.length} champ{validationData.missingFields.length > 1 ? 's' : ''} manquant{validationData.missingFields.length > 1 ? 's' : ''} pour valider ce chauffeur
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        {validationData.missingFields.map((field, index) => (
+                          <Badge key={index} className="bg-orange-500/20 text-orange-300 border-orange-500/30 text-xs">
+                            {field}
+                          </Badge>
+                        ))}
+                      </div>
+                      <div className="bg-orange-500/10 p-3 rounded-lg border border-orange-500/30">
+                        <p className="text-orange-200 text-sm">
+                          💡 <strong>Action requise :</strong> Complétez ces informations pour permettre la validation du chauffeur.
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
-              </div>
-
-              {/* Profile Info */}
-              <div className="flex-1 text-center md:text-left space-y-4">
-                <div>
-                  <p className="text-lg text-neutral-400">{driver.company_name || "Chauffeur indépendant"}</p>
-                  <p className="text-sm text-neutral-500">
-                    {driver.phone} • {driver.city || "Ville non renseignée"}
-                  </p>
-                </div>
-
-                {/* Quick Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-3 bg-neutral-800/60 rounded-lg border border-neutral-700">
-                    <TrendingUp className="w-5 h-5 mx-auto text-blue-400 mb-1" />
-                    <p className="text-sm text-neutral-400">Courses</p>
-                    <p className="text-xl font-bold text-white">{driver.total_rides || 0}</p>
-                  </div>
-                  
-                  <div className="text-center p-3 bg-neutral-800/60 rounded-lg border border-neutral-700">
-                    <Star className="w-5 h-5 mx-auto text-yellow-400 mb-1" />
-                    <p className="text-sm text-neutral-400">Note</p>
-                    <p className="text-xl font-bold text-white">{driver.rating || "N/A"}</p>
-                  </div>
-                  
-                  <div className="text-center p-3 bg-neutral-800/60 rounded-lg border border-neutral-700">
-                    <CheckCircle className="w-5 h-5 mx-auto text-green-400 mb-1" />
-                    <p className="text-sm text-neutral-400">Complétude</p>
-                    <p className="text-xl font-bold text-white">{validationData.completionPercentage}%</p>
-                  </div>
-                  
-                  <div className="text-center p-3 bg-neutral-800/60 rounded-lg border border-neutral-700">
-                    <Clock className="w-5 h-5 mx-auto text-purple-400 mb-1" />
-                    <p className="text-sm text-neutral-400">Expérience</p>
-                    <p className="text-xl font-bold text-white">
-                      {driver.created_at ? Math.floor((Date.now() - new Date(driver.created_at).getTime()) / (1000 * 60 * 60 * 24 * 30)) : 0}m
-                    </p>
-                  </div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm text-neutral-300">
-                    <span>Profil complété</span>
-                    <span className="font-medium">{validationData.completionPercentage}%</span>
-                  </div>
-                  <Progress 
-                    value={validationData.completionPercentage} 
-                    className="h-3 bg-neutral-700"
-                  />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Missing Fields Alert */}
-        {validationData.missingFields.length > 0 && (
-          <Card className="border-neutral-800 shadow-lg bg-gradient-to-br from-neutral-900 to-neutral-800 border-l-4 border-l-orange-500">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-orange-400 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5" />
-                Profil incomplet
-              </CardTitle>
-              <CardDescription className="text-orange-300">
-                Certains champs sont manquants pour valider ce chauffeur
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {validationData.missingFields.map((field, index) => (
-                  <Badge key={index} className="bg-orange-500/20 text-orange-300 border-orange-500/30 text-xs">
-                    {field}
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Main Content Tabs - Mobile Optimized */}
-        <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 bg-neutral-800/60 border-neutral-700 backdrop-blur-md border-b h-18 md:h-10">
-            <TabsTrigger 
-              value="profile" 
-              className="flex items-center justify-center gap-1.5 text-neutral-100 data-[state=active]:bg-neutral-700 data-[state=active]:text-white transition-all h-full"
-            >
-              <User className="w-4 h-4" />
-              <span className="text-xs md:text-sm font-medium">Profil</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="documents" 
-              className="flex items-center justify-center gap-1.5 text-neutral-100 data-[state=active]:bg-neutral-700 data-[state=active]:text-white transition-all h-full"
-            >
-              <FileText className="w-4 h-4" />
-              <span className="text-xs md:text-sm font-medium">Docs</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="activity" 
-              className="flex items-center justify-center gap-1.5 text-neutral-100 data-[state=active]:bg-neutral-700 data-[state=active]:text-white transition-all h-full"
-            >
-              <History className="w-4 h-4" />
-              <span className="text-xs md:text-sm font-medium">Activité</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="settings" 
-              className="flex items-center justify-center gap-1.5 text-neutral-100 data-[state=active]:bg-neutral-700 data-[state=active]:text-white transition-all h-full"
-            >
-              <Settings className="w-4 h-4" />
-              <span className="text-xs md:text-sm font-medium">Config</span>
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Onglet Profil */}
-          <TabsContent value="profile" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Informations personnelles */}
               <Card className="border-neutral-800 shadow-lg bg-gradient-to-br from-neutral-900 to-neutral-800">
@@ -1160,9 +1076,9 @@ export default function DriverProfilePageModern() {
                 </p>
               </CardContent>
             </Card>
-          </TabsContent>
+              </TabsContent>
+            </div>
         </Tabs>
-      </div>
 
       {/* Mobile Validation Button */}
       {driver.status === 'pending_validation' && validationData?.isComplete && (
@@ -1219,6 +1135,20 @@ export default function DriverProfilePageModern() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Bouton retour sticky en bas à droite pour un accès facile, au-dessus du menu mobile */}
+      <div className="fixed bottom-20 right-4 md:bottom-4 md:right-4 z-50">
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => router.push("/backoffice-portal/chauffeurs")}
+          className="bg-neutral-800/90 backdrop-blur-md border-neutral-600 text-neutral-100 hover:bg-neutral-700 shadow-xl"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          <span className="hidden sm:inline">Retour aux chauffeurs</span>
+          <span className="sm:hidden">Retour</span>
+        </Button>
+      </div>
     </div>
   )
 }

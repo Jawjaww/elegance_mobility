@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { motion } from "framer-motion"
-import { ProfileCompletionModal } from "@/components/drivers/ProfileCompletionModal"
 import { supabase } from '@/lib/database/client'
 import { ProfileAlert } from "@/components/drivers/ProfileAlert"
 import { useDriverProfileCompleteness } from "@/hooks/useDriverProfileCompleteness"
@@ -24,6 +23,7 @@ import { useCurrentDriverRealtime } from "@/hooks/queries/useRealtime"
 import { useStableRides, useStableMapRides } from "@/hooks/useStableRides"
 import { rideKeys } from '@/lib/api/rides'
 import { cn } from "@/lib/utils"
+import { useRouter } from "next/navigation"
 import type { Database } from "@/lib/types/database.types"
 
 type RideRow = Database["public"]["Tables"]["rides"]["Row"]
@@ -76,10 +76,12 @@ export default function DriverDashboard() {
   // TanStack QueryClient pour les invalidations manuelles
   const queryClient = useQueryClient()
   
+  // Router pour les redirections
+  const router = useRouter()
+  
   // État d'authentification
   const [user, setUser] = useState<any>(null)
   const [isLoadingAuth, setIsLoadingAuth] = useState(true)
-  const [showProfileModal, setShowProfileModal] = useState(false)
   
   // Hook pour vérifier la complétude du profil
   const { data: profileCompleteness, isLoading: isLoadingProfile } = useDriverProfileCompleteness(user?.id)
@@ -151,7 +153,7 @@ export default function DriverDashboard() {
         title: "Profil incomplet",
         description: "Vous devez compléter votre profil à 100% pour passer en ligne"
       })
-      setShowProfileModal(true)
+      router.push('/driver-portal/profile-setup')
       return
     }
     
@@ -187,7 +189,7 @@ export default function DriverDashboard() {
         title: "Profil incomplet", 
         description: "Vous devez compléter votre profil pour accepter des courses"
       })
-      setShowProfileModal(true)
+      router.push('/driver-portal/profile-setup')
       return
     }
     
@@ -209,7 +211,7 @@ export default function DriverDashboard() {
       // Exécution de la mutation TanStack Query
       acceptRideMutation.mutate({ rideId, driverId: user.id })
     }
-  }, [currentAvailableRides, isProfileComplete, isOnline, toast, setShowProfileModal, user, acceptRideMutation])
+  }, [currentAvailableRides, isProfileComplete, isOnline, toast, router, user, acceptRideMutation])
 
   const handleDeclineRide = useCallback((rideId: string) => {
     // Mise à jour optimiste de l'UI
@@ -334,7 +336,7 @@ export default function DriverDashboard() {
         <div className="p-4">
           <ProfileAlert 
             userId={userId}
-            onCompleteProfile={() => setShowProfileModal(true)}
+            onCompleteProfile={() => router.push('/driver-portal/profile-setup')}
           />
         </div>
       )
@@ -495,25 +497,15 @@ export default function DriverDashboard() {
         minHeight={120}
         maxHeight={viewportHeight * 0.85}
         defaultHeight={200}
-        showProfileAlert={false}
-        profileAlert={null}
       >
         {/* Notification profil global - UNE SEULE SOURCE DE VÉRITÉ */}
         {!isLoadingAuth && user && (
-          <>
-            <div className="p-4">
-              <ProfileAlert 
-                userId={user.id}
-                onCompleteProfile={() => setShowProfileModal(true)}
-              />
-            </div>
-            
-            <ProfileCompletionModal
+          <div className="p-4">
+            <ProfileAlert 
               userId={user.id}
-              isOpen={showProfileModal}
-              onClose={() => setShowProfileModal(false)}
+              onCompleteProfile={() => router.push('/driver-portal/profile-setup')}
             />
-          </>
+          </div>
         )}
         
         {/* Bannière de statut avec bouton en haut du bottom sheet */}

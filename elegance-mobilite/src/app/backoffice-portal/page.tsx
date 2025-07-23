@@ -20,7 +20,7 @@ export default async function BackofficeIndexPage() {
   const metrics = await MetricsService.getDashboardMetrics()
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="py-8">
       <AdminDashboardClient
         initialMetrics={metrics}
         user={user}

@@ -9,25 +9,7 @@
 
 ### **🔍 1. Vérifier la complétude d'un profil**
 
-**En SQL :**
-```sql
-SELECT * FROM check_driver_profile_completeness('user-uuid-here');
-```
-
-**En TypeScript/React :**
-```typescript
-const { data } = await supabase
-  .rpc('check_driver_profile_completeness', { 
-    driver_user_id: userId 
-  })
-  .single()
-
-console.log({
-  isComplete: data.is_complete,
-  percentage: data.completion_percentage,
-  missing: data.missing_fields
-})
-```
+> Voir la section "Vérification de Complétude : check_driver_profile_completeness" dans ARCHITECTURE-COMPLETE-SYSTEM-2025.md pour la description, la signature et les exemples d'appel (SQL et TypeScript/React). Évitez de dupliquer la logique ou les exemples ici.
 
 ### **🔄 2. Forcer la mise à jour d'un statut**
 

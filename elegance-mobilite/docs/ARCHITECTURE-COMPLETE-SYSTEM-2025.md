@@ -1,3 +1,20 @@
+## 🎯 **VISION D'ENSEMBLE DU SYSTÈME**
+
+### **🔍 Vérification de Complétude : `check_driver_profile_completeness`**
+
+-- Vérifie si un profil chauffeur est complet
+SELECT * FROM check_driver_profile_completeness('user-uuid-here');
+
+-- Voir section "Vérification de Complétude : check_driver_profile_completeness" ci-dessus pour la description complète et l’exemple d’appel.
+
+2. Appelle la fonction de complétude (voir section dédiée)
+
+  // Voir section "Vérification de Complétude" pour l’intégration complète
+  .rpc('check_driver_profile_completeness', { driver_user_id: userId })
+
+  -- Voir section "Vérification de Complétude : check_driver_profile_completeness"
+
+-- Voir section "Vérification de Complétude : check_driver_profile_completeness"
 # 🛡️ DOCUMENTATION SYSTÈME COMPLET - GESTION AUTOMATIQUE DES PROFILS, STATUTS ET RÔLES
 
 ## 📅 **DERNIÈRE MISE À JOUR**

@@ -71,7 +71,7 @@
 
 ### **⚡ Pour utiliser le système automatique :**
 1. Consulter `GUIDE-UTILISATION-RAPIDE.md` pour les exemples de code
-2. Utiliser les fonctions SQL : `check_driver_profile_completeness()`, `force_update_driver_status()`
+2. Utiliser les fonctions SQL : voir la section "Vérification de Complétude : check_driver_profile_completeness" dans ARCHITECTURE-COMPLETE-SYSTEM-2025.md pour la description et les exemples d'appel. Utiliser aussi `force_update_driver_status()`.
 3. Implémenter les hooks React fournis dans la documentation
 
 ### **🔧 Pour maintenir la sécurité :**
