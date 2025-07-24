@@ -1151,9 +1151,8 @@ export default function ModernDriverProfileSetup({ userId }: ModernDriverProfile
                       label="Uploader le permis de conduire"
                       documentType="driving_license"
                       driverId={driverId}
-                      userId={userId}
                       currentUrl={(driverData?.document_urls as any)?.driving_license}
-                      onUploadComplete={(url: string) => handleDocumentUpload('driving_license', url)}
+                      onUploadComplete={(url) => handleDocumentUpload('driving_license', url)}
                     />
                   </div>
 
@@ -1170,9 +1169,8 @@ export default function ModernDriverProfileSetup({ userId }: ModernDriverProfile
                       label="Uploader la carte VTC"
                       documentType="vtc_card"
                       driverId={driverId}
-                      userId={userId}
                       currentUrl={(driverData?.document_urls as any)?.vtc_card}
-                      onUploadComplete={(url: string) => handleDocumentUpload('vtc_card', url)}
+                      onUploadComplete={(url) => handleDocumentUpload('vtc_card', url)}
                     />
                   </div>
 
@@ -1189,8 +1187,7 @@ export default function ModernDriverProfileSetup({ userId }: ModernDriverProfile
                       label="Uploader l'assurance"
                       documentType="insurance"
                       driverId={driverId}
-                      userId={userId}
-                      onUploadComplete={(url: string) => handleDocumentUpload('insurance', url)}
+                      onUploadComplete={(url) => handleDocumentUpload('insurance', url)}
                       currentUrl={existingDocuments.insurance?.url || uploadedDocuments.insurance}
                     />
                   </div>

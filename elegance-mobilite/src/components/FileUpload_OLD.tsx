@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { supabase } from '@/lib/database/client'
-import { getSignedUrlFromPublicUrl, extractFilePathFromUrl } from '@/lib/supabase-storage-setup'
+import { extractFilePathFromUrl } from '@/lib/supabase-storage-setup'
 import { useToast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -24,9 +24,11 @@ import {
 
 interface FileUploadProps {
   driverId: string
+  userId?: string  // Ajouter userId pour les politiques RLS
   fileType: 'avatar' | 'document' | 'vehicle_photo'
   documentType?: string
   onUploadComplete: (url: string) => void
+  onFileDeleted?: () => void // Nouveau callback pour la suppression
   acceptedTypes?: string
   maxSize?: number // en MB
   children?: React.ReactNode
@@ -45,11 +47,22 @@ interface UploadedFile {
   uploadedAt: Date
 }
 
+// Fonction utilitaire pour formater la taille des fichiers
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+}
+
 export function FileUpload({ 
   driverId, 
+  userId,
   fileType, 
   documentType,
   onUploadComplete,
+  onFileDeleted,
   acceptedTypes = "image/*,.pdf",
   maxSize = 10,
   children,
@@ -64,87 +77,7 @@ export function FileUpload({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
-  // Récupérer le document existant depuis la base de données
-  const fetchExistingDocument = useCallback(async () => {
-    if (fileType === 'document' && documentType) {
-      try {
-        const { data: existingDoc, error } = await supabase
-          .from('driver_documents')
-          .select('file_url, file_name, file_size')
-          .eq('driver_id', driverId)
-          .eq('document_type', documentType)
-          .maybeSingle()
-
-        if (error) {
-          console.error('Erreur récupération document:', error)
-          return
-        }
-
-        if (existingDoc) {
-          // Pour les documents privés, utiliser directement le chemin stocké pour régénérer une URL signée
-          let displayUrl = existingDoc.file_url
-          
-          if (getBucketName() === 'driver-documents') {
-            try {
-              // Extraire le chemin depuis l'URL stockée
-              const filePath = extractFilePathFromUrl(existingDoc.file_url, 'driver-documents')
-              if (filePath) {
-                console.log('🔍 Génération URL signée pour chemin:', filePath)
-                const { data, error } = await supabase.storage
-                  .from('driver-documents')
-                  .createSignedUrl(filePath, 3600)
-                
-                if (data && !error) {
-                  displayUrl = data.signedUrl
-                  console.log('✅ URL signée générée avec succès')
-                } else {
-                  console.warn('❌ Erreur génération URL signée:', error)
-                }
-              }
-            } catch (urlError) {
-              console.warn('❌ Erreur génération URL signée:', urlError)
-              // Utiliser l'URL originale en cas d'erreur
-            }
-          }
-
-          setUploadedFile({
-            url: displayUrl,
-            name: existingDoc.file_name || `${documentType}.pdf`,
-            size: existingDoc.file_size || 0,
-            type: existingDoc.file_url.includes('.pdf') ? 'application/pdf' : 'image',
-            uploadedAt: new Date()
-          })
-        }
-      } catch (error) {
-        console.error('Erreur lors de la récupération du document:', error)
-      }
-    }
-  }, [driverId, fileType, documentType])
-
-  // Initialiser avec le fichier actuel s'il existe ou récupérer depuis la DB
-  useEffect(() => {
-    if (currentFile) {
-      setUploadedFile({
-        url: currentFile.url,
-        name: currentFile.name || 'Document',
-        size: currentFile.size || 0,
-        type: currentFile.url.includes('.pdf') ? 'application/pdf' : 'image',
-        uploadedAt: new Date()
-      })
-    } else {
-      // Si pas de currentFile, essayer de récupérer depuis la DB
-      fetchExistingDocument()
-    }
-  }, [currentFile, fetchExistingDocument])
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes'
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-  }
-
+  // Fonctions utilitaires
   const getFileIcon = (type: string) => {
     if (type.startsWith('image/')) return ImageIcon
     if (type === 'application/pdf') return FileText
@@ -161,14 +94,84 @@ export function FileUpload({
   }
 
   const generateFileName = (originalName: string) => {
-    const timestamp = Date.now()
+    const pathId = userId || driverId
     const extension = originalName.split('.').pop()
-    const prefix = documentType || fileType
+    const timestamp = Date.now()
     
-    // IMPORTANT: Utiliser le format attendu par les politiques RLS Storage
-    // Format: driver-documents/driverId_documentType_timestamp.extension
-    return `driver-documents/${driverId}_${prefix}_${timestamp}.${extension}`
+    // Format: driverId_documentType_timestamp.extension
+    return `driver-documents/${pathId}_${documentType}_${timestamp}.${extension}`
   }
+
+  // Fonction utilitaire pour détecter le type MIME depuis l'URL ou le nom de fichier
+  const detectFileType = (fileUrl: string, fileName?: string): string => {
+    const url = fileUrl.toLowerCase()
+    const name = fileName?.toLowerCase() || ''
+    
+    // Détecter le type par extension
+    if (url.includes('.pdf') || name.includes('.pdf')) return 'application/pdf'
+    if (url.includes('.png') || name.includes('.png')) return 'image/png'
+    if (url.includes('.jpg') || url.includes('.jpeg') || name.includes('.jpg') || name.includes('.jpeg')) return 'image/jpeg'
+    if (url.includes('.gif') || name.includes('.gif')) return 'image/gif'
+    if (url.includes('.webp') || name.includes('.webp')) return 'image/webp'
+    if (url.includes('.svg') || name.includes('.svg')) return 'image/svg+xml'
+    
+    // Par défaut, si on ne peut pas détecter
+    return 'application/octet-stream'
+  }
+
+  // Récupérer le document existant depuis la table driver_documents (structure correcte)
+  const fetchExistingDocument = useCallback(async () => {
+    if (fileType === 'document' && documentType) {
+      try {
+        // Récupérer depuis driver_documents (la vraie structure Supabase)
+        const { data: document, error } = await supabase
+          .from('driver_documents')
+          .select('file_url, file_name, file_size, created_at')
+          .eq('driver_id', driverId)
+          .eq('document_type', documentType)
+          .single()
+
+        if (error && error.code !== 'PGRST116') { // PGRST116 = pas de résultat
+          console.error('Erreur récupération document:', error)
+          return
+        }
+
+        if (document) {
+          console.log('✅ Document trouvé dans driver_documents:', document)
+          
+          const detectedType = detectFileType(document.file_url, document.file_name)
+          
+          setUploadedFile({
+            url: document.file_url,
+            name: document.file_name || `${documentType}`,
+            size: document.file_size || 0,
+            type: detectedType,
+            uploadedAt: new Date(document.created_at)
+          })
+        }
+      } catch (error) {
+        console.error('Erreur lors de la récupération du document:', error)
+      }
+    }
+  }, [driverId, fileType, documentType])
+
+  // Initialiser avec le fichier actuel s'il existe ou récupérer depuis la DB
+  useEffect(() => {
+    if (currentFile) {
+      const detectedType = detectFileType(currentFile.url, currentFile.name)
+      
+      setUploadedFile({
+        url: currentFile.url,
+        name: currentFile.name || 'Document',
+        size: currentFile.size || 0,
+        type: detectedType,
+        uploadedAt: new Date()
+      })
+    } else {
+      // Si pas de currentFile, essayer de récupérer depuis la DB
+      fetchExistingDocument()
+    }
+  }, [currentFile, fetchExistingDocument])
 
   const deleteFile = useCallback(async () => {
     if (!uploadedFile) return
@@ -201,32 +204,25 @@ export function FileUpload({
           .from('drivers')
           .update({ avatar_url: null })
           .eq('id', driverId)
-      } else if (fileType === 'document' && documentType) {
-        // Supprimer de driver_documents
-        await supabase
+      } else if ((fileType === 'document' || fileType === 'vehicle_photo') && documentType) {
+        // Supprimer de la table driver_documents (structure correcte)
+        const { error: deleteError } = await supabase
           .from('driver_documents')
           .delete()
           .eq('driver_id', driverId)
           .eq('document_type', documentType)
 
-        // Mettre à jour document_urls dans drivers
-        const { data: driver } = await supabase
-          .from('drivers')
-          .select('document_urls')
-          .eq('id', driverId)
-          .single()
-
-        const updatedUrls = { ...(driver?.document_urls as any || {}) }
-        delete updatedUrls[documentType]
-
-        await supabase
-          .from('drivers')
-          .update({ document_urls: updatedUrls })
-          .eq('id', driverId)
+        if (deleteError) {
+          console.error('❌ Erreur suppression base de données:', deleteError)
+          throw deleteError
+        }
       }
       
       setUploadedFile(null)
       onUploadComplete('')
+      
+      // Appeler le callback de suppression si fourni
+      onFileDeleted?.()
       
       toast({
         title: "🗑️ Fichier supprimé",
@@ -241,9 +237,10 @@ export function FileUpload({
         description: error.message
       })
     }
-  }, [uploadedFile, driverId, fileType, documentType, onUploadComplete, toast])
+  }, [uploadedFile, driverId, fileType, documentType, onUploadComplete, toast, getBucketName])
 
   const uploadFile = useCallback(async (file: File) => {
+    console.log('🚀 Début upload fichier:', file.name, 'Type:', fileType, 'DocumentType:', documentType)
     try {
       setUploading(true)
       setProgress(0)
@@ -256,6 +253,8 @@ export function FileUpload({
       // Générer le nom de fichier
       const fileName = generateFileName(file.name)
       const bucketName = getBucketName()
+      
+      console.log('📂 Upload vers bucket:', bucketName, 'Fichier:', fileName)
 
       // Créer une preview pour les images
       if (file.type.startsWith('image/')) {
@@ -274,7 +273,8 @@ export function FileUpload({
         .from(bucketName)
         .upload(fileName, file, {
           cacheControl: '3600',
-          upsert: false
+          upsert: true,
+          contentType: file.type // Spécifier le type MIME
         })
 
       clearInterval(progressInterval)
@@ -288,31 +288,100 @@ export function FileUpload({
 
       setProgress(100)
 
-      // Enregistrer les informations du fichier uploadé
-      setUploadedFile({
-        url: publicUrl,
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        uploadedAt: new Date()
-      })
-
-      // Mise à jour de la base de données selon le type
-      if (fileType === 'avatar') {
-        await supabase
+      // Enregistrer dans la table driver_documents (structure correcte)
+      if (fileType === 'document' && documentType) {
+        // 🔍 DEBUG RLS: Récupérer l'utilisateur connecté
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        
+        if (authError || !user) {
+          console.error('❌ ERREUR AUTH:', authError)
+          toast({
+            title: "Erreur d'authentification",
+            description: "Impossible de vérifier votre identité",
+            variant: "destructive"
+          })
+          setUploading(false)
+          setProgress(0)
+          return
+        }
+        
+        console.log('🔍 DEBUG RLS:', {
+          userId: user.id,
+          driverId: driverId,
+          documentType: documentType
+        })
+        
+        // Vérifier que ce driverId appartient bien à l'utilisateur connecté
+        const { data: driverCheck, error: driverCheckError } = await supabase
           .from('drivers')
-          .update({ avatar_url: publicUrl })
+          .select('id, user_id')
           .eq('id', driverId)
-      } else if (fileType === 'document' && documentType) {
-        // Supprimer l'ancien document s'il existe
-        await supabase
+          .eq('user_id', user.id)
+          .single()
+          
+        console.log('🔍 Vérification driver:', { driverCheck, driverCheckError })
+        
+        if (driverCheckError || !driverCheck) {
+          console.error('❌ ERREUR RLS: driverId ne correspond pas à user_id!')
+          console.error('Details:', { 
+            driverId, 
+            userId: user.id, 
+            error: driverCheckError 
+          })
+          toast({
+            title: "Erreur de sécurité",
+            description: "Vous n'êtes pas autorisé à modifier ce profil",
+            variant: "destructive"
+          })
+          setUploading(false)
+          setProgress(0)
+          return
+        }
+        
+        // D'abord supprimer l'ancien document s'il existe
+        const { error: deleteError } = await supabase
           .from('driver_documents')
           .delete()
           .eq('driver_id', driverId)
           .eq('document_type', documentType)
 
-        // Enregistrer le nouveau document dans driver_documents
-        await supabase
+        if (deleteError) {
+          console.warn('⚠️ Erreur suppression ancien document:', deleteError)
+        }
+
+        // Insérer le nouveau document avec métadonnées complètes
+        const { data: insertData, error: dbError } = await supabase
+          .from('driver_documents')
+          .insert({
+            driver_id: driverId,
+            document_type: documentType,
+            file_url: publicUrl,
+            file_name: file.name, // Nom de fichier original
+            file_size: file.size, // Taille réelle du fichier
+            validation_status: 'pending'
+          })
+          .select()
+
+        if (dbError) {
+          console.error('❌ Erreur insertion base de données:', dbError)
+          throw dbError
+        }
+
+        console.log('✅ Document enregistré en base:', insertData)
+      } else if (fileType === 'vehicle_photo' && documentType) {
+        // Gérer les photos de véhicules
+        const { error: deleteError } = await supabase
+          .from('driver_documents')
+          .delete()
+          .eq('driver_id', driverId)
+          .eq('document_type', documentType)
+
+        if (deleteError) {
+          console.warn('⚠️ Erreur suppression ancienne photo:', deleteError)
+        }
+
+        // Insérer la nouvelle photo
+        const { data: insertData, error: dbError } = await supabase
           .from('driver_documents')
           .insert({
             driver_id: driverId,
@@ -320,25 +389,21 @@ export function FileUpload({
             file_url: publicUrl,
             file_name: file.name,
             file_size: file.size,
-            upload_date: new Date().toISOString(),
             validation_status: 'pending'
           })
+          .select()
 
-        // Mettre à jour document_urls dans drivers pour compatibilité
-        const { data: driver } = await supabase
-          .from('drivers')
-          .select('document_urls')
-          .eq('id', driverId)
-          .single()
-
-        const updatedUrls = {
-          ...(driver?.document_urls as any || {}),
-          [documentType]: publicUrl
+        if (dbError) {
+          console.error('❌ Erreur insertion photo véhicule:', dbError)
+          throw dbError
         }
 
+        console.log('✅ Photo véhicule enregistrée:', insertData)
+      } else if (fileType === 'avatar') {
+        // Mise à jour avatar dans drivers
         await supabase
           .from('drivers')
-          .update({ document_urls: updatedUrls })
+          .update({ avatar_url: publicUrl })
           .eq('id', driverId)
       }
 
@@ -370,7 +435,7 @@ export function FileUpload({
       setProgress(0)
       setTimeout(() => setPreview(null), 2000)
     }
-  }, [driverId, fileType, documentType, maxSize, onUploadComplete, toast])
+  }, [driverId, fileType, documentType, maxSize, onUploadComplete, toast, generateFileName, getBucketName])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -392,8 +457,10 @@ export function FileUpload({
   }, [])
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('📁 Fichier sélectionné via input')
     const files = e.target.files
     if (files && files.length > 0) {
+      console.log('📄 Fichier à uploader:', files[0].name)
       uploadFile(files[0])
     }
     // Reset input pour permettre de sélectionner le même fichier
@@ -403,6 +470,7 @@ export function FileUpload({
   }, [uploadFile])
 
   const openFileDialog = useCallback(() => {
+    console.log('🔍 Ouverture du sélecteur de fichiers')
     fileInputRef.current?.click()
   }, [])
 
@@ -445,24 +513,27 @@ export function FileUpload({
               <div className="flex items-center space-x-3 flex-1">
                 <div className="shrink-0">
                   {isImage ? (
-                    <div className="w-14 h-14 bg-green-100 rounded-lg flex items-center justify-center overflow-hidden ring-2 ring-green-200">
+                    <div className="w-14 h-14 rounded-lg overflow-hidden border-2 border-green-200 bg-green-50">
                       <img 
                         src={uploadedFile.url} 
                         alt={uploadedFile.name}
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          console.warn('Erreur chargement miniature:', uploadedFile.url)
-                          // Remplacer par l'icône en cas d'erreur
+                          console.log('Erreur chargement image:', uploadedFile.url)
+                          // Fallback vers l'icône si l'image ne charge pas
                           e.currentTarget.style.display = 'none'
-                          const parent = e.currentTarget.parentElement
-                          if (parent) {
-                            parent.innerHTML = '<div class="w-7 h-7 text-green-600"><svg class="w-full h-full" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"></path></svg></div>'
-                          }
+                          e.currentTarget.parentElement!.innerHTML = `
+                            <div class="w-full h-full bg-green-100 rounded-lg flex items-center justify-center">
+                              <svg class="w-7 h-7 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                              </svg>
+                            </div>
+                          `
                         }}
                       />
                     </div>
                   ) : (
-                    <div className="w-14 h-14 bg-blue-100 rounded-lg flex items-center justify-center ring-2 ring-blue-200">
+                    <div className="w-14 h-14 bg-blue-100 rounded-lg flex items-center justify-center border-2 border-blue-200">
                       <FileIcon className="w-7 h-7 text-blue-600" />
                     </div>
                   )}
@@ -489,43 +560,38 @@ export function FileUpload({
               </div>
             </div>
             
-            {/* Actions - Layout mobile avec boutons empilés */}
+            {/* Actions */}
             <div className="border-t border-neutral-700 pt-4">
-              {/* Actions - Interface modernisée mobile-first */}
-              <div className="space-y-3">
-                {/* Action principale - Aperçu en pleine largeur */}
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={() => setShowPreview(true)}
-                  className="w-full h-11 border-neutral-600 text-neutral-300 hover:bg-neutral-700 hover:border-neutral-500 transition-all"
-                  title="Voir l'aperçu du document"
+                  className="border-neutral-600 text-neutral-300 hover:bg-neutral-700 flex-1"
                 >
                   <Eye className="w-4 h-4 mr-2" />
-                  <span className="font-medium">Aperçu du document</span>
+                  Aperçu
                 </Button>
                 
-                {/* Actions secondaires - Grid équilibré */}
-                <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={openFileDialog}
-                    className="h-11 border-blue-600/50 text-blue-400 hover:bg-blue-900/20 hover:border-blue-500 transition-all"
-                    title="Remplacer le fichier"
-                  >
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    <span className="font-medium">Remplacer</span>
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    onClick={deleteFile}
-                    className="h-11 border-red-600/50 text-red-400 hover:bg-red-900/20 hover:border-red-500 transition-all"
-                    title="Supprimer le fichier"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    <span className="font-medium">Supprimer</span>
-                  </Button>
-                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={openFileDialog}
+                  className="border-blue-600 text-blue-300 hover:bg-blue-900/20 flex-1"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Remplacer
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={deleteFile}
+                  className="border-red-600 text-red-300 hover:bg-red-900/20 flex-1"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Supprimer
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -541,67 +607,93 @@ export function FileUpload({
           disabled={uploading}
         />
 
-        {/* Modal d'aperçu modernisée */}
+        {/* Modal d'aperçu - Thème sombre et mobile optimisé */}
         <Dialog open={showPreview} onOpenChange={setShowPreview}>
-          <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-hidden p-0">
-            <DialogHeader className="p-6 pb-0">
-              <DialogTitle className="flex items-center space-x-3 text-left">
-                <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
-                  <FileIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold truncate text-neutral-900 dark:text-neutral-100">
-                    {uploadedFile.name}
-                  </h3>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                    {formatFileSize(uploadedFile.size)} • {isImage ? 'Image' : 'Document PDF'}
-                  </p>
-                </div>
+          <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] bg-neutral-900 border-neutral-700 text-neutral-100 overflow-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2 text-left break-words text-neutral-100">
+                <FileIcon className="w-5 h-5 shrink-0 text-neutral-400" />
+                <span className="truncate">{uploadedFile.name}</span>
               </DialogTitle>
             </DialogHeader>
             
-            <div className="px-6 pb-6">
+            <div className="mt-4 space-y-6">
               {isImage ? (
-                <div className="bg-neutral-50 dark:bg-neutral-900 rounded-xl p-4 mt-4">
+                <div className="space-y-4">
+                  {/* Miniature optimisée pour mobile */}
                   <div className="flex justify-center">
-                    <img 
-                      src={uploadedFile.url} 
-                      alt={uploadedFile.name}
-                      className="max-w-full h-auto rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-700"
-                      style={{ 
-                        maxHeight: '60vh',
-                        objectFit: 'contain'
-                      }}
-                      onError={(e) => {
-                        console.error('Erreur chargement image:', e)
-                        // Fallback vers message d'erreur
-                      }}
-                    />
+                    <div className="relative">
+                      <img 
+                        src={uploadedFile.url} 
+                        alt={uploadedFile.name}
+                        className="max-w-full max-h-64 sm:max-h-80 object-contain rounded-lg border border-neutral-600 bg-neutral-800"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Informations du fichier */}
+                  <div className="text-center space-y-2 p-4 bg-neutral-800 rounded-lg border border-neutral-700">
+                    <p className="text-sm text-neutral-300">
+                      {formatFileSize(uploadedFile.size)} • Image
+                    </p>
+                    <p className="text-xs text-neutral-400">
+                      Uploadé le {uploadedFile.uploadedAt.toLocaleDateString('fr-FR')}
+                    </p>
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-12 space-y-6">
-                  <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-                    <FileText className="w-10 h-10 text-white" />
+                <div className="space-y-6">
+                  {/* Miniature PDF - Thème sombre */}
+                  <div className="flex flex-col items-center py-8 space-y-4 bg-neutral-800 rounded-lg border border-neutral-700">
+                    <div className="relative">
+                      <div className="w-20 h-26 bg-neutral-700 rounded-lg border-2 border-neutral-600 flex items-center justify-center">
+                        <FileText className="w-10 h-10 text-neutral-400" />
+                      </div>
+                      <div className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">
+                        PDF
+                      </div>
+                    </div>
+                    
+                    <div className="text-center space-y-2">
+                      <h3 className="text-base font-semibold text-neutral-200 max-w-xs truncate">
+                        {uploadedFile.name}
+                      </h3>
+                      <p className="text-sm text-neutral-400">
+                        {formatFileSize(uploadedFile.size)} • Document PDF
+                      </p>
+                      <p className="text-xs text-neutral-500">
+                        Uploadé le {uploadedFile.uploadedAt.toLocaleDateString('fr-FR')}
+                      </p>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <h4 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-                      Document PDF
-                    </h4>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                      Cliquez sur le bouton ci-dessous pour ouvrir le document
-                    </p>
-                  </div>
-                  <Button 
-                    onClick={() => window.open(uploadedFile.url, '_blank')}
-                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg"
-                    size="lg"
-                  >
-                    <Download className="w-5 h-5 mr-2" />
-                    Ouvrir le document
-                  </Button>
                 </div>
               )}
+
+              {/* Actions - Thème sombre uniforme */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-neutral-700">
+                <Button 
+                  onClick={() => {
+                    const link = document.createElement('a')
+                    link.href = uploadedFile.url
+                    link.download = uploadedFile.name
+                    link.click()
+                  }}
+                  variant="outline"
+                  className="border-green-600 text-green-300 hover:bg-green-900/20 flex-1"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Télécharger
+                </Button>
+                
+                <Button 
+                  onClick={() => window.open(uploadedFile.url, '_blank')}
+                  variant="outline"
+                  className="border-blue-600 text-blue-300 hover:bg-blue-900/20 flex-1"
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  Ouvrir dans un nouvel onglet
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
@@ -761,32 +853,31 @@ export function AvatarUpload({
 // Composant Document Upload spécialisé
 export function DocumentUpload({ 
   driverId, 
+  userId,
   documentType, 
   label,
   currentUrl,
   onUploadComplete 
 }: {
   driverId: string
+  userId?: string
   documentType: string
   label: string
   currentUrl?: string | null
   onUploadComplete: (url: string) => void
 }) {
-  // Ne plus utiliser currentFile en prop car la récupération se fait automatiquement
-  // depuis la table driver_documents dans le useEffect de FileUpload
-
   return (
     <div className="space-y-3">
       <label className="text-xs font-medium text-neutral-400">{label}</label>
       
       <FileUpload
         driverId={driverId}
+        userId={userId}
         fileType="document"
         documentType={documentType}
         onUploadComplete={onUploadComplete}
         acceptedTypes=".pdf,image/*"
         maxSize={10}
-        // Pas de currentFile - la récupération se fait automatiquement
       />
     </div>
   )

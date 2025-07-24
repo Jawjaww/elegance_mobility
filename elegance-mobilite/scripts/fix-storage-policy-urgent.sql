@@ -9,16 +9,14 @@ DROP POLICY IF EXISTS "Drivers can view own documents" ON storage.objects;
 DROP POLICY IF EXISTS "Drivers can update own documents" ON storage.objects;
 DROP POLICY IF EXISTS "Drivers can delete own documents" ON storage.objects;
 
--- 2. Créer des politiques CORRIGÉES qui utilisent driver.id dans le chemin
+-- 2. Créer des politiques CORRIGÉES qui utilisent user_id au lieu de id
 CREATE POLICY "Drivers can upload own documents" ON storage.objects
 FOR INSERT TO authenticated
 WITH CHECK (
   bucket_id = 'driver-documents' AND
   (
-    -- CORRECTION: Le chemin utilise driver.id, pas auth.uid()
-    (storage.foldername(name))[1] IN (
-      SELECT id::text FROM drivers WHERE user_id = auth.uid()
-    ) OR
+    -- CORRECTION: Utiliser user_id au lieu de id
+    (storage.foldername(name))[1] = auth.uid()::text OR
     ((auth.jwt() -> 'app_metadata'::text)::jsonb ->> 'role'::text) = ANY(ARRAY['app_admin', 'app_super_admin'])
   )
 );
@@ -28,10 +26,8 @@ FOR SELECT TO authenticated
 USING (
   bucket_id = 'driver-documents' AND
   (
-    -- CORRECTION: Le chemin utilise driver.id, pas auth.uid()
-    (storage.foldername(name))[1] IN (
-      SELECT id::text FROM drivers WHERE user_id = auth.uid()
-    ) OR
+    -- CORRECTION: Utiliser user_id au lieu de id
+    (storage.foldername(name))[1] = auth.uid()::text OR
     ((auth.jwt() -> 'app_metadata'::text)::jsonb ->> 'role'::text) = ANY(ARRAY['app_admin', 'app_super_admin'])
   )
 );
@@ -41,10 +37,8 @@ FOR UPDATE TO authenticated
 USING (
   bucket_id = 'driver-documents' AND
   (
-    -- CORRECTION: Le chemin utilise driver.id, pas auth.uid()
-    (storage.foldername(name))[1] IN (
-      SELECT id::text FROM drivers WHERE user_id = auth.uid()
-    ) OR
+    -- CORRECTION: Utiliser user_id au lieu de id
+    (storage.foldername(name))[1] = auth.uid()::text OR
     ((auth.jwt() -> 'app_metadata'::text)::jsonb ->> 'role'::text) = ANY(ARRAY['app_admin', 'app_super_admin'])
   )
 );
@@ -54,10 +48,8 @@ FOR DELETE TO authenticated
 USING (
   bucket_id = 'driver-documents' AND
   (
-    -- CORRECTION: Le chemin utilise driver.id, pas auth.uid()
-    (storage.foldername(name))[1] IN (
-      SELECT id::text FROM drivers WHERE user_id = auth.uid()
-    ) OR
+    -- CORRECTION: Utiliser user_id au lieu de id
+    (storage.foldername(name))[1] = auth.uid()::text OR
     ((auth.jwt() -> 'app_metadata'::text)::jsonb ->> 'role'::text) = ANY(ARRAY['app_admin', 'app_super_admin'])
   )
 );
