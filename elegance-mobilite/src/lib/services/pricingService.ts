@@ -1,7 +1,7 @@
 "use client";
 
 import { VehicleType } from "@/lib/types/vehicle.types";
-import { supabase } from '@/lib/database/client';
+import { supabase } from "@/lib/database/client";
 
 interface PriceEstimate {
   basePrice: number;
@@ -18,14 +18,14 @@ class PricingService {
     distance: number,
     vehicleType: VehicleType | string,
     options: string[] = [],
-    pickupTime?: Date
+    pickupTime?: Date,
   ): Promise<PriceEstimate> {
     try {
       // 1. Récupérer les tarifs de base
       const { data: rate, error: rateError } = await supabase
-        .from('rates')
-        .select('base_price, price_per_km, min_price')
-        .eq('vehicle_type', vehicleType)
+        .from("rates")
+        .select("base_price, price_per_km, min_price")
+        .eq("vehicle_type", vehicleType)
         .single();
 
       if (rateError) throw rateError;
@@ -39,9 +39,9 @@ class PricingService {
       let optionsTotal = 0;
       if (options.length > 0) {
         const { data: optionsData, error: optionsError } = await supabase
-          .from('options')
-          .select('price')
-          .in('name', options);
+          .from("options")
+          .select("price")
+          .in("name", options);
 
         if (!optionsError && optionsData) {
           optionsTotal = optionsData.reduce((sum, opt) => sum + opt.price, 0);
@@ -52,16 +52,17 @@ class PricingService {
       // 4. Vérifier les promotions saisonnières
       if (pickupTime) {
         const { data: seasonalPromo } = await supabase
-          .from('seasonal_promotions')
-          .select('discount_percentage')
-          .eq('active', true)
-          .lte('start_date', pickupTime.toISOString())
-          .gte('end_date', pickupTime.toISOString())
-          .is('vehicle_types', vehicleType)
+          .from("seasonal_promotions")
+          .select("discount_percentage")
+          .eq("active", true)
+          .lte("start_date", pickupTime.toISOString())
+          .gte("end_date", pickupTime.toISOString())
+          .is("vehicle_types", vehicleType)
           .limit(1);
 
         if (seasonalPromo?.[0]) {
-          const discount = totalPrice * (seasonalPromo[0].discount_percentage / 100);
+          const discount =
+            totalPrice * (seasonalPromo[0].discount_percentage / 100);
           totalPrice -= discount;
         }
       }
@@ -74,11 +75,17 @@ class PricingService {
       return {
         basePrice: basePrice + distancePrice,
         optionsPrice: optionsTotal,
-        totalPrice: Number(totalPrice.toFixed(2))
+        totalPrice: Number(totalPrice.toFixed(2)),
       };
     } catch (error) {
-      console.error("Erreur lors de l'estimation du prix:", error);
-      throw new Error(`Pricing error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Utiliser un niveau moins critique pour éviter l'overlay Next.js
+      console.warn("Erreur lors de l'estimation du prix:", error);
+      // Fournir un message d'erreur plus descriptif en remontant
+      const message =
+        error instanceof Error
+          ? error.message
+          : JSON.stringify(error) || "Unknown error";
+      throw new Error(`Pricing error: ${message}`);
     }
   }
 }

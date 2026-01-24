@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback } from "react";
 import { useToast } from "@/hooks/useToast";
-import { useRouter } from 'next/navigation';
-import { Coordinates } from '../lib/types/map-types';
-import { VehicleType, VehicleOptions } from '../lib/types/vehicle.types';
-import { useReservationStore } from '../lib/stores/reservationStore';
+import { useRouter } from "next/navigation";
+import { Coordinates } from "../lib/types/map-types";
+import { VehicleType, VehicleOptions } from "../lib/types/vehicle.types";
+import { useReservationStore } from "../lib/stores/reservationStore";
 
 interface LocationState {
   raw: string;
@@ -14,40 +14,49 @@ interface LocationState {
 
 const DEFAULT_LOCATION_STATE: LocationState = {
   raw: "",
-  validated: null
+  validated: null,
 };
 
 export function useReservation() {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const reservationStore = useReservationStore();
-  
+
   // Standardisation sur lon et gestion des cas null
   const [origin, setOrigin] = useState<Coordinates | undefined>(() => {
     if (!reservationStore.departure) return undefined;
-    return { 
-      lat: reservationStore.departure.lat, 
-      lon: reservationStore.departure.lon 
+    return {
+      lat: reservationStore.departure.lat,
+      lon: reservationStore.departure.lon,
     };
   });
-  
-  const [destination, setDestination] = useState<Coordinates | undefined>(() => {
-    if (!reservationStore.destination || !reservationStore.departure) return undefined;
-    return { 
-      lat: reservationStore.destination.lat, 
-      lon: reservationStore.destination.lon 
-    };
-  });
-  
+
+  const [destination, setDestination] = useState<Coordinates | undefined>(
+    () => {
+      if (!reservationStore.destination || !reservationStore.departure)
+        return undefined;
+      return {
+        lat: reservationStore.destination.lat,
+        lon: reservationStore.destination.lon,
+      };
+    },
+  );
+
   // Reste du code inchangé
-  const [originAddress, setOriginAddress] = useState(reservationStore.departure?.display_name || "");
-  const [destinationAddress, setDestinationAddress] = useState(reservationStore.destination?.display_name || "");
+  const [originAddress, setOriginAddress] = useState(
+    reservationStore.departure?.display_name || "",
+  );
+  const [destinationAddress, setDestinationAddress] = useState(
+    reservationStore.destination?.display_name || "",
+  );
   const [pickupDateTime, setPickupDateTime] = useState(() => {
     return reservationStore.pickupDateTime || new Date();
   });
   const [distance, setDistance] = useState(reservationStore.distance || 0);
   const [duration, setDuration] = useState(reservationStore.duration || 0);
-  const [vehicleType, setVehicleType] = useState<VehicleType>((reservationStore.selectedVehicle as VehicleType) || 'STANDARD');
+  const [vehicleType, setVehicleType] = useState<VehicleType>(
+    (reservationStore.selectedVehicle as VehicleType) || "STANDARD",
+  );
   const [pickup, setPickup] = useState<LocationState>(DEFAULT_LOCATION_STATE);
   const [dropoff, setDropoff] = useState<LocationState>(DEFAULT_LOCATION_STATE);
   const [options, setOptions] = useState<VehicleOptions>(() => {
@@ -55,35 +64,70 @@ export function useReservation() {
     const storedOptions = Array.isArray(reservationStore.selectedOptions)
       ? reservationStore.selectedOptions
       : [];
-      
+
     // Initialiser toutes les options à false par défaut
     return {
-      childSeat: storedOptions.includes('childSeat'),
-      petFriendly: storedOptions.includes('petFriendly'),
-      accueil: storedOptions.includes('accueil'),
-      boissons: storedOptions.includes('boissons')
+      childSeat: storedOptions.includes("childSeat"),
+      petFriendly: storedOptions.includes("petFriendly"),
+      accueil: storedOptions.includes("accueil"),
+      boissons: storedOptions.includes("boissons"),
     };
   });
 
   const handleNextStep = useCallback(() => {
-    if (!origin || !destination || !originAddress || !destinationAddress) {
+    // Supporter les cas où le store contient déjà les adresses (préremplies)
+    const storeOrigin = reservationStore.departure;
+    const storeDestination = reservationStore.destination;
+
+    const hasOrigin = Boolean(origin || storeOrigin);
+    const hasDestination = Boolean(destination || storeDestination);
+
+    const originLabel = originAddress || storeOrigin?.display_name || "";
+    const destinationLabel =
+      destinationAddress || storeDestination?.display_name || "";
+
+    if (!hasOrigin || !hasDestination || !originLabel || !destinationLabel) {
       toast({
-        title: 'Error',
-        variant: 'destructive'
+        title: "Adresse manquante",
+        description:
+          "Veuillez sélectionner un point de départ et une destination valides.",
+        variant: "destructive",
       });
       return;
     }
-    
-    if (typeof originAddress !== 'string' || typeof destinationAddress !== 'string') {
+
+    if (
+      typeof originLabel !== "string" ||
+      typeof destinationLabel !== "string"
+    ) {
       toast({
-        title: 'Error',
-        variant: 'destructive'
+        title: "Adresse invalide",
+        description: "Les adresses doivent être du texte. Vérifiez l'entrée.",
+        variant: "destructive",
       });
       return;
     }
-    
-    setStep(prev => Math.min(prev + 1, 2));
-  }, [origin, destination, originAddress, destinationAddress, toast]);
+
+    // Si les coordonnées locales manquent mais que le store contient des coordonnées, les initialiser pour la suite
+    if (!origin && storeOrigin) {
+      setOrigin({ lat: storeOrigin.lat, lon: storeOrigin.lon });
+      setOriginAddress(storeOrigin.display_name || originLabel);
+    }
+
+    if (!destination && storeDestination) {
+      setDestination({ lat: storeDestination.lat, lon: storeDestination.lon });
+      setDestinationAddress(storeDestination.display_name || destinationLabel);
+    }
+
+    setStep((prev) => Math.min(prev + 1, 2));
+  }, [
+    origin,
+    destination,
+    originAddress,
+    destinationAddress,
+    toast,
+    reservationStore,
+  ]);
 
   const router = useRouter();
 
@@ -92,8 +136,8 @@ export function useReservation() {
     console.log("handleReservation called");
     if (!origin || !destination) {
       toast({
-        title: 'Please select a departure and destination point',
-        variant: 'destructive'
+        title: "Please select a departure and destination point",
+        variant: "destructive",
       });
       return;
     }
@@ -105,26 +149,26 @@ export function useReservation() {
           lat: origin.lat,
           lon: origin.lon,
           display_name: originAddress,
-          address: {}
+          address: {},
         });
-        
+
         reservationStore.setDestination({
           lat: destination.lat,
           lon: destination.lon,
           display_name: destinationAddress,
-          address: {}
+          address: {},
         });
       }
       reservationStore.setSelectedVehicle(vehicleType);
       reservationStore.setDistance(distance);
       reservationStore.setDuration(duration);
       reservationStore.setPickupDateTime(pickupDateTime);
-      
+
       // Set all selected options at once
       const selectedOptions = Object.entries(options)
         .filter(([, value]) => value)
         .map(([key]) => key);
-      
+
       // Convertir les options activées en tableau
       const newSelectedOptions = Object.entries(options)
         .filter(([, value]) => value)
@@ -134,22 +178,35 @@ export function useReservation() {
       reservationStore.setSelectedOptions(newSelectedOptions);
 
       // Vérifier si nous sommes en mode édition
-      const editingId = localStorage.getItem('currentEditingReservationId');
-      const urlParams = editingId ? `?edit=true&id=${editingId}` : '';
+      const editingId = localStorage.getItem("currentEditingReservationId");
+      const urlParams = editingId ? `?edit=true&id=${editingId}` : "";
 
       // Use Next.js router for navigation - toujours rediriger vers la page de confirmation
       router.push(`/reservation/confirmation${urlParams}`);
     } catch (error) {
-      console.error('Error saving reservation:', error);
+      console.error("Error saving reservation:", error);
       toast({
-        title: 'An error occurred while saving the reservation',
-        variant: 'destructive'
+        title: "An error occurred while saving the reservation",
+        variant: "destructive",
       });
     }
-  }, [origin, destination, originAddress, destinationAddress, vehicleType, options, distance, duration, pickupDateTime, router, reservationStore, toast]);
+  }, [
+    origin,
+    destination,
+    originAddress,
+    destinationAddress,
+    vehicleType,
+    options,
+    distance,
+    duration,
+    pickupDateTime,
+    router,
+    reservationStore,
+    toast,
+  ]);
 
   const handlePrevStep = useCallback(() => {
-    setStep(prev => Math.max(prev - 1, 1));
+    setStep((prev) => Math.max(prev - 1, 1));
   }, []);
 
   const handleLocationDetected = useCallback((coords: Coordinates) => {
@@ -157,83 +214,92 @@ export function useReservation() {
     setOriginAddress("My current location");
     setPickup({
       raw: "My current location",
-      validated: { location: coords }
+      validated: { location: coords },
     });
   }, []);
 
   // Mise à jour des gestionnaires pour utiliser lon et gérer les valeurs nulles
-  const handleOriginSelect = useCallback((address: string, coords: Coordinates) => {
-    if (!address || address.trim() === '') {
-      setOrigin(undefined);
-      setOriginAddress('');
-      setPickup(DEFAULT_LOCATION_STATE);
-      // Réinitialiser le store avec null explicitement
-      reservationStore.setDeparture(null);
-      // Réinitialiser la distance et la durée car l'itinéraire n'est plus valide
-      setDistance(0);
-      setDuration(0);
-      reservationStore.setDistance(0);
-      reservationStore.setDuration(0);
-    } else {
-      setOrigin(coords);
-      setOriginAddress(address);
-      setPickup({
-        raw: address,
-        validated: { location: coords }
-      });
-      // Mettre à jour le store avec un objet Location valide
-      reservationStore.setDeparture({
-        lat: coords.lat,
-        lon: coords.lon,
-        display_name: address,
-        address: {}
-      });
-    }
-  }, [reservationStore]);
+  const handleOriginSelect = useCallback(
+    (address: string, coords: Coordinates) => {
+      if (!address || address.trim() === "") {
+        setOrigin(undefined);
+        setOriginAddress("");
+        setPickup(DEFAULT_LOCATION_STATE);
+        // Réinitialiser le store avec null explicitement
+        reservationStore.setDeparture(null);
+        // Réinitialiser la distance et la durée car l'itinéraire n'est plus valide
+        setDistance(0);
+        setDuration(0);
+        reservationStore.setDistance(0);
+        reservationStore.setDuration(0);
+      } else {
+        setOrigin(coords);
+        setOriginAddress(address);
+        setPickup({
+          raw: address,
+          validated: { location: coords },
+        });
+        // Mettre à jour le store avec un objet Location valide
+        reservationStore.setDeparture({
+          lat: coords.lat,
+          lon: coords.lon,
+          display_name: address,
+          address: {},
+        });
+      }
+    },
+    [reservationStore],
+  );
 
-  const handleDestinationSelect = useCallback((address: string, coords: Coordinates) => {
-    if (!address || address.trim() === '') {
-      setDestination(undefined);
-      setDestinationAddress('');
-      setDropoff(DEFAULT_LOCATION_STATE);
-      // Réinitialiser le store avec null explicitement
-      reservationStore.setDestination(null);
-      // Réinitialiser la distance et la durée car l'itinéraire n'est plus valide
-      setDistance(0);
-      setDuration(0);
-      reservationStore.setDistance(0);
-      reservationStore.setDuration(0);
-    } else {
-      setDestination(coords);
-      setDestinationAddress(address);
-      setDropoff({
-        raw: address,
-        validated: { location: coords }
-      });
-      // Mettre à jour le store avec un objet Location valide
-      reservationStore.setDestination({
-        lat: coords.lat,
-        lon: coords.lon,
-        display_name: address,
-        address: {}
-      });
-    }
-  }, [reservationStore]);
+  const handleDestinationSelect = useCallback(
+    (address: string, coords: Coordinates) => {
+      if (!address || address.trim() === "") {
+        setDestination(undefined);
+        setDestinationAddress("");
+        setDropoff(DEFAULT_LOCATION_STATE);
+        // Réinitialiser le store avec null explicitement
+        reservationStore.setDestination(null);
+        // Réinitialiser la distance et la durée car l'itinéraire n'est plus valide
+        setDistance(0);
+        setDuration(0);
+        reservationStore.setDistance(0);
+        reservationStore.setDuration(0);
+      } else {
+        setDestination(coords);
+        setDestinationAddress(address);
+        setDropoff({
+          raw: address,
+          validated: { location: coords },
+        });
+        // Mettre à jour le store avec un objet Location valide
+        reservationStore.setDestination({
+          lat: coords.lat,
+          lon: coords.lon,
+          display_name: address,
+          address: {},
+        });
+      }
+    },
+    [reservationStore],
+  );
 
-  const handleRouteCalculated = useCallback((newDistance: number, newDuration: number) => {
-    // Convert distance from meters to kilometers
-    const distanceKm = Math.round(newDistance / 1000);
-    // Duration is in seconds, convert to minutes
-    const durationMin = Math.round(newDuration / 60);
-    
-    // Mettre à jour l'état local
-    setDistance(distanceKm);
-    setDuration(durationMin);
-    
-    // Mettre à jour le store
-    reservationStore.setDistance(distanceKm);
-    reservationStore.setDuration(durationMin);
-  }, [reservationStore]);
+  const handleRouteCalculated = useCallback(
+    (newDistance: number, newDuration: number) => {
+      // Convert distance from meters to kilometers
+      const distanceKm = Math.round(newDistance / 1000);
+      // Duration is in seconds, convert to minutes
+      const durationMin = Math.round(newDuration / 60);
+
+      // Mettre à jour l'état local
+      setDistance(distanceKm);
+      setDuration(durationMin);
+
+      // Mettre à jour le store
+      reservationStore.setDistance(distanceKm);
+      reservationStore.setDuration(durationMin);
+    },
+    [reservationStore],
+  );
 
   const handleOptionsChange = useCallback((newOptions: VehicleOptions) => {
     setOptions(newOptions);
@@ -263,6 +329,6 @@ export function useReservation() {
     setOriginAddress,
     setDestinationAddress,
     setVehicleType,
-    setOptions: handleOptionsChange
+    setOptions: handleOptionsChange,
   };
 }

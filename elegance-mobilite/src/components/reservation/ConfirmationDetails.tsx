@@ -1,13 +1,20 @@
 "use client";
 
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import { formatDuration } from "@/lib/utils";
-import { CalendarIcon, Clock, MapPinIcon, CarIcon, User, PackageCheck,
+import {
+  CalendarIcon,
+  Clock,
+  MapPinIcon,
+  CarIcon,
+  User,
+  PackageCheck,
   ArrowRight,
-  Route  } from 'lucide-react'
-import { Card } from '@/components/ui/card'
-import type { Database } from '@/lib/types/database.types'
+  Route,
+} from "lucide-react";
+import { Card } from "@/components/ui/card";
+import type { Database } from "@/lib/types/database.types";
 import { useReservationStore } from "@/lib/stores/reservationStore";
 import { supabase, debugRlsProblem } from "@/lib/database/client";
 import { Button } from "@/components/ui/button";
@@ -20,10 +27,10 @@ import { AuthModal } from "../../app/auth/login/AuthModal";
 import { pricingService } from "@/lib/services/pricingService";
 
 // Type de la table rides de Supabase
-type Ride = Database['public']['Tables']['rides']['Row'];
+type Ride = Database["public"]["Tables"]["rides"]["Row"];
 
 const SimpleSeparator = ({ className }: { className?: string }) => (
-  <div className={`h-[1px] w-full bg-neutral-800 my-2 ${className || ''}`} />
+  <div className={`h-[1px] w-full bg-neutral-800 my-2 ${className || ""}`} />
 );
 
 export function ConfirmationDetails() {
@@ -35,7 +42,7 @@ export function ConfirmationDetails() {
     optionsPrice: number;
     totalPrice: number;
   } | null>(null);
-  
+
   const {
     departure,
     destination,
@@ -44,7 +51,7 @@ export function ConfirmationDetails() {
     selectedOptions,
     distance,
     duration,
-    reset
+    reset,
   } = useReservationStore();
 
   // État local pour gérer la date formatée
@@ -55,7 +62,10 @@ export function ConfirmationDetails() {
   useEffect(() => {
     if (pickupDateTime) {
       try {
-        const dateObj = pickupDateTime instanceof Date ? pickupDateTime : new Date(pickupDateTime);
+        const dateObj =
+          pickupDateTime instanceof Date
+            ? pickupDateTime
+            : new Date(pickupDateTime);
         setFormattedDate(format(dateObj, "EEEE d MMMM yyyy", { locale: fr }));
         setFormattedTime(format(dateObj, "HH:mm", { locale: fr }));
       } catch (error) {
@@ -74,36 +84,45 @@ export function ConfirmationDetails() {
       toast({
         title: "Erreur",
         description: "Informations de réservation incomplètes",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
-    
+
     setIsLoading(true);
 
     try {
       // Récupération et vérification de l'utilisateur
       const userResult = await supabase.auth.getUser();
       const currentUser = userResult.data.user;
-      
+
       if (!currentUser) {
-        console.log("[DEBUG] Utilisateur non connecté, affichage du modal d'authentification");
+        console.log(
+          "[DEBUG] Utilisateur non connecté, affichage du modal d'authentification",
+        );
         setIsLoading(false);
         setShowAuthModal(true);
         return;
       }
 
       // Diagnostic détaillé de l'authentification
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       console.log("[DEBUG] Session et rôle:", {
         id: currentUser?.id,
         email: currentUser?.email,
         role: currentUser?.app_metadata?.role,
-        jwt_claims: session?.access_token ? JSON.parse(atob(session.access_token.split('.')[1])) : null,
-        authenticated: !!currentUser
+        jwt_claims: session?.access_token
+          ? JSON.parse(atob(session.access_token.split(".")[1]))
+          : null,
+        authenticated: !!currentUser,
       });
 
-      const dateObj = pickupDateTime instanceof Date ? pickupDateTime : new Date(pickupDateTime);
+      const dateObj =
+        pickupDateTime instanceof Date
+          ? pickupDateTime
+          : new Date(pickupDateTime);
 
       // Création directe de la réservation avec les données validées
 
@@ -122,9 +141,9 @@ export function ConfirmationDetails() {
         options: selectedOptions,
         distance: distance || null,
         duration: duration || null,
-        status: 'pending',
+        status: "pending",
         estimated_price: priceDetails?.totalPrice || null,
-        final_price: null // Sera calculé par l'edge function
+        final_price: null, // Sera calculé par l'edge function
       };
 
       console.log("[DEBUG] Création reservation avec prix estimé:", newRide);
@@ -132,7 +151,7 @@ export function ConfirmationDetails() {
       // Création de la réservation
 
       const { data, error } = await supabase
-        .from('rides')
+        .from("rides")
         .insert(newRide)
         .select()
         .single();
@@ -146,16 +165,15 @@ export function ConfirmationDetails() {
         console.log("[DEBUG] Réservation créée avec succès:", {
           id: data.id,
           estimatedPrice: data.estimated_price,
-          finalPrice: data.final_price
+          finalPrice: data.final_price,
         });
 
         if (data && data.id) {
           // Déclenchement manuel de l'Edge Function pour calculer et enregistrer le tarif final
           let finalPrice = null;
           try {
-            const { data: edgeFunctionData, error: edgeFunctionError } = await supabase.functions.invoke(
-              'price-calculator',
-              {
+            const { data: edgeFunctionData, error: edgeFunctionError } =
+              await supabase.functions.invoke("price-calculator", {
                 body: {
                   new: {
                     id: data.id,
@@ -164,39 +182,56 @@ export function ConfirmationDetails() {
                     pickup_lon: departure.lon,
                     dropoff_lat: destination.lat,
                     dropoff_lon: destination.lon,
-                    options: Array.isArray(selectedOptions) ? selectedOptions : [],
+                    options: Array.isArray(selectedOptions)
+                      ? selectedOptions
+                      : [],
                     distance: distance || null,
-                    duration: duration || null
-                  }
+                    duration: duration || null,
+                  },
                 },
-                headers: session ? {
-                  Authorization: `Bearer ${session.access_token}`
-                } : undefined
-              }
-            );
+                headers: session
+                  ? {
+                      Authorization: `Bearer ${session.access_token}`,
+                    }
+                  : undefined,
+              });
             if (edgeFunctionError) {
-              console.error("Erreur lors du calcul du tarif final (Edge Function):", edgeFunctionError);
+              console.error(
+                "Erreur lors du calcul du tarif final (Edge Function):",
+                edgeFunctionError,
+              );
             } else {
-              console.log("Tarif final calculé et enregistré (Edge Function):", edgeFunctionData);
+              console.log(
+                "Tarif final calculé et enregistré (Edge Function):",
+                edgeFunctionData,
+              );
               // Relire la réservation pour récupérer le prix final
-              const { data: refreshedRide, error: refreshError } = await supabase
-                .from('rides')
-                .select('final_price')
-                .eq('id', data.id)
-                .single();
+              const { data: refreshedRide, error: refreshError } =
+                await supabase
+                  .from("rides")
+                  .select("final_price")
+                  .eq("id", data.id)
+                  .single();
               if (!refreshError && refreshedRide?.final_price) {
                 finalPrice = refreshedRide.final_price;
               }
             }
           } catch (err) {
-            console.error("Erreur inattendue lors de l'appel à l'Edge Function price-calculator:", err);
+            console.error(
+              "Erreur inattendue lors de l'appel à l'Edge Function price-calculator:",
+              err,
+            );
           }
-          sessionStorage.setItem('last_confirmed_reservation', data.id);
+          sessionStorage.setItem("last_confirmed_reservation", data.id);
           // Afficher le toast de confirmation avec le prix final si disponible
           toast({
             title: "✨ Réservation confirmée",
-            description: `Votre trajet de ${departure.display_name.split(',')[0]} à ${destination.display_name.split(',')[0]} a été enregistré pour le ${formattedDate} à ${formattedTime}.` + (finalPrice ? ` Prix final : ${finalPrice}€.` : " Un e-mail de confirmation vous a été envoyé."),
-            variant: "success"
+            description:
+              `Votre trajet de ${departure.display_name.split(",")[0]} à ${destination.display_name.split(",")[0]} a été enregistré pour le ${formattedDate} à ${formattedTime}.` +
+              (finalPrice
+                ? ` Prix final : ${finalPrice}€.`
+                : " Un e-mail de confirmation vous a été envoyé."),
+            variant: "success",
           });
           // Attendre que le toast soit visible avant la redirection
           setTimeout(() => {
@@ -204,13 +239,18 @@ export function ConfirmationDetails() {
           }, 2000);
         }
       }
-  } catch (error: any) {
-      console.error("[DEBUG] Erreur détaillée lors de la création de la réservation:", error);
+    } catch (error: any) {
+      console.error(
+        "[DEBUG] Erreur détaillée lors de la création de la réservation:",
+        error,
+      );
 
       toast({
         title: "Erreur lors de la création de la réservation",
-        description: error.message || "Une erreur est survenue lors de la création de la réservation. Veuillez réessayer.",
-        variant: "destructive"
+        description:
+          error.message ||
+          "Une erreur est survenue lors de la création de la réservation. Veuillez réessayer.",
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -232,8 +272,15 @@ export function ConfirmationDetails() {
             selectedOptions || [],
           );
           setPriceDetails(result);
-        } catch (error) {
-          console.error("Erreur lors du calcul du prix:", error);
+        } catch (error: any) {
+          // Afficher un message utilisateur et logguer en debug pour les devs
+          toast({
+            title: "Erreur de tarification",
+            description:
+              error?.message || "Impossible d'estimer le prix pour le moment.",
+            variant: "destructive",
+          });
+          console.debug("Erreur lors du calcul du prix (détail):", error);
         }
       }
     };
@@ -245,7 +292,7 @@ export function ConfirmationDetails() {
       router.push("/reservation");
     }
   }, [departure, destination, pickupDateTime, selectedVehicle, router]);
-  
+
   if (!departure || !destination || !pickupDateTime || !selectedVehicle) {
     return (
       <div className="container mx-auto py-12 flex justify-center items-center">
@@ -255,21 +302,27 @@ export function ConfirmationDetails() {
   }
 
   const handleAuthSuccess = async () => {
-    console.log("[DEBUG] Authentification réussie, reprise du processus de réservation");
+    console.log(
+      "[DEBUG] Authentification réussie, reprise du processus de réservation",
+    );
   };
 
   return (
     <div className="container mx-auto py-6 md:py-8 mb-20 px-4 md:px-6">
-      <AuthModal 
-        open={showAuthModal} 
-        onClose={() => setShowAuthModal(false)} 
-        onSuccess={handleAuthSuccess} 
+      <AuthModal
+        open={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
         defaultTab="login"
       />
-      
+
       <div className="mb-6 md:mb-8 text-center">
-        <h1 className="text-2xl md:text-3xl font-bold mb-2 bg-elegant-gradient bg-clip-text text-transparent">Confirmation de réservation</h1>
-        <p className="text-neutral-400">Vérifiez les détails avant de confirmer votre trajet</p>
+        <h1 className="text-2xl md:text-3xl font-bold mb-2 bg-elegant-gradient bg-clip-text text-transparent">
+          Confirmation de réservation
+        </h1>
+        <p className="text-neutral-400">
+          Vérifiez les détails avant de confirmer votre trajet
+        </p>
       </div>
 
       <div className="grid gap-6 md:gap-8 max-w-4xl mx-auto">
@@ -278,7 +331,7 @@ export function ConfirmationDetails() {
             <Route className="w-5 h-5 mr-2 text-blue-500" />
             Détails du trajet
           </h2>
-          
+
           <div className="grid gap-6">
             <div className="flex items-start gap-4">
               <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
@@ -289,7 +342,7 @@ export function ConfirmationDetails() {
                 <p className="text-neutral-100">{departure.display_name}</p>
               </div>
             </div>
-            
+
             <div className="flex items-start gap-4">
               <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
                 <ArrowRight className="h-4 w-4 text-blue-500" />
@@ -299,7 +352,7 @@ export function ConfirmationDetails() {
                 <p className="text-neutral-100">{destination.display_name}</p>
               </div>
             </div>
-            
+
             <div className="flex items-start gap-4">
               <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
                 <CalendarIcon className="h-4 w-4 text-blue-500" />
@@ -309,7 +362,7 @@ export function ConfirmationDetails() {
                 <p className="text-neutral-100">{formattedDate}</p>
               </div>
             </div>
-            
+
             <div className="flex items-start gap-4">
               <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
                 <Clock className="h-4 w-4 text-blue-500" />
@@ -319,17 +372,23 @@ export function ConfirmationDetails() {
                 <p className="text-neutral-100">{formattedTime}</p>
               </div>
             </div>
-            
+
             <div className="flex items-start gap-4">
               <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
                 <CarIcon className="h-4 w-4 text-blue-500" />
               </div>
               <div>
-                <p className="text-sm text-neutral-400 mb-1">Type de véhicule</p>
-                <p className="text-neutral-100">{selectedVehicle === "STANDARD" ? "Berline Premium" : "Van de Luxe"}</p>
+                <p className="text-sm text-neutral-400 mb-1">
+                  Type de véhicule
+                </p>
+                <p className="text-neutral-100">
+                  {selectedVehicle === "STANDARD"
+                    ? "Berline Premium"
+                    : "Van de Luxe"}
+                </p>
               </div>
             </div>
-            
+
             {selectedOptions?.length > 0 && (
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
@@ -340,11 +399,12 @@ export function ConfirmationDetails() {
                   <ul className="space-y-1">
                     {selectedOptions?.map((option) => (
                       <li key={option} className="text-neutral-100">
-                        {option === "accueil"
-                          ? "Accueil personnalisé"
-                          : option === "boissons"
-                            ? "Boissons fraîches"
-                            : option // Fallback for unrecognized options
+                        {
+                          option === "accueil"
+                            ? "Accueil personnalisé"
+                            : option === "boissons"
+                              ? "Boissons fraîches"
+                              : option // Fallback for unrecognized options
                         }
                       </li>
                     ))}
@@ -360,13 +420,17 @@ export function ConfirmationDetails() {
                   {distance && (
                     <div className="flex justify-between">
                       <span className="text-neutral-400">Distance estimée</span>
-                      <span className="text-neutral-100 font-medium">{distance} km</span>
+                      <span className="text-neutral-100 font-medium">
+                        {distance} km
+                      </span>
                     </div>
                   )}
                   {duration && (
                     <div className="flex justify-between">
                       <span className="text-neutral-400">Durée estimée</span>
-                      <span className="text-neutral-100 font-medium">{formatDuration(duration)}</span>
+                      <span className="text-neutral-100 font-medium">
+                        {formatDuration(duration)}
+                      </span>
                     </div>
                   )}
                   {priceDetails && (
@@ -374,17 +438,23 @@ export function ConfirmationDetails() {
                       <SimpleSeparator className="my-2" />
                       <div className="flex justify-between">
                         <span className="text-neutral-400">Prix de base</span>
-                        <span className="text-neutral-100 font-medium">{priceDetails.basePrice}€</span>
+                        <span className="text-neutral-100 font-medium">
+                          {priceDetails.basePrice}€
+                        </span>
                       </div>
                       {priceDetails.optionsPrice > 0 && (
                         <div className="flex justify-between">
                           <span className="text-neutral-400">Options</span>
-                          <span className="text-neutral-100 font-medium">+{priceDetails.optionsPrice}€</span>
+                          <span className="text-neutral-100 font-medium">
+                            +{priceDetails.optionsPrice}€
+                          </span>
                         </div>
                       )}
                       <div className="flex justify-between font-semibold mt-2">
                         <span className="text-neutral-300">Total estimé</span>
-                        <span className="text-blue-400">{priceDetails.totalPrice}€</span>
+                        <span className="text-blue-400">
+                          {priceDetails.totalPrice}€
+                        </span>
                       </div>
                     </>
                   )}
@@ -394,7 +464,13 @@ export function ConfirmationDetails() {
           </div>
         </Card>
 
-        <Suspense fallback={<Card className="p-4 md:p-6"><LoadingSpinner /></Card>}>
+        <Suspense
+          fallback={
+            <Card className="p-4 md:p-6">
+              <LoadingSpinner />
+            </Card>
+          }
+        >
           <Card className="p-0 overflow-hidden bg-neutral-900 border-neutral-800 rounded-xl">
             <div className="h-48 md:h-64 lg:h-80">
               <MapLibreMap

@@ -1,0 +1,13 @@
+{
+  "servers": {
+    "memory-bank": {
+      "command": "node",
+      "args": [
+        "/Users/beij/mcp-servers/roo-code-memory-bank-mcp-server/dist/index.js"
+      ],
+      "env": {
+        "MEMORY_BANK_STORAGE_DIR": "${workspaceFolder}/.memory-bank"
+      }
+    }
+  }
+}
