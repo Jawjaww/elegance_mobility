@@ -13,6 +13,9 @@ export async function GET(request: NextRequest) {
     
     if (type === 'email_confirmation') {
       redirectTo = next || '/driver-portal/profile/setup'
+    } else if (type === 'recovery') {
+      // Pour la récupération de mot de passe, rediriger vers update-password
+      redirectTo = '/auth/update-password'
     }
 
     if (token_hash && type) {
