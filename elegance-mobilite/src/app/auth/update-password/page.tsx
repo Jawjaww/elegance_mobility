@@ -90,13 +90,10 @@ export default function UpdatePasswordPage() {
       return
     }
 
-    const code = searchParams?.get('code')
-    const type = searchParams?.get('type')
-    const verified = searchParams?.get('verified')
-    
-    // Vérifier qu'on a soit un code PKCE, soit une session existante (flux legacy)
-    if (!isValidSession && (!code || type !== 'recovery')) {
-      setError("Lien de réinitialisation invalide. Veuillez redemander un lien.")
+    // Dans les deux cas (PKCE et legacy), isValidSession devrait être true à ce stade
+    // si le useEffect a réussi. On garde la vérification des paramètres comme filet de sécurité.
+    if (!isValidSession) {
+      setError("Lien de réinitialisation invalide ou expiré. Veuillez redemander un lien.")
       return
     }
 
