@@ -28,9 +28,22 @@ export default function UpdatePasswordPage() {
 
       const code = searchParams?.get('code')
       const type = searchParams?.get('type')
+      const verified = searchParams?.get('verified')
 
       console.log('🔍 Code présent:', !!code)
       console.log('🔍 Type:', type)
+      console.log('🔍 Verified:', verified)
+
+      // Vérifier d'abord s'il existe déjà une session (flux legacy via verify-email)
+      if (verified === 'true' && !code) {
+        console.log('🔍 Vérification de session existante (flux legacy)')
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          console.log('✅ Session existante trouvée')
+          setIsValidSession(true)
+          return
+        }
+      }
 
       if (code && type === 'recovery') {
         try {
