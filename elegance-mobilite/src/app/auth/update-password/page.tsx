@@ -42,6 +42,10 @@ export default function UpdatePasswordPage() {
           console.log('✅ Session existante trouvée')
           setIsValidSession(true)
           return
+        } else {
+          console.log('❌ Aucune session trouvée pour flux legacy')
+          setError("Session expirée. Veuillez redemander un lien de réinitialisation.")
+          return
         }
       }
 
@@ -88,8 +92,10 @@ export default function UpdatePasswordPage() {
 
     const code = searchParams?.get('code')
     const type = searchParams?.get('type')
+    const verified = searchParams?.get('verified')
     
-    if (!code || type !== 'recovery') {
+    // Vérifier qu'on a soit un code PKCE, soit une session existante (flux legacy)
+    if (!isValidSession && (!code || type !== 'recovery')) {
       setError("Lien de réinitialisation invalide. Veuillez redemander un lien.")
       return
     }
