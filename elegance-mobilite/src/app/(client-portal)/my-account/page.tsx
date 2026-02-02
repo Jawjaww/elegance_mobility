@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card"
-import { createServerSupabaseClient } from "@/lib/database/server"
+import { getServerUser } from "@/lib/database/server"
+import { redirect } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 import {
@@ -11,18 +12,13 @@ import {
   Settings,
   ChevronRight
 } from "lucide-react"
-import type { User } from "@/lib/types/common.types" // Importer le type User diretcement depuis database.types?
+import type { User } from "@/lib/types/common.types"
 
 export default async function MyAccount() {
-  const supabase = await createServerSupabaseClient()
-  const { data: { user: supabaseUser } } = await supabase.auth.getUser()
+  const user = await getServerUser()
   
-  // Conversion explicite en type User personnalisé
-  const user = supabaseUser as unknown as User
-  
-  // Redirect handled by layout if not authenticated
   if (!user) {
-    return <div>Loading...</div>
+    redirect("/auth/login?redirectTo=/my-account")
   }
   
   // Accès aux propriétés avec le type User personnalisé

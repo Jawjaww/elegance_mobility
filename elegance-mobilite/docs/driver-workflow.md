@@ -1,106 +1,260 @@
 # Processus d'Inscription et Validation des Chauffeurs
 
-## Vue d'ensemble
+> **Source de vérité:** `init.sql.sql` - Enum `driver_status` et fonctions associées  
+> **Date de mise à jour:** Février 2026
 
-Le processus d'inscription et de validation des chauffeurs se déroule en plusieurs étapes avec différents statuts et rôles.
+---
 
-### 1. Inscription du Chauffeur (/auth/signup/driver)
+## 📋 Vue d'Ensemble
 
-- Formulaire complet avec validation Zod
-- Champs obligatoires :
-  - Informations personnelles (nom, prénom, email)
-  - Numéro de carte VTC et date d'expiration
-  - Numéro de permis et date d'expiration
-- Champs optionnels :
-  - Informations d'assurance
-  - Préférences (zones, langues)
+Le processus d'inscription et de validation des chauffeurs est **entièrement automatisé** via des triggers PostgreSQL, avec validation administrative finale.
 
-### 2. Création du Compte
+```
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│   INSCRIPTION   │────▶│  AUTO-COMPLETION │────▶│   VALIDATION    │
+│  (/auth/signup) │     │   (Trigger SQL)  │     │    (Admin)      │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+         │                       │                       │
+         ▼                       ▼                       ▼
+   user crée dans          Profil vérifié          Approbation
+   auth.users              par triggers            manuelle
+   portal_type=driver      incomplete ↔
+                           pending_validation
+```
 
-- Création de l'utilisateur dans auth.users
-- Attribution initiale du portal_type "driver"
-- Statut initial "pending_validation" dans la table drivers
-- Envoi d'email de confirmation
+---
+
+## 🔄 Workflow Détaillé
+
+### 1. Inscription du Chauffeur
+
+**Route:** `/auth/signup/driver`
+
+```typescript
+// Appel Supabase Auth
+await supabase.auth.signUp({
+  email,
+  password,
+  options: {
+    data: {
+      portal_type: 'driver',      // ← Déclenche le trigger
+      first_name,
+      last_name
+    }
+  }
+})
+```
+
+**Actions automatiques (Trigger SQL):**
+1. Création dans `auth.users` avec `raw_app_meta_data.role = 'app_driver'`
+2. Création dans `public.users` (via trigger)
+3. Création dans `public.drivers` avec `status = 'incomplete'`
+
+---
+
+### 2. Complétion du Profil (Auto-Progression)
+
+**Fonction:** `auto_update_driver_status()` (trigger sur `drivers`)
+
+```sql
+-- Logique du trigger:
+IF status = 'incomplete' AND profil_complet THEN
+    status := 'pending_validation'::driver_status;
+ELSIF status = 'pending_validation' AND profil_incomplet THEN
+    status := 'incomplete'::driver_status;
+END IF;
+```
+
+**Critères de complétude** (`check_driver_profile_completeness`):
+- Prénom, nom, téléphone renseignés
+- Date de naissance présente
+- Véhicule créé dans `vehicles`
+- Documents uploadés (permis, carte VTC, assurance)
+
+---
 
 ### 3. Validation Administrative
 
-- Interface admin pour examiner les demandes
-- Vérification des documents et informations
-- Actions possibles :
-  - Approbation : statut -> "active", rôle -> "app_driver"
-  - Rejet : statut -> "inactive" avec raison
+**Interface:** `/backoffice-portal/drivers`
 
-## Statuts Possibles (driver_status)
+**Actions admin possibles:**
+| Action | Statut résultat | Conséquence |
+|--------|----------------|-------------|
+| **Approuver** | `active` | Chauffeur peut accepter des courses |
+| **Rejeter** | `inactive` | Compte désactivé avec raison |
+| **Suspendre** | `suspended` | Temporairement bloqué |
 
-- `inactive` : Compte créé mais non actif
-- `pending_validation` : En attente de validation administrative
-- `active` : Chauffeur validé et actif
-- `suspended` : Compte temporairement suspendu
+---
 
-## Sécurité et Permissions
+## 🚦 Statuts du Chauffeur (driver_status)
 
-### Politiques RLS
+L'énumération `public.driver_status` contient **6 statuts**:
 
-1. Lecture (SELECT)
+| Statut | Description | Transition possible |
+|--------|-------------|---------------------|
+| `incomplete` | Profil créé mais incomplet | → `pending_validation` (auto) |
+| `pending_validation` | En attente de validation admin | → `active` ou `inactive` |
+| `active` | Validé et opérationnel | → `inactive`, `suspended`, `on_vacation` |
+| `inactive` | Désactivé (rejeté ou désactivé) | → `active` (réactivation) |
+| `suspended` | Suspendu par admin | → `active` (levée de suspension) |
+| `on_vacation` | En congés (ne reçoit pas de courses) | → `active` (retour) |
+
+**SQL:**
 ```sql
-auth.uid() = user_id OR
-auth.role() IN ('app_admin', 'app_super_admin')
+CREATE TYPE public.driver_status AS ENUM (
+    'pending_validation', 
+    'active', 
+    'inactive', 
+    'on_vacation', 
+    'suspended', 
+    'incomplete'
+);
 ```
 
-2. Insertion (INSERT)
-```sql
-auth.uid() = user_id AND
-status = 'pending_validation'
-```
+---
 
-3. Mise à jour (UPDATE)
-- Admins : Peuvent tout modifier
-- Chauffeurs : Peuvent modifier leurs informations sauf le statut
+## 🛡️ Sécurité et Permissions (RLS)
 
-### Fonctions RPC
-
-1. `create_pending_driver`
-- Crée le profil chauffeur
-- Vérifie les contraintes
-- Sécurisée par SECURITY DEFINER
-
-2. `validate_driver`
-- Réservée aux administrateurs
-- Gère l'approbation/rejet
-- Met à jour le statut et le rôle
-
-## Contraintes de Validation
+### Politiques sur `drivers`
 
 ```sql
-- proper_phone : Numéro de téléphone valide
-- future_vtc_expiry : Date d'expiration VTC future
-- future_license_expiry : Date d'expiration permis future
-- future_insurance_expiry : Date d'expiration assurance future (si fournie)
-- required_fields : Vérification des champs obligatoires
+-- Admins : accès complet
+CREATE POLICY "drivers_admin_access" ON drivers
+FOR ALL USING (
+    (auth.jwt() ->> 'app_metadata')::jsonb ->> 'role' 
+    IN ('app_admin', 'app_super_admin')
+);
+
+-- Chauffeur : accès à son propre profil
+CREATE POLICY "drivers_own_access" ON drivers
+FOR ALL USING (user_id = auth.uid());
+
+-- Voir son propre profil (vérifie complétude)
+CREATE POLICY "Drivers can check own completeness" ON drivers
+FOR SELECT USING (auth.uid() = user_id);
 ```
 
-## Notifications
+---
 
-Un système de notifications est implémenté via des triggers pour :
-- Confirmation d'inscription
-- Résultat de la validation
-- Changements de statut
+## ⚙️ Fonctions SQL Utilisées
 
-## Interface Utilisateur
+### `check_driver_profile_completeness(uuid)`
+Vérifie si tous les champs obligatoires sont remplis.
 
-1. Formulaire d'inscription (/auth/signup/driver)
-- Validation côté client avec Zod
-- Gestion des erreurs
-- Retours visuels
+**Retour:**
+```sql
+is_complete BOOLEAN,
+completion_percentage INTEGER,
+missing_fields TEXT[]
+```
 
-2. Page d'attente (/driver-portal/pending)
-- Affichage du statut
-- Instructions
-- Contacts support
+### `can_driver_accept_rides(uuid)`
+Vérifie si un chauffeur peut accepter une course.
 
-## Notes Techniques
+**Retour:**
+```sql
+can_accept BOOLEAN,
+reason TEXT,
+profile_status TEXT,
+validation_status TEXT
+```
 
-- Utiliser les fonctions RPC pour les opérations critiques
-- Vérifier les dates d'expiration avant validation
-- Maintenir les métadonnées utilisateur à jour
-- Gérer les erreurs de manière appropriée
+**Logique:**
+- `incomplete` → ❌ Refusé (profil incomplet)
+- `pending_validation` → ❌ Refusé (en attente admin)
+- `inactive` → ❌ Refusé (désactivé)
+- `suspended` → ❌ Refusé (suspendu)
+- `on_vacation` → ❌ Refusé (en vacances)
+- `active` + profil complet → ✅ Accepté
+
+---
+
+## 📋 Contraintes de Validation (SQL)
+
+```sql
+-- Téléphone valide
+proper_phone: phone ~ '^[0-9+\s()-]+$'
+
+-- Dates d'expiration dans le futur
+future_vtc_expiry: vtc_card_expiry_date > CURRENT_DATE
+future_license_expiry: driving_license_expiry_date > CURRENT_DATE
+future_insurance_expiry: insurance_expiry_date > CURRENT_DATE
+
+-- Note requise
+required_fields: first_name IS NOT NULL AND last_name IS NOT NULL 
+                 AND phone IS NOT NULL AND ...
+
+-- Rating entre 0 et 5
+valid_rating: rating >= 0 AND rating <= 5
+```
+
+---
+
+## 🔄 Triggers Actifs
+
+```sql
+-- Auto-update du statut selon complétude
+auto_update_driver_status() 
+  BEFORE UPDATE ON drivers
+
+-- Mise à jour du statut quand documents changent
+handle_driver_status_updates()
+  AFTER INSERT/UPDATE/DELETE ON driver_documents
+  AFTER INSERT/UPDATE/DELETE ON vehicles
+```
+
+---
+
+## 🎯 Interface Utilisateur
+
+| Route | Usage | Accès |
+|-------|-------|-------|
+| `/auth/signup/driver` | Formulaire d'inscription | Public |
+| `/driver-portal/pending` | Page d'attente validation | Chauffeur `pending_validation` |
+| `/driver-portal/dashboard` | Dashboard chauffeur | Chauffeur `active` uniquement |
+| `/backoffice-portal/drivers` | Gestion chauffeurs | Admin/Super Admin |
+
+---
+
+## 📝 Exemple de Flux Complet
+
+```typescript
+// 1. Inscription
+const { data } = await supabase.auth.signUp({
+  email: "chauffeur@example.com",
+  password: "motdepasse",
+  options: { data: { portal_type: 'driver', first_name: 'Jean', last_name: 'Dupont' }}
+});
+// → Status: 'incomplete' (automatique)
+
+// 2. Complétion profil
+await supabase.from('drivers').update({
+  phone: '+33123456789',
+  vtc_card_number: 'VTC123456',
+  driving_license_number: 'DL789012',
+  date_of_birth: '1985-03-15'
+}).eq('user_id', userId);
+// → Status: 'pending_validation' (auto si complet)
+
+// 3. Upload documents
+await supabase.storage.from('documents').upload(...);
+// → Trigger vérifie complétude
+
+// 4. Validation admin (dans backoffice)
+// Admin clique "Approuver"
+// → Status: 'active'
+// → Chauffeur peut accepter des courses
+```
+
+---
+
+## 📚 Documentation Connexe
+
+- [DATABASE-SCHEMA.md](./DATABASE-SCHEMA.md) - Structure complète de la BDD
+- [ARCHITECTURE-ROLES.md](./ARCHITECTURE-ROLES.md) - Système de rôles
+- [GITOPS-WORKFLOW.md](./GITOPS-WORKFLOW.md) - Workflow de modification
+
+---
+
+**Dernière mise à jour:** Février 2026  
+**Mainteneur:** Équipe Élégance Mobilité

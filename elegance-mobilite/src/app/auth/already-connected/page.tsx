@@ -3,21 +3,25 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { supabase } from "@/lib/database/client"
 import { LogOut, ArrowLeft, User } from "lucide-react"
+import { getAppRole } from "@/lib/types/common.types"
 
 export default function AlreadyConnectedPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams?.get("redirect") || "login"
   const [user, setUser] = useState<any>(null)
+  const hasChecked = useRef(false)
 
   useEffect(() => {
+    if (hasChecked.current) return
+    hasChecked.current = true
+    
     const getUser = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.user) {
-        // Si pas connecté, rediriger vers la page demandée
         router.replace(`/auth/${redirect}`)
         return
       }
@@ -32,34 +36,18 @@ export default function AlreadyConnectedPage() {
   }
 
   const handleGoToDashboard = () => {
-    const role = user?.raw_app_meta_data?.role
-    const appMetadataRole = user?.app_metadata?.role
-    console.log('User object:', user)
-    console.log('Raw app meta data:', user?.raw_app_meta_data)
-    console.log('App metadata:', user?.app_metadata)
-    console.log('Role from raw_app_meta_data:', role)
-    console.log('Role from app_metadata:', appMetadataRole)
-    
-    // Essayons les deux endroits
-    const actualRole = role || appMetadataRole
-    console.log('Actual role to use:', actualRole)
+    const actualRole = getAppRole(user)
     
     let dashboardPath = "/"
     
     if (actualRole === "app_driver") {
       dashboardPath = "/driver-portal/dashboard"
-      console.log('Setting driver path:', dashboardPath)
     } else if (actualRole === "app_customer") {
       dashboardPath = "/my-account"
-      console.log('Setting customer path:', dashboardPath)
-    } else if (actualRole === "app_admin") {
-      dashboardPath = "/backoffice-portal/dashboard"
-      console.log('Setting admin path:', dashboardPath)
-    } else {
-      console.log('No role matched, using default path. Role was:', actualRole)
+    } else if (actualRole === "app_admin" || actualRole === "app_super_admin") {
+      dashboardPath = "/backoffice-portal"
     }
     
-    console.log('Final redirect path:', dashboardPath)
     router.push(dashboardPath)
   }
 

@@ -13,6 +13,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { signOut } from '@/lib/database/client'
 import type { User } from '@/lib/types/common.types'
+import { getAppRole } from '@/lib/types/common.types'
 import { useToast } from "@/hooks/useToast"
 
 interface UserMenuProps {
@@ -52,7 +53,8 @@ export function UserMenu({ user }: UserMenuProps) {
     }
   }
 
-  const isAdminUser = user.role === 'app_admin' || user.role === 'app_super_admin'
+  const userRole = getAppRole(user)
+  const isAdminUser = userRole === 'app_admin' || userRole === 'app_super_admin'
   
   // Utiliser first_name et last_name directement
   const fullName = user.first_name && user.last_name

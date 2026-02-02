@@ -2,19 +2,26 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Car, Calendar, Home, User as UserIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { User } from "@/lib/types/common.types";
+import { supabase } from "@/lib/database/client";
 import { isCustomer } from "@/lib/types/common.types";
+import type { User } from "@/lib/types/common.types";
 
-interface ClientMobileNavProps {
-  user: User | null;
-}
-
-export default function ClientMobileNav({ user }: ClientMobileNavProps) {
+export default function ClientMobileNav() {
   const pathname = usePathname() || '';
+  const [isCustomerRole, setIsCustomerRole] = useState(false);
 
-  if (!user || !isCustomer(user)) return null;
+  useEffect(() => {
+    const checkRole = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsCustomerRole(isCustomer(session?.user as User | null));
+    };
+    checkRole();
+  }, []);
+
+  if (!isCustomerRole) return null;
 
   const isActive = (path: string) =>
     pathname === path || pathname.startsWith(`${path}/`);

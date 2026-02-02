@@ -1,12 +1,10 @@
 'use client'
 
 import { useEffect, useState } from "react"
-import type { User } from "@supabase/supabase-js"
 import { AdminCardGrid } from "./admin-card-grid"
 import { DashboardMetricCard } from "./dashboard-metric-card"
 import { DashboardActionCard } from "./dashboard-action-card"
 import { Car, CalendarCheck, MapPin, Users, CreditCard, PackageOpen } from "lucide-react"
-import type { Database } from "@/lib/types/common.types"
 
 type DashboardMetrics = {
   todayRides: number
@@ -22,21 +20,12 @@ type DashboardMetrics = {
 
 interface AdminDashboardClientProps {
   initialMetrics: DashboardMetrics
-  user: User
-  isAdmin: boolean // Requis pour les vérifications de sécurité UI
 }
 
 export function AdminDashboardClient({
-  initialMetrics,
-  user,
-  isAdmin
+  initialMetrics
 }: AdminDashboardClientProps) {
   const [metrics, setMetrics] = useState(initialMetrics)
-
-  // Sécurité UI - early return si pas admin
-  if (!isAdmin) {
-    return null
-  }
 
   useEffect(() => {
     const interval = setInterval(async () => {

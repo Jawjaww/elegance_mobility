@@ -44,8 +44,7 @@ export async function getServerUser(): Promise<User | null> {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError) {
-      // Log l'erreur mais ne pas la traiter comme critique
-      console.warn('Erreur d\'authentification:', authError.message)
+      // Erreur d'auth silencieuse - pas besoin de log (session invalide/non connecté = cas normal)
       return null
     }
     
@@ -53,27 +52,16 @@ export async function getServerUser(): Promise<User | null> {
       return null
     }
 
-    // Utiliser la fonction RPC get_effective_role pour obtenir le rôle
-    try {
-      const { data: roleData } = await supabase.rpc('get_effective_role')
-      
-      return {
-        ...user,
-        role: roleData as AppRole
-      } as User
-    } catch (roleError) {
-      // Si erreur RPC, utiliser le rôle des métadonnées
-      console.warn('Erreur récupération rôle RPC, utilisation métadonnées:', roleError)
-      const role = getAppRole(user as any)
-      
-      return {
-        ...user,
-        role: role as AppRole
-      } as User
-    }
+    // Récupérer le rôle via getAppRole (source de vérité unique)
+    const role = getAppRole(user as any)
+    
+    return {
+      ...user,
+      role: role as AppRole
+    } as User
 
   } catch (error) {
-    console.warn('Erreur lors de la récupération de l\'utilisateur:', error)
+    // Erreur silencieuse - pas besoin de polluer les logs
     return null
   }
 }

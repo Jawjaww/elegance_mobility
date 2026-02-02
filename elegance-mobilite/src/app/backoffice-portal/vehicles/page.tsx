@@ -1,14 +1,5 @@
-"use client"
- 
-import { useRouter } from "next/navigation"
-import { useEffect } from "react"
- 
-export default function VehiclesPage() {
-  const router = useRouter()
- 
-  useEffect(() => {
-    router.replace("/admin/vehicles")
-  }, [router])
- 
-  return null
+import Client from "./Client"
+
+export default async function Page() {
+  return <Client />
 }

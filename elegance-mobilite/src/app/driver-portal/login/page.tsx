@@ -17,7 +17,8 @@ export default function DriverLoginPage() {
       try {
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
-          // Redirection silencieuse vers la page de déconnexion
+          // Rediriger vers la page "déjà connecté" au lieu de forcer le dashboard
+          // Cela évite les boucles et donne le choix à l'utilisateur
           router.replace('/auth/already-connected?redirect=login')
           return
         }
