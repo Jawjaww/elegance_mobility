@@ -32,27 +32,72 @@ Les migrations sont dans `supabase/migrations/` et exécutées dans l'ordre chro
 
 ```
 migrations/
-├── 20240101000000_init_schema.sql                    # 🏗️ Schéma complet (source de vérité)
-└── 20250202220000_fix_security_rls_and_functions.sql # 🔒 Corrections sécurité
+├── 20240101000000_init_schema.sql                    # 🏗️ Schéma complet VTC
+├── 20250202220000_fix_security_rls_and_functions.sql # 🔒 Corrections sécurité
+└── 20250202230000_add_vtc_nice_to_have.sql          # ✨ Fonctionnalités VTC complètes
 ```
 
-### Principe Git-Ops
+### Schéma de base (20240101000000_init_schema.sql)
 
-- **Source de vérité** : Le fichier `20240101000000_init_schema.sql` est généré par `supabase db diff` et représente l'état complet de la base
-- **Pas de migrations incrémentales** : Tout le schéma est dans un seul fichier pour éviter les conflits
-- **Seed data** : `supabase/seed.sql` contient les données de test
+Tables métiers essentielles pour un service VTC :
+
+| Domaine | Tables | Description |
+|---------|--------|-------------|
+| **Auth** | `users`, `user_profiles` | Authentification et profils |
+| **Chauffeurs** | `drivers`, `driver_documents`, `driver_rewards` | KYC complet VTC |
+| **Véhicules** | `vehicles`, `vehicle_documents` | Gestion parc auto |
+| **Courses** | `rides`, `ride_stops`, `ride_status_history` | Réservations et suivi |
+| **Tarification** | `rates`, `options`, `promo_codes`, `promo_usages`, `corporate_discounts`, `seasonal_promotions` | Pricing flexible |
+| **Audit** | `audit_logs`, `status_reason_categories` | Logs et monitoring |
+
+### Fonctionnalités additionnelles (20250202230000_add_vtc_nice_to_have.sql)
+
+Tables pour une expérience VTC complète :
+
+| Table | Description | Use Case |
+|-------|-------------|----------|
+| `payments` | Transactions Stripe/espèces/corporate | Paiement intégré |
+| `driver_locations` | GPS temps réel des chauffeurs | Tracking client |
+| `notifications` | Push/email/sms/in-app | Communication |
+| `reviews` | Avis détaillés client↔chauffeur | Confiance & qualité |
+| `favorite_addresses` | Adresses favorites (max 10) | Clients réguliers |
+
+---
+
+## ✅ Vérification du Setup
+
+### Script de vérification complet
+
+```bash
+# Vérifier toutes les fonctionnalités
+./scripts/verify-setup.sh
+
+# Vérifier la conformité VTC spécifique
+./scripts/verify-vtc-compliance.sh
+```
+
+### Résultats attendus
+
+```
+✅ RLS activé sur les tables critiques
+✅ 18+ politiques RLS créées
+✅ 50+ fonctions avec search_path fixé
+✅ Conformité réglementaire VTC (France)
+✅ Fonctionnalités de paiement
+✅ Tracking GPS temps réel
+```
 
 ---
 
 ## 🔒 Sécurité - Vérifications
 
-### ✅ Statut des corrections (02/02/2026)
+### ✅ Statut des corrections
 
 | Vérification | Statut | Commande |
 |-------------|--------|----------|
-| RLS activé | ✅ 6/6 tables | `SELECT relname, relrowsecurity FROM pg_class WHERE relname IN ('vehicles', 'driver_documents', 'vehicle_documents', 'user_profiles')` |
-| Politiques créées | ✅ 18 politiques | `SELECT COUNT(*) FROM pg_policies WHERE schemaname = 'public'` |
-| Search path fixé | ✅ 40+ fonctions | `SELECT proname, proconfig FROM pg_proc WHERE proconfig IS NOT NULL` |
+| RLS activé | ✅ 6+ tables | `SELECT relname, relrowsecurity FROM pg_class` |
+| Politiques créées | ✅ 18+ | `SELECT COUNT(*) FROM pg_policies` |
+| Search path fixé | ✅ 50+ fonctions | `SELECT proname, proconfig FROM pg_proc` |
 | Vue vehicles_public | ✅ Sans insurance_number | `SELECT * FROM vehicles_public LIMIT 1` |
 
 ### Tables protégées par RLS
@@ -65,6 +110,10 @@ migrations/
 | `user_profiles` | ✅ | ✅ | 4 |
 | `drivers` | ✅ | ❌ | existantes |
 | `rides` | ✅ | ❌ | existantes |
+| `payments` | ✅ | ✅ | 2 |
+| `driver_locations` | ✅ | ✅ | 3 |
+| `notifications` | ✅ | ✅ | 2 |
+| `reviews` | ✅ | ✅ | 4 |
 
 ### Documentation sécurité détaillée
 
@@ -110,6 +159,47 @@ Le fichier `supabase/seed.sql` contient :
 - 1 terminée (CDG → Tour Eiffel)
 - 1 en cours (Gare du Nord → Versailles)
 - 2 en attente
+
+---
+
+## 🚗 Spécificités VTC
+
+### Conformité Réglementaire (France)
+
+Le schéma est **conforme à la réglementation VTC française** :
+
+| Exigence | Implémentation |
+|----------|----------------|
+| Carte professionnelle VTC | `drivers.vtc_card_number` |
+| Permis de conduire | `drivers.driving_license_number` |
+| Assurance | `drivers.insurance_number` |
+| Dates d'expiration | Contrôles automatiques |
+| Validation KYC | Workflow `pending_validation` → `active` |
+
+### Workflow Chauffeur
+
+```
+Inscription (incomplete)
+    ↓
+Complète profil (pending_validation)
+    ↓
+Validation Admin (active)
+    ↓
+Acceptation de courses
+```
+
+### Fonctions métier VTC
+
+| Fonction | Description |
+|----------|-------------|
+| `calculate_ride_price()` | Calcul automatique du prix |
+| `can_driver_accept_rides(uuid)` | Vérifie disponibilité |
+| `check_driver_profile_completeness(uuid)` | Vérifie KYC (38% → 100%) |
+| `create_pending_driver(...)` | Création avec validation |
+| `calculate_driver_rating(uuid)` | Note moyenne du chauffeur |
+| `mark_notification_read(uuid)` | Marquer notification lue |
+
+👉 Voir [`DATABASE-VTC-ANALYSIS.md`](./DATABASE-VTC-ANALYSIS.md) pour l'analyse complète.
 
 ---
 
@@ -258,3 +348,4 @@ ALTER TABLE nom_table ENABLE ROW LEVEL SECURITY;
 - [Supabase Documentation](https://supabase.com/docs)
 - [PostgreSQL RLS](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)
 - [Sécurité Supabase](./SECURITY-FIXES.md)
+- [Analyse VTC](./DATABASE-VTC-ANALYSIS.md)

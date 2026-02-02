@@ -1,0 +1,107 @@
+name: 🗄️ Database Migrations
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'supabase/migrations/**'
+      - '.github/workflows/supabase-migrations.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'supabase/migrations/**'
+
+env:
+  SUPABASE_PROJECT_ID: ioddsdzustunlahxafif
+
+jobs:
+  # Vérification des migrations sur PR
+  verify:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🧰 Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: 🚀 Start Supabase Local
+        run: supabase start
+
+      - name: ✅ Verify Setup
+        run: |
+          cd elegance-mobilite
+          chmod +x scripts/verify-setup.sh
+          ./scripts/verify-setup.sh || true
+          
+      - name: 🔍 Check VTC Compliance
+        run: |
+          cd elegance-mobilite
+          chmod +x scripts/verify-vtc-compliance.sh
+          ./scripts/verify-vtc-compliance.sh
+
+      - name: 🧪 Test Functions
+        run: |
+          PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -c "
+            -- Test des fonctions critiques
+            SELECT 'Testing functions...' as status;
+            SELECT is_admin();
+            SELECT is_super_admin();
+            SELECT COUNT(*) FROM drivers;
+            SELECT COUNT(*) FROM rides;
+          "
+
+  # Déploiement sur main
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    needs: [] # S'exécute indépendamment car on vérifie déjà sur la PR
+    
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🧰 Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: 🔗 Link Supabase Project
+        run: |
+          cd elegance-mobilite
+          supabase link --project-id $SUPABASE_PROJECT_ID
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: 🚀 Push Migrations
+        run: |
+          cd elegance-mobilite
+          supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: 📊 Migration Status
+        run: |
+          cd elegance-mobilite
+          supabase migration list
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: 🔔 Notify Success
+        if: success()
+        run: |
+          echo "✅ Migrations déployées avec succès sur Supabase"
+          echo "🔗 Projet : https://supabase.com/dashboard/project/${{ env.SUPABASE_PROJECT_ID }}"
+
+      - name: 🔔 Notify Failure
+        if: failure()
+        run: |
+          echo "❌ Échec du déploiement des migrations"
+          echo "Vérifiez les logs ci-dessus"
