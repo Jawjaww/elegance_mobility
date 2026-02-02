@@ -1,83 +1,264 @@
 # Architecture de Navigation par Portail
 
-## Structure des Portails
+> **Date de mise à jour:** Février 2026  
+> **Structure:** Next.js 15 avec App Router
 
-Nous avons 4 portails distincts avec leurs propres besoins de navigation :
+---
 
-### 1. Public Portal (/(public-portal))
-- Complètement public
-- Réservation de courses
-- Landing pages
-- Contact et informations
+## 🗺️ Vue d'Ensemble des Portails
 
-### 2. Client Portal (/(client-portal))
-- Authentifié uniquement (app_customer)
-- Gestion des réservations
-- Historique des courses
-- Profil utilisateur
-- Menu mobile pour accessibilité
-- Avatar utilisateur avec initiales
-
-### 3. Driver Portal (/driver-portal)
-- Authentifié uniquement (app_driver)
-- Navigation spécifique aux chauffeurs
-- Interface de gestion des courses
-- Menu mobile adapté aux chauffeurs
-
-### 4. Backoffice Portal (/backoffice-portal)
-- Authentifié uniquement (app_admin, app_super_admin)
-- Navigation administrative complète
-- Tableau de bord et gestion
-
-## Organisation des Headers
-
-### Implémentation
 ```
-src/
-└── app/
-    ├── (public-portal)/
-    │   ├── layout.tsx         # Utilise PublicHeader
-    │   └── ...
-    ├── (client-portal)/
-    │   ├── layout.tsx         # Utilise ClientHeader avec authentification
-    │   └── ...
-    ├── driver-portal/
-    │   ├── layout.tsx         # Utilise DriverHeader avec authentification
-    │   └── ...
-    └── backoffice-portal/
-        ├── layout.tsx         # Utilise AdminHeader avec authentification
-        └── ...
+┌─────────────────────────────────────────────────────────────────┐
+│                     STRUCTURE DES PORTAILS                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  🌐 PUBLIC (/)                    👤 CLIENT (/my-account)       │
+│  ───────────────────              ─────────────────────         │
+│  /                                  /my-account                  │
+│  /reservation                       /my-account/reservations     │
+│  /contact                           /my-account/settings         │
+│  /auth/*                            /rates                       │
+│                                                                 │
+│  🚗 DRIVER (/driver-portal)       ⚙️ ADMIN (/backoffice-portal) │
+│  ──────────────────────────       ─────────────────────────     │
+│  /driver-portal/dashboard           /backoffice-portal          │
+│  /driver-portal/pending             /backoffice-portal/drivers  │
+│  /driver-portal/profile             /backoffice-portal/rides    │
+│  /driver-portal/login               /backoffice-portal/rates    │
+│                                     /backoffice-portal/vehicles │
+│                                     /backoffice-portal/login    │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Connexion avec les Layouts
+---
 
-Chaque portail a son layout à la racine qui :
-1. Gère l'authentification si nécessaire (sauf portail public)
-2. Charge la configuration de navigation appropriée
-3. Fournit le contexte nécessaire au header
+## 🌐 1. Public Portal (`/(public-portal)`)
 
-## Avantages de cette Architecture
+**Access:** Public (sans authentification)  
+**Layout:** `src/app/(public-portal)/layout.tsx`
 
-1. Séparation Claire des Responsabilités
-   - Portail public distinct des fonctionnalités authentifiées
-   - Chaque portail gère sa propre navigation
-   - Configuration isolée par type d'utilisateur
-   - Pas de mélange de logiques métier
+### Routes
 
-2. Maintien et Évolutivité
-   - Modifications faciles par portail
-   - Ajout de fonctionnalités sans impact sur les autres portails
-   - Tests isolés par contexte
+| Route | Description | Composant |
+|-------|-------------|-----------|
+| `/` | Page d'accueil | `page.tsx` |
+| `/reservation` | Réservation de course | `(public-portal)/reservation/page.tsx` |
+| `/contact` | Page contact | `contact/page.tsx` |
+| `/auth/*` | Authentification | `auth/login/page.tsx`, `auth/signup/page.tsx` |
 
-3. Sécurité et Contrôle d'Accès
-   - Accès public clairement délimité
-   - Vérification des rôles au niveau du layout pour les zones protégées
-   - Navigation adaptée aux permissions
-   - Pas d'accès accidentel aux fonctionnalités protégées
+### Caractéristiques
+- Aucune vérification de rôle
+- Accessible hors ligne (PWA)
+- Header minimal
 
-## Bonnes Pratiques
+---
 
-1. Maintenir une séparation stricte entre contenu public et authentifié
-2. Centraliser la logique d'authentification dans les layouts
-3. Adapter la navigation selon le contexte utilisateur
-4. Utiliser les guards pour la protection des routes authentifiées
+## 👤 2. Client Portal (`/(client-portal)`)
+
+**Access:** `app_customer` uniquement  
+**Layout:** `src/app/(client-portal)/layout.tsx`  
+**Redirection:** Non connecté → `/auth/login`
+
+### Routes
+
+| Route | Description | Rôle Requis |
+|-------|-------------|-------------|
+| `/my-account` | Dashboard client | `app_customer` |
+| `/my-account/reservations` | Liste des réservations | `app_customer` |
+| `/my-account/reservations/[id]` | Détail réservation | `app_customer` |
+| `/my-account/reservations/[id]/edit` | Modifier réservation | `app_customer` |
+| `/my-account/settings` | Paramètres du compte | `app_customer` |
+| `/rates` | Affichage des tarifs | `app_customer` |
+
+### Caractéristiques
+- Header avec avatar utilisateur
+- Navigation mobile (bottom nav)
+- Menu utilisateur déroulant
+
+### Vérification d'Accès
+```typescript
+// Dans le layout
+const userRole = getAppRole(user);
+if (userRole !== 'app_customer') {
+  redirect('/auth/login');
+}
+```
+
+---
+
+## 🚗 3. Driver Portal (`/driver-portal`)
+
+**Access:** `app_driver` uniquement  
+**Layout:** `src/app/driver-portal/layout.tsx`  
+**Redirection:** Non connecté → `/driver-portal/login`
+
+### Routes
+
+| Route | Description | Rôle Requis | Statut Driver |
+|-------|-------------|-------------|---------------|
+| `/driver-portal/login` | Connexion chauffeur | Public | - |
+| `/driver-portal/dashboard` | Dashboard chauffeur | `app_driver` | `active` |
+| `/driver-portal/pending` | Page d'attente | `app_driver` | `pending_validation` |
+| `/driver-portal/profile` | Profil chauffeur | `app_driver` | Tous sauf `incomplete` |
+| `/driver-portal/profile/setup` | Configuration initiale | `app_driver` | `incomplete` |
+
+### Workflow de Navigation
+
+```
+Inscription Driver
+       │
+       ▼
+/driver-portal/login ──(connexion)──▶ Vérifie statut
+       │                                    │
+       ▼                                    ▼
+incomplete ─────────────────────────▶ /profile/setup
+       │                                    │
+       ▼ (profil complété)                ▼ (complété)
+pending_validation ─────────────────▶ /pending
+       │                                    │
+       ▼ (admin approuve)                ▼
+active ─────────────────────────────▶ /dashboard
+       │
+       ▼
+Accepte des courses
+```
+
+### Vérification d'Accès
+```typescript
+// Dans le layout
+const userRole = getAppRole(user);
+if (userRole !== 'app_driver') {
+  redirect('/driver-portal/login');
+}
+
+// Puis vérification du statut driver
+const { status } = await getDriverStatus(user.id);
+switch (status) {
+  case 'incomplete': redirect('/driver-portal/profile/setup');
+  case 'pending_validation': redirect('/driver-portal/pending');
+  case 'active': allow_access;
+  default: redirect('/driver-portal/login');
+}
+```
+
+---
+
+## ⚙️ 4. Backoffice Portal (`/backoffice-portal`)
+
+**Access:** `app_admin` ou `app_super_admin`  
+**Layout:** `src/app/backoffice-portal/layout.tsx`  
+**Redirection:** Non connecté → `/backoffice-portal/login`
+
+### Routes
+
+| Route | Description | Rôle Requis |
+|-------|-------------|-------------|
+| `/backoffice-portal/login` | Connexion admin | Public |
+| `/backoffice-portal` | Dashboard admin | `app_admin` |
+| `/backoffice-portal/drivers` | Gestion chauffeurs | `app_admin` |
+| `/backoffice-portal/drivers/pending` | Validation en attente | `app_admin` |
+| `/backoffice-portal/rides` | Gestion des courses | `app_admin` |
+| `/backoffice-portal/rides/pending` | Courses en attente | `app_admin` |
+| `/backoffice-portal/rides/today` | Courses du jour | `app_admin` |
+| `/backoffice-portal/vehicles` | Gestion véhicules | `app_admin` |
+| `/backoffice-portal/rates` | Gestion des tarifs | `app_admin` |
+| `/backoffice-portal/options` | Gestion des options | `app_admin` |
+| `/backoffice-portal/promo-codes` | Codes promo | `app_admin` |
+| `/backoffice-portal/chauffeurs` | Vue chauffeurs (alt) | `app_admin` |
+| `/backoffice-portal/courses` | Vue courses (alt) | `app_admin` |
+
+### Caractéristiques
+- Interface d'administration complète
+- Tableaux de données (data tables)
+- Formulaires de création/édition
+- Navigation latérale (sidebar)
+
+### Vérification d'Accès
+```typescript
+// Dans le layout
+const userRole = getAppRole(user);
+if (!['app_admin', 'app_super_admin'].includes(userRole)) {
+  redirect('/backoffice-portal/login');
+}
+```
+
+---
+
+## 🔐 Redirections par Rôle
+
+| Rôle Détecté | Destination | Raison |
+|--------------|-------------|--------|
+| `app_customer` | `/my-account` | Portail client |
+| `app_driver` (active) | `/driver-portal/dashboard` | Portail chauffeur |
+| `app_driver` (pending) | `/driver-portal/pending` | En attente validation |
+| `app_driver` (incomplete) | `/driver-portal/profile/setup` | Profil incomplet |
+| `app_admin` | `/backoffice-portal` | Portail admin |
+| `app_super_admin` | `/backoffice-portal` | Portail admin |
+| Non connecté | `/auth/login` | Authentification requise |
+
+---
+
+## 🧭 Structure des Layouts
+
+```typescript
+// src/app/(client-portal)/layout.tsx
+export default async function ClientLayout({ children }) {
+  const user = await getServerUser();
+  if (!user || getAppRole(user) !== 'app_customer') {
+    redirect('/auth/login');
+  }
+  return (
+    <ClientHeader user={user}>
+      {children}
+    </ClientHeader>
+  );
+}
+
+// src/app/driver-portal/layout.tsx
+export default async function DriverLayout({ children }) {
+  const user = await getServerUser();
+  if (!user || getAppRole(user) !== 'app_driver') {
+    redirect('/driver-portal/login');
+  }
+  // Vérification statut driver...
+  return (
+    <DriverHeader user={user}>
+      {children}
+    </DriverHeader>
+  );
+}
+```
+
+---
+
+## 📱 Navigation Mobile
+
+| Portail | Navigation | Description |
+|---------|------------|-------------|
+| Public | Header fixe | Liens simples |
+| Client | Bottom nav | Accueil, Réservations, Profil |
+| Driver | Bottom nav | Dashboard, Courses, Profil |
+| Admin | Sidebar + Header | Menu latéral complet |
+
+---
+
+## 🚫 Pages d'Erreur
+
+| Route | Usage | Déclencheur |
+|-------|-------|-------------|
+| `/auth/login` | Connexion requise | Accès protégé sans session |
+| `/unauthorized` | Rôle invalide | Mauvais rôle pour le portail |
+| `/driver-portal/pending` | En attente | Driver `pending_validation` |
+
+---
+
+## 📚 Documentation Connexe
+
+- [driver-workflow.md](./driver-workflow.md) - Workflow chauffeur détaillé
+- [ARCHITECTURE-ROLES.md](./ARCHITECTURE-ROLES.md) - Système de rôles
+- [DATABASE-SCHEMA.md](./DATABASE-SCHEMA.md) - Structure BDD
+
+---
+
+**Dernière mise à jour:** Février 2026  
+**Vérification des routes:** OK (toutes les routes existent dans `src/app/`)

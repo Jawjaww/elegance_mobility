@@ -1,31 +1,23 @@
-import { AdminGuard } from "@/components/auth/RoleGuard"
+'use client'
+
 import { AdminHeader } from "@/components/layout/AdminHeader"
 import { MobileAdminNav } from "@/components/layout/MobileAdminNav"
-import { getServerUser } from "@/lib/database/server"
-import { redirect } from "next/navigation"
+import { AuthCheck } from "@/components/auth/AuthCheck"
 
-export default async function BackofficePortalLayout({
+export default function BackofficePortalLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const user = await getServerUser()
-  
-  // Vérification précoce avant le guard
-  if (!user) {
-    redirect("/auth/login?from=admin")
-  }
-  
   return (
-    <AdminGuard>
+    <AuthCheck allowedRoles={['app_admin', 'app_super_admin']} redirectTo="/backoffice-portal/login">
       <div className="min-h-screen bg-neutral-950 text-white">
-        {/* user est garanti non-null ici */}
-        <AdminHeader user={user} />
+        <AdminHeader />
         <MobileAdminNav />
         <main className="container mx-auto px-4 py-8">
           {children}
         </main>
       </div>
-    </AdminGuard>
+    </AuthCheck>
   )
 }

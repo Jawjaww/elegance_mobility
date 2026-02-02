@@ -1,12 +1,12 @@
+import { redirect } from "next/navigation";
 import DriverProfileSetup from '@/components/drivers/DriverProfileSetup';
 import { getServerUser } from '@/lib/database/server';
-import { redirect } from 'next/navigation';
 
 export default async function DriverProfileSetupPage() {
   const user = await getServerUser();
   
   if (!user) {
-    redirect('/driver-portal/login');
+    redirect("/auth/login?from=driver");
   }
 
   return (

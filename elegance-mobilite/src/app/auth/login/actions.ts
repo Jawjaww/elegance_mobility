@@ -2,6 +2,7 @@
 
 import { createServerSupabaseClient } from '@/lib/database/server'
 import { type AuthError } from '@supabase/supabase-js'
+import { getAppRole } from '@/lib/types/common.types'
 import { redirect } from 'next/navigation'
 
 interface AuthResult {
@@ -20,7 +21,7 @@ const PUBLIC_ROUTES = [
   '/api/auth/callback'
 ]
 
-// Valider les rôles spécifiques
+// Valider les rôles spécifiques (utilise getAppRole pour cohérence)
 const isAdmin = (role: string | undefined | null): boolean => 
   role === 'app_admin' || role === 'app_super_admin'
 
@@ -52,8 +53,8 @@ export async function login(formData: FormData | { email: string; password: stri
     return { error: 'Impossible de récupérer les informations utilisateur' }
   }
 
-  // Redirection basée sur le rôle natif PostgreSQL
-  const userRole = data.user.role as string | undefined
+  // Redirection basée sur le rôle applicatif (app_metadata)
+  const userRole = getAppRole(data.user as any)
   if (isAdmin(userRole)) {
     await supabase.auth.signOut()
     return { 

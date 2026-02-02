@@ -1,26 +1,25 @@
-import { createServerSupabaseClient } from "@/lib/database/server"
+import { getServerUser } from "@/lib/database/server"
 import { redirect } from "next/navigation"
-import { SettingsForm } from "./settings-form"
-import type { AuthUser } from "@/lib/types/auth.types"
+import SettingsForm from "./settings-form"
+import type { User } from '@/lib/types/common.types'
 import { getAppRole } from '@/lib/types/common.types'
 
 export const dynamic = "force-dynamic"
 
 export default async function SettingsPage() {
-  const supabase = await createServerSupabaseClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getServerUser()
   
   if (!user || getAppRole(user) !== 'app_customer') {
-    redirect('/auth/login')
+    redirect("/auth/login?redirectTo=/my-account/settings")
   }
 
-  // Créer l'objet initialData avec les champs de la base de données
+  // Créer l'objet initialData avec les champs des métadonnées utilisateur
+  const userMetadata = user.user_metadata || {}
   const initialData = {
-    first_name: user.first_name || "",
-    last_name: user.last_name || "",
+    first_name: userMetadata.first_name || "",
+    last_name: userMetadata.last_name || "",
     email: user.email || "",
-    phone: user.phone || "",
+    phone: userMetadata.phone || "",
   }
 
   return (
@@ -33,7 +32,7 @@ export default async function SettingsPage() {
       </div>
       
       <SettingsForm 
-        user={user as AuthUser} 
+        user={user as User} 
         initialData={initialData}
       />
     </div>

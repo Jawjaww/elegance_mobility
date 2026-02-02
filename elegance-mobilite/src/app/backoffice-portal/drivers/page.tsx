@@ -5,7 +5,7 @@ import { Suspense } from 'react'
 import { DriversManagement } from '@/components/admin/drivers/DriversManagement'
 import { SectionLoading } from '@/components/ui/loading'
 
-export default function AdminDriversPage() {
+export default async function AdminDriversPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-8">

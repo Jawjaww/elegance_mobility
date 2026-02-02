@@ -2,18 +2,13 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Layout, Users, Settings, Car, LogOut } from "lucide-react"
-import type { User } from "@supabase/supabase-js"
 import { supabase } from "@/lib/database/client"
-
-interface AdminHeaderProps {
-  user: User
-}
 
 const NAV_ITEMS = [
   {
@@ -33,19 +28,46 @@ const NAV_ITEMS = [
   }
 ]
 
-export function AdminHeader({ user }: AdminHeaderProps) {
+export function AdminHeader() {
   const pathname = usePathname() ?? ''
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    // Récupérer la session et écouter les changements
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        setUserEmail(session.user.email || null)
+      } else {
+        setUserEmail(null)
+      }
+      setIsLoading(false)
+    }
+    
+    getSession()
+    
+    // Écouter les changements d'authentification
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setUserEmail(session.user.email || null)
+      } else {
+        setUserEmail(null)
+      }
+    })
+    
+    return () => subscription.unsubscribe()
+  }, [])
 
   const handleLogout = async () => {
-    if (isLoggingOut) return // Éviter les doubles clics
+    if (isLoggingOut) return
     
     setIsLoggingOut(true)
     try {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
       
-      // Redirection immédiate pour éviter les erreurs de session
       window.location.href = '/backoffice-portal/login'
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error)
@@ -54,11 +76,34 @@ export function AdminHeader({ user }: AdminHeaderProps) {
   }
 
   const getAvatarFallback = () => {
-    return user.email?.[0].toUpperCase() ?? 'A'
+    return userEmail?.[0].toUpperCase() ?? '?'
   }
 
   const isActive = (path: string) =>
     pathname === path || pathname.startsWith(`${path}/`)
+  
+  // Ne pas afficher le menu utilisateur si pas connecté
+  if (!userEmail && !isLoading) {
+    return (
+      <header className="sticky top-0 z-50 w-full border-b border-neutral-700/30">
+        <div className="bg-gradient-to-r from-neutral-950/95 to-neutral-900/90 backdrop-blur-sm">
+          <div className="container flex h-16 max-w-screen-2xl items-center">
+            <div className="mr-8 hidden md:flex">
+              <Link
+                href="/backoffice-portal/dashboard"
+                className="mr-8 flex items-center space-x-2"
+              >
+                <span className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent font-bold text-xl">
+                  Vector Elegans
+                </span>
+                <span className="text-neutral-400 font-medium">Administration</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </header>
+    )
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-neutral-700/30">

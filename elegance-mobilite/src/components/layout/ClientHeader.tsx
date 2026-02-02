@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -13,12 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Car, History, User2, LogOut } from "lucide-react";
-import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/database/client";
-
-interface ClientHeaderProps {
-  user: User;
-}
 
 const NAV_ITEMS = [
   {
@@ -38,19 +33,27 @@ const NAV_ITEMS = [
   },
 ];
 
-export function ClientHeader({ user }: ClientHeaderProps) {
+export function ClientHeader() {
   const pathname = usePathname() ?? "";
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUserEmail(session.user.email || null);
+      }
+    });
+  }, []);
 
   const handleLogout = async () => {
-    if (isLoggingOut) return; // Éviter les doubles clics
+    if (isLoggingOut) return;
     
     setIsLoggingOut(true);
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
-      // Redirection immédiate pour éviter les erreurs de session
       window.location.href = '/auth/login';
     } catch (error) {
       console.error("Erreur lors de la déconnexion:", error);
@@ -59,7 +62,7 @@ export function ClientHeader({ user }: ClientHeaderProps) {
   };
 
   const getAvatarFallback = () => {
-    return user.email?.[0].toUpperCase() ?? "C";
+    return userEmail?.[0].toUpperCase() ?? "C";
   };
 
   const isActive = (path: string) =>
@@ -124,10 +127,7 @@ export function ClientHeader({ user }: ClientHeaderProps) {
                       src="/avatars/client.png"
                       alt="Avatar"
                       onError={(e) => {
-                        // Remplacer par une image par défaut en cas d'erreur
                         e.currentTarget.src = "/avatars/default-avatar.png";
-                        // Ou utiliser une URL d'image d'avatar générique
-                        // e.currentTarget.src = "https://ui-avatars.com/api/?name=User&background=random";
                       }}
                     />
                     <AvatarFallback className="bg-blue-600 text-white">

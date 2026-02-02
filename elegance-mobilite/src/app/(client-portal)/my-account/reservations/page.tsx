@@ -1,16 +1,14 @@
-import { CustomerGuard } from "@/components/auth/RoleGuard";
+import { redirect } from "next/navigation";
 import ReservationsClient from "./reservations-client";
 import { getServerUser } from "@/lib/database/server";
-
-// import type { Database } from "@/lib/types/database.types";
-// type Reservation = Database["public"]["Tables"]["rides"]["Row"];
+import { getAppRole } from "@/lib/types/common.types";
 
 export default async function ReservationsPage() {
   const user = await getServerUser();
   
-  return (
-    <CustomerGuard>
-      <ReservationsClient user={user!} />
-    </CustomerGuard>
-  );
+  if (!user || !['app_customer', 'app_admin', 'app_super_admin'].includes(getAppRole(user) || '')) {
+    redirect("/auth/login?redirectTo=/my-account/reservations");
+  }
+  
+  return <ReservationsClient user={user} />;
 }

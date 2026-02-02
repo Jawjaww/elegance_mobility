@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "12.2.3 (519615d)"
+  }
   public: {
     Tables: {
       audit_logs: {
@@ -106,6 +111,56 @@ export type Database = {
           },
         ]
       }
+      driver_documents: {
+        Row: {
+          created_at: string | null
+          document_type: string
+          driver_id: string | null
+          expiry_date: string | null
+          file_name: string | null
+          file_size: number | null
+          file_url: string
+          id: string
+          rejection_reason: string | null
+          upload_date: string | null
+          validation_status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          document_type: string
+          driver_id?: string | null
+          expiry_date?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          file_url: string
+          id?: string
+          rejection_reason?: string | null
+          upload_date?: string | null
+          validation_status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          document_type?: string
+          driver_id?: string | null
+          expiry_date?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          rejection_reason?: string | null
+          upload_date?: string | null
+          validation_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_documents_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_rewards: {
         Row: {
           claimed_at: string | null
@@ -158,106 +213,116 @@ export type Database = {
       }
       drivers: {
         Row: {
+          address_line1: string | null
+          address_line2: string | null
           availability_hours: Json | null
           avatar_url: string | null
-          company_name: string
-          company_phone: string
+          city: string | null
+          company_name: string | null
+          company_phone: string | null
           created_at: string
           current_vehicle_id: string | null
-          driving_license_expiry_date: string
-          driving_license_number: string
-          employee_name: string
-          employee_phone: string
-          first_name: string
+          date_of_birth: string | null
+          document_urls: Json | null
+          driving_license_expiry_date: string | null
+          driving_license_number: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          employee_name: string | null
+          employee_phone: string | null
+          first_name: string | null
           id: string
           insurance_expiry_date: string | null
           insurance_number: string | null
           languages_spoken: string[] | null
-          last_name: string
-          phone: string
+          last_name: string | null
+          phone: string | null
+          postal_code: string | null
           preferred_zones: string[] | null
           rating: number | null
           status: Database["public"]["Enums"]["driver_status"]
           total_rides: number | null
           updated_at: string
           user_id: string
-          vtc_card_expiry_date: string
-          vtc_card_number: string
+          vtc_card_expiry_date: string | null
+          vtc_card_number: string | null
         }
         Insert: {
+          address_line1?: string | null
+          address_line2?: string | null
           availability_hours?: Json | null
           avatar_url?: string | null
-          company_name?: string
-          company_phone?: string
+          city?: string | null
+          company_name?: string | null
+          company_phone?: string | null
           created_at?: string
           current_vehicle_id?: string | null
-          driving_license_expiry_date: string
-          driving_license_number: string
-          employee_name?: string
-          employee_phone?: string
-          first_name: string
+          date_of_birth?: string | null
+          document_urls?: Json | null
+          driving_license_expiry_date?: string | null
+          driving_license_number?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          employee_name?: string | null
+          employee_phone?: string | null
+          first_name?: string | null
           id?: string
           insurance_expiry_date?: string | null
           insurance_number?: string | null
           languages_spoken?: string[] | null
-          last_name?: string
-          phone: string
+          last_name?: string | null
+          phone?: string | null
+          postal_code?: string | null
           preferred_zones?: string[] | null
           rating?: number | null
           status?: Database["public"]["Enums"]["driver_status"]
           total_rides?: number | null
           updated_at?: string
           user_id: string
-          vtc_card_expiry_date: string
-          vtc_card_number: string
+          vtc_card_expiry_date?: string | null
+          vtc_card_number?: string | null
         }
         Update: {
+          address_line1?: string | null
+          address_line2?: string | null
           availability_hours?: Json | null
           avatar_url?: string | null
-          company_name?: string
-          company_phone?: string
+          city?: string | null
+          company_name?: string | null
+          company_phone?: string | null
           created_at?: string
           current_vehicle_id?: string | null
-          driving_license_expiry_date?: string
-          driving_license_number?: string
-          employee_name?: string
-          employee_phone?: string
-          first_name?: string
+          date_of_birth?: string | null
+          document_urls?: Json | null
+          driving_license_expiry_date?: string | null
+          driving_license_number?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          employee_name?: string | null
+          employee_phone?: string | null
+          first_name?: string | null
           id?: string
           insurance_expiry_date?: string | null
           insurance_number?: string | null
           languages_spoken?: string[] | null
-          last_name?: string
-          phone?: string
+          last_name?: string | null
+          phone?: string | null
+          postal_code?: string | null
           preferred_zones?: string[] | null
           rating?: number | null
           status?: Database["public"]["Enums"]["driver_status"]
           total_rides?: number | null
           updated_at?: string
           user_id?: string
-          vtc_card_expiry_date?: string
-          vtc_card_number?: string
+          vtc_card_expiry_date?: string | null
+          vtc_card_number?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "drivers_current_vehicle_id_fkey"
-            columns: ["current_vehicle_id"]
-            isOneToOne: false
-            referencedRelation: "vehicles"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "drivers_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "drivers_vehicle_id_fkey"
-            columns: ["current_vehicle_id"]
-            isOneToOne: false
-            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
         ]
@@ -570,6 +635,7 @@ export type Database = {
           pickup_address: string
           pickup_lat: number | null
           pickup_lon: number | null
+          pickup_notes: string | null
           pickup_time: string
           price: number | null
           status: Database["public"]["Enums"]["ride_status"]
@@ -593,6 +659,7 @@ export type Database = {
           pickup_address: string
           pickup_lat?: number | null
           pickup_lon?: number | null
+          pickup_notes?: string | null
           pickup_time: string
           price?: number | null
           status?: Database["public"]["Enums"]["ride_status"]
@@ -616,6 +683,7 @@ export type Database = {
           pickup_address?: string
           pickup_lat?: number | null
           pickup_lon?: number | null
+          pickup_notes?: string | null
           pickup_time?: string
           price?: number | null
           status?: Database["public"]["Enums"]["ride_status"]
@@ -629,13 +697,6 @@ export type Database = {
             columns: ["driver_id"]
             isOneToOne: false
             referencedRelation: "drivers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rides_override_vehicle_id_fkey"
-            columns: ["override_vehicle_id"]
-            isOneToOne: false
-            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
           {
@@ -722,6 +783,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_profiles: {
+        Row: {
+          app_metadata: Json | null
+          created_at: string | null
+          id: number
+          role: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          app_metadata?: Json | null
+          created_at?: string | null
+          id?: never
+          role?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          app_metadata?: Json | null
+          created_at?: string | null
+          id?: never
+          role?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           created_at: string
@@ -749,61 +837,182 @@ export type Database = {
         }
         Relationships: []
       }
-      vehicles: {
+      vehicle_documents: {
         Row: {
-          created_at: string
+          document_type: string
+          file_name: string | null
+          file_size: number | null
+          file_url: string
           id: string
-          license_plate: string
-          updated_at: string
-          vehicle_model: string
-          vehicle_type: Database["public"]["Enums"]["vehicle_type_enum"]
+          rejection_reason: string | null
+          upload_date: string | null
+          uploaded_by: string | null
+          validation_status: string | null
+          vehicle_id: string | null
         }
         Insert: {
-          created_at?: string
+          document_type: string
+          file_name?: string | null
+          file_size?: number | null
+          file_url: string
           id?: string
-          license_plate: string
-          updated_at?: string
-          vehicle_model: string
-          vehicle_type: Database["public"]["Enums"]["vehicle_type_enum"]
+          rejection_reason?: string | null
+          upload_date?: string | null
+          uploaded_by?: string | null
+          validation_status?: string | null
+          vehicle_id?: string | null
         }
         Update: {
-          created_at?: string
+          document_type?: string
+          file_name?: string | null
+          file_size?: number | null
+          file_url?: string
           id?: string
-          license_plate?: string
-          updated_at?: string
-          vehicle_model?: string
-          vehicle_type?: Database["public"]["Enums"]["vehicle_type_enum"]
+          rejection_reason?: string | null
+          upload_date?: string | null
+          uploaded_by?: string | null
+          validation_status?: string | null
+          vehicle_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_documents_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicles: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          documents: Json | null
+          driver_id: string | null
+          first_registration_date: string | null
+          fuel_type: string | null
+          id: string
+          insurance_number: string | null
+          is_primary: boolean | null
+          license_plate: string
+          make: string
+          model: string
+          owner_name: string | null
+          owner_user_id: string | null
+          photos: Json | null
+          registration_number: string | null
+          seats: number | null
+          submitted_at: string | null
+          submitted_by: string | null
+          updated_at: string | null
+          validation_status: string | null
+          vehicle_type: Database["public"]["Enums"]["vehicle_type_enum"] | null
+          vin: string | null
+          year: number | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          documents?: Json | null
+          driver_id?: string | null
+          first_registration_date?: string | null
+          fuel_type?: string | null
+          id?: string
+          insurance_number?: string | null
+          is_primary?: boolean | null
+          license_plate: string
+          make: string
+          model: string
+          owner_name?: string | null
+          owner_user_id?: string | null
+          photos?: Json | null
+          registration_number?: string | null
+          seats?: number | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          updated_at?: string | null
+          validation_status?: string | null
+          vehicle_type?: Database["public"]["Enums"]["vehicle_type_enum"] | null
+          vin?: string | null
+          year?: number | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          documents?: Json | null
+          driver_id?: string | null
+          first_registration_date?: string | null
+          fuel_type?: string | null
+          id?: string
+          insurance_number?: string | null
+          is_primary?: boolean | null
+          license_plate?: string
+          make?: string
+          model?: string
+          owner_name?: string | null
+          owner_user_id?: string | null
+          photos?: Json | null
+          registration_number?: string | null
+          seats?: number | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          updated_at?: string | null
+          validation_status?: string | null
+          vehicle_type?: Database["public"]["Enums"]["vehicle_type_enum"] | null
+          vin?: string | null
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_vehicles_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      check_admin_access: {
-        Args: { user_id: string }
-        Returns: Json
+      can_driver_accept_rides: {
+        Args: { driver_user_id: string }
+        Returns: {
+          can_accept: boolean
+          profile_status: string
+          reason: string
+          validation_status: string
+        }[]
       }
-      check_user_role_update: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
+      check_driver_profile_completeness: {
+        Args: { driver_user_id: string }
+        Returns: {
+          completion_percentage: number
+          is_complete: boolean
+          missing_fields: string[]
+        }[]
       }
+      check_is_admin: { Args: never; Returns: boolean }
+      check_is_super_admin: { Args: never; Returns: boolean }
+      check_user_role_update: { Args: never; Returns: boolean }
       create_pending_driver: {
         Args: {
-          p_first_name: string
-          p_last_name: string
-          p_phone: string
-          p_vtc_card_number: string
-          p_driving_license_number: string
-          p_vtc_card_expiry_date: string
-          p_driving_license_expiry_date: string
-          p_insurance_number?: string
-          p_insurance_expiry_date?: string
-          p_languages_spoken?: string[]
-          p_preferred_zones?: string[]
           p_company_name?: string
           p_company_phone?: string
+          p_driving_license_expiry_date: string
+          p_driving_license_number: string
+          p_first_name: string
+          p_insurance_expiry_date?: string
+          p_insurance_number?: string
+          p_languages_spoken?: string[]
+          p_last_name: string
+          p_phone: string
+          p_preferred_zones?: string[]
+          p_vtc_card_expiry_date: string
+          p_vtc_card_number: string
         }
         Returns: Json
       }
@@ -811,54 +1020,130 @@ export type Database = {
         Args: { user_id: string; user_role: string }
         Returns: boolean
       }
-      delete_user_by_id: {
+      debug_check_driver_profile_completeness: {
+        Args: { driver_user_id: string }
+        Returns: {
+          completion_percentage: number
+          debug_info: Json
+          is_complete: boolean
+          missing_fields: string[]
+        }[]
+      }
+      debug_driver_completeness: {
+        Args: { driver_user_id: string }
+        Returns: {
+          check_name: string
+          field_category: string
+          field_value: string
+          is_valid: boolean
+        }[]
+      }
+      delete_driver_file: {
+        Args: {
+          document_type_param?: string
+          driver_id_param: string
+          file_bucket: string
+          file_path: string
+        }
+        Returns: boolean
+      }
+      delete_user_and_associated_data: {
         Args: { p_user_id: string }
         Returns: undefined
       }
-      get_admin_level: {
-        Args: Record<PropertyKey, never>
+      delete_user_by_id: { Args: { p_user_id: string }; Returns: undefined }
+      ensure_driver_profile: {
+        Args: { driver_user_id: string }
         Returns: string
       }
-      get_effective_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
+      fix_all_driver_statuses: {
+        Args: never
+        Returns: {
+          active_count: number
+          inactive_count: number
+          incomplete_count: number
+          pending_validation_count: number
+          rejected_count: number
+          suspended_count: number
+          updated_count: number
+        }[]
       }
-      get_safe_email: {
-        Args: Record<PropertyKey, never>
-        Returns: string
+      force_update_driver_status: {
+        Args: { driver_user_id: string }
+        Returns: {
+          completion_percentage: number
+          driver_id: string
+          is_complete: boolean
+          new_status: Database["public"]["Enums"]["driver_status"]
+          old_status: Database["public"]["Enums"]["driver_status"]
+        }[]
       }
-      get_user_app_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
+      get_driver_completeness_details: {
+        Args: { target_user_id?: string }
+        Returns: {
+          details: Json
+          info: string
+          section: string
+        }[]
       }
-      get_user_profile: {
-        Args: { user_id: string }
-        Returns: Json
+      get_driver_id_from_auth: { Args: never; Returns: string }
+      get_drivers_completeness_stats: {
+        Args: never
+        Returns: {
+          average_completion_percentage: number
+          complete_drivers: number
+          incomplete_drivers: number
+          pending_validation: number
+          total_drivers: number
+        }[]
       }
-      get_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
+      get_incomplete_drivers_report: {
+        Args: never
+        Returns: {
+          completion_percentage: number
+          first_name: string
+          is_complete: boolean
+          last_name: string
+          missing_fields: string[]
+          status: Database["public"]["Enums"]["driver_status"]
+          user_id: string
+        }[]
       }
-      is_admin: {
-        Args: Record<PropertyKey, never>
+      get_safe_email: { Args: never; Returns: string }
+      get_user_profile: { Args: { user_id: string }; Returns: Json }
+      get_user_role: { Args: never; Returns: string }
+      is_admin: { Args: never; Returns: boolean }
+      is_driver: { Args: never; Returns: boolean }
+      is_super_admin: { Args: never; Returns: boolean }
+      setup_admin_policies: { Args: { admin_id: string }; Returns: undefined }
+      test_driver_completeness_full: {
+        Args: { target_user_id?: string }
+        Returns: {
+          details: Json
+          info: string
+          section: string
+        }[]
+      }
+      update_driver_document_url: {
+        Args: {
+          p_document_type: string
+          p_driver_id: string
+          p_file_url: string
+        }
         Returns: boolean
       }
-      is_driver: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
+      update_driver_status_auto: {
+        Args: { driver_user_id: string }
+        Returns: string
       }
-      is_super_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      setup_admin_policies: {
-        Args: { admin_id: string }
-        Returns: undefined
+      update_driver_status_by_id: {
+        Args: { driver_id: string }
+        Returns: string
       }
       validate_driver: {
         Args: {
-          driver_id: string
           approved: boolean
+          driver_id: string
           rejection_reason?: string
         }
         Returns: Json
@@ -872,6 +1157,7 @@ export type Database = {
         | "inactive"
         | "on_vacation"
         | "suspended"
+        | "incomplete"
       promo_type_enum: "percentage" | "fixed_amount"
       reward_type_enum: "bonus" | "commission_increase"
       ride_status:
@@ -892,21 +1178,25 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
@@ -924,14 +1214,16 @@ export type Tables<
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
@@ -947,14 +1239,16 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
@@ -970,14 +1264,16 @@ export type TablesUpdate<
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
@@ -985,14 +1281,16 @@ export type Enums<
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
@@ -1007,6 +1305,7 @@ export const Constants = {
         "inactive",
         "on_vacation",
         "suspended",
+        "incomplete",
       ],
       promo_type_enum: ["percentage", "fixed_amount"],
       reward_type_enum: ["bonus", "commission_increase"],

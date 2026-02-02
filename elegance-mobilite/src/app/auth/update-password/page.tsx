@@ -1,113 +1,187 @@
-'use client'
+"use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { supabase } from "@/lib/database/client"
-import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import Link from "next/link"
-import { useToast } from "@/hooks/useToast"
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { supabase } from "@/lib/database/client";
+import { useToast } from "@/hooks/useToast";
 
 export default function UpdatePasswordPage() {
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [isValidSession, setIsValidSession] = useState(false)
-  const [error, setError] = useState("")
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const { toast } = useToast()
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isValidSession, setIsValidSession] = useState(false);
+  const [error, setError] = useState("");
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
 
   useEffect(() => {
-    // Échanger le code pour une session côté client (meilleure pratique Supabase)
-    const checkCode = async () => {
-      console.log('🔍 Vérification du code pour update-password (exchangeCodeForSession)')
-      console.log('🔍 URL complète:', window.location.href)
+    const checkRecovery = async () => {
+      if (!searchParams) return;
 
-      const code = searchParams?.get('code')
-      const type = searchParams?.get('type')
+      console.log("🔍 Vérification update-password (recovery)");
+      console.log("🔍 URL complète:", window.location.href);
 
-      console.log('🔍 Code présent:', !!code)
-      console.log('🔍 Type:', type)
+      const token = searchParams.get("token");
+      const code = searchParams.get("code");
+      const type = searchParams.get("type");
 
-      if (code && type === 'recovery') {
+      console.log("🔍 Params:", { token: !!token, code: !!code, type });
+
+      if (type !== "recovery") {
+        setError(
+          "Lien de réinitialisation invalide. Veuillez redemander un lien.",
+        );
+        return;
+      }
+
+      // Prefer token (verifyOtp) when available
+      if (token) {
         try {
-          // Échanger le code pour créer une session temporaire permettant updateUser
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+          console.log("🔍 Tentative verifyOtp avec token...");
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash: token,
+            type: "recovery",
+          });
 
           if (error) {
-            console.error('❌ Erreur exchangeCodeForSession:', error)
-            setError('Le lien de réinitialisation est invalide ou a expiré. Veuillez redemander un lien.')
-            return
+            console.error("❌ Erreur verifyOtp:", error);
+            setError(
+              "Le lien de réinitialisation est invalide ou a expiré. Veuillez redemander un lien.",
+            );
+            return;
           }
 
-          console.log('✅ Session créée via exchangeCodeForSession:', !!data?.session)
-          setIsValidSession(true)
+          if (data?.session) {
+            console.log("✅ Session créée via verifyOtp:", !!data.session);
+            setIsValidSession(true);
+            return;
+          }
         } catch (err) {
-          console.error('💥 Erreur lors de l\'échange du code:', err)
-          setError('Une erreur est survenue lors de la vérification du lien. Veuillez réessayer.')
+          console.error("💥 Erreur lors de la vérification OTP:", err);
+          setError(
+            "Une erreur est survenue lors de la vérification du lien. Veuillez réessayer.",
+          );
+          return;
         }
-      } else {
-        console.log('❌ Aucun code de réinitialisation valide trouvé')
-        setError("Lien de réinitialisation invalide ou expiré. Veuillez redemander un lien de réinitialisation.")
       }
-    }
 
-    checkCode()
-  }, [searchParams])
+      // Fallback: try code (PKCE) flow but show helpful message when code_verifier is missing
+      if (code) {
+        try {
+          console.log("🔍 Tentative exchangeCodeForSession avec code...");
+          const { data, error } =
+            await supabase.auth.exchangeCodeForSession(code);
+
+          if (error) {
+            const msg = error?.message || "";
+            console.error("❌ Erreur exchangeCodeForSession:", error);
+            if (
+              msg.includes("code verifier") ||
+              msg.includes("code_verifier")
+            ) {
+              setError(
+                "Ce lien doit être ouvert dans le même navigateur que celui utilisé pour demander la réinitialisation. Veuillez redemander un lien si besoin.",
+              );
+            } else {
+              setError(
+                "Le lien de réinitialisation est invalide ou a expiré. Veuillez redemander un lien.",
+              );
+            }
+            return;
+          }
+
+          if (data?.session) {
+            console.log(
+              "✅ Session créée via exchangeCodeForSession:",
+              !!data.session,
+            );
+            setIsValidSession(true);
+            return;
+          }
+        } catch (err) {
+          console.error("💥 Erreur lors de l'échange du code:", err);
+          setError(
+            "Une erreur est survenue lors de la vérification du lien. Veuillez réessayer.",
+          );
+          return;
+        }
+      }
+
+      console.log("❌ Aucun token/code de réinitialisation valide trouvé");
+      setError(
+        "Lien de réinitialisation invalide ou expiré. Veuillez redemander un lien de réinitialisation.",
+      );
+    };
+
+    checkRecovery();
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
+    e.preventDefault();
+    setError("");
 
-    // Validation des mots de passe
+    // Basic validation
     if (password !== confirmPassword) {
-      setError("Les mots de passe ne correspondent pas.")
-      return
+      setError("Les mots de passe ne correspondent pas.");
+      return;
     }
 
     if (password.length < 6) {
-      setError("Le mot de passe doit contenir au moins 6 caractères.")
-      return
+      setError("Le mot de passe doit contenir au moins 6 caractères.");
+      return;
     }
 
-    const code = searchParams?.get('code')
-    const type = searchParams?.get('type')
-    
-    if (!code || type !== 'recovery') {
-      setError("Lien de réinitialisation invalide. Veuillez redemander un lien.")
-      return
+    if (!isValidSession) {
+      setError(
+        "Session invalide. Veuillez cliquer à nouveau sur le lien de réinitialisation.",
+      );
+      return;
     }
 
-    setIsLoading(true)
+    setIsLoading(true);
 
     try {
-      console.log('🔍 Tentative de mise à jour du mot de passe pour la session actuelle...')
-      const { data, error } = await supabase.auth.updateUser({ password })
+      console.log(
+        "🔍 Tentative de mise à jour du mot de passe pour la session actuelle...",
+      );
+      const { data, error } = await supabase.auth.updateUser({ password });
 
       if (error) {
-        console.error('❌ Erreur updateUser:', error)
-        setError(error.message || 'Impossible de mettre à jour le mot de passe.')
+        console.error("❌ Erreur updateUser:", error);
+        setError(
+          error.message || "Impossible de mettre à jour le mot de passe.",
+        );
       } else {
         toast({
           title: "Mot de passe mis à jour",
           description: "Votre mot de passe a été modifié avec succès.",
-        })
-        
-        // Rediriger vers la page de connexion après un court délai
+        });
+
         setTimeout(() => {
-          router.push('/auth/login')
-        }, 2000)
+          router.push("/auth/login");
+        }, 1200);
       }
     } catch (err) {
-      setError("Une erreur est survenue. Veuillez réessayer.")
-      console.error(err)
+      setError("Une erreur est survenue. Veuillez réessayer.");
+      console.error(err);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <Card>
@@ -117,6 +191,7 @@ export default function UpdatePasswordPage() {
           Choisissez un nouveau mot de passe sécurisé
         </CardDescription>
       </CardHeader>
+
       <CardContent>
         {!isValidSession && error && (
           <div className="mb-4 p-3 bg-red-100 text-red-800 rounded text-sm">
@@ -157,7 +232,9 @@ export default function UpdatePasswordPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
+                <Label htmlFor="confirmPassword">
+                  Confirmer le mot de passe
+                </Label>
                 <Input
                   id="confirmPassword"
                   type="password"
@@ -171,12 +248,14 @@ export default function UpdatePasswordPage() {
                 />
               </div>
 
-              <Button 
-                className="btn-gradient text-white w-full" 
-                type="submit" 
+              <Button
+                className="btn-gradient text-white w-full"
+                type="submit"
                 disabled={isLoading}
               >
-                {isLoading ? "Mise à jour en cours..." : "Mettre à jour le mot de passe"}
+                {isLoading
+                  ? "Mise à jour en cours..."
+                  : "Mettre à jour le mot de passe"}
               </Button>
             </form>
           </>
@@ -192,5 +271,5 @@ export default function UpdatePasswordPage() {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
