@@ -56,17 +56,27 @@ pending → accepted → picked_up → in_progress → completed
 ### ✅ PHASE 0 : Refactoring Driver Dashboard (TERMINÉ)
 
 - [x] Refonte complète du driver dashboard
+- [x] Suppression ancien `DriverDashboardClient.tsx`
 - [x] Nouveau store driver (`src/lib/driver/`)
 - [x] Composants Map, Header, Stats, OnlineToggle
 - [x] Style moderne avec tuiles vectorielles
 - [x] Build TypeScript clean
 
-**Fichiers créés/modifiés :**
+**Fichiers créés :**
 - `src/lib/driver/store.ts` - Store Zustand
 - `src/lib/driver/hooks.ts` - Hooks useDriverLocation, useRealtimeRides
 - `src/lib/driver/types.ts` - Types TypeScript
 - `src/lib/driver/utils.ts` - Utilitaires
 - `src/components/driver/Map.tsx` - Carte moderne
+- `src/components/driver/Header.tsx` - Barre de statut
+- `src/components/driver/DashboardPanel.tsx` - Panneau inférieur
+- `src/components/driver/RideRequest.tsx` - Modal d'acceptation
+
+**Fichiers supprimés :**
+- `src/components/drivers/DriverDashboardClient.tsx` (vieille version)
+- `src/components/driver/BottomSheet.tsx` (redondant)
+- `src/components/driver/DriverMap.tsx` (vieille version)
+- `src/components/driver/RideRequestModal.tsx` (remplacé)
 
 ---
 
