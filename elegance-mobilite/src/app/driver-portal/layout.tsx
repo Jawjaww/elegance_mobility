@@ -13,39 +13,24 @@ export default function DriverPortalLayout({
   const isLoginPage = pathname === '/driver-portal/login'
   const isDashboard = pathname === '/driver-portal/dashboard' || pathname === '/driver-portal'
 
-  // Register Service Worker
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js')
-        .then(reg => console.log('[PWA] SW registered:', reg.scope))
-        .catch(err => console.error('[PWA] SW registration failed:', err))
+      navigator.serviceWorker.register('/sw.js').catch(console.error)
     }
   }, [])
 
   if (isLoginPage) {
-    return (
-      <div className="min-h-screen bg-neutral-950 text-white">
-        {children}
-      </div>
-    )
+    return <div className="min-h-screen bg-neutral-950">{children}</div>
   }
 
-  // Dashboard is full-screen map, no header
   if (isDashboard) {
-    return (
-      <div className="fixed inset-0 w-screen h-screen bg-neutral-950 text-white overflow-hidden">
-        {children}
-      </div>
-    )
+    return <div className="fixed inset-0">{children}</div>
   }
 
-  // Other pages have header
   return (
-    <div className="min-h-screen bg-neutral-950 text-white">
+    <div className="min-h-screen bg-neutral-950">
       <DriverHeader />
-      <main className="pb-24">
-        {children}
-      </main>
+      <main className="pb-24">{children}</main>
     </div>
   )
 }
