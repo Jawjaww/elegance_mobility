@@ -42,49 +42,56 @@ export function useDriverLocation(enabled: boolean) {
         return
       }
 
-      // Essayer d'abord la fonction RPC
-      const { data, error } = await supabase
-        .rpc('update_driver_location', {
-          p_lat: location.lat,
-          p_lng: location.lng,
-          p_heading: location.heading,
-          p_speed: location.speed
+      // Use simple insert with conflict handling
+      const { error: insertError } = await supabase
+        .from('driver_locations')
+        .insert({
+          driver_id: userData.user.id,
+          lat: location.lat,
+          lng: location.lng,
+          heading: location.heading,
+          speed: location.speed,
+          accuracy: location.accuracy,
+          is_online: true,
+          last_updated: new Date().toISOString()
         })
 
-      if (error) {
-        console.warn('[Location] RPC failed, trying direct upsert:', error.message)
-        
-        // Fallback: upsert direct
-        const { data: upsertData, error: upsertError } = await supabase
-          .from('driver_locations')
-          .upsert({
-            driver_id: userData.user.id,
-            lat: location.lat,
-            lng: location.lng,
-            heading: location.heading,
-            speed: location.speed,
-            accuracy: location.accuracy,
-            is_online: true,
-            last_updated: new Date().toISOString()
-          }, {
-            onConflict: 'driver_id'
-          })
-          .select()
-        
-        if (upsertError) {
-          console.error('[Location] Upsert error:', JSON.stringify(upsertError, null, 2))
-          // Retry avec backoff
+      if (insertError) {
+        // If insert fails (duplicate), try update
+        if (insertError.code === '23505') { // unique_violation
+          const { error: updateError } = await supabase
+            .from('driver_locations')
+            .update({
+              lat: location.lat,
+              lng: location.lng,
+              heading: location.heading,
+              speed: location.speed,
+              accuracy: location.accuracy,
+              is_online: true,
+              last_updated: new Date().toISOString()
+            })
+            .eq('driver_id', userData.user.id)
+          
+          if (updateError) {
+            console.error('[Location] Update error:', JSON.stringify(updateError, null, 2))
+            if (retryCount.current < 3) {
+              retryCount.current++
+              setTimeout(() => updateLocation(position), 1000 * retryCount.current)
+            }
+          } else {
+            retryCount.current = 0
+            console.log('[Location] Updated via UPDATE')
+          }
+        } else {
+          console.error('[Location] Insert error:', JSON.stringify(insertError, null, 2))
           if (retryCount.current < 3) {
             retryCount.current++
             setTimeout(() => updateLocation(position), 1000 * retryCount.current)
           }
-        } else {
-          retryCount.current = 0
-          console.log('[Location] Updated via upsert:', upsertData)
         }
       } else {
         retryCount.current = 0
-        console.log('[Location] Updated via RPC')
+        console.log('[Location] Inserted new location')
       }
     } catch (err: any) {
       console.error('[Location] Failed to update:', err?.message || err)
