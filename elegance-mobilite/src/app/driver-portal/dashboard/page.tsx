@@ -2,10 +2,16 @@
 
 import { useDriverStore } from '@/lib/driver/store'
 import { useDriverLocation, useWakeLock } from '@/lib/driver/hooks'
-import { Map, Header, DashboardPanel, RideRequest } from '@/components/driver'
+import { 
+  Map, 
+  Header, 
+  DriverBottomSheet, 
+  FullscreenRideModal,
+  ScheduledRideNotifications 
+} from '@/components/driver'
 
 export default function DriverDashboardPage() {
-  const { isOnline, availableRide } = useDriverStore()
+  const { isOnline, availableRide, activeRide } = useDriverStore()
   
   useDriverLocation(isOnline)
   useWakeLock(isOnline)
@@ -13,11 +19,17 @@ export default function DriverDashboardPage() {
   const pickup = availableRide ? {
     lat: availableRide.pickupLat,
     lng: availableRide.pickupLng
+  } : activeRide ? {
+    lat: activeRide.pickupLat,
+    lng: activeRide.pickupLng
   } : null
 
   const dropoff = availableRide ? {
     lat: availableRide.dropoffLat,
     lng: availableRide.dropoffLng
+  } : activeRide ? {
+    lat: activeRide.dropoffLat,
+    lng: activeRide.dropoffLng
   } : null
 
   return (
@@ -30,11 +42,14 @@ export default function DriverDashboardPage() {
       {/* Header flottant */}
       <Header />
 
-      {/* Panneau inférieur */}
-      {!availableRide && <DashboardPanel />}
+      {/* Notifications pour courses planifiées */}
+      <ScheduledRideNotifications />
 
-      {/* Modal course */}
-      <RideRequest />
+      {/* Bottom sheet avec onglets */}
+      <DriverBottomSheet />
+
+      {/* Modal plein écran pour courses en temps réel */}
+      <FullscreenRideModal />
     </div>
   )
 }
