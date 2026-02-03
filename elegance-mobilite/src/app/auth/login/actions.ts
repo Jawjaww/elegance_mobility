@@ -2,7 +2,7 @@
 
 import { createServerSupabaseClient } from '@/lib/database/server'
 import { type AuthError } from '@supabase/supabase-js'
-import { getAppRole } from '@/lib/types/common.types'
+import { getUserRole, isUserAdmin, isUserDriver } from '@/lib/utils/auth-helpers'
 import { redirect } from 'next/navigation'
 
 interface AuthResult {
@@ -21,12 +21,7 @@ const PUBLIC_ROUTES = [
   '/api/auth/callback'
 ]
 
-// Valider les rôles spécifiques (utilise getAppRole pour cohérence)
-const isAdmin = (role: string | undefined | null): boolean => 
-  role === 'app_admin' || role === 'app_super_admin'
-
-const isDriver = (role: string | undefined | null): boolean => 
-  role === 'app_driver'
+// Helpers de rôles utilisant app_metadata uniquement (serveur)
 
 /**
  * Login standard pour les utilisateurs
@@ -53,9 +48,9 @@ export async function login(formData: FormData | { email: string; password: stri
     return { error: 'Impossible de récupérer les informations utilisateur' }
   }
 
-  // Redirection basée sur le rôle applicatif (app_metadata)
-  const userRole = getAppRole(data.user as any)
-  if (isAdmin(userRole)) {
+  // Redirection basée sur le rôle applicatif (app_metadata - serveur)
+  const userRole = getUserRole(data.user)
+  if (isUserAdmin(data.user)) {
     await supabase.auth.signOut()
     return { 
       error: 'Veuillez utiliser la page de connexion administrateur',
@@ -74,7 +69,7 @@ export async function login(formData: FormData | { email: string; password: stri
 
   // Sinon, rediriger vers le portail approprié
   let defaultRedirect = '/my-account'
-  if (isDriver(userRole)) {
+  if (isUserDriver(data.user)) {
     defaultRedirect = '/driver-portal'
   }
 

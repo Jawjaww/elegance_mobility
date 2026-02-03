@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerSupabaseClient, redirectToRoleHome } from '@/lib/database/server'
+import { getUserRole } from '@/lib/utils/auth-helpers'
 import { AppRole } from '@/lib/types/common.types'
 
 export async function GET(request: NextRequest) {
@@ -24,8 +25,8 @@ export async function GET(request: NextRequest) {
           return NextResponse.redirect(new URL(next, request.url))
         }
         
-        // Session active, rediriger selon le rôle
-        const userRole = (session.user.app_metadata?.role || (session.user as any).raw_app_meta_data?.role) as AppRole
+        // Session active, rediriger selon le rôle (source: app_metadata uniquement)
+        const userRole = getUserRole(session.user) as AppRole
         console.log('Callback: Session active détectée, rôle:', userRole, 'from:', from)
         await redirectToRoleHome(userRole, from)
         return
@@ -52,24 +53,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL(next, request.url))
     }
 
-    // Redirection avec le rôle et le contexte "from"
-    const newUserRole = (session.user.app_metadata?.role || (session.user as any).raw_app_meta_data?.role) as AppRole
-    console.log('Callback: Nouvelle session créée, rôle:', newUserRole, 'from:', from)
-    await redirectToRoleHome(newUserRole, from)
-    return
-
-    if (error || !session?.user) {
-      console.error('Erreur authentification:', error)
-      return NextResponse.redirect(new URL('/auth/login', request.url))
-    }
-
-    // Si un paramètre next est spécifié, rediriger vers cette URL (ex: configuration profil chauffeur)
-    if (next) {
-      return NextResponse.redirect(new URL(next as string, request.url))
-    }
-
-    // Redirection avec le rôle et le contexte "from"
-    const userRole = (session!.user.app_metadata?.role || (session!.user as any).raw_app_meta_data?.role) as AppRole
+    // Redirection avec le rôle et le contexte "from" (source: app_metadata uniquement)
+    const userRole = getUserRole(session.user) as AppRole
     console.log('Callback: Nouvelle session créée, rôle:', userRole, 'from:', from)
     await redirectToRoleHome(userRole, from)
     return

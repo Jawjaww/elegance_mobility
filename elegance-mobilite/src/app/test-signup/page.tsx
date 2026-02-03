@@ -41,12 +41,13 @@ export default function TestSignupPage() {
       }
 
       addResult(`✅ Utilisateur créé: ${data.user?.email}`);
-      addResult(`📋 portal_type: ${data.user?.user_metadata?.portal_type}`);
-      addResult(`📋 Rôle assigné: ${data.user?.app_metadata?.role}`);
+      addResult(`📋 portal_type (user_metadata): ${data.user?.user_metadata?.portal_type}`);
+      addResult(`📋 Rôle (app_metadata/serveur): ${data.user?.app_metadata?.role}`);
       
       const role = data.user?.app_metadata?.role;
       if (role === 'app_driver') {
         addResult('✅ Rôle correctement assigné: app_driver');
+        addResult('ℹ️  Source: raw_app_meta_data (trigger handle_new_user)');
       } else {
         addResult(`❌ Rôle incorrect: ${role} (attendu: app_driver)`);
       }
@@ -82,12 +83,13 @@ export default function TestSignupPage() {
       }
 
       addResult(`✅ Utilisateur créé: ${data.user?.email}`);
-      addResult(`📋 portal_type: ${data.user?.user_metadata?.portal_type}`);
-      addResult(`📋 Rôle assigné: ${data.user?.app_metadata?.role}`);
+      addResult(`📋 portal_type (user_metadata): ${data.user?.user_metadata?.portal_type}`);
+      addResult(`📋 Rôle (app_metadata/serveur): ${data.user?.app_metadata?.role}`);
       
       const role = data.user?.app_metadata?.role;
       if (role === 'app_customer') {
         addResult('✅ Rôle correctement assigné: app_customer');
+        addResult('ℹ️  Source: raw_app_meta_data (trigger handle_new_user)');
       } else {
         addResult(`❌ Rôle incorrect: ${role} (attendu: app_customer)`);
       }

@@ -40,8 +40,8 @@ export function LoginForm() {
         throw error
       }
 
-      // Vérification typée du rôle
-      const userRole = (data.user?.app_metadata?.role ?? data.user?.user_metadata?.role) as AppRole
+      // Vérification typée du rôle (source: app_metadata uniquement - serveur)
+      const userRole = data.user?.app_metadata?.role as AppRole
       
       // Seuls les admins et super admins ne peuvent pas se connecter sur la page login normale
       // Ils doivent utiliser la page login admin
