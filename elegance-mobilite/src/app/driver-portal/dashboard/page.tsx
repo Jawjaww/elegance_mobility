@@ -82,9 +82,9 @@ export default function DriverDashboardPage() {
   } : null
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-neutral-950">
+    <div className="relative w-full h-full overflow-hidden">
       {/* Map Layer - Bottom */}
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0 bg-[#1a1a1a]">
         <DriverMap 
           pickup={pickupLocation} 
           dropoff={dropoffLocation}

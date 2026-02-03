@@ -51,29 +51,26 @@ export function DriverMap({ pickup, dropoff, showRoute = false }: DriverMapProps
         style: {
           version: 8,
           sources: {
-            'carto-dark': {
+            'osm': {
               type: 'raster',
               tiles: [
-                'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-                'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-                'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-                'https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'
+                'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
               ],
               tileSize: 256,
-              attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+              attribution: '&copy; OpenStreetMap contributors'
             }
           },
           layers: [{
-            id: 'carto-dark-layer',
+            id: 'osm-layer',
             type: 'raster',
-            source: 'carto-dark',
+            source: 'osm',
             minzoom: 0,
-            maxzoom: 22
+            maxzoom: 19
           }]
         },
         center: [2.3522, 48.8566], // Paris
         zoom: 13,
-        pitch: 0, // Disable 3D for better compatibility
+        pitch: 0,
         bearing: 0,
         attributionControl: false
       })
@@ -322,8 +319,8 @@ export function DriverMap({ pickup, dropoff, showRoute = false }: DriverMapProps
   }
 
   return (
-    <div className="relative w-full h-full min-h-[300px] bg-neutral-900 overflow-hidden" style={{ height: '100%', width: '100%' }}>
-      <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
+    <div className="relative w-full h-full bg-[#0a0a0a]">
+      <div ref={mapContainer} className="absolute inset-0" />
       
       {/* Loading state */}
       {!isMapLoaded && !hasError && (
