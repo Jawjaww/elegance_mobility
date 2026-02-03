@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { motion, AnimatePresence, PanInfo, useMotionValue, useTransform } from 'framer-motion'
+import { motion, AnimatePresence, PanInfo } from 'framer-motion'
 import { 
   Clock, 
   Calendar, 
@@ -35,7 +35,6 @@ export function DriverBottomSheet() {
   const [sheetState, setSheetState] = useState<'collapsed' | 'peek' | 'expanded'>('peek')
   
   const constraintsRef = useRef<HTMLDivElement>(null)
-  const y = useMotionValue(0)
 
   // Courses planifiées (mock - à remplacer par vraies données)
   const scheduledRides: Ride[] = []
@@ -105,18 +104,19 @@ export function DriverBottomSheet() {
       {/* Bottom Sheet */}
       <motion.div 
         ref={constraintsRef}
-        className="fixed left-0 right-0 bottom-0 z-20 bg-neutral-950 rounded-t-[2rem] shadow-2xl border-t border-white/10 overflow-hidden"
+        className={`fixed left-0 right-0 z-20 bg-neutral-950 rounded-t-[2rem] shadow-2xl border-t border-white/10 overflow-hidden ${
+          sheetState === 'expanded' ? 'bottom-0 h-[100dvh]' : 'bottom-0'
+        }`}
         initial={{ y: '100%' }}
         animate={{ 
-          height: getSheetHeight(),
+          height: sheetState === 'expanded' ? '100dvh' : getSheetHeight(),
           y: 0 
         }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        drag="y"
-        dragConstraints={{ top: -100, bottom: 100 }}
-        dragElastic={0.3}
+        drag={sheetState === 'expanded' ? false : 'y'}
+        dragConstraints={{ top: -50, bottom: 50 }}
+        dragElastic={0.2}
         onDragEnd={handleDragEnd}
-        style={{ y }}
       >
         {/* Handle - Zone de drag */}
         <div className="w-full flex flex-col items-center pt-3 pb-2 cursor-grab active:cursor-grabbing">
