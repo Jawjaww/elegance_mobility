@@ -43,17 +43,18 @@ export function useDriverLocation(enabled: boolean) {
       }
 
       // Use simple insert with conflict handling
+      // Note: DB uses 'lon' not 'lng', and 'recorded_at' not 'last_updated'
       const { error: insertError } = await supabase
         .from('driver_locations')
         .insert({
           driver_id: userData.user.id,
           lat: location.lat,
-          lng: location.lng,
+          lon: location.lng,
           heading: location.heading,
           speed: location.speed,
           accuracy: location.accuracy,
           is_online: true,
-          last_updated: new Date().toISOString()
+          recorded_at: new Date().toISOString()
         })
 
       if (insertError) {
@@ -63,12 +64,12 @@ export function useDriverLocation(enabled: boolean) {
             .from('driver_locations')
             .update({
               lat: location.lat,
-              lng: location.lng,
+              lon: location.lng,
               heading: location.heading,
               speed: location.speed,
               accuracy: location.accuracy,
               is_online: true,
-              last_updated: new Date().toISOString()
+              recorded_at: new Date().toISOString()
             })
             .eq('driver_id', userData.user.id)
           
