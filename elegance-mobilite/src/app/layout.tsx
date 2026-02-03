@@ -12,13 +12,19 @@ export const metadata = {
   title: "Vector Elegans",
   description: "Service de transport VTC de luxe",
   manifest: '/manifest.json',
-  themeColor: '#10b981',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'Vector Elegans'
   }
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#10b981'
 };
 
 /**
