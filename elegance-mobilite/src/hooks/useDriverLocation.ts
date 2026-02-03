@@ -35,8 +35,8 @@ export function useDriverLocation(enabled: boolean) {
     setCurrentLocation(location)
 
     try {
-      // Envoyer à Supabase
-      const { error } = await supabase
+      // Essayer d'abord la fonction RPC
+      const { data, error } = await supabase
         .rpc('update_driver_location', {
           p_lat: location.lat,
           p_lng: location.lng,
@@ -45,17 +45,45 @@ export function useDriverLocation(enabled: boolean) {
         })
 
       if (error) {
-        console.error('[Location] Update error:', error)
-        // Retry avec backoff
-        if (retryCount.current < 3) {
-          retryCount.current++
-          setTimeout(() => updateLocation(position), 1000 * retryCount.current)
+        console.warn('[Location] RPC failed, trying direct upsert:', error.message)
+        
+        // Fallback: upsert direct
+        const { error: upsertError } = await supabase
+          .from('driver_locations')
+          .upsert({
+            driver_id: (await supabase.auth.getUser()).data.user?.id,
+            lat: location.lat,
+            lng: location.lng,
+            heading: location.heading,
+            speed: location.speed,
+            accuracy: location.accuracy,
+            is_online: true,
+            last_updated: new Date().toISOString()
+          }, {
+            onConflict: 'driver_id'
+          })
+        
+        if (upsertError) {
+          console.error('[Location] Upsert error:', {
+            message: upsertError.message,
+            details: upsertError.details,
+            code: upsertError.code
+          })
+          // Retry avec backoff
+          if (retryCount.current < 3) {
+            retryCount.current++
+            setTimeout(() => updateLocation(position), 1000 * retryCount.current)
+          }
+        } else {
+          retryCount.current = 0
+          console.log('[Location] Updated via upsert')
         }
       } else {
         retryCount.current = 0
+        console.log('[Location] Updated via RPC')
       }
-    } catch (err) {
-      console.error('[Location] Failed to update:', err)
+    } catch (err: any) {
+      console.error('[Location] Failed to update:', err?.message || err)
     }
   }, [setCurrentLocation])
 
