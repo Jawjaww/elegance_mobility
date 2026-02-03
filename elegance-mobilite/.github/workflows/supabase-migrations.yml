@@ -13,9 +13,6 @@ on:
     paths:
       - 'supabase/migrations/**'
 
-env:
-  SUPABASE_PROJECT_ID: ioddsdzustunlahxafif
-
 jobs:
   # Vérification des migrations sur PR
   verify:
@@ -59,6 +56,11 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+    
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
@@ -69,19 +71,13 @@ jobs:
           version: latest
 
       - name: 🔗 Link Supabase Project
-        run: supabase link --project-ref $SUPABASE_PROJECT_ID --password ${{ secrets.SUPABASE_DB_PASSWORD }}
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase link --project-ref $SUPABASE_PROJECT_ID
 
       - name: 🚀 Push Migrations
-        run: supabase db push --password ${{ secrets.SUPABASE_DB_PASSWORD }}
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase db push --project-ref $SUPABASE_PROJECT_ID
 
       - name: 📊 Migration Status
-        run: supabase migration list
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase migration list --project-ref $SUPABASE_PROJECT_ID
 
       - name: 🔔 Notify Success
         if: success()
