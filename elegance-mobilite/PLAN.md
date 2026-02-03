@@ -57,20 +57,32 @@ pending → accepted → picked_up → in_progress → completed
 
 - [x] Refonte complète du driver dashboard
 - [x] Suppression ancien `DriverDashboardClient.tsx`
+- [x] Navigation complète avec animations Framer Motion
+- [x] Déconnexion fonctionnelle
 - [x] Nouveau store driver (`src/lib/driver/`)
 - [x] Composants Map, Header, Stats, OnlineToggle
 - [x] Style moderne avec tuiles vectorielles
 - [x] Build TypeScript clean
+
+**Navigation créée :**
+- `MobileNav.tsx` - Drawer avec animation slide-in
+- `/driver-portal/dashboard` - Carte temps réel + online/offline
+- `/driver-portal/rides` - Historique des courses
+- `/driver-portal/earnings` - Gains et statistiques
+- `/driver-portal/schedule` - Planning hebdomadaire
+- `/driver-portal/profile` - Profil + déconnexion
 
 **Fichiers créés :**
 - `src/lib/driver/store.ts` - Store Zustand
 - `src/lib/driver/hooks.ts` - Hooks useDriverLocation, useRealtimeRides
 - `src/lib/driver/types.ts` - Types TypeScript
 - `src/lib/driver/utils.ts` - Utilitaires
-- `src/components/driver/Map.tsx` - Carte moderne
-- `src/components/driver/Header.tsx` - Barre de statut
+- `src/components/driver/Map.tsx` - Carte moderne Stadia
+- `src/components/driver/Header.tsx` - Barre de statut flottante
 - `src/components/driver/DashboardPanel.tsx` - Panneau inférieur
 - `src/components/driver/RideRequest.tsx` - Modal d'acceptation
+- `src/components/driver/MobileNav.tsx` - Navigation mobile
+- `src/app/driver-portal/template.tsx` - Transitions de page
 
 **Fichiers supprimés :**
 - `src/components/drivers/DriverDashboardClient.tsx` (vieille version)
