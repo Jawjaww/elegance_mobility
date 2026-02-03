@@ -25,55 +25,94 @@ export function DriverMap({ pickup, dropoff, showRoute = false }: DriverMapProps
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || map.current) return
+    if (!mapContainer.current || map.current) {
+      console.log('[Map] Skip init - container:', !!mapContainer.current, 'map:', !!map.current)
+      return
+    }
 
-    map.current = new maplibregl.Map({
-      container: mapContainer.current,
-      style: {
-        version: 8,
-        sources: {
-          'carto-dark': {
+    // Check container has dimensions
+    const rect = mapContainer.current.getBoundingClientRect()
+    console.log('[Map] Container size:', rect.width, 'x', rect.height)
+    
+    if (rect.width === 0 || rect.height === 0) {
+      console.warn('[Map] Container has no dimensions, retrying in 100ms...')
+      setTimeout(() => {
+        if (mapContainer.current && !map.current) {
+          // Retry initialization
+        }
+      }, 100)
+      return
+    }
+
+    try {
+      console.log('[Map] Initializing...')
+      map.current = new maplibregl.Map({
+        container: mapContainer.current,
+        style: {
+          version: 8,
+          sources: {
+            'carto-dark': {
+              type: 'raster',
+              tiles: [
+                'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+                'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+                'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+                'https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'
+              ],
+              tileSize: 256,
+              attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+            }
+          },
+          layers: [{
+            id: 'carto-dark-layer',
             type: 'raster',
-            tiles: [
-              'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-              'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-              'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-              'https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'
-            ],
-            tileSize: 256,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          }
+            source: 'carto-dark',
+            minzoom: 0,
+            maxzoom: 22
+          }]
         },
-        layers: [{
-          id: 'carto-dark-layer',
-          type: 'raster',
-          source: 'carto-dark',
-          minzoom: 0,
-          maxzoom: 22
-        }]
-      },
-      center: [2.3522, 48.8566], // Paris
-      zoom: 13,
-      pitch: 45, // 3D effect
-      bearing: 0,
-      attributionControl: false
-    })
+        center: [2.3522, 48.8566], // Paris
+        zoom: 13,
+        pitch: 0, // Disable 3D for better compatibility
+        bearing: 0,
+        attributionControl: false
+      })
 
-    // Add navigation control
-    map.current.addControl(
-      new maplibregl.NavigationControl({
-        showCompass: true,
-        showZoom: false,
-        visualizePitch: true
-      }),
-      'bottom-right'
-    )
+      map.current.on('load', () => {
+        console.log('[Map] Loaded successfully')
+        setIsMapLoaded(true)
+      })
 
-    map.current.on('load', () => {
-      setIsMapLoaded(true)
-    })
+      map.current.on('error', (e) => {
+        console.error('[Map] Error:', e)
+      })
+
+      // Add navigation control after load
+      map.current.on('load', () => {
+        map.current?.addControl(
+          new maplibregl.NavigationControl({
+            showCompass: false,
+            showZoom: true,
+            visualizePitch: false
+          }),
+          'bottom-right'
+        )
+      })
+    } catch (err) {
+      console.error('[Map] Failed to initialize:', err)
+    }
+
+    // Handle resize
+    const handleResize = () => {
+      if (map.current) {
+        map.current.resize()
+      }
+    }
+    window.addEventListener('resize', handleResize)
 
     return () => {
+      console.log('[Map] Cleaning up...')
+      window.removeEventListener('resize', handleResize)
       map.current?.remove()
       map.current = null
     }
@@ -249,18 +288,65 @@ export function DriverMap({ pickup, dropoff, showRoute = false }: DriverMapProps
     }
   }, [pickup, dropoff, showRoute, isMapLoaded])
 
+  const [hasError, setHasError] = useState(false)
+
+  // Error handler
+  useEffect(() => {
+    if (!map.current) return
+    
+    const handleError = (e: any) => {
+      console.error('[Map] Error event:', e)
+      setHasError(true)
+    }
+    
+    map.current.on('error', handleError)
+    
+    // Timeout for loading
+    const timeout = setTimeout(() => {
+      if (!isMapLoaded) {
+        console.warn('[Map] Loading timeout')
+        setHasError(true)
+      }
+    }, 10000)
+    
+    return () => clearTimeout(timeout)
+  }, [isMapLoaded])
+
+  const retryLoad = () => {
+    setHasError(false)
+    setIsMapLoaded(false)
+    map.current?.remove()
+    map.current = null
+    // Force re-render
+    window.location.reload()
+  }
+
   return (
-    <div className="relative w-full h-full bg-neutral-900 rounded-2xl overflow-hidden">
-      <div ref={mapContainer} className="absolute inset-0" />
+    <div className="relative w-full h-full min-h-[300px] bg-neutral-900 overflow-hidden" style={{ height: '100%', width: '100%' }}>
+      <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
       
       {/* Loading state */}
-      {!isMapLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-neutral-950">
+      {!isMapLoaded && !hasError && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-neutral-950">
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-            className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full"
+            className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full mb-4"
           />
+          <p className="text-neutral-400 text-sm">Chargement de la carte...</p>
+        </div>
+      )}
+
+      {/* Error state */}
+      {hasError && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-neutral-950 p-4">
+          <p className="text-neutral-400 text-sm mb-4 text-center">Impossible de charger la carte</p>
+          <button 
+            onClick={retryLoad}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          >
+            Réessayer
+          </button>
         </div>
       )}
 

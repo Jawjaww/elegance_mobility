@@ -35,6 +35,13 @@ export function useDriverLocation(enabled: boolean) {
     setCurrentLocation(location)
 
     try {
+      // Vérifier auth d'abord
+      const { data: userData, error: authError } = await supabase.auth.getUser()
+      if (authError || !userData.user) {
+        console.warn('[Location] Not authenticated, skipping update')
+        return
+      }
+
       // Essayer d'abord la fonction RPC
       const { data, error } = await supabase
         .rpc('update_driver_location', {
@@ -48,10 +55,10 @@ export function useDriverLocation(enabled: boolean) {
         console.warn('[Location] RPC failed, trying direct upsert:', error.message)
         
         // Fallback: upsert direct
-        const { error: upsertError } = await supabase
+        const { data: upsertData, error: upsertError } = await supabase
           .from('driver_locations')
           .upsert({
-            driver_id: (await supabase.auth.getUser()).data.user?.id,
+            driver_id: userData.user.id,
             lat: location.lat,
             lng: location.lng,
             heading: location.heading,
@@ -62,13 +69,10 @@ export function useDriverLocation(enabled: boolean) {
           }, {
             onConflict: 'driver_id'
           })
+          .select()
         
         if (upsertError) {
-          console.error('[Location] Upsert error:', {
-            message: upsertError.message,
-            details: upsertError.details,
-            code: upsertError.code
-          })
+          console.error('[Location] Upsert error:', JSON.stringify(upsertError, null, 2))
           // Retry avec backoff
           if (retryCount.current < 3) {
             retryCount.current++
@@ -76,7 +80,7 @@ export function useDriverLocation(enabled: boolean) {
           }
         } else {
           retryCount.current = 0
-          console.log('[Location] Updated via upsert')
+          console.log('[Location] Updated via upsert:', upsertData)
         }
       } else {
         retryCount.current = 0

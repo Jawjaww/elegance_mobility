@@ -40,7 +40,7 @@ export default function DriverDashboardPage() {
   return (
     <div className="fixed inset-0 bg-neutral-950">
       {/* Full screen map as background */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 h-full w-full">
         <DriverMap 
           pickup={pickupLocation} 
           dropoff={dropoffLocation}
