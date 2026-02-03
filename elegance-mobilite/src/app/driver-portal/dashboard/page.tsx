@@ -1,159 +1,214 @@
 'use client'
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Car, Clock, MapPin, Wallet, Star, Calendar } from "lucide-react"
-import Link from "next/link"
+import { useEffect } from 'react'
+import { motion } from 'framer-motion'
+import { Car, Clock, DollarSign, Star, MapPin, Settings } from 'lucide-react'
+import Link from 'next/link'
+import { useDriverStore } from '@/stores/driverStore'
+import { useRealtimeRides } from '@/hooks/useRealtimeRides'
+import { useDriverLocation } from '@/hooks/useDriverLocation'
+import { useWakeLock } from '@/hooks/useWakeLock'
+import { usePWA } from '@/hooks/usePWA'
+import { OnlineToggle } from '@/components/driver/OnlineToggle'
+import { RideRequestModal } from '@/components/driver/RideRequestModal'
+import { DriverMap } from '@/components/driver/DriverMap'
+import { Button } from '@/components/ui/button'
 
 export default function DriverDashboardPage() {
+  const { isOnline, stats, activeRide } = useDriverStore()
+  const { hasPendingRide } = useRealtimeRides()
+  const { isInstalled, canInstall, install } = usePWA()
+  
+  // Activer les features quand online
+  useDriverLocation(isOnline)
+  useWakeLock(isOnline)
+
+  // Demander permission notifs au premier online
+  useEffect(() => {
+    if (isOnline && 'Notification' in window) {
+      Notification.requestPermission()
+    }
+  }, [isOnline])
+
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-neutral-950 pb-24">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Tableau de bord</h1>
-          <p className="text-neutral-400 mt-1">Bienvenue dans votre espace chauffeur</p>
-        </div>
-        <Link href="/driver-portal/rides/available">
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            <Car className="w-4 h-4 mr-2" />
-            Voir les courses disponibles
-          </Button>
-        </Link>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-neutral-400">Courses aujourd'hui</CardDescription>
-            <CardTitle className="text-2xl text-white">0</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center text-sm text-neutral-500">
-              <Car className="w-4 h-4 mr-1" />
-              En cours: 0
+      <motion.header 
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="sticky top-0 z-40 bg-neutral-950/80 backdrop-blur-xl border-b border-neutral-800"
+      >
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-700 rounded-xl flex items-center justify-center">
+              <Car className="w-5 h-5 text-white" />
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-neutral-400">Revenus du jour</CardDescription>
-            <CardTitle className="text-2xl text-white">0 €</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center text-sm text-emerald-500">
-              <Wallet className="w-4 h-4 mr-1" />
-              Cette semaine: 0 €
+            <div>
+              <h1 className="font-bold text-white">Elegance Driver</h1>
+              <p className="text-xs text-neutral-400">
+                {isOnline ? '🟢 En ligne' : '⚪ Hors ligne'}
+              </p>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-neutral-400">Note moyenne</CardDescription>
-            <CardTitle className="text-2xl text-white">--</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center text-sm text-yellow-500">
-              <Star className="w-4 h-4 mr-1" />
-              Basé sur 0 avis
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-neutral-400">Temps de connexion</CardDescription>
-            <CardTitle className="text-2xl text-white">--</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center text-sm text-neutral-500">
-              <Clock className="w-4 h-4 mr-1" />
-              Aujourd'hui
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Upcoming Rides */}
-        <Card className="lg:col-span-2 bg-neutral-900 border-neutral-800">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center">
-              <Calendar className="w-5 h-5 mr-2" />
-              Prochaines courses
-            </CardTitle>
-            <CardDescription className="text-neutral-400">
-              Vos courses planifiées
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8 text-neutral-500">
-              <MapPin className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>Aucune course planifiée</p>
-              <Link href="/driver-portal/rides/available">
-                <Button variant="outline" className="mt-4 border-neutral-700 text-neutral-300 hover:bg-neutral-800">
-                  Chercher des courses
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions */}
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader>
-            <CardTitle className="text-white">Actions rapides</CardTitle>
-            <CardDescription className="text-neutral-400">
-              Accès rapide aux fonctionnalités
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Link href="/driver-portal/rides">
-              <Button variant="outline" className="w-full justify-start border-neutral-700 text-neutral-300 hover:bg-neutral-800">
-                <Car className="w-4 h-4 mr-2" />
-                Mes courses
-              </Button>
-            </Link>
-            <Link href="/driver-portal/earnings">
-              <Button variant="outline" className="w-full justify-start border-neutral-700 text-neutral-300 hover:bg-neutral-800">
-                <Wallet className="w-4 h-4 mr-2" />
-                Mes revenus
-              </Button>
-            </Link>
-            <Link href="/driver-portal/schedule">
-              <Button variant="outline" className="w-full justify-start border-neutral-700 text-neutral-300 hover:bg-neutral-800">
-                <Calendar className="w-4 h-4 mr-2" />
-                Mon planning
-              </Button>
-            </Link>
-            <Link href="/driver-portal/profile">
-              <Button variant="outline" className="w-full justify-start border-neutral-700 text-neutral-300 hover:bg-neutral-800">
-                <Star className="w-4 h-4 mr-2" />
-                Mon profil
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Available Rides Alert */}
-      <Card className="bg-gradient-to-r from-blue-950/50 to-neutral-900 border-blue-500/20">
-        <CardContent className="flex items-center justify-between py-6">
-          <div>
-            <h3 className="text-lg font-semibold text-white">Courses disponibles</h3>
-            <p className="text-neutral-400">Consultez les courses en attente d'un chauffeur</p>
           </div>
-          <Link href="/driver-portal/rides/available">
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              Voir les offres
+          
+          <Link href="/driver-portal/profile">
+            <Button variant="ghost" size="icon" className="text-neutral-400 hover:text-white">
+              <Settings className="w-5 h-5" />
             </Button>
           </Link>
-        </CardContent>
-      </Card>
+        </div>
+      </motion.header>
+
+      <div className="px-4 py-4 space-y-4">
+        {/* Install PWA prompt (if not installed) */}
+        {!isInstalled && canInstall && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl p-4 flex items-center justify-between"
+          >
+            <div>
+              <p className="font-medium text-white">Installer l&apos;app</p>
+              <p className="text-sm text-blue-200">Pour recevoir les courses en arrière-plan</p>
+            </div>
+            <Button 
+              onClick={install}
+              variant="secondary"
+              size="sm"
+              className="bg-white text-blue-700 hover:bg-blue-50"
+            >
+              Installer
+            </Button>
+          </motion.div>
+        )}
+
+        {/* Map (only when online) */}
+        {isOnline && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="h-[300px] rounded-2xl overflow-hidden"
+          >
+            <DriverMap />
+          </motion.div>
+        )}
+
+        {/* Stats Grid */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="grid grid-cols-2 gap-3"
+        >
+          <StatCard
+            icon={<DollarSign className="w-5 h-5 text-green-500" />}
+            value={`${stats.todayEarnings.toFixed(2)}€`}
+            label="Aujourd'hui"
+            trend="+12%"
+          />
+          <StatCard
+            icon={<Car className="w-5 h-5 text-blue-500" />}
+            value={stats.todayRides.toString()}
+            label="Courses"
+          />
+          <StatCard
+            icon={<Clock className="w-5 h-5 text-purple-500" />}
+            value={`${Math.floor(stats.onlineTimeMinutes / 60)}h${stats.onlineTimeMinutes % 60}m`}
+            label="En ligne"
+          />
+          <StatCard
+            icon={<Star className="w-5 h-5 text-yellow-500" />}
+            value={stats.rating > 0 ? stats.rating.toFixed(1) : '--'}
+            label="Note"
+          />
+        </motion.div>
+
+        {/* Main Toggle */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <OnlineToggle />
+        </motion.div>
+
+        {/* Status message */}
+        {isOnline && !hasPendingRide && !activeRide && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-8"
+          >
+            <div className="w-20 h-20 bg-neutral-900 rounded-full flex items-center justify-center mx-auto mb-4">
+              <MapPin className="w-8 h-8 text-neutral-600 animate-bounce" />
+            </div>
+            <p className="text-neutral-400">En attente de courses...</p>
+            <p className="text-sm text-neutral-600 mt-1">Restez dans une zone active</p>
+          </motion.div>
+        )}
+
+        {/* Active ride indicator */}
+        {activeRide && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-blue-600 rounded-xl p-4"
+          >
+            <p className="font-bold text-white mb-1">🚗 Course en cours</p>
+            <p className="text-blue-200 text-sm mb-3">{activeRide.pickup_address}</p>
+            <Link href={`/driver-portal/rides/${activeRide.id}`}>
+              <Button className="w-full bg-white text-blue-600 hover:bg-blue-50">
+                Voir la course
+              </Button>
+            </Link>
+          </motion.div>
+        )}
+      </div>
+
+      {/* Ride Request Modal (slides up) */}
+      <RideRequestModal />
+
+      {/* Install prompt for iOS (Safari doesn't support beforeinstallprompt) */}
+      {!isInstalled && !canInstall && (
+        <div className="fixed bottom-20 left-4 right-4 bg-neutral-900 border border-neutral-800 rounded-xl p-4 text-center">
+          <p className="text-sm text-neutral-400">
+            📱 Pour installer: Touchez 
+            <span className="inline-flex items-center mx-1">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
+                <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd"/>
+              </svg>
+            </span>
+            puis &quot;Sur l&apos;écran d&apos;accueil&quot;
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Stat Card Component
+function StatCard({ 
+  icon, 
+  value, 
+  label, 
+  trend 
+}: { 
+  icon: React.ReactNode
+  value: string
+  label: string
+  trend?: string 
+}) {
+  return (
+    <div className="bg-neutral-900 rounded-xl p-4 border border-neutral-800">
+      <div className="flex items-start justify-between mb-2">
+        <div className="p-2 bg-neutral-800 rounded-lg">{icon}</div>
+        {trend && (
+          <span className="text-xs text-green-500 font-medium">{trend}</span>
+        )}
+      </div>
+      <p className="text-2xl font-bold text-white">{value}</p>
+      <p className="text-sm text-neutral-500">{label}</p>
     </div>
   )
 }
