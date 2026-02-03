@@ -1,9 +1,8 @@
 'use client'
 
 import { useEffect } from 'react'
-import { DriverHeader } from "@/components/layout/DriverHeader"
-import { AuthCheck } from "@/components/auth/AuthCheck"
 import { usePathname } from "next/navigation"
+import { DriverHeader } from "@/components/layout/DriverHeader"
 import { usePWA } from "@/hooks/usePWA"
 
 export default function DriverPortalLayout({
@@ -12,12 +11,10 @@ export default function DriverPortalLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const { isStandalone } = usePWA()
-  
-  // Ne pas appliquer AuthCheck sur la page de login (évite les boucles infinies)
   const isLoginPage = pathname === '/driver-portal/login'
-  
-  // Enregistrer le Service Worker
+  const isDashboard = pathname === '/driver-portal/dashboard' || pathname === '/driver-portal'
+
+  // Register Service Worker
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
@@ -34,15 +31,22 @@ export default function DriverPortalLayout({
     )
   }
 
-  return (
-    <AuthCheck allowedRoles={['app_driver']} redirectTo="/auth/login?from=driver">
-      <div className={`min-h-screen bg-neutral-950 text-white ${isStandalone ? 'standalone-app' : ''}`}>
-        <DriverHeader />
-        {/* Layout mobile: pas de padding excessif sur mobile */}
-        <main className="max-w-lg mx-auto">
-          {children}
-        </main>
+  // Dashboard is full-screen map, no header
+  if (isDashboard) {
+    return (
+      <div className="fixed inset-0 bg-neutral-950 text-white overflow-hidden">
+        {children}
       </div>
-    </AuthCheck>
+    )
+  }
+
+  // Other pages have header
+  return (
+    <div className="min-h-screen bg-neutral-950 text-white">
+      <DriverHeader />
+      <main className="pb-24">
+        {children}
+      </main>
+    </div>
   )
 }
