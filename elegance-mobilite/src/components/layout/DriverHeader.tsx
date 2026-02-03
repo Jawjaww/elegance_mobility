@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { Home, Car, Wallet, User } from "lucide-react"
-import { useDriverStore } from "@/stores/driverStore"
+import { useDriverStore } from "@/lib/driver/store"
 
 const BOTTOM_NAV_ITEMS = [
   { name: "Accueil", href: "/driver-portal/dashboard", icon: Home },

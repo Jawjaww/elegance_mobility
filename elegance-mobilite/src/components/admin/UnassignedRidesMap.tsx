@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 import { useEffect } from "react"
 import { useUnassignedRidesStore } from "@/lib/unassignedRidesStore"
-import { MapMarker } from "@/lib/types/map-types"
+import { MapMarker, Location } from "@/lib/types/map-types"
 import { Card } from "@/components/ui/card"
 import MapLibreMap from "@/components/map/MapLibreMap" // Nouveau composant MapLibre
 
@@ -50,7 +50,7 @@ export function UnassignedRidesMap() {
 
   // Créer la location de départ pour la première course
   const firstRide = rides[0]
-  const departure = firstRide ? {
+  const departure: Location | null = firstRide?.pickup_lat && firstRide?.pickup_lon ? {
     display_name: firstRide.pickup_address,
     lat: firstRide.pickup_lat,
     lon: firstRide.pickup_lon,
@@ -58,7 +58,7 @@ export function UnassignedRidesMap() {
   } : null
   
   // Utiliser Paris comme valeur par défaut
-  const initialCenter = departure || {
+  const initialCenter: Location = departure || {
     display_name: "Paris",
     lat: 48.8566,
     lon: 2.3522,

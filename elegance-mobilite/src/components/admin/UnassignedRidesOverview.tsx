@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { useUnassignedRidesStore } from "@/lib/unassignedRidesStore"
 import MapLibreMap from "@/components/map/MapLibreMap" // Nouveau composant MapLibre
+import { Location } from "@/lib/types/map-types"
 
 export function UnassignedRidesOverview() {
   const router = useRouter()
@@ -32,7 +33,7 @@ export function UnassignedRidesOverview() {
 
   // Créer la location de départ pour la première course
   const firstRide = rides[0]
-  const departure = firstRide ? {
+  const departure: Location | null = firstRide?.pickup_lat && firstRide?.pickup_lon ? {
     display_name: firstRide.pickup_address,
     lat: firstRide.pickup_lat,
     lon: firstRide.pickup_lon,
@@ -40,7 +41,7 @@ export function UnassignedRidesOverview() {
   } : null
   
   // Utiliser Paris comme valeur par défaut
-  const initialCenter = departure || {
+  const initialCenter: Location = departure || {
     display_name: "Paris",
     lat: 48.8566,
     lon: 2.3522,
@@ -85,7 +86,7 @@ export function UnassignedRidesOverview() {
               <div className="text-right">
                 <p className="font-medium">{ride.vehicle_type}</p>
                 <p className="text-sm text-neutral-400">
-                  {ride.distance_km} km - {ride.price}€
+                  {ride.distance ? `${ride.distance.toFixed(1)} km` : '--'} - {ride.estimated_price ? `${ride.estimated_price.toFixed(0)}€` : '--'}
                 </p>
               </div>
             </div>

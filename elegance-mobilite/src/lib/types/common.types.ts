@@ -161,15 +161,15 @@ import { getUserRole } from '@/lib/utils/auth-helpers';
  * @deprecated Utilisez getUserRole() de '@/lib/utils/auth-helpers'
  * Récupère le rôle applicatif depuis app_metadata uniquement
  */
-export function getAppRole(user?: User | null): string | undefined {
-  return getUserRole(user);
+export function getAppRole(user?: User | SupabaseUser | null): string | undefined {
+  return getUserRole(user as import('@supabase/supabase-js').User | null | undefined);
 }
 
 /**
  * @deprecated Utilisez isAdmin() de '@/lib/utils/roles'
  */
-export function isAdminUser(user?: User | null): boolean {
-  const role = getUserRole(user);
+export function isAdminUser(user?: User | SupabaseUser | null): boolean {
+  const role = getUserRole(user as import('@supabase/supabase-js').User | null | undefined);
   return role === 'app_admin' || role === 'app_super_admin';
 }
 

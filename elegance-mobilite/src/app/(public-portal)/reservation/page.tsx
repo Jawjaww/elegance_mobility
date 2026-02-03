@@ -7,13 +7,7 @@ import VehicleStep from "../../../components/reservation/VehicleStep";
 import { useReservation } from "../../../hooks/useReservation";
 import { useReservationStore } from "@/lib/stores/reservationStore";
 
-interface ReservationPageProps {
-  isEditing?: boolean;
-}
-
-export default function ReservationPage({
-  isEditing = false,
-}: ReservationPageProps) {
+export default function ReservationPage() {
   const router = useRouter();
   const { toast } = useToast();
   const reservationStore = useReservationStore();
@@ -43,7 +37,7 @@ export default function ReservationPage({
 
   // Gestion de la modification d'une réservation existante
   const handleCompleteReservation = async () => {
-    if (isEditing) {
+    if (false) {
       const reservationId = localStorage.getItem("currentEditingReservationId");
 
       if (!reservationId) {
@@ -77,7 +71,7 @@ export default function ReservationPage({
           {step === 1 ? (
             <LocationStep
               onNextStep={handleNextStep}
-              isEditing={isEditing}
+              isEditing={false}
               onLocationDetected={handleLocationDetected}
               onOriginChange={setOriginAddress}
               onDestinationChange={setDestinationAddress}
@@ -99,9 +93,9 @@ export default function ReservationPage({
               onOptionsChange={setOptions}
               onPrevious={handlePrevStep}
               onConfirm={
-                isEditing ? handleCompleteReservation : handleReservation
+                handleReservation
               }
-              isEditing={isEditing}
+              isEditing={false}
             />
           )}
         </div>

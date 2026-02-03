@@ -3,6 +3,13 @@
 import { VehicleType } from "@/lib/types/vehicle.types";
 import { supabase } from "@/lib/database/client";
 
+export interface Rate {
+  vehicleType: string;
+  basePrice: number;
+  pricePerKm: number;
+  minPrice: number;
+}
+
 interface PriceEstimate {
   basePrice: number;
   optionsPrice: number;

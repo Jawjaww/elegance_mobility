@@ -4,27 +4,27 @@ import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-plus-jakarta'
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-plus-jakarta",
 });
 
 export const metadata = {
   title: "Vector Elegans",
   description: "Service de transport VTC de luxe",
-  manifest: '/manifest.json',
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black-translucent',
-    title: 'Vector Elegans'
-  }
+    statusBarStyle: "black-translucent",
+    title: "Vector Elegans",
+  },
 };
 
 export const viewport = {
-  width: 'device-width',
+  width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#10b981'
+  themeColor: "#10b981",
 };
 
 /**
@@ -38,10 +38,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr">
-      <body className={`${plusJakarta.variable} font-plus-jakarta`}>
-        <ClientProviders>
-          {children}
-        </ClientProviders>
+      <body
+        className={`${plusJakarta.variable} font-plus-jakarta min-h-screen`}
+      >
+        <ClientProviders>{children}</ClientProviders>
       </body>
     </html>
   );

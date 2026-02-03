@@ -1,18 +1,18 @@
-import { Database } from '@/lib/types/common.types'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Edit2Icon, TrashIcon, CarIcon } from 'lucide-react'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import type { Database } from "@/lib/types/database.types";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Edit2Icon, TrashIcon, CarIcon } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-type Driver = Database['public']['Tables']['drivers']['Row']
-type Vehicle = Database['public']['Tables']['vehicles']['Row']
+type Driver = Database["public"]["Tables"]["drivers"]["Row"];
+type Vehicle = Database["public"]["Tables"]["vehicles"]["Row"];
 
 interface DriverCardProps {
-  driver: Driver
-  vehicle?: Vehicle | null
-  onEdit?: (driver: Driver) => void
-  onDelete?: (driver: Driver) => void
+  driver: Driver;
+  vehicle?: Vehicle | null;
+  onEdit?: (driver: Driver) => void;
+  onDelete?: (driver: Driver) => void;
 }
 
 export default function DriverCard({
@@ -23,24 +23,24 @@ export default function DriverCard({
 }: DriverCardProps) {
   const getDriverInitials = (name: string) => {
     return name
-      .split(' ')
+      .split(" ")
       .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-  }
+      .join("")
+      .toUpperCase();
+  };
 
   const getVehicleLabel = (type: string) => {
     switch (type) {
-      case 'STANDARD':
-        return 'Berline Standard'
-      case 'LUXURY':
-        return 'Berline Luxe'
-      case 'VAN':
-        return 'Van/Minibus'
+      case "STANDARD":
+        return "Berline Standard";
+      case "LUXURY":
+        return "Berline Luxe";
+      case "VAN":
+        return "Van/Minibus";
       default:
-        return type
+        return type;
     }
-  }
+  };
 
   return (
     <Card className="h-full">
@@ -48,18 +48,20 @@ export default function DriverCard({
         <div className="flex flex-1 items-center space-x-4">
           <Avatar className="h-12 w-12">
             <AvatarImage src={driver.avatar_url || undefined} />
-            <AvatarFallback>{getDriverInitials(driver.name)}</AvatarFallback>
+            <AvatarFallback>{getDriverInitials(`${driver.first_name || ''} ${driver.last_name || ''}`.trim())}</AvatarFallback>
           </Avatar>
           <div className="flex-1 space-y-1">
-            <CardTitle className="text-base font-medium">{driver.name}</CardTitle>
+            <CardTitle className="text-base font-medium">
+              {`${driver.first_name || ''} ${driver.last_name || ''}`.trim() || 'Chauffeur'}
+            </CardTitle>
             <p className="text-sm text-muted-foreground">{driver.phone}</p>
           </div>
         </div>
         <Badge
-          variant={driver.status === 'active' ? 'default' : 'secondary'}
+          variant={driver.status === "active" ? "default" : "secondary"}
           className="ml-auto"
         >
-          {driver.status === 'active' ? 'Actif' : 'Inactif'}
+          {driver.status === "active" ? "Actif" : "Inactif"}
         </Badge>
       </CardHeader>
       <CardContent>
@@ -69,17 +71,17 @@ export default function DriverCard({
               <CarIcon className="h-5 w-5 text-muted-foreground" />
               <div className="flex-1 space-y-1">
                 <p className="text-sm font-medium leading-none">
-                  {getVehicleLabel(vehicle.vehicle_type)}
+                  {getVehicleLabel(vehicle.vehicle_type || '')}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {vehicle.vehicle_model} - {vehicle.license_plate}
+                  {vehicle.make} {vehicle.model} - {vehicle.license_plate}
                 </p>
               </div>
             </div>
           )}
           <div className="space-y-2">
-            <p className="text-sm font-medium text-muted-foreground">Email</p>
-            <p className="text-sm">{driver.email}</p>
+            <p className="text-sm font-medium text-muted-foreground">Téléphone</p>
+            <p className="text-sm">{driver.phone || 'Non renseigné'}</p>
           </div>
           {(onEdit || onDelete) && (
             <div className="flex gap-2 pt-2">
@@ -110,5 +112,5 @@ export default function DriverCard({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

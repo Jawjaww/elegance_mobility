@@ -1,31 +1,24 @@
 'use client'
 
-import { useEffect } from 'react'
-import { usePathname } from "next/navigation"
-import { DriverHeader } from "@/components/layout/DriverHeader"
+import { usePathname } from 'next/navigation'
+import { DriverHeader } from '@/components/layout/DriverHeader'
 
-export default function DriverPortalLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function DriverLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const isLoginPage = pathname === '/driver-portal/login'
+  const isDashboard = pathname === '/driver-portal' || pathname === '/driver-portal/dashboard'
+  const isLogin = pathname === '/driver-portal/login'
 
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(console.error)
-    }
-  }, [])
+  // Dashboard gère son propre layout
+  if (isDashboard) return children
+  
+  // Login sans header
+  if (isLogin) return <div className="min-h-screen bg-neutral-950">{children}</div>
 
-  if (isLoginPage) {
-    return <div className="min-h-screen bg-neutral-950">{children}</div>
-  }
-
+  // Autres pages avec header
   return (
-    <div className="min-h-screen bg-neutral-950">
+    <div className="min-h-screen bg-neutral-950 pb-20">
       <DriverHeader />
-      <main className="pb-24">{children}</main>
+      {children}
     </div>
   )
 }

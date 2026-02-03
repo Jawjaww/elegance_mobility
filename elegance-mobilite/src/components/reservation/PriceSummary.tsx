@@ -40,14 +40,11 @@ export function PriceSummary() {
           return;
         }
 
-        const rates = pricingService.vehicleRates?.[vehicle] || 
-                      { baseFare: 30, perKmRate: 2, minPrice: 35 };
-        
         const result = await pricingService.calculatePrice(distance, vehicle, options);
         
         // Calculer séparément les composantes du prix
-        const basePrice = rates.baseFare || 0;
-        const kmPrice = distance * (rates.perKmRate || 0);
+        const basePrice = result.basePrice || 0;
+        const kmPrice = distance > 0 ? result.totalPrice - result.basePrice - result.optionsPrice : 0;
         const optionsPrice = result.optionsPrice || 0;
         const totalPrice = result.totalPrice || (basePrice + kmPrice + optionsPrice);
 

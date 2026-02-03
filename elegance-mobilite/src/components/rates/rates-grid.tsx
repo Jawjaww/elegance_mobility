@@ -1,27 +1,27 @@
-import { Database } from '@/lib/types/common.types'
-import RateCard from './rate-card'
+import type { Database } from "@/lib/types/database.types";
+import RateCard from "./rate-card";
 
-type Rate = Database['public']['Tables']['rates']['Row']
+type Rate = Database["public"]["Tables"]["rates"]["Row"];
 
 interface RatesGridProps {
-  rates: Rate[]
-  onEdit?: (rate: Rate) => void
-  onDelete?: (rate: Rate) => void
-  className?: string
+  rates: Rate[];
+  onEdit?: (rate: Rate) => void;
+  onDelete?: (rate: Rate) => void;
+  className?: string;
 }
 
 export default function RatesGrid({
   rates,
   onEdit,
   onDelete,
-  className = '',
+  className = "",
 }: RatesGridProps) {
   if (!rates.length) {
     return (
       <div className="text-center p-8 text-muted-foreground">
         Aucun tarif trouvé
       </div>
-    )
+    );
   }
 
   return (
@@ -37,5 +37,5 @@ export default function RatesGrid({
         />
       ))}
     </div>
-  )
+  );
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,7 +10,8 @@ import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 
-export default function ForgotPasswordPage() {
+// Composant qui utilise useSearchParams - doit être dans Suspense
+function ForgotPasswordForm() {
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState("")
@@ -19,22 +21,15 @@ export default function ForgotPasswordPage() {
 
   // Lire le paramètre d'erreur de l'URL
   useEffect(() => {
-    console.log('🔍 searchParams:', searchParams)
-    if (!searchParams) {
-      console.log('❌ searchParams est null')
-      return
-    }
+    if (!searchParams) return
     const errorParam = searchParams.get('error')
-    console.log('🔍 errorParam:', errorParam)
     if (errorParam) {
       const decodedError = decodeURIComponent(errorParam)
-      console.log('🔍 Définition de l\'erreur:', decodedError)
       setError(decodedError)
       // Nettoyer l'URL pour éviter de réafficher l'erreur au rechargement
       const newUrl = new URL(window.location.href)
       newUrl.searchParams.delete('error')
       window.history.replaceState({}, '', newUrl.toString())
-      console.log('🔍 URL nettoyée:', newUrl.toString())
     }
   }, [searchParams])
 
@@ -61,8 +56,6 @@ export default function ForgotPasswordPage() {
       setIsLoading(false)
     }
   }
-
-  console.log('🔍 Rendu - error:', error, 'message:', message)
 
   return (
     <Card>
@@ -126,5 +119,26 @@ export default function ForgotPasswordPage() {
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+// Page avec Suspense boundary
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={
+      <Card>
+        <CardHeader>
+          <CardTitle>Réinitialiser votre mot de passe</CardTitle>
+          <CardDescription>Chargement...</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-32 flex items-center justify-center">
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+          </div>
+        </CardContent>
+      </Card>
+    }>
+      <ForgotPasswordForm />
+    </Suspense>
   )
 }

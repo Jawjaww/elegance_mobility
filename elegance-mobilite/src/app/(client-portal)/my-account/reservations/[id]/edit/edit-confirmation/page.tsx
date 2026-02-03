@@ -1,8 +1,13 @@
 import { EditConfirmationDetails } from '@/components/reservation/EditConfirmationDetails';
+import { use } from 'react';
 
-export default async function Page({ params }: { params: { id: string } }) {
-  // Si tu dois faire un fetch ou autre ici, tu peux utiliser await
-  const reservationId = params.id;
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function Page({ params }: PageProps) {
+  const { id: reservationId } = await params;
+  
   if (!reservationId) {
     return (
       <div className="container mx-auto py-8 text-center">

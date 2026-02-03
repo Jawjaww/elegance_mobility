@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import {
   Card,
   CardContent,
@@ -11,18 +12,15 @@ import { AuthModal } from "./AuthModal";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/database/client";
-import { getAppRole } from "@/lib/types/common.types";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const from = searchParams?.get("from");
-  const redirectTo = searchParams?.get("redirectTo");
   const [isChecking, setIsChecking] = useState(true);
   const hasRedirected = useRef(false);
 
   useEffect(() => {
-    // Éviter les redirections multiples
     if (hasRedirected.current) return;
     
     const checkSession = async () => {
@@ -33,8 +31,6 @@ export default function LoginPage() {
         
         if (session?.user && !hasRedirected.current) {
           hasRedirected.current = true;
-          // Rediriger vers la page "déjà connecté" au lieu de forcer le dashboard
-          // Cela évite les boucles et donne le choix à l'utilisateur
           router.replace('/auth/already-connected?redirect=login');
           return;
         }
@@ -47,8 +43,7 @@ export default function LoginPage() {
     };
 
     checkSession();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // router retiré des dépendances pour éviter les boucles
+  }, []);
 
   const handleClose = () => {
     if (from) {
@@ -82,5 +77,29 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md">
+          <Card>
+            <CardHeader>
+              <CardTitle>Connexion</CardTitle>
+              <CardDescription>Chargement...</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

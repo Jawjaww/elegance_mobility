@@ -1,15 +1,15 @@
-import { Database } from '@/lib/types/common.types'
-import DriverCard from './driver-card'
+import type { Database } from "@/lib/types/database.types";
+import DriverCard from "./driver-card";
 
-type Driver = Database['public']['Tables']['drivers']['Row']
-type Vehicle = Database['public']['Tables']['vehicles']['Row']
+type Driver = Database["public"]["Tables"]["drivers"]["Row"];
+type Vehicle = Database["public"]["Tables"]["vehicles"]["Row"];
 
 interface DriversGridProps {
-  drivers: Driver[]
-  vehicles: Record<string, Vehicle>
-  onEdit?: (driver: Driver) => void
-  onDelete?: (driver: Driver) => void
-  className?: string
+  drivers: Driver[];
+  vehicles: Record<string, Vehicle>;
+  onEdit?: (driver: Driver) => void;
+  onDelete?: (driver: Driver) => void;
+  className?: string;
 }
 
 export default function DriversGrid({
@@ -17,14 +17,14 @@ export default function DriversGrid({
   vehicles,
   onEdit,
   onDelete,
-  className = '',
+  className = "",
 }: DriversGridProps) {
   if (!drivers.length) {
     return (
       <div className="text-center p-8 text-muted-foreground">
         Aucun chauffeur trouvé
       </div>
-    )
+    );
   }
 
   return (
@@ -35,11 +35,11 @@ export default function DriversGrid({
         <DriverCard
           key={driver.id}
           driver={driver}
-          vehicle={driver.vehicle_id ? vehicles[driver.vehicle_id] : null}
+          vehicle={driver.current_vehicle_id ? vehicles[driver.current_vehicle_id] : null}
           onEdit={onEdit}
           onDelete={onDelete}
         />
       ))}
     </div>
-  )
+  );
 }

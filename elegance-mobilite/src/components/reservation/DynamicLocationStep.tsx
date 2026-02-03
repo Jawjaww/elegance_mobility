@@ -1,6 +1,6 @@
 "use client";
  import dynamic from 'next/dynamic';
-import type { LocationStepProps } from '../../lib/types/types';
+import type { LocationStepProps } from './LocationStep';
 
 const DynamicLocationStep = dynamic<LocationStepProps>(() => import('./LocationStep').then(mod => mod.default), {
   ssr: false,

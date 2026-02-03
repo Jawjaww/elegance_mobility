@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
-  }
   public: {
     Tables: {
       audit_logs: {
@@ -157,6 +152,75 @@ export type Database = {
             columns: ["driver_id"]
             isOneToOne: false
             referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driver_locations: {
+        Row: {
+          accuracy: number | null
+          altitude: number | null
+          battery_level: number | null
+          driver_id: string
+          heading: number | null
+          id: string
+          is_on_ride: boolean
+          is_online: boolean
+          last_updated: string | null
+          lat: number
+          lng: number | null
+          lon: number
+          recorded_at: string
+          ride_id: string | null
+          speed: number | null
+        }
+        Insert: {
+          accuracy?: number | null
+          altitude?: number | null
+          battery_level?: number | null
+          driver_id: string
+          heading?: number | null
+          id?: string
+          is_on_ride?: boolean
+          is_online?: boolean
+          last_updated?: string | null
+          lat: number
+          lng?: number | null
+          lon: number
+          recorded_at?: string
+          ride_id?: string | null
+          speed?: number | null
+        }
+        Update: {
+          accuracy?: number | null
+          altitude?: number | null
+          battery_level?: number | null
+          driver_id?: string
+          heading?: number | null
+          id?: string
+          is_on_ride?: boolean
+          is_online?: boolean
+          last_updated?: string | null
+          lat?: number
+          lng?: number | null
+          lon?: number
+          recorded_at?: string
+          ride_id?: string | null
+          speed?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_locations_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: true
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_locations_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
             referencedColumns: ["id"]
           },
         ]
@@ -327,6 +391,104 @@ export type Database = {
           },
         ]
       }
+      favorite_addresses: {
+        Row: {
+          address: string
+          created_at: string
+          id: string
+          is_default: boolean
+          lat: number | null
+          lon: number | null
+          name: string
+          place_id: string | null
+          type: string | null
+          user_id: string
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          lat?: number | null
+          lon?: number | null
+          name: string
+          place_id?: string | null
+          type?: string | null
+          user_id: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          lat?: number | null
+          lon?: number | null
+          name?: string
+          place_id?: string | null
+          type?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          channel: string
+          created_at: string
+          data: Json | null
+          delivered_at: string | null
+          id: string
+          is_read: boolean
+          message: string
+          priority: string
+          read_at: string | null
+          ride_id: string | null
+          sent_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          data?: Json | null
+          delivered_at?: string | null
+          id?: string
+          is_read?: boolean
+          message: string
+          priority?: string
+          read_at?: string | null
+          ride_id?: string | null
+          sent_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          data?: Json | null
+          delivered_at?: string | null
+          id?: string
+          is_read?: boolean
+          message?: string
+          priority?: string
+          read_at?: string | null
+          ride_id?: string | null
+          sent_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       options: {
         Row: {
           available: boolean
@@ -356,6 +518,74 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          failure_reason: string | null
+          id: string
+          metadata: Json | null
+          method: string
+          paid_at: string | null
+          receipt_url: string | null
+          refund_amount: number | null
+          refunded_at: string | null
+          ride_id: string | null
+          status: string
+          stripe_customer_id: string | null
+          stripe_payment_intent_id: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          failure_reason?: string | null
+          id?: string
+          metadata?: Json | null
+          method: string
+          paid_at?: string | null
+          receipt_url?: string | null
+          refund_amount?: number | null
+          refunded_at?: string | null
+          ride_id?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_payment_intent_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          failure_reason?: string | null
+          id?: string
+          metadata?: Json | null
+          method?: string
+          paid_at?: string | null
+          receipt_url?: string | null
+          refund_amount?: number | null
+          refunded_at?: string | null
+          ride_id?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_payment_intent_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       promo_codes: {
         Row: {
@@ -492,6 +722,65 @@ export type Database = {
           vehicle_type?: Database["public"]["Enums"]["vehicle_type_enum"]
         }
         Relationships: []
+      }
+      reviews: {
+        Row: {
+          categories: Json | null
+          comment: string | null
+          created_at: string
+          id: string
+          is_reported: boolean
+          is_visible: boolean
+          moderated_at: string | null
+          moderated_by: string | null
+          rating: number
+          report_reason: string | null
+          reviewee_id: string
+          reviewer_id: string
+          ride_id: string
+          updated_at: string
+        }
+        Insert: {
+          categories?: Json | null
+          comment?: string | null
+          created_at?: string
+          id?: string
+          is_reported?: boolean
+          is_visible?: boolean
+          moderated_at?: string | null
+          moderated_by?: string | null
+          rating: number
+          report_reason?: string | null
+          reviewee_id: string
+          reviewer_id: string
+          ride_id: string
+          updated_at?: string
+        }
+        Update: {
+          categories?: Json | null
+          comment?: string | null
+          created_at?: string
+          id?: string
+          is_reported?: boolean
+          is_visible?: boolean
+          moderated_at?: string | null
+          moderated_by?: string | null
+          rating?: number
+          report_reason?: string | null
+          reviewee_id?: string
+          reviewer_id?: string
+          ride_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ride_status_history: {
         Row: {
@@ -882,6 +1171,13 @@ export type Database = {
             referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "vehicle_documents_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       vehicles: {
@@ -975,9 +1271,102 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      vehicles_public: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          driver_id: string | null
+          first_registration_date: string | null
+          fuel_type: string | null
+          id: string | null
+          is_primary: boolean | null
+          license_plate: string | null
+          make: string | null
+          model: string | null
+          owner_name: string | null
+          owner_user_id: string | null
+          photos: Json | null
+          registration_number: string | null
+          seats: number | null
+          submitted_at: string | null
+          submitted_by: string | null
+          updated_at: string | null
+          validation_status: string | null
+          vehicle_type: Database["public"]["Enums"]["vehicle_type_enum"] | null
+          vin: string | null
+          year: number | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          driver_id?: string | null
+          first_registration_date?: string | null
+          fuel_type?: string | null
+          id?: string | null
+          is_primary?: boolean | null
+          license_plate?: string | null
+          make?: string | null
+          model?: string | null
+          owner_name?: string | null
+          owner_user_id?: string | null
+          photos?: Json | null
+          registration_number?: string | null
+          seats?: number | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          updated_at?: string | null
+          validation_status?: string | null
+          vehicle_type?: Database["public"]["Enums"]["vehicle_type_enum"] | null
+          vin?: string | null
+          year?: number | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          driver_id?: string | null
+          first_registration_date?: string | null
+          fuel_type?: string | null
+          id?: string | null
+          is_primary?: boolean | null
+          license_plate?: string | null
+          make?: string | null
+          model?: string | null
+          owner_name?: string | null
+          owner_user_id?: string | null
+          photos?: Json | null
+          registration_number?: string | null
+          seats?: number | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          updated_at?: string | null
+          validation_status?: string | null
+          vehicle_type?: Database["public"]["Enums"]["vehicle_type_enum"] | null
+          vin?: string | null
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_vehicles_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      accept_ride: {
+        Args: { p_driver_id?: string; p_ride_id: string }
+        Returns: Json
+      }
+      calculate_driver_rating: {
+        Args: { driver_uuid: string }
+        Returns: {
+          avg_rating: number
+          total_reviews: number
+        }[]
+      }
       can_driver_accept_rides: {
         Args: { driver_user_id: string }
         Returns: {
@@ -995,9 +1384,8 @@ export type Database = {
           missing_fields: string[]
         }[]
       }
-      check_is_admin: { Args: never; Returns: boolean }
-      check_is_super_admin: { Args: never; Returns: boolean }
       check_user_role_update: { Args: never; Returns: boolean }
+      cleanup_old_driver_locations: { Args: never; Returns: undefined }
       create_pending_driver: {
         Args: {
           p_company_name?: string
@@ -1056,6 +1444,15 @@ export type Database = {
         Args: { driver_user_id: string }
         Returns: string
       }
+      find_nearby_drivers: {
+        Args: { p_lat: number; p_lng: number; p_radius_km?: number }
+        Returns: {
+          distance_meters: number
+          driver_id: string
+          heading: number
+          last_updated: string
+        }[]
+      }
       fix_all_driver_statuses: {
         Args: never
         Returns: {
@@ -1078,6 +1475,7 @@ export type Database = {
           old_status: Database["public"]["Enums"]["driver_status"]
         }[]
       }
+      get_auth_role: { Args: never; Returns: string }
       get_driver_completeness_details: {
         Args: { target_user_id?: string }
         Returns: {
@@ -1112,9 +1510,16 @@ export type Database = {
       get_safe_email: { Args: never; Returns: string }
       get_user_profile: { Args: { user_id: string }; Returns: Json }
       get_user_role: { Args: never; Returns: string }
+      has_any_role: { Args: { allowed_roles: string[] }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
+      is_customer: { Args: never; Returns: boolean }
       is_driver: { Args: never; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
+      mark_notification_read: {
+        Args: { notification_uuid: string }
+        Returns: undefined
+      }
+      set_driver_offline: { Args: never; Returns: undefined }
       setup_admin_policies: { Args: { admin_id: string }; Returns: undefined }
       test_driver_completeness_full: {
         Args: { target_user_id?: string }
@@ -1131,6 +1536,16 @@ export type Database = {
           p_file_url: string
         }
         Returns: boolean
+      }
+      update_driver_location: {
+        Args: {
+          p_accuracy?: number
+          p_heading?: number
+          p_lat: number
+          p_lng: number
+          p_speed?: number
+        }
+        Returns: undefined
       }
       update_driver_status_auto: {
         Args: { driver_user_id: string }
@@ -1324,3 +1739,4 @@ export const Constants = {
     },
   },
 } as const
+

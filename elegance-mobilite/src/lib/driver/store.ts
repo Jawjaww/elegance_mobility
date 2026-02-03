@@ -1,33 +1,10 @@
 /**
  * Driver Store - Zustand
- * Gestion de l'état du chauffeur (online/offline, course active, etc.)
+ * Gestion centralisée de l'état du chauffeur
  */
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-
-interface Ride {
-  id: string
-  pickup_address: string
-  dropoff_address: string
-  pickup_lat: number
-  pickup_lng: number
-  dropoff_lat: number
-  dropoff_lng: number
-  price: number
-  distance_km: number
-  estimated_duration_min: number
-  status: 'pending' | 'accepted' | 'picked_up' | 'completed' | 'cancelled'
-  passenger_name?: string
-  passenger_rating?: number
-  created_at: string
-}
-
-interface DriverStats {
-  todayEarnings: number
-  todayRides: number
-  onlineTimeMinutes: number
-  rating: number
-}
+import type { Ride, DriverStats, Location } from './types'
 
 interface DriverState {
   // État online/offline
@@ -48,8 +25,8 @@ interface DriverState {
   updateStats: (stats: Partial<DriverStats>) => void
   
   // Location
-  currentLocation: { lat: number; lng: number; heading?: number | null } | null
-  setCurrentLocation: (location: { lat: number; lng: number; heading?: number | null }) => void
+  currentLocation: Location | null
+  setCurrentLocation: (location: Location | null) => void
 }
 
 export const useDriverStore = create<DriverState>()(

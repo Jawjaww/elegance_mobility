@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -8,7 +9,8 @@ import { supabase } from "@/lib/database/client"
 import { LogOut, ArrowLeft, User } from "lucide-react"
 import { getAppRole } from "@/lib/types/common.types"
 
-export default function AlreadyConnectedPage() {
+// Composant qui utilise useSearchParams
+function AlreadyConnectedContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams?.get("redirect") || "login"
@@ -101,5 +103,28 @@ export default function AlreadyConnectedPage() {
           </Button>
         </CardContent>
       </Card>
+  )
+}
+
+// Page avec Suspense boundary
+export default function AlreadyConnectedPage() {
+  return (
+    <Suspense fallback={
+      <Card>
+        <CardHeader className="text-center pb-4">
+          <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-4">
+            <User className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+          </div>
+          <h1 className="text-2xl font-semibold">Chargement...</h1>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center p-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+          </div>
+        </CardContent>
+      </Card>
+    }>
+      <AlreadyConnectedContent />
+    </Suspense>
   )
 }

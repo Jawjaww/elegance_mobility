@@ -1,4 +1,4 @@
-import { MINIMUM_FARE, PREMIUM_MINIMUM_FARE } from '../../lib/rates'
+import { MINIMUM_FARE, PREMIUM_MINIMUM_FARE } from '@/lib/rates'
 
 export default function Rates() {
   return (

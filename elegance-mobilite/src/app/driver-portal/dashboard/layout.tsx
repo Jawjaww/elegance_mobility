@@ -1,11 +1,15 @@
-// Dashboard-specific layout - full screen, no hydration issues
+export const metadata = {
+  title: 'Elegance Driver - Dashboard',
+  description: 'Tableau de bord chauffeur',
+}
+
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
-    <div className="fixed inset-0 w-screen h-screen overflow-hidden">
+    <div className="h-screen w-full overflow-hidden bg-neutral-950">
       {children}
     </div>
   )
