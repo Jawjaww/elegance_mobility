@@ -4,22 +4,34 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AdminLoginForm } from "./AdminLoginForm"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { supabase } from "@/lib/database/client"
+import { getUserRole } from "@/lib/utils/auth-helpers"
 
 export default function AdminLoginPage() {
   const router = useRouter()
   const [isChecking, setIsChecking] = useState(true)
+  const hasRedirected = useRef(false)
   
   useEffect(() => {
+    // Éviter les redirections multiples
+    if (hasRedirected.current) return
+    
     const checkSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
         
-        if (session?.user) {
-          // Rediriger vers la page "déjà connecté" au lieu de forcer le dashboard
-          // Cela évite les boucles et donne le choix à l'utilisateur
-          router.replace('/auth/already-connected?redirect=login')
+        if (session?.user && !hasRedirected.current) {
+          hasRedirected.current = true
+          
+          // Vérifier si c'est un admin pour rediriger directement
+          const role = getUserRole(session.user)
+          if (role === 'app_admin' || role === 'app_super_admin') {
+            router.replace('/backoffice-portal/dashboard')
+          } else {
+            // Pas un admin - rediriger vers la page déjà connecté
+            router.replace('/auth/already-connected?redirect=login')
+          }
           return
         }
       } catch (error) {
@@ -30,11 +42,8 @@ export default function AdminLoginPage() {
     }
     
     checkSession()
-  }, [router])
-  
-  const handleClose = () => {
-    router.push('/') // Retour à l'accueil
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Pas de dépendances pour éviter les boucles
 
   if (isChecking) {
     return (

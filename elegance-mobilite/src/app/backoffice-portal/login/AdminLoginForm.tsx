@@ -52,9 +52,8 @@ export function AdminLoginForm() {
         description: "Vous êtes maintenant connecté",
       })
 
-      // Redirection vers le dashboard admin
+      // Redirection vers le dashboard admin (sans refresh pour éviter les boucles)
       router.push('/backoffice-portal/dashboard')
-      router.refresh()
 
     } catch (error: any) {
       toast({

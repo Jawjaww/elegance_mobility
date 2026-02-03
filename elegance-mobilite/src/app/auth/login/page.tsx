@@ -47,7 +47,8 @@ export default function LoginPage() {
     };
 
     checkSession();
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // router retiré des dépendances pour éviter les boucles
 
   const handleClose = () => {
     if (from) {
