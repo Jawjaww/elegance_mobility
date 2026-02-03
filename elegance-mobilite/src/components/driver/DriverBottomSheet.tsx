@@ -44,12 +44,16 @@ export function DriverBottomSheet() {
     const velocity = info.velocity.y
     const offset = info.offset.y
 
-    // Swipe vers le haut (velocity négative) = expand
-    // Swipe vers le bas (velocity positive) = collapse
-    if (velocity < -500 || offset < -100) {
-      setSheetState('expanded')
-    } else if (velocity > 500 || offset > 100) {
-      setSheetState(sheetState === 'expanded' ? 'peek' : 'collapsed')
+    // Swipe vers le haut (velocity négative) = monter
+    // Swipe vers le bas (velocity positive) = descendre
+    if (velocity < -300 || offset < -80) {
+      // Monter d'un niveau
+      if (sheetState === 'collapsed') setSheetState('peek')
+      else if (sheetState === 'peek') setSheetState('expanded')
+    } else if (velocity > 300 || offset > 80) {
+      // Descendre d'un niveau
+      if (sheetState === 'expanded') setSheetState('peek')
+      else if (sheetState === 'peek') setSheetState('collapsed')
     }
   }
 
@@ -108,9 +112,9 @@ export function DriverBottomSheet() {
           y: 0 
         }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        drag={sheetState !== 'expanded' ? 'y' : false}
-        dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={0.2}
+        drag="y"
+        dragConstraints={{ top: -100, bottom: 100 }}
+        dragElastic={0.3}
         onDragEnd={handleDragEnd}
         style={{ y }}
       >
