@@ -152,26 +152,45 @@ export type FilterRideStatus = RideStatus | 'all';
 // Types de véhicules
 export type VehicleType = 'STANDARD' | 'PREMIUM' | 'VAN' | 'ELECTRIC'
 
-// Helpers de vérification des rôles sans modification du type User
+// Helpers de vérification des rôles
+// DEPRECATED: Utilisez plutôt les fonctions de '@/lib/utils/roles' ou '@/lib/utils/auth-helpers'
 
+import { getUserRole } from '@/lib/utils/auth-helpers';
+
+/**
+ * @deprecated Utilisez getUserRole() de '@/lib/utils/auth-helpers'
+ * Récupère le rôle applicatif depuis app_metadata uniquement
+ */
 export function getAppRole(user?: User | null): string | undefined {
-  return (
-    (user as any)?.app_metadata?.role ||
-    (user as any)?.raw_app_meta_data?.role ||
-    (user as any)?.user_metadata?.role ||
-    user?.role
-  );
+  return getUserRole(user);
 }
 
-export function isAdmin(user?: User | null): boolean {
-  const role = getAppRole(user);
+/**
+ * @deprecated Utilisez isAdmin() de '@/lib/utils/roles'
+ */
+export function isAdminUser(user?: User | null): boolean {
+  const role = getUserRole(user);
   return role === 'app_admin' || role === 'app_super_admin';
 }
 
-export function isDriver(user?: User | null): boolean {
-  return getAppRole(user) === 'app_driver';
+/**
+ * @deprecated Utilisez isDriver() de '@/lib/utils/roles'
+ */
+export function isDriverUser(user?: User | null): boolean {
+  return getUserRole(user) === 'app_driver';
 }
 
-export function isCustomer(user?: User | null): boolean {
-  return getAppRole(user) === 'app_customer';
+/**
+ * @deprecated Utilisez isCustomer() de '@/lib/utils/roles'
+ */
+export function isCustomerUser(user?: User | null): boolean {
+  return getUserRole(user) === 'app_customer';
 }
+
+// Garde les anciens noms pour compatibilité mais marque comme deprecated
+/** @deprecated */
+export const isAdmin = isAdminUser;
+/** @deprecated */
+export const isDriver = isDriverUser;
+/** @deprecated */
+export const isCustomer = isCustomerUser;

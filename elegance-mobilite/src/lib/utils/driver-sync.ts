@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/database/client'
+import { getUserRole, isUserAdmin } from '@/lib/utils/auth-helpers'
 
 /**
  * Utilitaires pour la synchronisation des chauffeurs
@@ -18,8 +19,9 @@ export async function syncExistingDrivers() {
       throw new Error('Utilisateur non connecté')
     }
 
-    const userRole = user.app_metadata?.role || user.user_metadata?.role
-    if (!['app_admin', 'app_super_admin'].includes(userRole)) {
+    // Utilise uniquement app_metadata (serveur) pour la vérification du rôle
+    const userRole = getUserRole(user)
+    if (!isUserAdmin(user)) {
       throw new Error('Accès refusé - rôle administrateur requis')
     }
 

@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerSupabaseClient } from "@/lib/database/server";
+import { getUserRole, isUserAdmin } from "@/lib/utils/auth-helpers";
+import { ROLES } from "@/lib/utils/roles";
 import { cookies } from "next/headers";
 
 export async function GET(request: NextRequest) {
@@ -24,9 +26,12 @@ export async function GET(request: NextRequest) {
 
       if (data?.session) {
         console.log("✅ Session créée via verifyOtp");
-        const userRole = data.user?.app_metadata?.role || "user";
-        redirectTo =
-          userRole === "admin" ? "/backoffice-portal" : "/my-account";
+        // Source: app_metadata uniquement (serveur)
+        const userRole = getUserRole(data.user);
+        redirectTo = isUserAdmin(data.user) 
+          ? "/backoffice-portal" 
+          : redirectTo;
+        
         (await cookies()).set("sb:token", data.session.access_token, {
           httpOnly: true,
           secure: true,
@@ -43,9 +48,12 @@ export async function GET(request: NextRequest) {
 
       if (data?.session) {
         console.log("✅ Session créée via exchangeCodeForSession");
-        const userRole = data.user?.app_metadata?.role || "user";
-        redirectTo =
-          userRole === "admin" ? "/backoffice-portal" : "/my-account";
+        // Source: app_metadata uniquement (serveur)
+        const userRole = getUserRole(data.user);
+        redirectTo = isUserAdmin(data.user) 
+          ? "/backoffice-portal" 
+          : redirectTo;
+        
         (await cookies()).set("sb:token", data.session.access_token, {
           httpOnly: true,
           secure: true,
