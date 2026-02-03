@@ -81,21 +81,21 @@ const MODERN_STYLE = {
   ]
 }
 
-// Fallback to raster style if vector fails
-const RASTER_STYLE = {
+// Light map style (CARTO Light)
+const LIGHT_STYLE = {
   version: 8 as const,
   sources: {
-    'carto-dark': {
+    'carto-light': {
       type: 'raster' as const,
-      tiles: ['https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'],
+      tiles: ['https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'],
       tileSize: 256,
       attribution: '&copy; CARTO'
     }
   },
   layers: [{
-    id: 'carto-dark-layer',
+    id: 'carto-light-layer',
     type: 'raster' as const,
-    source: 'carto-dark'
+    source: 'carto-light'
   }]
 }
 
@@ -115,7 +115,7 @@ export function DriverMap({ pickup, dropoff, showRoute = false }: DriverMapProps
     try {
       map.current = new maplibregl.Map({
         container: mapContainer.current,
-        style: RASTER_STYLE as any,
+        style: LIGHT_STYLE as any,
         center: [2.3522, 48.8566],
         zoom: 14,
         attributionControl: false,
@@ -125,20 +125,6 @@ export function DriverMap({ pickup, dropoff, showRoute = false }: DriverMapProps
 
       map.current.on('load', () => {
         setIsLoaded(true)
-        // Add 3D buildings if zoomed in
-        map.current?.addLayer({
-          'id': '3d-buildings',
-          'source': 'carto-dark',
-          'source-layer': 'building',
-          'type': 'fill-extrusion',
-          'minzoom': 15,
-          'paint': {
-            'fill-extrusion-color': '#1a1a1a',
-            'fill-extrusion-height': ['get', 'height'],
-            'fill-extrusion-base': ['get', 'min_height'],
-            'fill-extrusion-opacity': 0.6
-          }
-        } as any)
       })
 
       map.current.on('error', (e) => {
@@ -254,7 +240,7 @@ export function DriverMap({ pickup, dropoff, showRoute = false }: DriverMapProps
     <div className="w-full h-full relative">
       <div ref={mapContainer} className="absolute inset-0" />
       {!isLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-neutral-900">
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
           <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
         </div>
       )}
