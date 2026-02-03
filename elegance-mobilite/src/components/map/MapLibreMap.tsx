@@ -644,23 +644,32 @@ export default function MapLibreMap({
     activeMapInstances++;
     console.log(`[MapLibre ${mapInstanceIdRef.current}] Initialisation (Instances actives: ${activeMapInstances})`);
 
-    // Configuration du style de la carte
+    // Configuration du style de la carte - Style vectoriel moderne Stadia
     const mapStyle: maplibregl.StyleSpecification = {
       version: 8,
+      glyphs: 'https://tiles.stadiamaps.com/fonts/{fontstack}/{range}.pbf',
       sources: {
-        "osm-tiles": {
-          type: "raster",
-          tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-          tileSize: 256,
-          attribution: '© OpenStreetMap Contributors',
+        stadia: {
+          type: 'vector',
+          url: 'https://tiles.stadiamaps.com/data/openmaptiles.json'
         }
       },
       layers: [
-        {
-          id: "osm-tiles-layer",
-          type: "raster",
-          source: "osm-tiles",
-        }
+        // Water
+        { id: 'water', type: 'fill', source: 'stadia', 'source-layer': 'water', paint: { 'fill-color': '#dbeafe' } },
+        // Land
+        { id: 'land', type: 'fill', source: 'stadia', 'source-layer': 'landcover', paint: { 'fill-color': '#ffffff' } },
+        // Parks
+        { id: 'park', type: 'fill', source: 'stadia', 'source-layer': 'landcover', filter: ['in', 'class', 'park', 'forest'], paint: { 'fill-color': '#dcfce7' } },
+        // Buildings
+        { id: 'building', type: 'fill', source: 'stadia', 'source-layer': 'building', paint: { 'fill-color': '#e2e8f0', 'fill-opacity': 0.7 } },
+        // Roads
+        { id: 'road-motorway', type: 'line', source: 'stadia', 'source-layer': 'transportation', filter: ['==', 'class', 'motorway'], paint: { 'line-color': '#3b82f6', 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 3, 16, 12] } },
+        { id: 'road-primary', type: 'line', source: 'stadia', 'source-layer': 'transportation', filter: ['==', 'class', 'primary'], paint: { 'line-color': '#f59e0b', 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 3, 16, 10] } },
+        { id: 'road-secondary', type: 'line', source: 'stadia', 'source-layer': 'transportation', filter: ['in', 'class', 'secondary', 'tertiary'], paint: { 'line-color': '#fcd34d', 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 2, 16, 8] } },
+        { id: 'road-tertiary', type: 'line', source: 'stadia', 'source-layer': 'transportation', filter: ['in', 'class', 'tertiary', 'residential'], paint: { 'line-color': '#e2e8f0', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1.5, 16, 6] } },
+        // Labels
+        { id: 'label-place', type: 'symbol', source: 'stadia', 'source-layer': 'place', filter: ['in', 'class', 'city', 'town'], layout: { 'text-field': '{name}', 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 8, 12, 14, 18] }, paint: { 'text-color': '#1e293b', 'text-halo-color': '#ffffff', 'text-halo-width': 2 } }
       ]
     };
 
