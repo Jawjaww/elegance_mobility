@@ -1,8 +1,9 @@
 'use client'
 
-import { DriverHeader } from "@/components/layout/DriverHeader"
-import { AuthCheck } from "@/components/auth/AuthCheck"
+import { useEffect, useState } from 'react'
 import { usePathname } from "next/navigation"
+import { DriverHeader } from "@/components/layout/DriverHeader"
+import { usePWA } from "@/hooks/usePWA"
 
 export default function DriverPortalLayout({
   children,
@@ -10,10 +11,30 @@ export default function DriverPortalLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
+  const [mounted, setMounted] = useState(false)
   
-  // Ne pas appliquer AuthCheck sur la page de login (évite les boucles infinies)
+  // Register Service Worker
+  useEffect(() => {
+    setMounted(true)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('[PWA] SW registered:', reg.scope))
+        .catch(err => console.error('[PWA] SW registration failed:', err))
+    }
+  }, [])
+
+  // Prevent hydration mismatch - render consistent initial HTML
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-neutral-950 text-white">
+        {children}
+      </div>
+    )
+  }
+
   const isLoginPage = pathname === '/driver-portal/login'
-  
+  const isDashboard = pathname === '/driver-portal/dashboard' || pathname === '/driver-portal'
+
   if (isLoginPage) {
     return (
       <div className="min-h-screen bg-neutral-950 text-white">
@@ -22,14 +43,22 @@ export default function DriverPortalLayout({
     )
   }
 
-  return (
-    <AuthCheck allowedRoles={['app_driver']} redirectTo="/auth/login?from=driver">
-      <div className="min-h-screen bg-neutral-950 text-white">
-        <DriverHeader />
-        <main className="container mx-auto px-4 py-8">
-          {children}
-        </main>
+  // Dashboard is full-screen map, no header
+  if (isDashboard) {
+    return (
+      <div className="fixed inset-0 bg-neutral-950 text-white overflow-hidden">
+        {children}
       </div>
-    </AuthCheck>
+    )
+  }
+
+  // Other pages have header
+  return (
+    <div className="min-h-screen bg-neutral-950 text-white">
+      <DriverHeader />
+      <main className="pb-24">
+        {children}
+      </main>
+    </div>
   )
 }
