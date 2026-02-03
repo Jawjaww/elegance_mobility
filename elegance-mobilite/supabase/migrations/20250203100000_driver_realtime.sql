@@ -1,28 +1,78 @@
 -- Migration: Driver Realtime System
 -- Description: Functions and tables for real-time driver tracking and ride acceptance
--- Compatible avec et sans PostGIS
 
 -- ============================================
--- Enable PostGIS (if available)
+-- Fix: Add columns if table exists but missing lat/lng
 -- ============================================
 DO $$
 BEGIN
-    CREATE EXTENSION IF NOT EXISTS postgis;
+    -- Add lat column if not exists
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'driver_locations' AND column_name = 'lat'
+    ) THEN
+        ALTER TABLE public.driver_locations ADD COLUMN lat numeric;
+    END IF;
+
+    -- Add lng column if not exists  
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'driver_locations' AND column_name = 'lng'
+    ) THEN
+        ALTER TABLE public.driver_locations ADD COLUMN lng numeric;
+    END IF;
+
+    -- Add is_online if not exists
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'driver_locations' AND column_name = 'is_online'
+    ) THEN
+        ALTER TABLE public.driver_locations ADD COLUMN is_online boolean DEFAULT false;
+    END IF;
+
+    -- Add last_updated if not exists
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'driver_locations' AND column_name = 'last_updated'
+    ) THEN
+        ALTER TABLE public.driver_locations ADD COLUMN last_updated timestamptz DEFAULT now();
+    END IF;
+    
+    -- Add heading if not exists
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'driver_locations' AND column_name = 'heading'
+    ) THEN
+        ALTER TABLE public.driver_locations ADD COLUMN heading numeric;
+    END IF;
+    
+    -- Add speed if not exists
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'driver_locations' AND column_name = 'speed'
+    ) THEN
+        ALTER TABLE public.driver_locations ADD COLUMN speed numeric;
+    END IF;
+    
+    -- Add accuracy if not exists
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'driver_locations' AND column_name = 'accuracy'
+    ) THEN
+        ALTER TABLE public.driver_locations ADD COLUMN accuracy numeric;
+    END IF;
 EXCEPTION WHEN OTHERS THEN
-    RAISE NOTICE 'PostGIS not available, using simple lat/lng columns';
+    RAISE NOTICE 'Could not alter table: %', SQLERRM;
 END $$;
 
 -- ============================================
--- Table: driver_locations (if not exists)
+-- Create table if not exists
 -- ============================================
 CREATE TABLE IF NOT EXISTS public.driver_locations (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     driver_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    -- Colonnes simples (toujours disponibles)
     lat numeric,
     lng numeric,
-    -- Colonne PostGIS (si disponible) - type geometry pas geography
-    location geometry(POINT, 4326),
     heading numeric,
     speed numeric,
     accuracy numeric,
@@ -33,6 +83,10 @@ CREATE TABLE IF NOT EXISTS public.driver_locations (
 
 -- Enable RLS
 ALTER TABLE public.driver_locations ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies to avoid conflicts
+DROP POLICY IF EXISTS "Drivers can update their own location" ON public.driver_locations;
+DROP POLICY IF EXISTS "Anyone can view driver locations" ON public.driver_locations;
 
 -- RLS Policies
 CREATE POLICY "Drivers can update their own location"
@@ -53,7 +107,7 @@ DO $$
 BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.driver_locations;
 EXCEPTION WHEN OTHERS THEN
-    RAISE NOTICE 'Could not add to realtime publication';
+    RAISE NOTICE 'Could not add to realtime publication: %', SQLERRM;
 END $$;
 
 -- ============================================
@@ -202,7 +256,6 @@ GRANT EXECUTE ON FUNCTION public.accept_ride TO authenticated;
 
 -- ============================================
 -- Function: find_nearby_drivers
--- For clients to find available drivers
 -- Uses simple Haversine formula (no PostGIS required)
 -- ============================================
 CREATE OR REPLACE FUNCTION public.find_nearby_drivers(
