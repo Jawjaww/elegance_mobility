@@ -11,7 +11,6 @@ export default function DriverPortalLayout({
 }) {
   const pathname = usePathname()
   const isLoginPage = pathname === '/driver-portal/login'
-  const isDashboard = pathname === '/driver-portal/dashboard' || pathname === '/driver-portal'
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
@@ -21,10 +20,6 @@ export default function DriverPortalLayout({
 
   if (isLoginPage) {
     return <div className="min-h-screen bg-neutral-950">{children}</div>
-  }
-
-  if (isDashboard) {
-    return <div className="fixed inset-0">{children}</div>
   }
 
   return (

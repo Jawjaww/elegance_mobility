@@ -7,32 +7,5 @@
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0a0a0a",
-  "theme_color": "#10b981",
-  "categories": ["navigation", "travel"],
-  "icons": [
-    {
-      "src": "/icons/icon-192x192.svg",
-      "sizes": "192x192",
-      "type": "image/svg+xml"
-    },
-    {
-      "src": "/icons/icon-512x512.svg",
-      "sizes": "512x512",
-      "type": "image/svg+xml"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Tableau de bord",
-      "short_name": "Dashboard",
-      "description": "Accéder au tableau de bord",
-      "url": "/driver-portal/dashboard"
-    },
-    {
-      "name": "Courses disponibles",
-      "short_name": "Courses",
-      "description": "Voir les courses disponibles",
-      "url": "/driver-portal/rides/available"
-    }
-  ]
+  "theme_color": "#10b981"
 }
