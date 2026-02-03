@@ -26,7 +26,7 @@ type Tab = 'available' | 'scheduled' | 'active'
 const SHEET_HEIGHTS = {
   collapsed: 140,  // Juste le handle + tabs
   peek: 280,       // Aperçu du contenu
-  expanded: '85vh' // Presque plein écran
+  expanded: '100dvh' // Plein écran (couvre tout)
 }
 
 export function DriverBottomSheet() {
