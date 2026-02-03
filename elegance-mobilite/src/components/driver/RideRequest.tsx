@@ -5,20 +5,22 @@ import { motion } from 'framer-motion'
 import { MapPin, Navigation, Clock, Star, DollarSign, User, X, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet } from './Sheet'
-import { useDriverStore } from '@/lib/driver/store'
+import { usePendingRides } from '@/lib/driver/usePendingRides'
 import { formatPrice, formatDistance, formatDuration } from '@/lib/driver/utils'
 
 const COUNTDOWN_SECONDS = 15
 
 export function RideRequest() {
-  const { availableRide, clearAvailableRide } = useDriverStore()
+  const { availableRide, acceptCurrentRide, declineCurrentRide } = usePendingRides()
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS)
   const [isAccepting, setIsAccepting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Compte à rebours
   useEffect(() => {
     if (!availableRide) {
       setCountdown(COUNTDOWN_SECONDS)
+      setError(null)
       return
     }
 
@@ -27,7 +29,7 @@ export function RideRequest() {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer)
-          clearAvailableRide()
+          declineCurrentRide()
           return 0
         }
         return prev - 1
@@ -35,23 +37,27 @@ export function RideRequest() {
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [availableRide, clearAvailableRide])
+  }, [availableRide, declineCurrentRide])
 
   const handleAccept = async () => {
     if (!availableRide || isAccepting) return
     setIsAccepting(true)
+    setError(null)
     
     try {
-      // TODO: Appeler l'API pour accepter
-      await new Promise(r => setTimeout(r, 500)) // Simulé
-      clearAvailableRide()
+      const result = await acceptCurrentRide()
+      if (!result.success) {
+        setError(result.error || "Impossible d'accepter cette course")
+      }
+    } catch (e) {
+      setError("Erreur lors de l'acceptation")
     } finally {
       setIsAccepting(false)
     }
   }
 
   const handleDecline = () => {
-    clearAvailableRide()
+    declineCurrentRide()
   }
 
   if (!availableRide) return null
@@ -84,7 +90,7 @@ export function RideRequest() {
         <div>
           <h3 className="text-xl font-bold text-white">Nouvelle course !</h3>
           <p className="text-neutral-400 text-sm">
-            {availableRide.pickup_address.slice(0, 30)}...
+            {availableRide.pickupLocation.slice(0, 30)}...
           </p>
         </div>
       </div>
@@ -94,14 +100,14 @@ export function RideRequest() {
         <LocationRow 
           icon={MapPin} 
           label="Prise en charge" 
-          address={availableRide.pickup_address}
+          address={availableRide.pickupLocation}
           color="emerald"
         />
         <div className="ml-5 my-2 w-0.5 h-6 bg-neutral-700" />
         <LocationRow 
           icon={Navigation} 
           label="Destination" 
-          address={availableRide.dropoff_address}
+          address={availableRide.dropoffLocation}
           color="blue"
         />
       </div>
@@ -110,36 +116,36 @@ export function RideRequest() {
       <div className="grid grid-cols-3 gap-3 mb-6">
         <StatBox 
           icon={DollarSign}
-          value={formatPrice(availableRide.estimated_price || 0)}
+          value={formatPrice(availableRide.estimatedPrice || 0)}
           label="Estimé"
         />
         <StatBox 
           icon={Clock}
-          value={formatDuration(Math.round((availableRide.duration || 0) / 60))}
+          value={formatDuration(Math.round((availableRide.estimatedDuration || 0) / 60))}
           label="Durée"
         />
         <StatBox 
           icon={Navigation}
-          value={formatDistance((availableRide.distance || 0) / 1000)}
+          value={formatDistance((availableRide.estimatedDistance || 0) / 1000)}
           label="Distance"
         />
       </div>
 
-      {/* Passager */}
-      {availableRide.passenger_name && (
-        <div className="flex items-center gap-3 bg-neutral-800/30 rounded-xl p-4 mb-6 border border-white/5">
-          <div className="w-12 h-12 bg-neutral-700 rounded-xl flex items-center justify-center">
-            <User className="w-6 h-6 text-neutral-400" />
-          </div>
-          <div>
-            <p className="text-white font-medium">{availableRide.passenger_name}</p>
-            {availableRide.passenger_rating && (
-              <div className="flex items-center gap-1">
-                <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                <span className="text-sm text-neutral-400">{availableRide.passenger_rating}</span>
-              </div>
-            )}
-          </div>
+      {/* Passager - Info non dispo pour l'instant */}
+      <div className="flex items-center gap-3 bg-neutral-800/30 rounded-xl p-4 mb-6 border border-white/5">
+        <div className="w-12 h-12 bg-neutral-700 rounded-xl flex items-center justify-center">
+          <User className="w-6 h-6 text-neutral-400" />
+        </div>
+        <div>
+          <p className="text-white font-medium">Client</p>
+          <p className="text-sm text-neutral-400">Course {availableRide.vehicleType}</p>
+        </div>
+      </div>
+      
+      {/* Error message */}
+      {error && (
+        <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 text-sm">
+          {error}
         </div>
       )}
 

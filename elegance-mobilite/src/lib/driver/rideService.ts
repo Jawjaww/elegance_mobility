@@ -1,0 +1,174 @@
+import { supabase } from "@/lib/database/client";
+import type { Database } from "@/lib/types/database.types";
+
+type DbRide = Database["public"]["Tables"]["rides"]["Row"];
+
+import type { Ride } from "./types";
+
+// Re-export du type Ride pour compatibilité
+export type PendingRide = Ride;
+
+export interface AcceptRideResult {
+  success: boolean;
+  error?: string;
+  rideId?: string;
+  status?: string;
+}
+
+/**
+ * Service pour gérer les courses côté chauffeur
+ */
+class DriverRideService {
+  private subscription: ReturnType<typeof supabase.channel> | null = null;
+
+  /**
+   * S'abonner aux nouvelles courses en attente
+   */
+  subscribeToPendingRides(
+    onNewRide: (ride: PendingRide) => void,
+    onRideUpdated: (ride: PendingRide) => void,
+    onRideRemoved: (rideId: string) => void
+  ) {
+    // Nettoyer l'ancienne subscription si existe
+    this.unsubscribe();
+
+    this.subscription = supabase
+      .channel("driver-pending-rides")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "rides",
+          filter: "status=eq.pending",
+        },
+        (payload) => {
+          const ride = this.mapToPendingRide(payload.new as DbRide);
+          onNewRide(ride);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "rides",
+          filter: "status=eq.pending",
+        },
+        (payload) => {
+          const ride = this.mapToPendingRide(payload.new as DbRide);
+          onRideUpdated(ride);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "rides",
+          filter: "status=neq.pending",
+        },
+        (payload) => {
+          // Une course n'est plus pending (acceptée ou annulée)
+          onRideRemoved((payload.new as DbRide).id);
+        }
+      )
+      .subscribe((status) => {
+        console.log("[DriverRideService] Subscription status:", status);
+      });
+
+    return this.subscription;
+  }
+
+  /**
+   * Se désabonner des courses
+   */
+  unsubscribe() {
+    if (this.subscription) {
+      this.subscription.unsubscribe();
+      this.subscription = null;
+    }
+  }
+
+  /**
+   * Récupérer les courses en attente actuelles
+   */
+  async fetchPendingRides(): Promise<PendingRide[]> {
+    const { data, error } = await supabase
+      .from("rides")
+      .select("*")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (error) {
+      console.error("[DriverRideService] Error fetching pending rides:", error);
+      throw error;
+    }
+
+    return (data || []).map(this.mapToPendingRide);
+  }
+
+  /**
+   * Accepter une course via l'API
+   */
+  async acceptRide(rideId: string): Promise<AcceptRideResult> {
+    try {
+      const response = await fetch("/api/driver/accept-ride", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ rideId }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: result.error || "Erreur lors de l'acceptation",
+        };
+      }
+
+      return {
+        success: true,
+        rideId: result.rideId,
+        status: result.status,
+      };
+    } catch (error) {
+      console.error("[DriverRideService] Error accepting ride:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Erreur réseau",
+      };
+    }
+  }
+
+  /**
+   * Mapper une ride DB vers Ride
+   */
+  private mapToPendingRide(ride: DbRide): Ride {
+    return {
+      id: ride.id,
+      clientId: ride.user_id || '',
+      pickupLocation: ride.pickup_address,
+      dropoffLocation: ride.dropoff_address,
+      pickupLat: ride.pickup_lat ?? 0,
+      pickupLng: ride.pickup_lon ?? 0,
+      dropoffLat: ride.dropoff_lat ?? 0,
+      dropoffLng: ride.dropoff_lon ?? 0,
+      pickupTime: ride.pickup_time,
+      vehicleType: ride.vehicle_type,
+      estimatedDistance: ride.distance,
+      estimatedDuration: ride.duration,
+      estimatedPrice: ride.estimated_price,
+      finalPrice: ride.final_price,
+      status: ride.status,
+      options: ride.options || [],
+      createdAt: ride.created_at,
+    };
+  }
+}
+
+export const driverRideService = new DriverRideService();

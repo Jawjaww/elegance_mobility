@@ -34,7 +34,7 @@ export function AuthModal({
   
   const content = (
     <div className="space-y-6">
-      <LoginForm />
+      <LoginForm onSuccess={onSuccess} />
       
       <div className="text-center space-y-2">
         <Link

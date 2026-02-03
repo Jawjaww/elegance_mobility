@@ -305,6 +305,12 @@ export function ConfirmationDetails() {
     console.log(
       "[DEBUG] Authentification réussie, reprise du processus de réservation",
     );
+    // Fermer la modal et relancer la confirmation
+    setShowAuthModal(false);
+    // Petit délai pour laisser la modal se fermer et la session se propager
+    setTimeout(() => {
+      handleConfirm();
+    }, 300);
   };
 
   return (

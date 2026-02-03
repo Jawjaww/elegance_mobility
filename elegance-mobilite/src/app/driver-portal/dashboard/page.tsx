@@ -11,13 +11,13 @@ export default function DriverDashboardPage() {
   useWakeLock(isOnline)
 
   const pickup = availableRide ? {
-    lat: availableRide.pickup_lat,
-    lng: availableRide.pickup_lng
+    lat: availableRide.pickupLat,
+    lng: availableRide.pickupLng
   } : null
 
   const dropoff = availableRide ? {
-    lat: availableRide.dropoff_lat,
-    lng: availableRide.dropoff_lng
+    lat: availableRide.dropoffLat,
+    lng: availableRide.dropoffLng
   } : null
 
   return (

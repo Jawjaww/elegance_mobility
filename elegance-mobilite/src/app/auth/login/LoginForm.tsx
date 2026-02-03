@@ -9,12 +9,17 @@ import { supabase } from "@/lib/database/client"
 import { useToast } from "@/hooks/useToast"
 import { type AppRole } from "@/lib/types/common.types"
 
-export function LoginForm() {
+interface LoginFormProps {
+  onSuccess?: () => void;
+}
+
+export function LoginForm({ onSuccess }: LoginFormProps = {}) {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
   const from = searchParams?.get("from")
+  const redirectTo = searchParams?.get("redirectTo")
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -55,9 +60,17 @@ export function LoginForm() {
         description: "Vous êtes maintenant connecté",
       })
 
-      // Redirection basée sur le rôle
-      let redirectPath = '/my-account'
-      if (from) {
+      // Si onSuccess est fourni, l'appeler (pour les modals inline)
+      if (onSuccess) {
+        onSuccess();
+        return;
+      }
+
+      // Redirection basée sur le rôle ou redirectTo
+      let redirectPath = redirectTo || '/my-account';
+      
+      // Si pas de redirectTo spécifique, utiliser le rôle
+      if (!redirectTo && from) {
         // Vérifier que la redirection est autorisée pour le rôle
         if (
           (from === 'driver' && userRole !== 'app_driver') ||

@@ -20,6 +20,15 @@ interface PriceEstimate {
  * Service pour l'estimation des prix avant enregistrement
  * Note: Le calcul final est géré par l'Edge Function Supabase
  */
+// Tarifs par défaut si la base n'a pas de données
+const DEFAULT_RATES: Record<string, { base_price: number; price_per_km: number; min_price: number }> = {
+  STANDARD: { base_price: 15, price_per_km: 2.5, min_price: 20 },
+  EXECUTIVE: { base_price: 30, price_per_km: 4.0, min_price: 50 },
+  LUXURY: { base_price: 60, price_per_km: 7.0, min_price: 100 },
+  VAN: { base_price: 25, price_per_km: 3.5, min_price: 40 },
+  ECO: { base_price: 10, price_per_km: 1.8, min_price: 15 },
+};
+
 class PricingService {
   async calculatePrice(
     distance: number,
@@ -28,14 +37,24 @@ class PricingService {
     pickupTime?: Date,
   ): Promise<PriceEstimate> {
     try {
-      // 1. Récupérer les tarifs de base
-      const { data: rate, error: rateError } = await supabase
+      // 1. Récupérer les tarifs de base (avec fallback)
+      let rate: { base_price: number; price_per_km: number; min_price: number };
+      
+      const { data: rateData, error: rateError } = await supabase
         .from("rates")
         .select("base_price, price_per_km, min_price")
         .eq("vehicle_type", vehicleType)
-        .single();
+        .maybeSingle();
 
-      if (rateError) throw rateError;
+      if (rateError || !rateData) {
+        // Utiliser les tarifs par défaut
+        rate = DEFAULT_RATES[vehicleType] || DEFAULT_RATES.STANDARD;
+        if (!rateData) {
+          console.warn(`[Pricing] Aucun tarif trouvé pour ${vehicleType}, utilisation des tarifs par défaut`);
+        }
+      } else {
+        rate = rateData;
+      }
 
       // 2. Calculer le prix de base avec la distance
       const basePrice = rate.base_price;

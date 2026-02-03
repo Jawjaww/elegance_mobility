@@ -118,10 +118,10 @@ export function useRealtimeRides(onNewRide?: (ride: Ride) => void) {
           if (availableRide) return
 
           // Filtrer par distance si on a la position
-          if (currentLocation && ride.pickup_lat && ride.pickup_lng) {
+          if (currentLocation && ride.pickupLat && ride.pickupLng) {
             const dist = calculateDistance(
               currentLocation.lat, currentLocation.lng,
-              ride.pickup_lat, ride.pickup_lng
+              ride.pickupLat, ride.pickupLng
             )
             if (dist > 20) return // Ignorer si > 20km
           }

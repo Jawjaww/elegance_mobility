@@ -13,21 +13,22 @@ export type DbDriverLocation = Database['public']['Tables']['driver_locations'][
 // Types enrichis pour le frontend
 export interface Ride {
   id: string
-  pickup_address: string
-  dropoff_address: string
-  pickup_lat: number
-  pickup_lng: number
-  dropoff_lat: number
-  dropoff_lng: number
-  estimated_price: number | null
-  final_price: number | null
-  distance: number | null
-  duration: number | null
+  pickupLocation: string
+  dropoffLocation: string
+  pickupLat: number
+  pickupLng: number
+  dropoffLat: number
+  dropoffLng: number
+  estimatedPrice: number | null
+  finalPrice: number | null
+  estimatedDistance: number | null
+  estimatedDuration: number | null
   status: Database['public']['Enums']['ride_status']
-  passenger_name?: string
-  passenger_rating?: number
-  pickup_time: string
-  created_at: string
+  clientId?: string
+  pickupTime: string | null
+  createdAt: string
+  vehicleType: string
+  options?: string[]
 }
 
 export interface DriverStats {
