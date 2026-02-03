@@ -24,9 +24,9 @@ type Tab = 'available' | 'scheduled' | 'active'
 
 // Hauteurs du bottomsheet
 const SHEET_HEIGHTS = {
-  collapsed: 140,  // Juste le handle + tabs
-  peek: 280,       // Aperçu du contenu
-  expanded: '100dvh' // Plein écran (couvre tout)
+  collapsed: 140,
+  peek: 280,
+  expanded: '100dvh'
 }
 
 export function DriverBottomSheet() {
@@ -36,21 +36,16 @@ export function DriverBottomSheet() {
   
   const constraintsRef = useRef<HTMLDivElement>(null)
 
-  // Courses planifiées (mock - à remplacer par vraies données)
   const scheduledRides: Ride[] = []
 
   const handleDragEnd = (event: any, info: PanInfo) => {
     const velocity = info.velocity.y
     const offset = info.offset.y
 
-    // Swipe vers le haut (velocity négative) = monter
-    // Swipe vers le bas (velocity positive) = descendre
     if (velocity < -300 || offset < -80) {
-      // Monter d'un niveau
       if (sheetState === 'collapsed') setSheetState('peek')
       else if (sheetState === 'peek') setSheetState('expanded')
     } else if (velocity > 300 || offset > 80) {
-      // Descendre d'un niveau
       if (sheetState === 'expanded') setSheetState('peek')
       else if (sheetState === 'peek') setSheetState('collapsed')
     }
@@ -60,7 +55,7 @@ export function DriverBottomSheet() {
     switch (sheetState) {
       case 'collapsed': return SHEET_HEIGHTS.collapsed
       case 'peek': return SHEET_HEIGHTS.peek
-      case 'expanded': return SHEET_HEIGHTS.expanded
+      case 'expanded': return '120dvh'
     }
   }
 
@@ -72,7 +67,7 @@ export function DriverBottomSheet() {
 
   return (
     <>
-      {/* Bouton Go Online flottant compact (visible quand collapsed) */}
+      {/* Bouton Go Online flottant compact */}
       <AnimatePresence>
         {sheetState === 'collapsed' && (
           <motion.button
@@ -80,7 +75,7 @@ export function DriverBottomSheet() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
             onClick={() => setIsOnline(!isOnline)}
-            className={`fixed bottom-6 right-4 z-30 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-2xl font-medium text-sm transition-all ${
+            className={`fixed bottom-6 right-4 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-2xl font-medium text-sm transition-all ${
               isOnline 
                 ? 'bg-emerald-500 text-white shadow-emerald-500/30' 
                 : 'bg-white text-neutral-900 shadow-white/20'
@@ -102,36 +97,41 @@ export function DriverBottomSheet() {
       </AnimatePresence>
 
       {/* Bottom Sheet */}
-      <motion.div 
+      <motion.div
         ref={constraintsRef}
-        className={`fixed left-0 right-0 z-20 bg-neutral-950 rounded-t-[2rem] shadow-2xl border-t border-white/10 overflow-hidden ${
-          sheetState === 'expanded' ? 'bottom-0 h-[100dvh]' : 'bottom-0'
-        }`}
+        className="fixed left-0 right-0 bottom-0 z-40 bg-neutral-950 rounded-t-[2rem] shadow-2xl border-t border-white/10 overflow-hidden select-none touch-none"
+        style={{ touchAction: 'none' }}
         initial={{ y: '100%' }}
         animate={{ 
-          height: sheetState === 'expanded' ? '100dvh' : getSheetHeight(),
+          height: getSheetHeight(),
           y: 0 
         }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        drag={sheetState === 'expanded' ? false : 'y'}
-        dragConstraints={{ top: -50, bottom: 50 }}
-        dragElastic={0.2}
+        drag="y"
+        dragConstraints={{ top: 0, bottom: 400 }}
+        dragElastic={0.05}
         onDragEnd={handleDragEnd}
       >
-        {/* Handle - Zone de drag */}
-        <div className="w-full flex flex-col items-center pt-3 pb-2 cursor-grab active:cursor-grabbing">
-          <div className="w-12 h-1.5 bg-neutral-700 rounded-full mb-2" />
+        {/* Handle - Zone de drag dédiée */}
+        <motion.div 
+          className="w-full h-12 flex flex-col items-center justify-center cursor-grab active:cursor-grabbing"
+          onTap={() => {
+            if (sheetState === 'expanded') setSheetState('peek')
+            else if (sheetState === 'peek') setSheetState('expanded')
+            else if (sheetState === 'collapsed') setSheetState('peek')
+          }}
+        >
+          <div className="w-12 h-1.5 bg-neutral-700 rounded-full" />
           <ChevronUp 
-            className={`w-5 h-5 text-neutral-500 transition-transform duration-300 ${
+            className={`w-5 h-5 text-neutral-500 transition-transform duration-300 mt-1 ${
               sheetState === 'expanded' ? 'rotate-180' : ''
             }`} 
           />
-        </div>
+        </motion.div>
 
         {/* Header avec tabs et toggle compact */}
         <div className="px-4 pb-3">
           <div className="flex items-center gap-3">
-            {/* Tabs */}
             <div className="flex-1 flex bg-neutral-900 rounded-xl p-1">
               <TabButton 
                 active={activeTab === 'available'}
@@ -156,7 +156,6 @@ export function DriverBottomSheet() {
               />
             </div>
 
-            {/* Toggle compact (visible quand pas collapsed) */}
             {sheetState !== 'collapsed' && (
               <button
                 onClick={() => setIsOnline(!isOnline)}
@@ -173,8 +172,8 @@ export function DriverBottomSheet() {
           </div>
         </div>
 
-        {/* Content scrollable */}
-        <div className="px-4 overflow-y-auto h-[calc(100%-110px)]">
+        {/* Content */}
+        <div className="px-4 overflow-y-auto h-[calc(100%-100px)]">
           <AnimatePresence mode="wait">
             {activeTab === 'available' && (
               <AvailableTab 
@@ -203,8 +202,6 @@ export function DriverBottomSheet() {
     </>
   )
 }
-
-// Sous-composants
 
 function TabButton({ 
   active, 
@@ -281,7 +278,6 @@ function AvailableTab({
     )
   }
 
-  // Version compacte (collapsed)
   if (compact) {
     return (
       <motion.div 
@@ -306,7 +302,6 @@ function AvailableTab({
     )
   }
 
-  // Version normale
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
