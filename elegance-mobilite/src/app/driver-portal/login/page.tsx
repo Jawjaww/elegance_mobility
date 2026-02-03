@@ -3,23 +3,34 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DriverLoginForm } from "@/app/driver-portal/login/DriverLoginForm"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { supabase } from "@/lib/database/client"
+import { getUserRole } from "@/lib/utils/auth-helpers"
 import Link from "next/link"
 
 export default function DriverLoginPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
+  const hasChecked = useRef(false)
   
   useEffect(() => {
-    // Vérifier si l'utilisateur est déjà connecté
+    // Éviter les redirections multiples
+    if (hasChecked.current) return
+    
     const checkSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
-        if (session?.user) {
-          // Rediriger vers la page "déjà connecté" au lieu de forcer le dashboard
-          // Cela évite les boucles et donne le choix à l'utilisateur
-          router.replace('/auth/already-connected?redirect=login')
+        if (session?.user && !hasChecked.current) {
+          hasChecked.current = true
+          
+          // Vérifier si c'est un driver pour rediriger directement
+          const role = getUserRole(session.user)
+          if (role === 'app_driver') {
+            router.replace('/driver-portal/dashboard')
+          } else {
+            // Pas un driver - rediriger vers la page déjà connecté
+            router.replace('/auth/already-connected?redirect=login')
+          }
           return
         }
         setIsLoading(false)
@@ -30,7 +41,8 @@ export default function DriverLoginPage() {
     }
     
     checkSession()
-  }, [router])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   
   const handleClose = () => {
     router.push('/') // Retour à l'accueil
