@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Car, Clock, DollarSign, Star, MapPin, Settings } from 'lucide-react'
+import { Car, Clock, DollarSign, Star, MapPin } from 'lucide-react'
 import Link from 'next/link'
 import { useDriverStore } from '@/stores/driverStore'
 import { useRealtimeRides } from '@/hooks/useRealtimeRides'
@@ -32,34 +32,22 @@ export default function DriverDashboardPage() {
 
   return (
     <div className="min-h-screen bg-neutral-950 pb-24">
-      {/* Header */}
-      <motion.header 
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="sticky top-0 z-40 bg-neutral-950/80 backdrop-blur-xl border-b border-neutral-800"
-      >
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-700 rounded-xl flex items-center justify-center">
-              <Car className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="font-bold text-white">Elegance Driver</h1>
-              <p className="text-xs text-neutral-400">
-                {isOnline ? '🟢 En ligne' : '⚪ Hors ligne'}
-              </p>
-            </div>
-          </div>
-          
-          <Link href="/driver-portal/profile">
-            <Button variant="ghost" size="icon" className="text-neutral-400 hover:text-white">
-              <Settings className="w-5 h-5" />
-            </Button>
-          </Link>
+      {/* Status indicator en haut (pas de header complet car déjà dans layout) */}
+      <div className="px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-neutral-500'}`} />
+          <span className="text-sm text-neutral-400">
+            {isOnline ? 'En ligne' : 'Hors ligne'}
+          </span>
         </div>
-      </motion.header>
+        {stats.todayRides > 0 && (
+          <span className="text-sm text-neutral-400">
+            {stats.todayRides} course{stats.todayRides > 1 ? 's' : ''} aujourd'hui
+          </span>
+        )}
+      </div>
 
-      <div className="px-4 py-4 space-y-4">
+      <div className="px-4 py-2 space-y-4">
         {/* Install PWA prompt (if not installed) */}
         {!isInstalled && canInstall && (
           <motion.div

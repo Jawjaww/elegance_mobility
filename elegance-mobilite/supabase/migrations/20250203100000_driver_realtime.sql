@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS public.driver_locations (
     -- Colonnes simples (toujours disponibles)
     lat numeric,
     lng numeric,
-    -- Colonne PostGIS (si disponible)
+    -- Colonne PostGIS (si disponible) - type geometry pas geography
     location geometry(POINT, 4326),
     heading numeric,
     speed numeric,
@@ -76,7 +76,6 @@ BEGIN
         driver_id,
         lat,
         lng,
-        location,
         heading,
         speed,
         accuracy,
@@ -87,11 +86,6 @@ BEGIN
         auth.uid(),
         p_lat,
         p_lng,
-        CASE 
-            WHEN EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgis')
-            THEN ST_SetSRID(ST_MakePoint(p_lng, p_lat), 4326)
-            ELSE NULL
-        END,
         p_heading,
         p_speed,
         p_accuracy,
@@ -102,11 +96,6 @@ BEGIN
     DO UPDATE SET
         lat = EXCLUDED.lat,
         lng = EXCLUDED.lng,
-        location = CASE 
-            WHEN EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgis')
-            THEN EXCLUDED.location
-            ELSE public.driver_locations.location
-        END,
         heading = EXCLUDED.heading,
         speed = EXCLUDED.speed,
         accuracy = EXCLUDED.accuracy,
@@ -214,6 +203,7 @@ GRANT EXECUTE ON FUNCTION public.accept_ride TO authenticated;
 -- ============================================
 -- Function: find_nearby_drivers
 -- For clients to find available drivers
+-- Uses simple Haversine formula (no PostGIS required)
 -- ============================================
 CREATE OR REPLACE FUNCTION public.find_nearby_drivers(
     p_lat numeric,
@@ -233,11 +223,13 @@ SET search_path = public
 AS $$
     SELECT 
         dl.driver_id,
-        -- Distance simple (Haversine approximation)
+        -- Distance Haversine en mètres
         (6371000 * acos(
-            cos(radians(p_lat)) * cos(radians(dl.lat)) * 
-            cos(radians(dl.lng) - radians(p_lng)) + 
-            sin(radians(p_lat)) * sin(radians(dl.lat))
+            LEAST(1, GREATEST(-1,
+                cos(radians(p_lat)) * cos(radians(dl.lat)) * 
+                cos(radians(dl.lng) - radians(p_lng)) + 
+                sin(radians(p_lat)) * sin(radians(dl.lat))
+            ))
         ))::numeric as distance_meters,
         dl.heading,
         dl.last_updated
@@ -246,15 +238,9 @@ AS $$
       AND dl.last_updated > now() - interval '5 minutes'
       AND dl.lat IS NOT NULL
       AND dl.lng IS NOT NULL
-      -- Approximate bounding box filter first (fast)
+      -- Bounding box rapide (évite le calcul pour les drivers lointains)
       AND dl.lat BETWEEN p_lat - (p_radius_km / 111.0) AND p_lat + (p_radius_km / 111.0)
       AND dl.lng BETWEEN p_lng - (p_radius_km / (111.0 * cos(radians(p_lat)))) AND p_lng + (p_radius_km / (111.0 * cos(radians(p_lat))))
-      -- Then accurate distance
-      AND (6371000 * acos(
-          cos(radians(p_lat)) * cos(radians(dl.lat)) * 
-          cos(radians(dl.lng) - radians(p_lng)) + 
-          sin(radians(p_lat)) * sin(radians(dl.lat))
-      )) <= p_radius_km * 1000
     ORDER BY distance_meters;
 $$;
 
@@ -286,4 +272,4 @@ GRANT EXECUTE ON FUNCTION public.set_driver_offline TO authenticated;
 COMMENT ON TABLE public.driver_locations IS 'Real-time driver locations for GPS tracking';
 COMMENT ON FUNCTION public.update_driver_location IS 'Update driver GPS location and set online status';
 COMMENT ON FUNCTION public.accept_ride IS 'Driver accepts a pending ride request';
-COMMENT ON FUNCTION public.find_nearby_drivers IS 'Find online drivers within radius';
+COMMENT ON FUNCTION public.find_nearby_drivers IS 'Find online drivers within radius using Haversine formula';
