@@ -2,6 +2,7 @@
 
 import { useDriverStore } from '@/lib/driver/store'
 import { useDriverLocation, useWakeLock } from '@/lib/driver/hooks'
+import { useDriverSubscription } from '@/lib/driver/useDriverSubscription'
 import { 
   Map, 
   Header, 
@@ -9,12 +10,17 @@ import {
   FullscreenRideModal,
   ScheduledRideNotifications 
 } from '@/components/driver'
+import { SubscriptionDebug } from '@/components/driver/SubscriptionDebug'
 
 export default function DriverDashboardPage() {
   const { isOnline, availableRide, activeRide } = useDriverStore()
   
+  // Activer la géolocalisation et le wake lock
   useDriverLocation(isOnline)
   useWakeLock(isOnline)
+  
+ // Active la souscription aux courses en temps réel
+  useDriverSubscription()
 
   const pickup = availableRide ? {
     lat: availableRide.pickupLat,
@@ -41,6 +47,9 @@ export default function DriverDashboardPage() {
 
       {/* Header flottant */}
       <Header />
+
+      {/* Debug subscription (dev only) */}
+      <SubscriptionDebug />
 
       {/* Notifications pour courses planifiées */}
       <ScheduledRideNotifications />

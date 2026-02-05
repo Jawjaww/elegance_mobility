@@ -22,11 +22,11 @@ import type { Ride } from '@/lib/driver/types'
 
 type Tab = 'available' | 'scheduled' | 'active'
 
-// Hauteurs du bottomsheet
+// Hauteurs du bottomsheet en dvh pour responsive
 const SHEET_HEIGHTS = {
-  collapsed: 140,
-  peek: 280,
-  expanded: '100dvh'
+  collapsed: '16dvh',   // ~120px sur petit écran
+  peek: '32dvh',        // ~260px
+  expanded: '85dvh'     // Presque plein écran
 }
 
 export function DriverBottomSheet() {
@@ -99,35 +99,34 @@ export function DriverBottomSheet() {
       {/* Bottom Sheet */}
       <motion.div
         ref={constraintsRef}
-        className="fixed left-0 right-0 bottom-0 z-40 bg-neutral-950 rounded-t-[2rem] shadow-2xl border-t border-white/10 overflow-hidden select-none touch-none"
-        style={{ touchAction: 'none' }}
+        className="fixed left-0 right-0 bottom-0 z-40 bg-neutral-950 rounded-t-[2rem] shadow-2xl border-t border-white/10 overflow-hidden select-none"
         initial={{ y: '100%' }}
         animate={{ 
           height: getSheetHeight(),
           y: 0 
         }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        drag="y"
-        dragConstraints={{ top: 0, bottom: 400 }}
-        dragElastic={0.05}
+        drag={sheetState !== 'expanded' ? 'y' : false}
+        dragConstraints={{ top: -50, bottom: 50 }}
+        dragElastic={0.2}
         onDragEnd={handleDragEnd}
       >
-        {/* Handle - Zone de drag dédiée */}
-        <motion.div 
-          className="w-full h-12 flex flex-col items-center justify-center cursor-grab active:cursor-grabbing"
-          onTap={() => {
+        {/* Handle */}
+        <div 
+          className="w-full flex flex-col items-center pt-3 pb-2 cursor-grab active:cursor-grabbing"
+          onClick={() => {
             if (sheetState === 'expanded') setSheetState('peek')
             else if (sheetState === 'peek') setSheetState('expanded')
-            else if (sheetState === 'collapsed') setSheetState('peek')
+            else setSheetState('peek')
           }}
         >
-          <div className="w-12 h-1.5 bg-neutral-700 rounded-full" />
+          <div className="w-12 h-1.5 bg-neutral-700 rounded-full mb-2" />
           <ChevronUp 
-            className={`w-5 h-5 text-neutral-500 transition-transform duration-300 mt-1 ${
+            className={`w-5 h-5 text-neutral-500 transition-transform duration-300 ${
               sheetState === 'expanded' ? 'rotate-180' : ''
             }`} 
           />
-        </motion.div>
+        </div>
 
         {/* Header avec tabs et toggle compact */}
         <div className="px-4 pb-3">

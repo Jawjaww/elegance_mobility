@@ -155,7 +155,8 @@ interface MapLibreMapProps {
   departure: Location | null;
   destination: Location | null;
   onRouteCalculated?: (distance: number, duration: number) => void;
-  enableRouting?: boolean; // Nouveau prop pour contrôler si on trace l'itinéraire
+  enableRouting?: boolean;
+  className?: string; // Hauteur personnalisée
 }
 
 interface MarkerOptions {
@@ -168,7 +169,8 @@ export default function MapLibreMap({
   departure, 
   destination, 
   onRouteCalculated,
-  enableRouting = true // Par défaut, on trace l'itinéraire si les deux points sont présents
+  enableRouting = true,
+  className = 'h-96' // Default h-96, peut être surchargé
 }: MapLibreMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -463,10 +465,11 @@ export default function MapLibreMap({
                   bounds.extend(coord);
                 });
                 
-                // Ajouter un padding pour que les marqueurs soient bien visibles
+                // Ajouter un padding important pour les bulles et le responsive
                 map.current.fitBounds(bounds, {
-                  padding: 60, // Augmenté pour éviter que les marqueurs soient coupés
-                  maxZoom: 15
+                  padding: { top: 80, bottom: 80, left: 120, right: 120 },
+                  maxZoom: 16,
+                  duration: 0 // Instantané, pas d'animation
                 });
                 
                 // Marquer cette route comme tracée pour éviter la boucle
@@ -668,8 +671,16 @@ export default function MapLibreMap({
         { id: 'road-primary', type: 'line', source: 'stadia', 'source-layer': 'transportation', filter: ['==', 'class', 'primary'], paint: { 'line-color': '#f59e0b', 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 3, 16, 10] } },
         { id: 'road-secondary', type: 'line', source: 'stadia', 'source-layer': 'transportation', filter: ['in', 'class', 'secondary', 'tertiary'], paint: { 'line-color': '#fcd34d', 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 2, 16, 8] } },
         { id: 'road-tertiary', type: 'line', source: 'stadia', 'source-layer': 'transportation', filter: ['in', 'class', 'tertiary', 'residential'], paint: { 'line-color': '#e2e8f0', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1.5, 16, 6] } },
-        // Labels
-        { id: 'label-place', type: 'symbol', source: 'stadia', 'source-layer': 'place', filter: ['in', 'class', 'city', 'town'], layout: { 'text-field': '{name}', 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 8, 12, 14, 18] }, paint: { 'text-color': '#1e293b', 'text-halo-color': '#ffffff', 'text-halo-width': 2 } }
+        // Country labels
+        { id: 'label-country', type: 'symbol', source: 'stadia', 'source-layer': 'place', filter: ['==', 'class', 'country'], layout: { 'text-field': '{name}', 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 3, 14, 8, 24], 'text-transform': 'uppercase' }, paint: { 'text-color': '#64748b', 'text-halo-color': '#ffffff', 'text-halo-width': 2 } },
+        // State/Region labels
+        { id: 'label-state', type: 'symbol', source: 'stadia', 'source-layer': 'place', filter: ['==', 'class', 'state'], layout: { 'text-field': '{name}', 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 4, 12, 10, 20] }, paint: { 'text-color': '#475569', 'text-halo-color': '#ffffff', 'text-halo-width': 2 } },
+        // City labels - plus gros
+        { id: 'label-city', type: 'symbol', source: 'stadia', 'source-layer': 'place', filter: ['==', 'class', 'city'], layout: { 'text-field': '{name}', 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 6, 14, 12, 28], 'text-anchor': 'center' }, paint: { 'text-color': '#1e293b', 'text-halo-color': '#ffffff', 'text-halo-width': 3 } },
+        // Town/Village labels
+        { id: 'label-town', type: 'symbol', source: 'stadia', 'source-layer': 'place', filter: ['in', 'class', 'town', 'village'], layout: { 'text-field': '{name}', 'text-font': ['Noto Sans Regular'], 'text-size': ['interpolate', ['linear'], ['zoom'], 8, 11, 14, 20] }, paint: { 'text-color': '#334155', 'text-halo-color': '#ffffff', 'text-halo-width': 2 } },
+        // Suburb/Quarter labels
+        { id: 'label-suburb', type: 'symbol', source: 'stadia', 'source-layer': 'place', filter: ['in', 'class', 'suburb', 'quarter'], layout: { 'text-field': '{name}', 'text-font': ['Noto Sans Regular'], 'text-size': ['interpolate', ['linear'], ['zoom'], 12, 12, 16, 18] }, paint: { 'text-color': '#475569', 'text-halo-color': '#ffffff', 'text-halo-width': 2 } }
       ]
     };
 
@@ -798,11 +809,28 @@ export default function MapLibreMap({
     };
   }, [departure, destination, cleanupMap, cleanOldInstances]);
 
+  // Resize observer pour redimensionner la carte quand le conteneur change
+  useEffect(() => {
+    if (!map.current) return;
+    
+    const resizeObserver = new ResizeObserver(() => {
+      if (map.current) {
+        map.current.resize();
+      }
+    });
+    
+    if (mapContainer.current) {
+      resizeObserver.observe(mapContainer.current);
+    }
+    
+    return () => resizeObserver.disconnect();
+  }, [mapLoaded]);
+
   // Ajout d'une classe distinctive pour identifier l'instance de carte
   return (
     <div
       ref={mapContainer}
-      className={`w-full h-96 map-container map-instance-${mapInstanceIdRef.current}`}
+      className={`w-full ${className} map-container map-instance-${mapInstanceIdRef.current}`}
       data-testid="map-container"
     />
   );

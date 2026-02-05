@@ -73,16 +73,30 @@ export const useUnassignedRidesStore = create<UnassignedRidesState>((set, get) =
   }
 }));
 
-// Écouter les changements en temps réel
-supabase
+// Écouter les changements en temps réel - CORRIGÉ
+const unassignedChannel = supabase
   .channel('unassigned-rides')
   .on(
     'postgres_changes',
     {
-      event: '*',
+      event: 'INSERT',
       schema: 'public',
       table: 'rides',
-      filter: "status=eq.'pending' AND driver_id=is.null"
+      filter: 'status=eq.pending'
+    },
+    (payload) => {
+      // Vérifier que driver_id est null
+      if (!payload.new.driver_id) {
+        useUnassignedRidesStore.getState().fetchRides();
+      }
+    }
+  )
+  .on(
+    'postgres_changes',
+    {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'rides'
     },
     () => {
       useUnassignedRidesStore.getState().fetchRides();

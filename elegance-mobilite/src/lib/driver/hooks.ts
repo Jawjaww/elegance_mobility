@@ -81,7 +81,12 @@ export function useDriverLocation(enabled: boolean) {
 
     watchId.current = navigator.geolocation.watchPosition(
       updateLocation,
-      (error) => console.error('[Location] Error:', error.message),
+      (error) => {
+        // Silencieux pour les erreurs de permission/non disponible
+        if (error.code !== error.PERMISSION_DENIED && error.code !== error.POSITION_UNAVAILABLE) {
+          console.warn('[Location]', error.message)
+        }
+      },
       { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
     )
 
