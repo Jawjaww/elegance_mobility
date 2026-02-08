@@ -36,11 +36,10 @@ export class MetricsService {
           .select("id", { count: "exact" })
           .in("status", ["pending", "scheduled"]),
 
-        // Véhicules disponibles
+        // Véhicules (tous) - table vehicles n'a pas de colonne status
         supabase
           .from("vehicles")
-          .select("id", { count: "exact" })
-          .eq("status", "available"),
+          .select("id", { count: "exact" }),
       ]);
 
       return {

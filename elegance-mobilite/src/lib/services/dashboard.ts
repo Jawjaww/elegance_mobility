@@ -17,10 +17,14 @@ export interface DashboardMetrics {
  * Récupère les métriques pour le tableau de bord administrateur
  */
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
-  const today = new Date().toISOString().split("T")[0];
-  const yesterday = new Date();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString();
+  const tomorrowStr = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
+  
+  const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().split("T")[0];
+  const yesterdayStr = yesterday.toISOString();
 
   // Utiliser le client navigateur Supabase singleton
   const [
@@ -31,30 +35,41 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     availableVehiclesResult,
     yesterdayRidesResult,
   ] = await Promise.all([
-    supabase.from("rides").select("*", { count: "exact" }).eq("date", today),
+    // Courses d'aujourd'hui - filtre sur pickup_time
+    supabase
+      .from("rides")
+      .select("*", { count: "exact" })
+      .gte("pickup_time", todayStr)
+      .lt("pickup_time", tomorrowStr),
 
     supabase
       .from("rides")
       .select("*", { count: "exact" })
       .eq("status", "pending"),
 
+    // Chauffeurs actifs - utilise table drivers
     supabase
-      .from("users")
+      .from("drivers")
       .select("*", { count: "exact" })
-      .eq("role", "driver")
       .eq("status", "active"),
 
-    supabase.from("rides").select("*", { count: "exact" }).gt("date", today),
-
-    supabase
-      .from("vehicles")
-      .select("*", { count: "exact" })
-      .eq("status", "available"),
-
+    // Courses futures (après aujourd'hui)
     supabase
       .from("rides")
       .select("*", { count: "exact" })
-      .eq("date", yesterdayStr),
+      .gte("pickup_time", tomorrowStr),
+
+    // Véhicules (tous) - table vehicles n'a pas de colonne status
+    supabase
+      .from("vehicles")
+      .select("*", { count: "exact" }),
+
+    // Courses d'hier
+    supabase
+      .from("rides")
+      .select("*", { count: "exact" })
+      .gte("pickup_time", yesterdayStr)
+      .lt("pickup_time", todayStr),
   ]);
 
   const todayRidesCount = todayRidesResult.count || 0;
