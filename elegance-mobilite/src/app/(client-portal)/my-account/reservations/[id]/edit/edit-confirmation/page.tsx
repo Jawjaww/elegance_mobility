@@ -9,11 +9,11 @@ export function generateStaticParams() {
 export const dynamicParams = true;
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }
 
 export default async function Page({ params }: PageProps) {
-  const { id: reservationId } = await params;
+  const { id: reservationId } = params;
 
   if (!reservationId) {
     return (

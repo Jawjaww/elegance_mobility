@@ -37,9 +37,7 @@ export class MetricsService {
           .in("status", ["pending", "scheduled"]),
 
         // Véhicules (tous) - table vehicles n'a pas de colonne status
-        supabase
-          .from("vehicles")
-          .select("id", { count: "exact" }),
+        supabase.from("vehicles").select("id", { count: "exact" }),
       ]);
 
       return {

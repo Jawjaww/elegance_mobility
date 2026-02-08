@@ -20,8 +20,10 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayStr = today.toISOString();
-  const tomorrowStr = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
-  
+  const tomorrowStr = new Date(
+    today.getTime() + 24 * 60 * 60 * 1000,
+  ).toISOString();
+
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = yesterday.toISOString();
@@ -60,9 +62,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
       .gte("pickup_time", tomorrowStr),
 
     // Véhicules (tous) - table vehicles n'a pas de colonne status
-    supabase
-      .from("vehicles")
-      .select("*", { count: "exact" }),
+    supabase.from("vehicles").select("*", { count: "exact" }),
 
     // Courses d'hier
     supabase

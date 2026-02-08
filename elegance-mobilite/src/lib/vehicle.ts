@@ -1,11 +1,11 @@
-import { Database } from './types/database.types'
-import { supabase } from '@/lib/database/client'
+import { Database } from "./types/database.types";
+import { supabase } from "@/lib/database/client";
 
 // Utiliser les types corrects selon la structure de Database
-export type Vehicle = Database['public']['Tables']['vehicles']['Row']
-export type NewVehicle = Database['public']['Tables']['vehicles']['Insert']
-export type UpdateVehicle = Database['public']['Tables']['vehicles']['Update']
-export type VehicleType = Database['public']['Enums']['vehicle_type_enum']
+export type Vehicle = Database["public"]["Tables"]["vehicles"]["Row"];
+export type NewVehicle = Database["public"]["Tables"]["vehicles"]["Insert"];
+export type UpdateVehicle = Database["public"]["Tables"]["vehicles"]["Update"];
+export type VehicleType = Database["public"]["Enums"]["vehicle_type_enum"];
 
 // Utilise le singleton `supabase` configuré dans `src/lib/database/client.ts`
 
@@ -14,15 +14,15 @@ export type VehicleType = Database['public']['Enums']['vehicle_type_enum']
  */
 export async function getAllVehicles() {
   const { data, error } = await supabase
-    .from('vehicles')
-    .select('*')
-    .order('created_at', { ascending: false })
+    .from("vehicles")
+    .select("*")
+    .order("created_at", { ascending: false });
 
   if (error) {
-    throw new Error(`Error fetching vehicles: ${error.message}`)
+    throw new Error(`Error fetching vehicles: ${error.message}`);
   }
 
-  return data
+  return data;
 }
 
 /**
@@ -30,16 +30,16 @@ export async function getAllVehicles() {
  */
 export async function getVehicleById(id: string) {
   const { data, error } = await supabase
-    .from('vehicles')
-    .select('*')
-    .eq('id', id)
-    .single()
+    .from("vehicles")
+    .select("*")
+    .eq("id", id)
+    .single();
 
   if (error) {
-    throw new Error(`Error fetching vehicle: ${error.message}`)
+    throw new Error(`Error fetching vehicle: ${error.message}`);
   }
 
-  return data
+  return data;
 }
 
 /**
@@ -47,16 +47,16 @@ export async function getVehicleById(id: string) {
  */
 export async function createVehicle(vehicle: NewVehicle) {
   const { data, error } = await supabase
-    .from('vehicles')
+    .from("vehicles")
     .insert(vehicle)
     .select()
-    .single()
+    .single();
 
   if (error) {
-    throw new Error(`Error creating vehicle: ${error.message}`)
+    throw new Error(`Error creating vehicle: ${error.message}`);
   }
 
-  return data
+  return data;
 }
 
 /**
@@ -64,30 +64,27 @@ export async function createVehicle(vehicle: NewVehicle) {
  */
 export async function updateVehicle(id: string, updates: UpdateVehicle) {
   const { data, error } = await supabase
-    .from('vehicles')
+    .from("vehicles")
     .update(updates)
-    .eq('id', id)
+    .eq("id", id)
     .select()
-    .single()
+    .single();
 
   if (error) {
-    throw new Error(`Error updating vehicle: ${error.message}`)
+    throw new Error(`Error updating vehicle: ${error.message}`);
   }
 
-  return data
+  return data;
 }
 
 /**
  * Deletes a vehicle
  */
 export async function deleteVehicle(id: string) {
-  const { error } = await supabase
-    .from('vehicles')
-    .delete()
-    .eq('id', id)
+  const { error } = await supabase.from("vehicles").delete().eq("id", id);
 
   if (error) {
-    throw new Error(`Error deleting vehicle: ${error.message}`)
+    throw new Error(`Error deleting vehicle: ${error.message}`);
   }
 }
 
@@ -95,5 +92,5 @@ export async function deleteVehicle(id: string) {
  * Gets all available vehicle types
  */
 export function getVehicleTypes(): VehicleType[] {
-  return ['STANDARD', 'PREMIUM', 'ELECTRIC', 'VAN']
+  return ["STANDARD", "PREMIUM", "ELECTRIC", "VAN"];
 }
