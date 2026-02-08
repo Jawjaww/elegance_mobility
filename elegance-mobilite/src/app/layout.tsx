@@ -28,8 +28,8 @@ export const viewport = {
 };
 
 /**
- * Layout racine minimal qui contient uniquement les providers
- * Les layouts spécifiques (client/admin) sont gérés dans leurs routes respectives
+ * Layout racine (Tauri-Ready)
+ * Protection client-side des routes gérée individuellement par les pages
  */
 export default function RootLayout({
   children,

@@ -39,22 +39,22 @@ export function ClientHeader() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUserEmail(session.user.email || null);
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUserEmail(user.email || null);
       }
     });
   }, []);
 
   const handleLogout = async () => {
     if (isLoggingOut) return;
-    
+
     setIsLoggingOut(true);
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      
-      window.location.href = '/auth/login';
+
+      window.location.href = "/auth/login";
     } catch (error) {
       console.error("Erreur lors de la déconnexion:", error);
       setIsLoggingOut(false);
@@ -89,7 +89,7 @@ export function ClientHeader() {
                 href={item.href}
                 className={cn(
                   "flex items-center space-x-2 transition-all duration-200 hover:text-blue-400",
-                  isActive(item.href) ? "text-blue-400" : "text-neutral-400"
+                  isActive(item.href) ? "text-blue-400" : "text-neutral-400",
                 )}
               >
                 <div
@@ -97,7 +97,7 @@ export function ClientHeader() {
                     "p-1.5 rounded-full transition-all duration-200",
                     isActive(item.href)
                       ? "bg-blue-500/15 shadow-[0_0_8px_-2px_rgba(37,99,235,0.2)]"
-                      : "group-hover:bg-neutral-800/30"
+                      : "group-hover:bg-neutral-800/30",
                   )}
                 >
                   <item.icon
@@ -105,7 +105,7 @@ export function ClientHeader() {
                       "h-4 w-4",
                       isActive(item.href)
                         ? "text-blue-400"
-                        : "text-neutral-400"
+                        : "text-neutral-400",
                     )}
                   />
                 </div>
@@ -149,7 +149,7 @@ export function ClientHeader() {
                   className="flex items-center gap-2 text-red-500"
                 >
                   <LogOut className="h-4 w-4" />
-                  <span>{isLoggingOut ? 'Déconnexion...' : 'Déconnexion'}</span>
+                  <span>{isLoggingOut ? "Déconnexion..." : "Déconnexion"}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

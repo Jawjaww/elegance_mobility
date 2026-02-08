@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from "@/lib/database/server";
+import { supabase } from "@/lib/database/client";
 // import type { Database } from "@/lib/types/database.types";
 
 export interface DashboardMetrics {
@@ -22,57 +22,48 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = yesterday.toISOString().split("T")[0];
 
-  // S'assurer que le client est initialisé avant de l'utiliser
-  const supabase = await createServerSupabaseClient();
-  
-  // Récupérer toutes les métriques en parallèle
+  // Utiliser le client navigateur Supabase singleton
   const [
     todayRidesResult,
     pendingRidesResult,
     activeDriversResult,
     remainingRidesResult,
     availableVehiclesResult,
-    yesterdayRidesResult
+    yesterdayRidesResult,
   ] = await Promise.all([
-    (await supabase)
-      .from("rides")
-      .select("*", { count: "exact" })
-      .eq("date", today),
+    supabase.from("rides").select("*", { count: "exact" }).eq("date", today),
 
-    (await supabase)
+    supabase
       .from("rides")
       .select("*", { count: "exact" })
       .eq("status", "pending"),
 
-    (await supabase)
+    supabase
       .from("users")
       .select("*", { count: "exact" })
       .eq("role", "driver")
       .eq("status", "active"),
 
-    (await supabase)
-      .from("rides")
-      .select("*", { count: "exact" })
-      .gt("date", today),
+    supabase.from("rides").select("*", { count: "exact" }).gt("date", today),
 
-    (await supabase)
+    supabase
       .from("vehicles")
       .select("*", { count: "exact" })
       .eq("status", "available"),
 
-    (await supabase)
+    supabase
       .from("rides")
       .select("*", { count: "exact" })
-      .eq("date", yesterdayStr)
+      .eq("date", yesterdayStr),
   ]);
 
   const todayRidesCount = todayRidesResult.count || 0;
   const yesterdayRidesCount = yesterdayRidesResult.count || 0;
 
   // Calculer la tendance
-  const trendPercentage = yesterdayRidesCount ? 
-    ((todayRidesCount - yesterdayRidesCount) / yesterdayRidesCount * 100) : 
-    0;
+  const trendPercentage = yesterdayRidesCount
+    ? ((todayRidesCount - yesterdayRidesCount) / yesterdayRidesCount) * 100
+    : 0;
 
   return {
     todayRides: todayRidesCount,

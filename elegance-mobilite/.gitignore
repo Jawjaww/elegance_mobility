@@ -16,3 +16,6 @@ dist/
 
 # Ignore system files
 .DS_Store
+
+# Ignore locally downloaded external documentation
+docs/external/

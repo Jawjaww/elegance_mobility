@@ -1,35 +1,13 @@
-import { createServerSupabaseClient } from '@/lib/database/server'
-import { NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from "next/server";
 
-export async function POST() {
-  try {
-    const supabase = await createServerSupabaseClient()
-    
-    // Déconnexion de la session
-    const { error } = await supabase.auth.signOut()
-    
-    if (error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      )
-    }
+// Déconnexion côté serveur désactivée en mode client/Tauri. La déconnexion
+// doit être effectuée côté client via le client Supabase. On renvoie 501.
 
-    // Redirection vers la page de login
-    return NextResponse.json(
-      { success: true },
-      { 
-        status: 200,
-        headers: {
-          'Location': '/auth/login'
-        }
-      }
-    )
+export const dynamic = "error";
 
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Une erreur est survenue lors de la déconnexion' },
-      { status: 500 }
-    )
-  }
+export async function POST(_req: NextRequest) {
+  return NextResponse.json(
+    { success: false, error: "server_auth_disabled" },
+    { status: 501 },
+  );
 }

@@ -1,50 +1,75 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from "react"
-import { AdminCardGrid } from "./admin-card-grid"
-import { DashboardMetricCard } from "./dashboard-metric-card"
-import { DashboardActionCard } from "./dashboard-action-card"
-import { Car, CalendarCheck, MapPin, Users, CreditCard, PackageOpen } from "lucide-react"
-
-type DashboardMetrics = {
-  todayRides: number
-  pendingRides: number
-  activeDrivers: number
-  remainingRides: number
-  availableVehicles: number
-  todayRidesTrend: {
-    percentage: number
-    isUp: boolean
-  }
-}
+import { useEffect, useState } from "react";
+import { AdminCardGrid } from "./admin-card-grid";
+import { DashboardMetricCard } from "./dashboard-metric-card";
+import { DashboardActionCard } from "./dashboard-action-card";
+import {
+  Car,
+  CalendarCheck,
+  MapPin,
+  Users,
+  CreditCard,
+  PackageOpen,
+} from "lucide-react";
+import {
+  MetricsService,
+  type DashboardMetrics,
+} from "@/lib/services/metricsService";
 
 interface AdminDashboardClientProps {
-  initialMetrics: DashboardMetrics
+  initialMetrics?: DashboardMetrics;
 }
 
 export function AdminDashboardClient({
-  initialMetrics
+  initialMetrics,
 }: AdminDashboardClientProps) {
-  const [metrics, setMetrics] = useState(initialMetrics)
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(
+    initialMetrics || null,
+  );
+  const [loading, setLoading] = useState(!initialMetrics);
 
   useEffect(() => {
+    let mounted = true;
+
+    async function fetchMetricsOnce() {
+      try {
+        const updatedMetrics = await MetricsService.getDashboardMetrics();
+        if (!mounted) return;
+        setMetrics(updatedMetrics);
+      } catch (error) {
+        console.error("Erreur lors de la récupération des métriques:", error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    if (!initialMetrics) {
+      fetchMetricsOnce();
+    }
+
     const interval = setInterval(async () => {
       try {
-        const response = await fetch('/api/dashboard/metrics', {
-          headers: {
-            'Cache-Control': 'no-cache',
-          }
-        })
-        if (!response.ok) throw new Error('Erreur réseau')
-        const updatedMetrics = await response.json()
-        setMetrics(updatedMetrics)
+        const updatedMetrics = await MetricsService.getDashboardMetrics();
+        if (mounted) setMetrics(updatedMetrics);
       } catch (error) {
-        console.error('Erreur lors de la mise à jour des métriques:', error)
+        console.error("Erreur lors de la mise à jour des métriques:", error);
       }
-    }, 60000)
+    }, 60000);
 
-    return () => clearInterval(interval)
-  }, [])
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [initialMetrics]);
+
+  if (loading || !metrics) {
+    return (
+      <div className="min-h-[200px] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -62,13 +87,16 @@ export function AdminDashboardClient({
       </AdminCardGrid>
 
       {/* Métriques */}
-      <AdminCardGrid className="mt-6" columns={{
-        default: 2,
-        sm: 2,
-        md: 2,
-        lg: 4,
-        xl: 4,
-      }}>
+      <AdminCardGrid
+        className="mt-6"
+        columns={{
+          default: 2,
+          sm: 2,
+          md: 2,
+          lg: 4,
+          xl: 4,
+        }}
+      >
         <DashboardMetricCard
           title="Courses non attribuées"
           value={metrics.pendingRides.toString()}
@@ -96,12 +124,15 @@ export function AdminDashboardClient({
       </AdminCardGrid>
 
       {/* Actions rapides */}
-      <AdminCardGrid className="mt-6" columns={{
-        default: 1,
-        sm: 2,
-        md: 2,
-        lg: 2,
-      }}>
+      <AdminCardGrid
+        className="mt-6"
+        columns={{
+          default: 1,
+          sm: 2,
+          md: 2,
+          lg: 2,
+        }}
+      >
         <DashboardActionCard
           title="Tarifs kilométriques"
           description="Gérer les tarifs de base et kilométriques"
@@ -118,5 +149,5 @@ export function AdminDashboardClient({
         />
       </AdminCardGrid>
     </>
-  )
+  );
 }

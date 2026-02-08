@@ -3,7 +3,7 @@ const nextConfig = {
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@': require('path').resolve(__dirname, 'src')
+      "@": require("path").resolve(__dirname, "src"),
     };
     return config;
   },
@@ -14,8 +14,12 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true, // Désactiver ESLint pendant le build
   },
-  // Désactiver la génération statique pour les pages qui utilisent des données dynamiques
-  output: 'standalone',
+  // Configuration Tauri-Ready : Export statique
+  output: "export",
+  // Désactiver l'optimisation d'images pour le mode export (Tauri-compatible)
+  images: {
+    unoptimized: true,
+  },
 };
 
 module.exports = nextConfig;

@@ -7,6 +7,26 @@ const config = {
   content: ["./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      // Design-system extensions for neon/glass
+      colors: {
+        "neon-green": {
+          DEFAULT: "#05c46b",
+          light: "#9efbd1",
+          bright: "#10ff8c",
+        },
+        glass: {
+          DEFAULT: "rgba(255,255,255,0.02)",
+          mid: "rgba(255,255,255,0.06)",
+          heavy: "rgba(255,255,255,0.12)",
+        },
+        bordeaux: "#7c2230",
+        "bordeaux-icon": "#a0303a",
+      },
+      boxShadow: {
+        "neon-sm": "0 8px 40px rgba(16,185,129,0.14)",
+        "neon-lg": "0 24px 80px rgba(16,255,140,0.22)",
+        "glass-inner": "inset 0 1px 0 rgba(255,255,255,0.02)",
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

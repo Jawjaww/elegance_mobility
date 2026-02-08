@@ -1,257 +1,227 @@
-'use client'
+"use client";
 
-import { useState, useRef } from 'react'
-import { motion, AnimatePresence, PanInfo } from 'framer-motion'
-import { 
-  Clock, 
-  Calendar, 
-  Play, 
-  MapPin, 
-  Navigation, 
+import { useState, useRef } from "react";
+import { motion, AnimatePresence, PanInfo } from "framer-motion";
+import {
+  Clock,
+  Calendar,
+  Play,
+  MapPin,
+  Navigation,
   DollarSign,
   ChevronUp,
   Circle,
-  Wifi,
-  WifiOff,
-  Power
-} from 'lucide-react'
-import { useDriverStore } from '@/lib/driver/store'
-import { Button } from '@/components/ui/button'
-import { formatPrice, formatDistance, formatDuration } from '@/lib/driver/utils'
-import type { Ride } from '@/lib/driver/types'
+} from "lucide-react";
+import { useDriverStore } from "@/lib/driver/store";
+import { Button } from "@/components/ui/button";
+import {
+  formatPrice,
+  formatDistance,
+  formatDuration,
+} from "@/lib/driver/utils";
+import type { Ride } from "@/lib/driver/types";
 
-type Tab = 'available' | 'scheduled' | 'active'
+type Tab = "available" | "scheduled" | "active";
 
-// Hauteurs du bottomsheet en dvh pour responsive
-const SHEET_HEIGHTS = {
-  collapsed: '16dvh',   // ~120px sur petit écran
-  peek: '32dvh',        // ~260px
-  expanded: '85dvh'     // Presque plein écran
-}
+// Positions Y (translateY) pour chaque état - % de la hauteur cachée
+// 0% = tout en haut (plein écran), 100% = tout en bas (caché)
+const SHEET_POSITIONS = {
+  collapsed: "75%", // Montre 25% en bas
+  peek: "55%", // Montre 45%
+  expanded: "0%", // Plein écran
+};
 
 export function DriverBottomSheet() {
-  const { isOnline, activeRide, availableRide, setIsOnline } = useDriverStore()
-  const [activeTab, setActiveTab] = useState<Tab>(activeRide ? 'active' : 'available')
-  const [sheetState, setSheetState] = useState<'collapsed' | 'peek' | 'expanded'>('peek')
-  
-  const constraintsRef = useRef<HTMLDivElement>(null)
+  const { isOnline, activeRide, availableRide } = useDriverStore();
+  const [activeTab, setActiveTab] = useState<Tab>(
+    activeRide ? "active" : "available",
+  );
+  const [sheetState, setSheetState] = useState<
+    "collapsed" | "peek" | "expanded"
+  >("peek");
 
-  const scheduledRides: Ride[] = []
+  const constraintsRef = useRef<HTMLDivElement>(null);
+
+  const scheduledRides: Ride[] = [];
 
   const handleDragEnd = (event: any, info: PanInfo) => {
-    const velocity = info.velocity.y
-    const offset = info.offset.y
+    const velocity = info.velocity.y;
+    const offset = info.offset.y;
 
-    if (velocity < -300 || offset < -80) {
-      if (sheetState === 'collapsed') setSheetState('peek')
-      else if (sheetState === 'peek') setSheetState('expanded')
-    } else if (velocity > 300 || offset > 80) {
-      if (sheetState === 'expanded') setSheetState('peek')
-      else if (sheetState === 'peek') setSheetState('collapsed')
+    // Tirer vers le HAUT (négatif) = monter le sheet
+    if (velocity < -200 || offset < -40) {
+      if (sheetState === "collapsed") setSheetState("peek");
+      else if (sheetState === "peek") setSheetState("expanded");
     }
-  }
+    // Tirer vers le BAS (positif) = descendre le sheet
+    else if (velocity > 200 || offset > 40) {
+      if (sheetState === "expanded") setSheetState("peek");
+      else if (sheetState === "peek") setSheetState("collapsed");
+    }
+  };
 
-  const getSheetHeight = () => {
+  const getSheetPosition = () => {
     switch (sheetState) {
-      case 'collapsed': return SHEET_HEIGHTS.collapsed
-      case 'peek': return SHEET_HEIGHTS.peek
-      case 'expanded': return '120dvh'
+      case "collapsed":
+        return SHEET_POSITIONS.collapsed;
+      case "peek":
+        return SHEET_POSITIONS.peek;
+      case "expanded":
+        return SHEET_POSITIONS.expanded;
     }
-  }
+  };
 
   const handleOpenRealtimeModal = () => {
     if (availableRide) {
-      window.dispatchEvent(new CustomEvent('open-ride-modal', { detail: availableRide }))
+      window.dispatchEvent(
+        new CustomEvent("open-ride-modal", { detail: availableRide }),
+      );
     }
-  }
+  };
 
   return (
     <>
-      {/* Bouton Go Online flottant compact */}
-      <AnimatePresence>
-        {sheetState === 'collapsed' && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            onClick={() => setIsOnline(!isOnline)}
-            className={`fixed bottom-6 right-4 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-2xl font-medium text-sm transition-all ${
-              isOnline 
-                ? 'bg-emerald-500 text-white shadow-emerald-500/30' 
-                : 'bg-white text-neutral-900 shadow-white/20'
-            }`}
-          >
-            {isOnline ? (
-              <>
-                <Wifi className="w-4 h-4" />
-                <span>En ligne</span>
-              </>
-            ) : (
-              <>
-                <Power className="w-4 h-4" />
-                <span>Hors ligne</span>
-              </>
-            )}
-          </motion.button>
-        )}
-      </AnimatePresence>
-
-      {/* Bottom Sheet */}
+      {/* Bottom Sheet - hauteur fixe 100vh, animé avec translateY */}
       <motion.div
         ref={constraintsRef}
-        className="fixed left-0 right-0 bottom-0 z-40 bg-neutral-950 rounded-t-[2rem] shadow-2xl border-t border-white/10 overflow-hidden select-none"
-        initial={{ y: '100%' }}
-        animate={{ 
-          height: getSheetHeight(),
-          y: 0 
+        className="fixed left-0 right-0 bottom-0 z-40 bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-800 rounded-t-[2.5rem] shadow-[0_8px_32px_0_rgba(0,0,0,0.45)] border-t border-white/10 overflow-hidden select-none h-[100dvh] backdrop-blur-xl"
+        initial={{ y: "100%" }}
+        animate={{
+          y: getSheetPosition(),
         }}
-        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        drag={sheetState !== 'expanded' ? 'y' : false}
-        dragConstraints={{ top: -50, bottom: 50 }}
-        dragElastic={0.2}
+        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+        drag={"y"}
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={0.1}
         onDragEnd={handleDragEnd}
       >
         {/* Handle */}
-        <div 
-          className="w-full flex flex-col items-center pt-3 pb-2 cursor-grab active:cursor-grabbing"
+        <div
+          className="w-full flex flex-col items-center pt-4 pb-2 cursor-grab active:cursor-grabbing"
           onClick={() => {
-            if (sheetState === 'expanded') setSheetState('peek')
-            else if (sheetState === 'peek') setSheetState('expanded')
-            else setSheetState('peek')
+            if (sheetState === "expanded") setSheetState("peek");
+            else if (sheetState === "peek") setSheetState("expanded");
+            else setSheetState("peek");
           }}
         >
-          <div className="w-12 h-1.5 bg-neutral-700 rounded-full mb-2" />
-          <ChevronUp 
-            className={`w-5 h-5 text-neutral-500 transition-transform duration-300 ${
-              sheetState === 'expanded' ? 'rotate-180' : ''
-            }`} 
+          <div className="w-14 h-2 bg-gradient-to-r from-neutral-700 via-neutral-500 to-neutral-700 rounded-full mb-2 shadow-sm" />
+          <ChevronUp
+            className={`w-6 h-6 text-neutral-400 transition-transform duration-300 ${
+              sheetState === "expanded" ? "rotate-180" : ""
+            }`}
           />
         </div>
 
         {/* Header avec tabs et toggle compact */}
-        <div className="px-4 pb-3">
-          <div className="flex items-center gap-3">
-            <div className="flex-1 flex bg-neutral-900 rounded-xl p-1">
-              <TabButton 
-                active={activeTab === 'available'}
-                onClick={() => setActiveTab('available')}
+        <div className="px-6 pb-4">
+          <div className="flex items-center gap-4">
+            <div className="flex-1 flex bg-gradient-to-r from-neutral-900 via-neutral-800 to-neutral-700 rounded-2xl p-1 shadow-lg border border-white/5">
+              <TabButton
+                active={activeTab === "available"}
+                onClick={() => setActiveTab("available")}
                 icon={Clock}
                 badge={availableRide ? 1 : 0}
                 color="emerald"
               />
-              <TabButton 
-                active={activeTab === 'scheduled'}
-                onClick={() => setActiveTab('scheduled')}
+              <TabButton
+                active={activeTab === "scheduled"}
+                onClick={() => setActiveTab("scheduled")}
                 icon={Calendar}
                 badge={scheduledRides.length}
                 color="blue"
               />
-              <TabButton 
-                active={activeTab === 'active'}
-                onClick={() => setActiveTab('active')}
+              <TabButton
+                active={activeTab === "active"}
+                onClick={() => setActiveTab("active")}
                 icon={Play}
                 badge={activeRide ? 1 : 0}
                 color="amber"
               />
             </div>
-
-            {sheetState !== 'collapsed' && (
-              <button
-                onClick={() => setIsOnline(!isOnline)}
-                className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl font-medium text-sm transition-all ${
-                  isOnline 
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                    : 'bg-neutral-800 text-neutral-400 border border-neutral-700'
-                }`}
-              >
-                {isOnline ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
-                <span className="hidden sm:inline">{isOnline ? 'On' : 'Off'}</span>
-              </button>
-            )}
           </div>
         </div>
 
         {/* Content */}
-        <div className="px-4 overflow-y-auto h-[calc(100%-100px)]">
+        <div className="px-6 overflow-y-auto h-[calc(100%-110px)]">
           <AnimatePresence mode="wait">
-            {activeTab === 'available' && (
-              <AvailableTab 
+            {activeTab === "available" && (
+              <AvailableTab
                 key="available"
                 ride={availableRide}
                 isOnline={isOnline}
                 onOpenModal={handleOpenRealtimeModal}
-                compact={sheetState === 'collapsed'}
+                compact={sheetState === "collapsed"}
               />
             )}
-            {activeTab === 'scheduled' && (
-              <ScheduledTab 
-                key="scheduled"
-                rides={scheduledRides}
-              />
+            {activeTab === "scheduled" && (
+              <ScheduledTab key="scheduled" rides={scheduledRides} />
             )}
-            {activeTab === 'active' && (
-              <ActiveTab 
-                key="active"
-                ride={activeRide}
-              />
+            {activeTab === "active" && (
+              <ActiveTab key="active" ride={activeRide} />
             )}
           </AnimatePresence>
         </div>
       </motion.div>
     </>
-  )
+  );
 }
 
-function TabButton({ 
-  active, 
-  onClick, 
-  icon: Icon, 
+function TabButton({
+  active,
+  onClick,
+  icon: Icon,
   badge,
-  color 
-}: { 
-  active: boolean
-  onClick: () => void
-  icon: React.ElementType
-  badge: number
-  color: 'emerald' | 'blue' | 'amber'
+  color,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ElementType;
+  badge: number;
+  color: "emerald" | "blue" | "amber";
 }) {
   const colors = {
-    emerald: 'bg-emerald-500 text-white',
-    blue: 'bg-blue-500 text-white',
-    amber: 'bg-amber-500 text-white'
-  }
+    emerald:
+      "bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-300 text-white shadow-md",
+    blue: "bg-gradient-to-r from-blue-500 via-blue-400 to-blue-300 text-white shadow-md",
+    amber:
+      "bg-gradient-to-r from-amber-500 via-amber-400 to-amber-300 text-white shadow-md",
+  };
 
   return (
     <button
       onClick={onClick}
-      className={`flex-1 flex items-center justify-center py-2.5 rounded-lg transition-all relative ${
-        active ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-300'
+      className={`flex-1 flex items-center justify-center py-3 rounded-xl transition-all duration-200 relative font-semibold tracking-wide ${
+        active
+          ? "bg-gradient-to-r from-neutral-800 via-neutral-700 to-neutral-600 text-white shadow-lg border border-white/10"
+          : "text-neutral-400 hover:text-neutral-200"
       }`}
     >
-      <Icon className="w-5 h-5" />
+      <Icon className="w-6 h-6" />
       {badge > 0 && (
-        <span className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 ${colors[color]} rounded-full text-xs flex items-center justify-center font-bold`}>
-          {badge > 9 ? '9+' : badge}
+        <span
+          className={`absolute -top-2 -right-2 min-w-[20px] h-[20px] px-1 ${colors[color]} rounded-full text-xs flex items-center justify-center font-bold border border-white/20 drop-shadow-lg`}
+        >
+          {badge > 9 ? "9+" : badge}
         </span>
       )}
     </button>
-  )
+  );
 }
 
-function AvailableTab({ 
-  ride, 
-  isOnline, 
+function AvailableTab({
+  ride,
+  isOnline,
   onOpenModal,
-  compact
-}: { 
-  ride: Ride | null
-  isOnline: boolean
-  onOpenModal: () => void
-  compact?: boolean
+  compact,
+}: {
+  ride: Ride | null;
+  isOnline: boolean;
+  onOpenModal: () => void;
+  compact?: boolean;
 }) {
   if (!isOnline) {
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
@@ -260,12 +230,12 @@ function AvailableTab({
         <Circle className="w-10 h-10 mb-2 text-neutral-700" />
         <p className="text-sm">Passez en ligne</p>
       </motion.div>
-    )
+    );
   }
 
   if (!ride) {
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
@@ -274,12 +244,12 @@ function AvailableTab({
         <div className="w-8 h-8 rounded-full bg-neutral-800 animate-pulse mb-2" />
         <p className="text-sm">En attente...</p>
       </motion.div>
-    )
+    );
   }
 
   if (compact) {
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -292,23 +262,29 @@ function AvailableTab({
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
           </span>
           <div className="flex-1 min-w-0">
-            <p className="text-white font-medium text-sm truncate">{ride.pickupLocation}</p>
-            <p className="text-emerald-400 text-xs">→ {ride.dropoffLocation.slice(0, 30)}...</p>
+            <p className="text-white font-medium text-sm truncate">
+              {ride.pickupLocation}
+            </p>
+            <p className="text-emerald-400 text-xs">
+              → {ride.dropoffLocation.slice(0, 30)}...
+            </p>
           </div>
-          <span className="text-emerald-400 font-bold">{formatPrice(ride.estimatedPrice || 0)}</span>
+          <span className="text-emerald-400 font-bold">
+            {formatPrice(ride.estimatedPrice || 0)}
+          </span>
         </div>
       </motion.div>
-    )
+    );
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       className="space-y-3 py-2"
     >
-      <div 
+      <div
         onClick={onOpenModal}
         className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border border-emerald-500/30 rounded-xl p-4 cursor-pointer hover:border-emerald-500/50 transition-colors"
       >
@@ -318,19 +294,27 @@ function AvailableTab({
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
-            <span className="text-emerald-400 font-semibold text-sm">NOUVELLE COURSE</span>
+            <span className="text-emerald-400 font-semibold text-sm">
+              NOUVELLE COURSE
+            </span>
           </div>
-          <span className="text-2xl font-bold text-white">{formatPrice(ride.estimatedPrice || 0)}</span>
+          <span className="text-2xl font-bold text-white">
+            {formatPrice(ride.estimatedPrice || 0)}
+          </span>
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm">
             <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span className="text-neutral-300 truncate">{ride.pickupLocation}</span>
+            <span className="text-neutral-300 truncate">
+              {ride.pickupLocation}
+            </span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <Navigation className="w-4 h-4 text-blue-400 shrink-0" />
-            <span className="text-neutral-300 truncate">{ride.dropoffLocation}</span>
+            <span className="text-neutral-300 truncate">
+              {ride.dropoffLocation}
+            </span>
           </div>
         </div>
 
@@ -345,21 +329,24 @@ function AvailableTab({
           </span>
         </div>
 
-        <Button 
+        <Button
           className="w-full mt-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold"
-          onClick={(e) => { e.stopPropagation(); onOpenModal(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenModal();
+          }}
         >
           VOIR DÉTAILS
         </Button>
       </div>
     </motion.div>
-  )
+  );
 }
 
 function ScheduledTab({ rides }: { rides: Ride[] }) {
   if (rides.length === 0) {
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
@@ -368,33 +355,40 @@ function ScheduledTab({ rides }: { rides: Ride[] }) {
         <Calendar className="w-10 h-10 mb-2 text-neutral-700" />
         <p className="text-sm">Aucune course planifiée</p>
       </motion.div>
-    )
+    );
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       className="space-y-3 py-2"
     >
       {rides.map((ride) => (
-        <div key={ride.id} className="bg-neutral-900 rounded-xl p-4 border border-white/5">
+        <div
+          key={ride.id}
+          className="bg-neutral-900 rounded-xl p-4 border border-white/5"
+        >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2 text-blue-400 text-sm">
               <Calendar className="w-4 h-4" />
               <span className="font-medium">
-                {ride.pickupTime ? new Date(ride.pickupTime).toLocaleString('fr-FR', {
-                  weekday: 'short',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                }) : 'Date non définie'}
+                {ride.pickupTime
+                  ? new Date(ride.pickupTime).toLocaleString("fr-FR", {
+                      weekday: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "Date non définie"}
               </span>
             </div>
-            <span className="text-lg font-bold text-white">{formatPrice(ride.estimatedPrice || 0)}</span>
+            <span className="text-lg font-bold text-white">
+              {formatPrice(ride.estimatedPrice || 0)}
+            </span>
           </div>
-          
+
           <div className="space-y-1 text-sm">
             <div className="flex items-center gap-2 text-neutral-300">
               <MapPin className="w-4 h-4 text-neutral-500 shrink-0" />
@@ -408,13 +402,13 @@ function ScheduledTab({ rides }: { rides: Ride[] }) {
         </div>
       ))}
     </motion.div>
-  )
+  );
 }
 
 function ActiveTab({ ride }: { ride: Ride | null }) {
   if (!ride) {
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
@@ -423,11 +417,11 @@ function ActiveTab({ ride }: { ride: Ride | null }) {
         <Play className="w-10 h-10 mb-2 text-neutral-700" />
         <p className="text-sm">Aucune course en cours</p>
       </motion.div>
-    )
+    );
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
@@ -454,7 +448,10 @@ function ActiveTab({ ride }: { ride: Ride | null }) {
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="outline" className="border-amber-500/50 text-amber-400 hover:bg-amber-500/20">
+          <Button
+            variant="outline"
+            className="border-amber-500/50 text-amber-400 hover:bg-amber-500/20"
+          >
             Arrivé
           </Button>
           <Button className="bg-amber-500 hover:bg-amber-600 text-white">
@@ -463,5 +460,5 @@ function ActiveTab({ ride }: { ride: Ride | null }) {
         </div>
       </div>
     </motion.div>
-  )
+  );
 }

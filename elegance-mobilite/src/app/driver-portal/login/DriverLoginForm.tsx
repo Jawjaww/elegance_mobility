@@ -1,71 +1,83 @@
-'use client'
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { supabase } from "@/lib/database/client"
-import { useToast } from "@/hooks/useToast"
-import { type AppRole } from "@/lib/types/common.types"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { supabase } from "@/lib/database/client";
+import { useToast } from "@/hooks/useToast";
+import { type AppRole } from "@/lib/types/common.types";
 
 export function DriverLoginForm() {
-  const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
-  const { toast } = useToast()
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
+  const { toast } = useToast();
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setIsLoading(true)
+    event.preventDefault();
+    setIsLoading(true);
 
     try {
-      const formData = new FormData(event.currentTarget)
-      const email = formData.get('email') as string
-      const password = formData.get('password') as string
+      const formData = new FormData(event.currentTarget);
+      const email = ((formData.get("email") as string) || "").trim();
+      const password = ((formData.get("password") as string) || "").trim();
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password
-      })
+        password,
+      });
 
+      // Log détaillé pour diagnostiquer les 400 Bad Request
       if (error) {
-        if (error.message.includes('Email not confirmed')) {
-          throw new Error("Votre email n'a pas été confirmé. Veuillez vérifier votre boîte de réception.")
+        console.error(
+          "DriverLoginForm: signInWithPassword error:",
+          error,
+          "data:",
+          data,
+        );
+        if (error.message?.includes("Email not confirmed")) {
+          throw new Error(
+            "Votre email n'a pas été confirmé. Veuillez vérifier votre boîte de réception.",
+          );
         }
-        if (error.message.includes('Invalid login credentials')) {
-          throw new Error("Email ou mot de passe incorrect.")
+        if (error.message?.includes("Invalid login credentials")) {
+          throw new Error("Email ou mot de passe incorrect.");
         }
-        throw error
+        // Cas: 400 sans message clair — exposer le message brut
+        throw new Error(error.message || JSON.stringify(error));
       }
 
-      // Vérification typée du rôle pour les chauffeurs
-      const userRole = (data.user as any)?.raw_app_meta_data?.role
-      
+      // Vérification typée du rôle pour les chauffeurs (app_metadata moderne)
+      const userRole =
+        (data.user as any)?.app_metadata?.role ||
+        (data.user as any)?.raw_app_meta_data?.role;
+
       // Seuls les chauffeurs peuvent se connecter ici
-      if (userRole !== 'app_driver') {
-        await supabase.auth.signOut()
-        throw new Error('Accès réservé aux chauffeurs partenaires')
+      if (userRole !== "app_driver") {
+        await supabase.auth.signOut();
+        throw new Error("Accès réservé aux chauffeurs partenaires");
       }
 
       toast({
         title: "Connexion réussie",
         description: "Bienvenue dans votre espace chauffeur",
-      })
+      });
 
       // Ajouter un délai pour s'assurer que la session est établie
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      // Redirection complète vers le portail chauffeur
-      window.location.href = '/driver-portal/dashboard'
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
+      // Redirection complète vers le portail chauffeur
+      window.location.href = "/driver-portal/dashboard";
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Erreur de connexion",
         description: error?.message || "Une erreur est survenue",
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
@@ -85,19 +97,33 @@ export function DriverLoginForm() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Mot de passe</Label>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          required
-          autoComplete="current-password"
-          disabled={isLoading}
-        />
+        <div className="flex items-center">
+          <Input
+            id="password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            required
+            autoComplete="current-password"
+            disabled={isLoading}
+          />
+          <button
+            type="button"
+            aria-label={
+              showPassword
+                ? "Masquer le mot de passe"
+                : "Afficher le mot de passe"
+            }
+            onClick={() => setShowPassword((s) => !s)}
+            className="ml-2 text-neutral-300 hover:text-white"
+          >
+            {showPassword ? "🙈" : "👁️"}
+          </button>
+        </div>
       </div>
-      
+
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? "Connexion en cours..." : "Se connecter"}
       </Button>
     </form>
-  )
+  );
 }

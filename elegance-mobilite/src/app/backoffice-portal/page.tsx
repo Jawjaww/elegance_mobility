@@ -1,20 +1,11 @@
-import { MetricsService } from "@/lib/services/metricsService"
-import { AdminDashboardClient } from "@/components/admin/AdminDashboardClient"
+"use client";
 
-export const revalidate = 0
+import { AdminDashboardClient } from "@/components/admin/AdminDashboardClient";
 
-/**
- * Page d'accueil du backoffice (redirige vers dashboard)
- * La protection est gérée par le middleware
- */
-export default async function BackofficeIndexPage() {
-  const metrics = await MetricsService.getDashboardMetrics()
-
+export default function BackofficeIndexPage() {
   return (
     <div className="container mx-auto py-8">
-      <AdminDashboardClient
-        initialMetrics={metrics}
-      />
+      <AdminDashboardClient />
     </div>
-  )
+  );
 }

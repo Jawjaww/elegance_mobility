@@ -8,9 +8,9 @@ import {
   Header, 
   DriverBottomSheet, 
   FullscreenRideModal,
-  ScheduledRideNotifications 
+  ScheduledRideNotifications
 } from '@/components/driver'
-import { SubscriptionDebug } from '@/components/driver/SubscriptionDebug'
+
 
 export default function DriverDashboardPage() {
   const { isOnline, availableRide, activeRide } = useDriverStore()
@@ -47,9 +47,6 @@ export default function DriverDashboardPage() {
 
       {/* Header flottant */}
       <Header />
-
-      {/* Debug subscription (dev only) */}
-      <SubscriptionDebug />
 
       {/* Notifications pour courses planifiées */}
       <ScheduledRideNotifications />

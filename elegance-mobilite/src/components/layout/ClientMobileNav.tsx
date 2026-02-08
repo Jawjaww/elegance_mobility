@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -10,13 +10,15 @@ import { isCustomer } from "@/lib/types/common.types";
 import type { User } from "@/lib/types/common.types";
 
 export default function ClientMobileNav() {
-  const pathname = usePathname() || '';
+  const pathname = usePathname() || "";
   const [isCustomerRole, setIsCustomerRole] = useState(false);
 
   useEffect(() => {
     const checkRole = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsCustomerRole(isCustomer(session?.user as User | null));
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setIsCustomerRole(isCustomer(user as User | null));
     };
     checkRole();
   }, []);
@@ -36,7 +38,7 @@ export default function ClientMobileNav() {
             "flex flex-col items-center transition-transform duration-300 ease-in-out",
             isActive("/")
               ? "text-blue-400 scale-110"
-              : "text-neutral-300 hover:text-neutral-100 hover:scale-105"
+              : "text-neutral-300 hover:text-neutral-100 hover:scale-105",
           )}
         >
           <Home className="h-6 w-6" />
@@ -50,7 +52,7 @@ export default function ClientMobileNav() {
             "flex flex-col items-center transition-transform duration-300 ease-in-out",
             isActive("/reservation")
               ? "text-blue-400 scale-110"
-              : "text-neutral-300 hover:text-neutral-100 hover:scale-105"
+              : "text-neutral-300 hover:text-neutral-100 hover:scale-105",
           )}
         >
           <Car className="h-6 w-6" />
@@ -64,7 +66,7 @@ export default function ClientMobileNav() {
             "flex flex-col items-center transition-transform duration-300 ease-in-out",
             isActive("/my-account/reservations")
               ? "text-blue-400 scale-110"
-              : "text-neutral-300 hover:text-neutral-100 hover:scale-105"
+              : "text-neutral-300 hover:text-neutral-100 hover:scale-105",
           )}
         >
           <Calendar className="h-6 w-6" />
@@ -78,7 +80,7 @@ export default function ClientMobileNav() {
             "flex flex-col items-center transition-transform duration-300 ease-in-out",
             isActive("/my-account")
               ? "text-blue-400 scale-110"
-              : "text-neutral-300 hover:text-neutral-100 hover:scale-105"
+              : "text-neutral-300 hover:text-neutral-100 hover:scale-105",
           )}
         >
           <UserIcon className="h-6 w-6" />

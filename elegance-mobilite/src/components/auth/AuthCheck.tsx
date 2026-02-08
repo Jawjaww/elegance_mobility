@@ -1,49 +1,52 @@
-'use client'
+"use client";
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/database/client'
-import { getAppRole } from '@/lib/types/common.types'
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/database/client";
+import { getAppRole } from "@/lib/types/common.types";
 
 interface AuthCheckProps {
-  children: React.ReactNode
-  allowedRoles?: string[]
-  redirectTo?: string
+  children: React.ReactNode;
+  allowedRoles?: string[];
+  redirectTo?: string;
 }
 
 /**
  * Vérification côté client de l'authentification
  * Plus rapide sur Safari que la vérification côté serveur
  */
-export function AuthCheck({ 
-  children, 
+export function AuthCheck({
+  children,
   allowedRoles,
-  redirectTo = '/auth/login'
+  redirectTo = "/auth/login",
 }: AuthCheckProps) {
-  const router = useRouter()
+  const router = useRouter();
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session?.user) {
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+
+      if (!user) {
         // Pas connecté, rediriger
-        window.location.href = redirectTo
-        return
+        window.location.href = redirectTo;
+        return;
       }
 
       // Vérifier le rôle si spécifié
       if (allowedRoles && allowedRoles.length > 0) {
-        const userRole = getAppRole(session.user)
-        if (!allowedRoles.includes(userRole || '')) {
-          window.location.href = redirectTo
-          return
+        const userRole = getAppRole(user);
+        if (!allowedRoles.includes(userRole || "")) {
+          window.location.href = redirectTo;
+          return;
         }
       }
-    }
+    };
 
-    checkAuth()
-  }, [redirectTo, allowedRoles])
+    checkAuth();
+  }, [redirectTo, allowedRoles]);
 
-  return <>{children}</>
+  return <>{children}</>;
 }

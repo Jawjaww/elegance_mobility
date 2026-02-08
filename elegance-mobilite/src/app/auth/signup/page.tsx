@@ -1,11 +1,18 @@
 "use client";
 
 import { Suspense } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import CustomerSignup from "@/components/auth/CustomerSignup";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/database/client";
+import { getUserRole } from "@/lib/utils/auth-helpers";
 
 function SignupContent() {
   const router = useRouter();
@@ -16,17 +23,23 @@ function SignupContent() {
 
   useEffect(() => {
     if (hasRedirected.current) return;
-    
+
     const checkSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session?.user && !hasRedirected.current) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (user && !hasRedirected.current) {
           hasRedirected.current = true;
-          router.replace('/auth/already-connected?redirect=signup');
+          const role = getUserRole(user);
+          if (role === "app_driver") router.replace("/driver-portal/dashboard");
+          else if (role === "app_admin" || role === "app_super_admin")
+            router.replace("/backoffice-portal");
+          else router.replace("/my-account");
           return;
         }
-        
+
         setIsChecking(false);
       } catch (error) {
         console.error("Erreur vérification session:", error);
@@ -66,23 +79,25 @@ function SignupContent() {
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md">
-          <Card>
-            <CardHeader>
-              <CardTitle>Créer un compte</CardTitle>
-              <CardDescription>Chargement...</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-center p-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
-              </div>
-            </CardContent>
-          </Card>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center px-4 py-12">
+          <div className="w-full max-w-md">
+            <Card>
+              <CardHeader>
+                <CardTitle>Créer un compte</CardTitle>
+                <CardDescription>Chargement...</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-center p-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <SignupContent />
     </Suspense>
   );

@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from "@/lib/database/server";
+import { supabase } from "@/lib/database/client";
 
 interface UpdateProfileParams {
   userId: string;
@@ -11,14 +11,12 @@ interface UpdateProfileParams {
 }
 
 export async function updateProfile(params: UpdateProfileParams) {
-  const supabase = await createServerSupabaseClient();
-
   try {
     // Si le mot de passe doit être mis à jour
     if (params.currentPassword && params.newPassword) {
       const { error } = await supabase.auth.updateUser({
-        password: params.newPassword
-      })
+        password: params.newPassword,
+      });
 
       if (error) {
         return { error: error.message };
@@ -33,15 +31,21 @@ export async function updateProfile(params: UpdateProfileParams) {
     const userData: {
       data?: { [key: string]: any };
     } = {};
-    
-    if (params.first_name !== undefined) userData.data = { ...userData.data, first_name: params.first_name };
-    if (params.last_name !== undefined) userData.data = { ...userData.data, last_name: params.last_name };
-    if (params.phone !== undefined) userData.data = { ...userData.data, phone: params.phone };
 
-    if (Object.keys(updateData).length > 0 || Object.keys(userData).length > 0) {
+    if (params.first_name !== undefined)
+      userData.data = { ...userData.data, first_name: params.first_name };
+    if (params.last_name !== undefined)
+      userData.data = { ...userData.data, last_name: params.last_name };
+    if (params.phone !== undefined)
+      userData.data = { ...userData.data, phone: params.phone };
+
+    if (
+      Object.keys(updateData).length > 0 ||
+      Object.keys(userData).length > 0
+    ) {
       const { error } = await supabase.auth.updateUser({
         ...updateData,
-        ...userData
+        ...userData,
       });
 
       if (error) {
@@ -51,7 +55,7 @@ export async function updateProfile(params: UpdateProfileParams) {
 
     return { success: true };
   } catch (error: any) {
-    console.error('Error updating profile:', error);
+    console.error("Error updating profile:", error);
     return { error: error.message };
   }
 }

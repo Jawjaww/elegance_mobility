@@ -29,7 +29,10 @@ export function RidesList() {
     return (
       <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {[...Array(6)].map((_, i) => (
-          <Card key={i} className="elegant-backdrop animate-pulse border-neutral-800 bg-neutral-900/50">
+          <Card
+            key={i}
+            className="elegant-backdrop animate-pulse border-neutral-800 bg-neutral-900/50"
+          >
             <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
               <div className="h-5 sm:h-6 bg-neutral-800 rounded w-3/4" />
               <div className="space-y-2">
@@ -47,7 +50,9 @@ export function RidesList() {
   if (filteredRides.length === 0) {
     return (
       <Card className="elegant-backdrop p-6 sm:p-8 text-center border-neutral-800 bg-neutral-900/50">
-        <p className="text-neutral-400 text-sm sm:text-base">Aucune course trouvée</p>
+        <p className="text-neutral-400 text-sm sm:text-base">
+          Aucune course trouvée
+        </p>
       </Card>
     );
   }
@@ -61,7 +66,7 @@ export function RidesList() {
           <Card
             key={ride.id}
             className="overflow-hidden border-neutral-800 bg-neutral-900 mx-auto"
-            style={{ width: '80vw', maxWidth: '80vw', minWidth: 320 }}
+            style={{ width: "80vw", maxWidth: "80vw", minWidth: 320 }}
           >
             <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
               <div className="flex items-center justify-between gap-2">
@@ -103,7 +108,7 @@ export function RidesList() {
                     {ride.driver_id
                       ? (() => {
                           const driver = drivers.find(
-                            (d) => d.id === ride.driver_id
+                            (d) => d.id === ride.driver_id,
                           );
                           return driver
                             ? `${driver.first_name} ${driver.last_name}`
@@ -120,7 +125,9 @@ export function RidesList() {
                     variant="outline"
                     className="flex-1 btn-secondary h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm"
                     onClick={() =>
-                      router.push(`/backoffice-portal/rides/${ride.id}/assign`)
+                      router.push(
+                        `/backoffice-portal/rides/assign?id=${ride.id}`,
+                      )
                     }
                   >
                     <User className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />

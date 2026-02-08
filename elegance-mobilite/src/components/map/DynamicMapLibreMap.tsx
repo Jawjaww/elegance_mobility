@@ -13,8 +13,8 @@ interface DynamicMapLibreMapProps {
   enableRouting?: boolean;
 }
 
-// Import dynamique de MapLibreMap sans SSR
-const MapLibreMap = dynamic(() => import("./MapLibreMap"), {
+// Import dynamique de UnifiedMap sans SSR
+const UnifiedMap = dynamic(() => import("./UnifiedMap"), {
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center w-full h-full bg-neutral-800/30">
@@ -32,34 +32,35 @@ export default function DynamicMapLibreMap({
 }: DynamicMapLibreMapProps) {
   // Référence pour suivre si le composant est monté
   const mountedRef = useRef(true);
-  
+
   // Générer une clé qui ne change que si origin ou destination change substantiellement
   const mapKey = useMemo(() => {
-    const originKey = origin ? `${origin.lat.toFixed(5)},${origin.lon.toFixed(5)}` : 'null';
-    const destKey = destination ? `${destination.lat.toFixed(5)},${destination.lon.toFixed(5)}` : 'null';
+    const originKey = origin
+      ? `${origin.lat.toFixed(5)},${origin.lon.toFixed(5)}`
+      : "null";
+    const destKey = destination
+      ? `${destination.lat.toFixed(5)},${destination.lon.toFixed(5)}`
+      : "null";
     return `map-${originKey}-${destKey}`;
-  }, [
-    origin?.lat, 
-    origin?.lon,
-    destination?.lat, 
-    destination?.lon
-  ]);
-  
+  }, [origin?.lat, origin?.lon, destination?.lat, destination?.lon]);
+
   // Nettoyer les éventuels éléments orphelins de carte lors du démontage
   useEffect(() => {
     return () => {
       mountedRef.current = false;
-      
+
       // Essayer de nettoyer les éléments orphelins de carte
       setTimeout(() => {
         if (!mountedRef.current) {
           // Si le composant n'est plus monté, on peut nettoyer les canvas inutilisés
-          document.querySelectorAll('.maplibregl-canvas-container:not(:has(canvas))').forEach(el => {
-            el.remove();
-          });
-          
+          document
+            .querySelectorAll(".maplibregl-canvas-container:not(:has(canvas))")
+            .forEach((el) => {
+              el.remove();
+            });
+
           // Nettoyer les marqueurs orphelins aussi
-          document.querySelectorAll('.maplibregl-marker').forEach(el => {
+          document.querySelectorAll(".maplibregl-marker").forEach((el) => {
             if (!el.isConnected || !document.contains(el.parentElement)) {
               el.remove();
             }
@@ -71,14 +72,20 @@ export default function DynamicMapLibreMap({
 
   // Vérifier si au moins un point est défini
   const hasValidPoint = Boolean(
-    (origin && typeof origin.lat === "number" && typeof origin.lon === "number") ||
-    (destination && typeof destination.lat === "number" && typeof destination.lon === "number")
+    (origin &&
+      typeof origin.lat === "number" &&
+      typeof origin.lon === "number") ||
+    (destination &&
+      typeof destination.lat === "number" &&
+      typeof destination.lon === "number"),
   );
 
   if (!hasValidPoint) {
     return (
       <div className="flex items-center justify-center w-full h-full bg-neutral-800/30">
-        <p className="text-neutral-400">Veuillez sélectionner au moins une adresse</p>
+        <p className="text-neutral-400">
+          Veuillez sélectionner au moins une adresse
+        </p>
       </div>
     );
   }
@@ -91,12 +98,22 @@ export default function DynamicMapLibreMap({
         </div>
       }
     >
-      <MapLibreMap
+      <UnifiedMap
         key={mapKey}
+        mode={enableRouting ? "REQUEST" : "EDIT"}
+        pickup={
+          origin ? { lat: origin.lat, lng: origin.lon } : { lat: 0, lng: 0 }
+        }
+        dropoff={
+          destination
+            ? { lat: destination.lat, lng: destination.lon }
+            : { lat: 0, lng: 0 }
+        }
+        // also pass legacy shape for full compatibility
         departure={origin}
         destination={destination}
+        onReady={() => {}}
         onRouteCalculated={onRouteCalculated}
-        enableRouting={enableRouting}
       />
     </Suspense>
   );

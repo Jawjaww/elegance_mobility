@@ -35,11 +35,11 @@ export function MobileNav() {
 
   return (
     <>
-      {/* Bouton menu */}
+      {/* Bouton menu - Fond solide pour contraste */}
       <motion.button
         onClick={() => setIsOpen(true)}
-        whileTap={{ scale: 0.95 }}
-        className="fixed top-4 left-4 z-40 w-11 h-11 bg-neutral-900/90 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg border border-white/10"
+        whileTap={{ scale: 0.92 }}
+        className="fixed top-4 left-4 z-40 w-10 h-10 bg-neutral-900 rounded-full flex items-center justify-center border border-white/10 shadow-lg"
       >
         <Menu className="w-5 h-5 text-white" />
       </motion.button>
@@ -67,7 +67,7 @@ export function MobileNav() {
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-white/10">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center">
                     <span className="text-white font-bold">E</span>
                   </div>
                   <span className="font-bold text-white">Elegance</span>
@@ -75,7 +75,7 @@ export function MobileNav() {
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setIsOpen(false)}
-                  className="p-2 bg-neutral-800 rounded-lg"
+                  className="p-2 bg-neutral-800 rounded-full"
                 >
                   <X className="w-5 h-5 text-white" />
                 </motion.button>
@@ -95,7 +95,7 @@ export function MobileNav() {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.05 }}
                       onClick={() => setIsOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                      className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors ${
                         isActive 
                           ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
                           : 'text-neutral-400 hover:bg-neutral-800 hover:text-white'
@@ -122,7 +122,7 @@ export function MobileNav() {
                   transition={{ delay: 0.3 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-2xl transition-colors"
                 >
                   <LogOut className="w-5 h-5" />
                   <span className="font-medium">Se déconnecter</span>

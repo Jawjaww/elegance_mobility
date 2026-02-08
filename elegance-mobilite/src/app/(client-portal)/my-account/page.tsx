@@ -1,8 +1,11 @@
-import { Card } from "@/components/ui/card"
-import { getServerUser } from "@/lib/database/server"
-import { redirect } from "next/navigation"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import Link from "next/link"
+"use client";
+
+import { Card } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/database/client";
+import { useRouter } from "next/navigation";
 import {
   User as UserIcon,
   Mail,
@@ -10,34 +13,62 @@ import {
   Bell,
   CalendarClock,
   Settings,
-  ChevronRight
-} from "lucide-react"
-import type { User } from "@/lib/types/common.types"
+  ChevronRight,
+} from "lucide-react";
+import type { User } from "@/lib/types/common.types";
 
-export default async function MyAccount() {
-  const user = await getServerUser()
-  
-  if (!user) {
-    redirect("/auth/login?redirectTo=/my-account")
+export default function MyAccount() {
+  const router = useRouter();
+  const [user, setUser] = useState<any | null>(null);
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+          router.replace("/auth/login?redirectTo=/my-account");
+          return;
+        }
+        setUser(user);
+      } catch (err) {
+        console.error("Erreur récupération user client-side", err);
+        router.replace("/auth/login?redirectTo=/my-account");
+      } finally {
+        setIsChecking(false);
+      }
+    };
+    check();
+  }, [router]);
+
+  if (isChecking || !user) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+      </div>
+    );
   }
-  
+
   // Accès aux propriétés avec le type User personnalisé
-  const firstName = user?.first_name || ''
-  const lastName = user?.last_name || ''
-  const displayName = firstName && lastName
-    ? `${firstName} ${lastName}`
-    : user.email?.split('@')[0] || ''
-  
+  const firstName = user?.user_metadata?.first_name || user?.first_name || "";
+  const lastName = user?.user_metadata?.last_name || user?.last_name || "";
+  const displayName =
+    firstName && lastName
+      ? `${firstName} ${lastName}`
+      : user.email?.split("@")[0] || "";
+
   const getInitials = () => {
     if (firstName && lastName) {
-      return `${firstName[0]}${lastName[0]}`.toUpperCase()
+      return `${firstName[0]}${lastName[0]}`.toUpperCase();
     }
-    return user.email ? user.email.split('@')[0][0].toUpperCase() : "?"
-  }
-  
+    return user.email ? user.email.split("@")[0][0].toUpperCase() : "?";
+  };
+
   // Soit directement user.user_metadata si c'est là que les données sont actuellement
-  const userAvatar = user.avatar_url || user.user_metadata?.avatar_url || null
-  
+  const userAvatar = user.avatar_url || user.user_metadata?.avatar_url || null;
+
   const menuItems = [
     {
       href: "/my-account/reservations",
@@ -45,7 +76,7 @@ export default async function MyAccount() {
       bgColor: "bg-blue-100",
       iconColor: "text-blue-600",
       title: "Mes réservations",
-      description: "Consultez l'historique et le statut de vos courses"
+      description: "Consultez l'historique et le statut de vos courses",
     },
     {
       href: "/my-account/personal-info",
@@ -53,7 +84,7 @@ export default async function MyAccount() {
       bgColor: "bg-emerald-100",
       iconColor: "text-emerald-600",
       title: "Informations personnelles",
-      description: "Nom, téléphone"
+      description: "Nom, téléphone",
     },
     {
       href: "/my-account/email",
@@ -61,7 +92,7 @@ export default async function MyAccount() {
       bgColor: "bg-green-100",
       iconColor: "text-green-600",
       title: "Adresse email",
-      description: "Modifier votre email"
+      description: "Modifier votre email",
     },
     {
       href: "/my-account/password",
@@ -69,7 +100,7 @@ export default async function MyAccount() {
       bgColor: "bg-amber-100",
       iconColor: "text-amber-600",
       title: "Mot de passe",
-      description: "Changer votre mot de passe"
+      description: "Changer votre mot de passe",
     },
     {
       href: "/my-account/notifications",
@@ -77,7 +108,7 @@ export default async function MyAccount() {
       bgColor: "bg-purple-100",
       iconColor: "text-purple-600",
       title: "Notifications",
-      description: "Gérer vos préférences de notification"
+      description: "Gérer vos préférences de notification",
     },
     {
       href: "/my-account/settings",
@@ -85,18 +116,16 @@ export default async function MyAccount() {
       bgColor: "bg-pink-100",
       iconColor: "text-pink-600",
       title: "Paramètres",
-      description: "Préférences générales"
-    }
-  ]
-  
+      description: "Préférences générales",
+    },
+  ];
+
   return (
     <div className="space-y-8">
       <Card className="p-6">
         <div className="text-center">
           <Avatar className="h-24 w-24 mx-auto border-4 border-neutral-800 bg-neutral-900 mb-4">
-            {userAvatar ? (
-              <AvatarImage src={userAvatar} />
-            ) : null}
+            {userAvatar ? <AvatarImage src={userAvatar} /> : null}
             <AvatarFallback className="bg-neutral-900 text-3xl text-neutral-200">
               {getInitials()}
             </AvatarFallback>
@@ -105,7 +134,7 @@ export default async function MyAccount() {
           <p className="text-neutral-400">{user.email}</p>
         </div>
       </Card>
-      
+
       <div className="grid gap-4">
         {menuItems.map((item) => (
           <Link key={item.href} href={item.href}>
@@ -117,7 +146,9 @@ export default async function MyAccount() {
                   </div>
                   <div>
                     <h3 className="font-medium">{item.title}</h3>
-                    <p className="text-sm text-neutral-400">{item.description}</p>
+                    <p className="text-sm text-neutral-400">
+                      {item.description}
+                    </p>
                   </div>
                 </div>
                 <ChevronRight className="h-5 w-5 text-neutral-400" />
@@ -127,5 +158,5 @@ export default async function MyAccount() {
         ))}
       </div>
     </div>
-  )
+  );
 }

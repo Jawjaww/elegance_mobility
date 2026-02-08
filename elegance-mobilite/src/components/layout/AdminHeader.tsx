@@ -1,14 +1,19 @@
-'use client'
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { useState, useEffect } from "react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Layout, Users, Settings, Car, LogOut } from "lucide-react"
-import { supabase } from "@/lib/database/client"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Layout, Users, Settings, Car, LogOut } from "lucide-react";
+import { supabase } from "@/lib/database/client";
 
 const NAV_ITEMS = [
   {
@@ -25,63 +30,67 @@ const NAV_ITEMS = [
     name: "Chauffeurs",
     href: "/backoffice-portal/drivers",
     icon: Users,
-  }
-]
+  },
+];
 
 export function AdminHeader() {
-  const pathname = usePathname() ?? ''
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const [userEmail, setUserEmail] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const pathname = usePathname() ?? "";
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Récupérer la session et écouter les changements
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        setUserEmail(session.user.email || null)
+    const initUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        setUserEmail(user.email || null);
       } else {
-        setUserEmail(null)
+        setUserEmail(null);
       }
-      setIsLoading(false)
-    }
-    
-    getSession()
-    
+      setIsLoading(false);
+    };
+
+    initUser();
+
     // Écouter les changements d'authentification
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
-        setUserEmail(session.user.email || null)
+        setUserEmail(session.user.email || null);
       } else {
-        setUserEmail(null)
+        setUserEmail(null);
       }
-    })
-    
-    return () => subscription.unsubscribe()
-  }, [])
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleLogout = async () => {
-    if (isLoggingOut) return
-    
-    setIsLoggingOut(true)
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
     try {
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
-      
-      window.location.href = '/backoffice-portal/login'
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      window.location.href = "/backoffice-portal/login";
     } catch (error) {
-      console.error('Erreur lors de la déconnexion:', error)
-      setIsLoggingOut(false)
+      console.error("Erreur lors de la déconnexion:", error);
+      setIsLoggingOut(false);
     }
-  }
+  };
 
   const getAvatarFallback = () => {
-    return userEmail?.[0].toUpperCase() ?? '?'
-  }
+    return userEmail?.[0].toUpperCase() ?? "?";
+  };
 
   const isActive = (path: string) =>
-    pathname === path || pathname.startsWith(`${path}/`)
-  
+    pathname === path || pathname.startsWith(`${path}/`);
+
   // Ne pas afficher le menu utilisateur si pas connecté
   if (!userEmail && !isLoading) {
     return (
@@ -96,13 +105,15 @@ export function AdminHeader() {
                 <span className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent font-bold text-xl">
                   Vector Elegans
                 </span>
-                <span className="text-neutral-400 font-medium">Administration</span>
+                <span className="text-neutral-400 font-medium">
+                  Administration
+                </span>
               </Link>
             </div>
           </div>
         </div>
       </header>
-    )
+    );
   }
 
   return (
@@ -117,7 +128,9 @@ export function AdminHeader() {
               <span className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent font-bold text-xl">
                 Vector Elegans
               </span>
-              <span className="text-neutral-400 font-medium">Administration</span>
+              <span className="text-neutral-400 font-medium">
+                Administration
+              </span>
             </Link>
             <nav className="flex items-center space-x-8 text-sm font-medium">
               {NAV_ITEMS.map((item) => (
@@ -126,21 +139,25 @@ export function AdminHeader() {
                   href={item.href}
                   className={cn(
                     "flex items-center space-x-2 transition-all duration-200 hover:text-blue-400",
-                    isActive(item.href)
-                      ? "text-blue-400"
-                      : "text-neutral-400"
+                    isActive(item.href) ? "text-blue-400" : "text-neutral-400",
                   )}
                 >
-                  <div className={cn(
-                    "p-1.5 rounded-full transition-all duration-200",
-                    isActive(item.href)
-                      ? "bg-blue-500/15 shadow-[0_0_8px_-2px_rgba(96,165,250,0.2)]"
-                      : "group-hover:bg-neutral-800/30"
-                  )}>
-                    <item.icon className={cn(
-                      "h-4 w-4",
-                      isActive(item.href) ? "text-blue-400" : "text-neutral-400"
-                    )} />
+                  <div
+                    className={cn(
+                      "p-1.5 rounded-full transition-all duration-200",
+                      isActive(item.href)
+                        ? "bg-blue-500/15 shadow-[0_0_8px_-2px_rgba(96,165,250,0.2)]"
+                        : "group-hover:bg-neutral-800/30",
+                    )}
+                  >
+                    <item.icon
+                      className={cn(
+                        "h-4 w-4",
+                        isActive(item.href)
+                          ? "text-blue-400"
+                          : "text-neutral-400",
+                      )}
+                    />
                   </div>
                   <span>{item.name}</span>
                 </Link>
@@ -177,12 +194,15 @@ export function AdminHeader() {
                       <span>Paramètres</span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem                  onClick={handleLogout}
-                  disabled={isLoggingOut}
-                  className="flex items-center gap-2 text-red-500"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>{isLoggingOut ? 'Déconnexion...' : 'Déconnexion'}</span>
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    disabled={isLoggingOut}
+                    className="flex items-center gap-2 text-red-500"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>
+                      {isLoggingOut ? "Déconnexion..." : "Déconnexion"}
+                    </span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -191,5 +211,5 @@ export function AdminHeader() {
         </div>
       </div>
     </header>
-  )
+  );
 }
