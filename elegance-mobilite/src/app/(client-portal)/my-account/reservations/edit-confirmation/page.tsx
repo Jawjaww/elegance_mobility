@@ -1,9 +1,10 @@
 "use client";
 
+import { Suspense } from "react";
 import { EditConfirmationDetails } from "@/components/reservation/EditConfirmationDetails";
 import { useSearchParams, useRouter } from "next/navigation";
 
-export default function EditConfirmationPage() {
+function EditConfirmationContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const reservationId = searchParams?.get("id") || null;
@@ -24,4 +25,14 @@ export default function EditConfirmationPage() {
   }
 
   return <EditConfirmationDetails reservationId={reservationId} />;
+}
+
+export default function EditConfirmationPage() {
+  return (
+    <Suspense
+      fallback={<div className="flex justify-center my-12">Chargement...</div>}
+    >
+      <EditConfirmationContent />
+    </Suspense>
+  );
 }

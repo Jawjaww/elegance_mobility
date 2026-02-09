@@ -47,11 +47,7 @@ export async function getDirections(
   // URL de l'API OSRM (routing.openstreetmap.de)
   const osrmUrl = `https://routing.openstreetmap.de/routed-car/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
 
-  const response = await fetch(osrmUrl, {
-    headers: {
-      "User-Agent": "Elegance-Mobilite/1.0",
-    },
-  });
+  const response = await fetch(osrmUrl);
 
   if (!response.ok) {
     throw new Error(`OSRM API error: ${response.status}`);

@@ -7,7 +7,7 @@ const config = {
   content: ["./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
-      // Design-system extensions for neon/glass
+      // Design-system extensions (merged colors)
       colors: {
         "neon-green": {
           DEFAULT: "#05c46b",
@@ -21,13 +21,6 @@ const config = {
         },
         bordeaux: "#7c2230",
         "bordeaux-icon": "#a0303a",
-      },
-      boxShadow: {
-        "neon-sm": "0 8px 40px rgba(16,185,129,0.14)",
-        "neon-lg": "0 24px 80px rgba(16,255,140,0.22)",
-        "glass-inner": "inset 0 1px 0 rgba(255,255,255,0.02)",
-      },
-      colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -49,6 +42,11 @@ const config = {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
         },
+      },
+      boxShadow: {
+        "neon-sm": "0 8px 40px rgba(16,185,129,0.14)",
+        "neon-lg": "0 24px 80px rgba(16,255,140,0.22)",
+        "glass-inner": "inset 0 1px 0 rgba(255,255,255,0.02)",
       },
       keyframes: {
         "accordion-down": {

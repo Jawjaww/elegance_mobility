@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useCallback, useContext, useState, useEffect } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+  useEffect,
+} from "react";
 import * as ToastPrimitives from "@radix-ui/react-toast";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +14,7 @@ export interface ToastProps {
   title?: string;
   description?: string;
   variant?: "default" | "destructive" | "success";
+  duration?: number;
 }
 
 interface ToastContextValue {
@@ -42,12 +49,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <ToastPrimitives.Root
             open={open}
             onOpenChange={setOpen}
+            duration={current.duration ?? 5000}
             className={cn(
               "fixed z-[100] flex items-center justify-between space-x-4 rounded-md p-4 shadow-lg transition-all w-[calc(100%-2rem)] sm:w-auto max-w-md", // Adjusted padding and width
               "left-1/2 -translate-x-1/2 top-4 sm:left-auto sm:translate-x-0 sm:right-4", // Position top-center (mobile) / top-right (desktop)
-              current.variant === "destructive" && "border border-red-800 bg-red-900 text-white", // Darker solid red
-              current.variant === "success" && "border border-green-700 bg-green-800 text-white", // Adjusted success color
-              (!current.variant || current.variant === "default") && "border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900" // Default style
+              current.variant === "destructive" &&
+                "border border-red-800 bg-red-900 text-white", // Darker solid red
+              current.variant === "success" &&
+                "border border-green-700 bg-green-800 text-white", // Adjusted success color
+              (!current.variant || current.variant === "default") &&
+                "border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900", // Default style
             )}
           >
             <div className="grid gap-1">

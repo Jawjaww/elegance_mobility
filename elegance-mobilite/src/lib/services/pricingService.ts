@@ -1,6 +1,6 @@
 "use client";
 
-import { VehicleType } from "@/lib/types/vehicle.types";
+import { type VehicleType } from "@/lib/vehicle";
 import { supabase } from "@/lib/database/client";
 
 export interface Rate {
@@ -21,7 +21,10 @@ interface PriceEstimate {
  * Note: Le calcul final est géré par l'Edge Function Supabase
  */
 // Tarifs par défaut si la base n'a pas de données
-const DEFAULT_RATES: Record<string, { base_price: number; price_per_km: number; min_price: number }> = {
+const DEFAULT_RATES: Record<
+  string,
+  { base_price: number; price_per_km: number; min_price: number }
+> = {
   STANDARD: { base_price: 15, price_per_km: 2.5, min_price: 20 },
   EXECUTIVE: { base_price: 30, price_per_km: 4.0, min_price: 50 },
   LUXURY: { base_price: 60, price_per_km: 7.0, min_price: 100 },
@@ -39,7 +42,7 @@ class PricingService {
     try {
       // 1. Récupérer les tarifs de base (avec fallback)
       let rate: { base_price: number; price_per_km: number; min_price: number };
-      
+
       const { data: rateData, error: rateError } = await supabase
         .from("rates")
         .select("base_price, price_per_km, min_price")
@@ -50,7 +53,9 @@ class PricingService {
         // Utiliser les tarifs par défaut
         rate = DEFAULT_RATES[vehicleType] || DEFAULT_RATES.STANDARD;
         if (!rateData) {
-          console.warn(`[Pricing] Aucun tarif trouvé pour ${vehicleType}, utilisation des tarifs par défaut`);
+          console.warn(
+            `[Pricing] Aucun tarif trouvé pour ${vehicleType}, utilisation des tarifs par défaut`,
+          );
         }
       } else {
         rate = rateData;

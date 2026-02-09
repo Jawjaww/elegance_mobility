@@ -4,6 +4,7 @@ import type { Database } from "@/lib/types/database.types";
 type DbRide = Database["public"]["Tables"]["rides"]["Row"];
 
 import type { Ride } from "./types";
+import { acceptRide as clientAcceptRide } from "@/services/rideService";
 
 // Re-export du type Ride pour compatibilité
 export type PendingRide = Ride;
@@ -27,7 +28,7 @@ class DriverRideService {
   subscribeToPendingRides(
     onNewRide: (ride: PendingRide) => void,
     onRideUpdated: (ride: PendingRide) => void,
-    onRideRemoved: (rideId: string) => void
+    onRideRemoved: (rideId: string) => void,
   ) {
     // Nettoyer l'ancienne subscription si existe
     this.unsubscribe();
@@ -45,7 +46,7 @@ class DriverRideService {
         (payload) => {
           const ride = this.mapToPendingRide(payload.new as DbRide);
           onNewRide(ride);
-        }
+        },
       )
       .on(
         "postgres_changes",
@@ -58,7 +59,7 @@ class DriverRideService {
         (payload) => {
           const ride = this.mapToPendingRide(payload.new as DbRide);
           onRideUpdated(ride);
-        }
+        },
       )
       .on(
         "postgres_changes",
@@ -71,7 +72,7 @@ class DriverRideService {
         (payload) => {
           // Une course n'est plus pending (acceptée ou annulée)
           onRideRemoved((payload.new as DbRide).id);
-        }
+        },
       )
       .subscribe((status) => {
         console.log("[DriverRideService] Subscription status:", status);
@@ -114,27 +115,23 @@ class DriverRideService {
    */
   async acceptRide(rideId: string): Promise<AcceptRideResult> {
     try {
-      const response = await fetch("/api/driver/accept-ride", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ rideId }),
-      });
+      const rpcResult: any = await clientAcceptRide(rideId);
 
-      const result = await response.json();
+      if (!rpcResult) {
+        return { success: false, error: "Aucune réponse du serveur" };
+      }
 
-      if (!response.ok) {
+      if (rpcResult.success === false) {
         return {
           success: false,
-          error: result.error || "Erreur lors de l'acceptation",
+          error: rpcResult.error || "Rejet de la course",
         };
       }
 
       return {
         success: true,
-        rideId: result.rideId,
-        status: result.status,
+        rideId: rpcResult.ride_id ?? rideId,
+        status: rpcResult.status ?? "accepted",
       };
     } catch (error) {
       console.error("[DriverRideService] Error accepting ride:", error);
@@ -151,7 +148,7 @@ class DriverRideService {
   private mapToPendingRide(ride: DbRide): Ride {
     return {
       id: ride.id,
-      clientId: ride.user_id || '',
+      clientId: ride.user_id || "",
       pickupLocation: ride.pickup_address,
       dropoffLocation: ride.dropoff_address,
       pickupLat: ride.pickup_lat ?? 0,

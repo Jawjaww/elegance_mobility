@@ -7,6 +7,27 @@ export type NewVehicle = Database["public"]["Tables"]["vehicles"]["Insert"];
 export type UpdateVehicle = Database["public"]["Tables"]["vehicles"]["Update"];
 export type VehicleType = Database["public"]["Enums"]["vehicle_type_enum"];
 
+// Constantes runtime pour les types de véhicules (alignées sur database.types)
+export const VEHICLE_TYPE_STANDARD: VehicleType = "STANDARD";
+export const VEHICLE_TYPE_PREMIUM: VehicleType = "PREMIUM";
+export const VEHICLE_TYPE_VAN: VehicleType = "VAN";
+export const VEHICLE_TYPE_ELECTRIC: VehicleType = "ELECTRIC";
+
+// Object pour faciliter l'accès aux constantes (équivalent runtime de l'ancien enum)
+export const VEHICLE_TYPES = {
+  STANDARD: VEHICLE_TYPE_STANDARD,
+  PREMIUM: VEHICLE_TYPE_PREMIUM,
+  VAN: VEHICLE_TYPE_VAN,
+  ELECTRIC: VEHICLE_TYPE_ELECTRIC,
+} as const;
+
+// Options de réservation
+export interface VehicleOptions {
+  childSeat: boolean;
+  petFriendly: boolean;
+  [key: string]: boolean | undefined;
+}
+
 // Utilise le singleton `supabase` configuré dans `src/lib/database/client.ts`
 
 /**

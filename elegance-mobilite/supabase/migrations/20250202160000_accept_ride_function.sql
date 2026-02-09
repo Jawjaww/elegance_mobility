@@ -15,6 +15,8 @@ DECLARE
   v_ride RECORD;
   v_result JSONB;
 BEGIN
+  -- Sécurise le contexte d'exécution pour éviter l'élévation de privilèges
+  PERFORM set_config('search_path', 'public, pg_temp', true);
   -- Vérifier que le chauffeur existe et est actif
   IF NOT EXISTS (
     SELECT 1 FROM drivers 
@@ -59,7 +61,7 @@ BEGIN
     updated_at = NOW()
   WHERE id = p_ride_id;
 
-  -- Créer une notification pour le client
+  -- Créer une notification pour le client (champs adaptés au schema actuel)
   INSERT INTO notifications (
     user_id,
     type,
@@ -68,15 +70,15 @@ BEGIN
     data,
     read
   ) VALUES (
-    v_ride.client_id,
+    v_ride.user_id,
     'ride_accepted',
     'Chauffeur assigné',
     'Un chauffeur a accepté votre course',
     jsonb_build_object(
       'ride_id', p_ride_id,
       'driver_id', p_driver_id,
-      'pickup_location', v_ride.pickup_location,
-      'dropoff_location', v_ride.dropoff_location
+      'pickup_address', v_ride.pickup_address,
+      'dropoff_address', v_ride.dropoff_address
     ),
     false
   );

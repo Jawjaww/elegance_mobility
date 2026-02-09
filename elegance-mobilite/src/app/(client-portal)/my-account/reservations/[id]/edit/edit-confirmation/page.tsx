@@ -6,14 +6,12 @@ export function generateStaticParams() {
   return [{ id: "__placeholder__" }];
 }
 
-export const dynamicParams = true;
-
 interface PageProps {
-  params: { id: string };
+  params: any | Promise<any>;
 }
 
 export default async function Page({ params }: PageProps) {
-  const { id: reservationId } = params;
+  const { id: reservationId } = (await params) as any;
 
   if (!reservationId) {
     return (

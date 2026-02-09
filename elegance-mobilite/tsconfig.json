@@ -35,5 +35,10 @@
     ".next/types/**/*.ts",
     "src/lib/@types/**/*.d.ts"
   ],
-  "exclude": ["node_modules", "docs/"]
+  "exclude": [
+    "node_modules",
+    "docs/",
+    "out/",
+    "src/app/_unused_api_routes/"
+  ]
 }

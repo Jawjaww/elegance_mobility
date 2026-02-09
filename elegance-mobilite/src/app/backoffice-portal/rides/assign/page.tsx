@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Card,
@@ -25,7 +25,7 @@ import { syncExistingDrivers } from "@/lib/utils/driver-sync";
 type Driver = Database["public"]["Tables"]["drivers"]["Row"];
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 
-export default function AssignDriverPage() {
+function AssignDriverContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const rideId = searchParams?.get("id") || null;
@@ -410,5 +410,13 @@ export default function AssignDriverPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function AssignDriverPage() {
+  return (
+    <Suspense fallback={<PageLoading text="Chargement..." />}>
+      <AssignDriverContent />
+    </Suspense>
   );
 }

@@ -9,14 +9,14 @@ import type { Database } from "@/lib/types/database.types";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { supabase, debugRlsProblem } from "@/lib/database/client";
 import { reservationService } from "@/lib/services/reservationService";
-import React from "react";
+import { Suspense } from "react";
 import LocationStep from "@/components/reservation/LocationStep";
 import VehicleStep from "@/components/reservation/VehicleStep";
 
 type RideUpdate = Database["public"]["Tables"]["rides"]["Update"];
 type Reservation = Database["public"]["Tables"]["rides"]["Row"];
 
-export default function EditReservationPage() {
+function EditReservationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const reservationId = searchParams?.get("id") || null;
@@ -253,5 +253,19 @@ export default function EditReservationPage() {
         </div>
       </div>
     </section>
+  );
+}
+
+export default function EditReservationPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center my-12">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      }
+    >
+      <EditReservationContent />
+    </Suspense>
   );
 }

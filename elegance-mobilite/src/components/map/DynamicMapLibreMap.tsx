@@ -53,11 +53,24 @@ export default function DynamicMapLibreMap({
       setTimeout(() => {
         if (!mountedRef.current) {
           // Si le composant n'est plus monté, on peut nettoyer les canvas inutilisés
-          document
-            .querySelectorAll(".maplibregl-canvas-container:not(:has(canvas))")
-            .forEach((el) => {
-              el.remove();
-            });
+          try {
+            // Utiliser le sélecteur `:has()` quand disponible (peut lever une SyntaxError)
+            document
+              .querySelectorAll(
+                ".maplibregl-canvas-container:not(:has(canvas))",
+              )
+              .forEach((el) => el.remove());
+          } catch (err) {
+            // Fallback pour navigateurs (Safari ancien) sans support de `:has()`
+            document
+              .querySelectorAll(".maplibregl-canvas-container")
+              .forEach((el) => {
+                // si l'élément ne contient pas de <canvas>, le supprimer
+                if (!el.querySelector || !el.querySelector("canvas")) {
+                  el.remove();
+                }
+              });
+          }
 
           // Nettoyer les marqueurs orphelins aussi
           document.querySelectorAll(".maplibregl-marker").forEach((el) => {

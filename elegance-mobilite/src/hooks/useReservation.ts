@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { useToast } from "@/hooks/useToast";
 import { useRouter } from "next/navigation";
 import { Coordinates } from "../lib/types/map-types";
-import { VehicleType, VehicleOptions } from "../lib/types/vehicle.types";
+import { type VehicleType, type VehicleOptions } from "../lib/vehicle";
 import { useReservationStore } from "../lib/stores/reservationStore";
 
 interface LocationState {

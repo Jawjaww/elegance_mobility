@@ -2,8 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { VehicleType, getVehicleTypes } from "@/lib/vehicle";
-import type { Database } from "@/lib/types/database.types";
+import type { Database } from "../../lib/types/database.types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,9 +16,13 @@ import {
 
 type Rate = Database["public"]["Tables"]["rates"]["Row"];
 type RateInsert = Database["public"]["Tables"]["rates"]["Insert"];
+type VehicleType = Database["public"]["Enums"]["vehicle_type_enum"];
+
+// Valeurs directes depuis database.types.ts (source de vérité Supabase)
+const VEHICLE_TYPES = ["STANDARD", "PREMIUM", "VAN", "ELECTRIC"] as const;
 
 const rateSchema = z.object({
-  vehicle_type: z.enum(["STANDARD", "PREMIUM", "VAN", "ELECTRIC"] as const),
+  vehicle_type: z.enum(VEHICLE_TYPES),
   price_per_km: z.number().min(0),
   base_price: z.number().min(0),
 });
@@ -38,7 +41,6 @@ export default function RateForm({
   onCancel,
 }: RateFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const vehicleTypes = getVehicleTypes();
 
   const {
     register,
@@ -83,7 +85,7 @@ export default function RateForm({
               <SelectValue placeholder="Sélectionner un type de véhicule" />
             </SelectTrigger>
             <SelectContent>
-              {vehicleTypes.map((type) => (
+              {VEHICLE_TYPES.map((type) => (
                 <SelectItem key={type} value={type}>
                   {type}
                 </SelectItem>

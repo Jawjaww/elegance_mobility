@@ -92,9 +92,7 @@ export default function ReservationPage() {
               onVehicleTypeChange={setVehicleType}
               onOptionsChange={setOptions}
               onPrevious={handlePrevStep}
-              onConfirm={
-                handleReservation
-              }
+              onConfirm={handleReservation}
               isEditing={false}
             />
           )}

@@ -3,7 +3,11 @@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { VehicleType, VehicleOptions } from "@/lib/types/vehicle.types";
+import {
+  type VehicleType,
+  type VehicleOptions,
+  VEHICLE_TYPES,
+} from "@/lib/vehicle";
 import { formatDuration } from "@/lib/utils";
 
 export interface VehicleStepProps {
@@ -19,9 +23,21 @@ export interface VehicleStepProps {
 }
 
 const vehicleOptions = [
-  { value: VehicleType.STANDARD, label: 'Berline Standard', description: 'Confort et élégance pour 4 passagers' },
-  { value: VehicleType.PREMIUM, label: 'Berline Premium', description: 'Véhicule Premium et raffinement pour 4 passagers' },
-  { value: VehicleType.VAN, label: 'Van', description: 'Espace et confort pour 7 passagers' }
+  {
+    value: VEHICLE_TYPES.STANDARD,
+    label: "Berline Standard",
+    description: "Confort et élégance pour 4 passagers",
+  },
+  {
+    value: VEHICLE_TYPES.PREMIUM,
+    label: "Berline Premium",
+    description: "Véhicule Premium et raffinement pour 4 passagers",
+  },
+  {
+    value: VEHICLE_TYPES.VAN,
+    label: "Van",
+    description: "Espace et confort pour 7 passagers",
+  },
 ];
 
 const VehicleStep: React.FC<VehicleStepProps> = ({
@@ -34,11 +50,13 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
   onPrevious,
   onConfirm,
 }) => {
-
-  const handleOptionChange = (optionName: keyof VehicleOptions, value: boolean) => {
+  const handleOptionChange = (
+    optionName: keyof VehicleOptions,
+    value: boolean,
+  ) => {
     const updatedOptions = {
       ...options,
-      [optionName]: value
+      [optionName]: value,
     };
     onOptionsChange(updatedOptions);
   };
@@ -55,14 +73,16 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
             <div
               key={option.value}
               className={`relative p-4 rounded-lg border transition-all duration-200 cursor-pointer ${
-                vehicleType === option.value 
-                  ? 'bg-blue-600/20 border-blue-500'
-                  : 'bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800'
+                vehicleType === option.value
+                  ? "bg-blue-600/20 border-blue-500"
+                  : "bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800"
               }`}
               onClick={() => onVehicleTypeChange(option.value)}
             >
               <div className="mb-2">
-                <h3 className="font-semibold text-neutral-100">{option.label}</h3>
+                <h3 className="font-semibold text-neutral-100">
+                  {option.label}
+                </h3>
                 <p className="text-sm text-neutral-400">{option.description}</p>
               </div>
             </div>
@@ -87,7 +107,7 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
                 id="child-seat"
                 checked={options.childSeat}
                 onCheckedChange={(checked) =>
-                  handleOptionChange('childSeat', checked)
+                  handleOptionChange("childSeat", checked)
                 }
               />
             </div>
@@ -108,7 +128,7 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
                 id="petFriendly"
                 checked={options.petFriendly}
                 onCheckedChange={(checked) =>
-                  handleOptionChange('petFriendly', checked)
+                  handleOptionChange("petFriendly", checked)
                 }
               />
             </div>
@@ -141,7 +161,10 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
         >
           Retour
         </Button>
-        <Button onClick={onConfirm} className="py-2 inline-flex items-center justify-center hover:bg-primary/90 text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-11 rounded-md px-8 relative bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 transition-all duration-300 ease-out">
+        <Button
+          onClick={onConfirm}
+          className="py-2 inline-flex items-center justify-center hover:bg-primary/90 text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-11 rounded-md px-8 relative bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 transition-all duration-300 ease-out"
+        >
           Continuer
         </Button>
       </div>
