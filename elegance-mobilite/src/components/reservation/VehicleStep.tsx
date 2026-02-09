@@ -3,11 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  type VehicleType,
-  type VehicleOptions,
-  VEHICLE_TYPES,
-} from "@/lib/vehicle";
+import { type VehicleType, type VehicleOptions } from "@/lib/vehicle";
 import { formatDuration } from "@/lib/utils";
 
 export interface VehicleStepProps {
@@ -24,17 +20,17 @@ export interface VehicleStepProps {
 
 const vehicleOptions = [
   {
-    value: VEHICLE_TYPES.STANDARD,
+    value: "STANDARD" as VehicleType,
     label: "Berline Standard",
     description: "Confort et élégance pour 4 passagers",
   },
   {
-    value: VEHICLE_TYPES.PREMIUM,
+    value: "PREMIUM" as VehicleType,
     label: "Berline Premium",
     description: "Véhicule Premium et raffinement pour 4 passagers",
   },
   {
-    value: VEHICLE_TYPES.VAN,
+    value: "VAN" as VehicleType,
     label: "Van",
     description: "Espace et confort pour 7 passagers",
   },
