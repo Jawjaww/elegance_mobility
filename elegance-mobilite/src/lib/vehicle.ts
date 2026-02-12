@@ -112,6 +112,8 @@ export async function deleteVehicle(id: string) {
 /**
  * Gets all available vehicle types
  */
+import { VEHICLE_TYPES as RUNTIME_VEHICLE_TYPES } from '@/lib/utils/vehicle';
+
 export function getVehicleTypes(): VehicleType[] {
-  return ["STANDARD", "PREMIUM", "ELECTRIC", "VAN"];
+  return RUNTIME_VEHICLE_TYPES as unknown as VehicleType[];
 }

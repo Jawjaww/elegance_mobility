@@ -44,13 +44,15 @@ function normalizeLocation(location: any): Location | null {
   }
 }
 
+import type { VehicleType } from '@/lib/vehicle';
+
 const initialState = {
   departure: null,
   destination: null,
   pickupDateTime: new Date(),
   distance: null,
   duration: null,
-  selectedVehicle: '',
+  selectedVehicle: 'STANDARD' as VehicleType,
   selectedOptions: [],
   step: 1,
 };
@@ -99,7 +101,9 @@ export const useReservationStore = create<ReservationStore>()(
 
       setSelectedVehicle: (vehicle) =>
         set(() => ({
-          selectedVehicle: vehicle,
+          // Cast here to keep the store strict; callers should validate
+          // or use VehicleType from src/lib/vehicle.
+          selectedVehicle: vehicle as VehicleType,
         })),
 
       toggleOption: (option) =>

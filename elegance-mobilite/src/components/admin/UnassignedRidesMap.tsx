@@ -6,7 +6,7 @@ import { useEffect } from "react"
 import { useUnassignedRidesStore } from "@/lib/unassignedRidesStore"
 import { MapMarker, Location } from "@/lib/types/map-types"
 import { Card } from "@/components/ui/card"
-import MapLibreMap from "@/components/map/MapLibreMap" // Nouveau composant MapLibre
+import RideRequestMap from "@/components/map/RideRequestMap" // Nouveau composant RideRequestMap
 
 export function UnassignedRidesMap() {
   const router = useRouter()
@@ -75,9 +75,10 @@ export function UnassignedRidesMap() {
         </p>
       </div>
       <div className="h-[300px] rounded-lg overflow-hidden">
-        <MapLibreMap
+        <RideRequestMap
           departure={initialCenter}
           destination={null}
+          enableRouting={false}
         />
       </div>
     </Card>

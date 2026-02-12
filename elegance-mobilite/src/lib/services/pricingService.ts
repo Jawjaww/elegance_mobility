@@ -26,8 +26,8 @@ const DEFAULT_RATES: Record<
   { base_price: number; price_per_km: number; min_price: number }
 > = {
   STANDARD: { base_price: 15, price_per_km: 2.5, min_price: 20 },
-  EXECUTIVE: { base_price: 30, price_per_km: 4.0, min_price: 50 },
-  LUXURY: { base_price: 60, price_per_km: 7.0, min_price: 100 },
+  EXECUTIVE: { base_price: 30, price_per_km: 4, min_price: 50 },
+  LUXURY: { base_price: 60, price_per_km: 7, min_price: 100 },
   VAN: { base_price: 25, price_per_km: 3.5, min_price: 40 },
   ECO: { base_price: 10, price_per_km: 1.8, min_price: 15 },
 };
@@ -35,7 +35,7 @@ const DEFAULT_RATES: Record<
 class PricingService {
   async calculatePrice(
     distance: number,
-    vehicleType: VehicleType | string,
+    vehicleType: VehicleType,
     options: string[] = [],
     pickupTime?: Date,
   ): Promise<PriceEstimate> {

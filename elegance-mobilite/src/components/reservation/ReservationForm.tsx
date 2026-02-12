@@ -7,13 +7,14 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import MapLibreMap from "@/components/map/MapLibreMap";
+import RideRequestMap from "@/components/map/RideRequestMap";
 import { AutocompleteInput } from "../AutocompleteInput";
 import { LoadingSpinner } from "../ui/loading-spinner";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import React from "react";
 import { MapMarker, Location } from '@/lib/types/map-types';
+import { validateVehicleType } from '@/lib/utils/vehicle';
 import { Database } from "@/lib/types/database.types";
 import { supabase } from "@/lib/database/client";
 
@@ -60,7 +61,11 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
       });
 
       store.setPickupDateTime(new Date(initialData.pickup_time));
-      store.setSelectedVehicle(initialData.vehicle_type);
+      // Validate vehicle type from initial data
+      // Validate vehicle type (UI boundary): use validate so invalid values don't crash
+      const vt = initialData.vehicle_type as unknown;
+      const validated = validateVehicleType(vt);
+      store.setSelectedVehicle(validated as any);
       
       // Initialiser les options une par une
       if (initialData.options) {
@@ -231,7 +236,10 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
               <Label className="mb-4 block">Type de véhicule</Label>
               <RadioGroup 
                 value={store.selectedVehicle || ""}
-                onValueChange={(value) => store.setSelectedVehicle(value)}
+                onValueChange={(value) => {
+                  // UI-level change: validate; if invalid selection, clear value so submit is blocked
+                  store.setSelectedVehicle(validateVehicleType(value) as any);
+                }}
                 className="flex gap-4"
               >
                 <div className="flex items-center space-x-2">
@@ -276,7 +284,7 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
         {store.departure && store.destination && (
           <Suspense fallback={<Card className="p-6"><LoadingSpinner /></Card>}>
             <Card className="p-0 overflow-hidden">
-              <MapLibreMap
+              <RideRequestMap
                 key={mapKey}
                 departure={store.departure}
                 destination={store.destination}

@@ -1,10 +1,8 @@
 "use client";
 import { Check } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/database/client";
 
 export default function ReservationSuccessPage() {
-  const router = useRouter();
+
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">

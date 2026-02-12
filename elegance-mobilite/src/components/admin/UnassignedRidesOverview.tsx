@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { useUnassignedRidesStore } from "@/lib/unassignedRidesStore";
-import MapLibreMap from "@/components/map/MapLibreMap"; // Nouveau composant MapLibre
+import RideRequestMap from "@/components/map/RideRequestMap"; // Nouveau composant RideRequestMap
 import { Location } from "@/lib/types/map-types";
 
 export function UnassignedRidesOverview() {
@@ -62,7 +62,7 @@ export function UnassignedRidesOverview() {
       </div>
       <div className="h-[300px] rounded-lg overflow-hidden">
         {rides.length > 0 ? (
-          <MapLibreMap departure={initialCenter} destination={null} />
+          <RideRequestMap departure={initialCenter} destination={null} enableRouting={false} />
         ) : (
           <div className="flex h-full items-center justify-center bg-neutral-800/50">
             <p className="text-neutral-400">Aucune course non attribuée</p>

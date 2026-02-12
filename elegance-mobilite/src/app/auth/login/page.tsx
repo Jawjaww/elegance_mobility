@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -10,9 +10,8 @@ import {
 } from "@/components/ui/card";
 import { AuthModal } from "./AuthModal";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/database/client";
-import { getAppRole } from "@/lib/types/common.types";
+import { getUserRole } from "@/lib/utils/auth-helpers";
 
 function LoginContent() {
   const router = useRouter();
@@ -32,7 +31,7 @@ function LoginContent() {
 
         if (user && !hasRedirected.current) {
           hasRedirected.current = true;
-          const role = getAppRole(user);
+          const role = getUserRole(user);
           if (role === "app_driver") router.replace("/driver-portal/dashboard");
           else if (role === "app_admin" || role === "app_super_admin")
             router.replace("/backoffice-portal");

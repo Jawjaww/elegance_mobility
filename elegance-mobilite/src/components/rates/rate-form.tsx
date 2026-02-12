@@ -19,7 +19,9 @@ type RateInsert = Database["public"]["Tables"]["rates"]["Insert"];
 type VehicleType = Database["public"]["Enums"]["vehicle_type_enum"];
 
 // Valeurs directes depuis database.types.ts (source de vérité Supabase)
-const VEHICLE_TYPES = ["STANDARD", "PREMIUM", "VAN", "ELECTRIC"] as const;
+import { VEHICLE_TYPES as RUNTIME_VEHICLE_TYPES } from '@/lib/utils/vehicle';
+// RUNTIME_VEHICLE_TYPES is declared `as const` in utils; cast it into the tuple shape z.enum expects
+const VEHICLE_TYPES = RUNTIME_VEHICLE_TYPES as unknown as [string, ...string[]];
 
 const rateSchema = z.object({
   vehicle_type: z.enum(VEHICLE_TYPES),
@@ -39,7 +41,7 @@ export default function RateForm({
   initialData,
   onSubmit,
   onCancel,
-}: RateFormProps) {
+}: Readonly<RateFormProps>) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -66,11 +68,16 @@ export default function RateForm({
   const onFormSubmit = async (data: RateFormValues) => {
     try {
       setIsSubmitting(true);
-      await onSubmit(data);
+      // data.vehicle_type is validated by zod, but cast to RateInsert to satisfy API signature
+      await onSubmit(data as unknown as RateInsert);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  let submitLabel = "Créer";
+  if (isSubmitting) submitLabel = "Enregistrement...";
+  else if (initialData) submitLabel = "Mettre à jour";
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
@@ -140,11 +147,7 @@ export default function RateForm({
           Annuler
         </Button>
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting
-            ? "Enregistrement..."
-            : initialData
-              ? "Mettre à jour"
-              : "Créer"}
+          {submitLabel}
         </Button>
       </div>
     </form>

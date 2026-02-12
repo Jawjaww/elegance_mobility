@@ -19,3 +19,6 @@ dist/
 
 # Ignore locally downloaded external documentation
 docs/external/
+
+# Ignore TypeScript build info
+tsconfig.tsbuildinfo

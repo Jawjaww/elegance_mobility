@@ -12,7 +12,7 @@ import { LoadingSpinner } from "../ui/loading-spinner";
 import { Suspense, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
-import MapLibreMap from "@/components/map/MapLibreMap";
+import RideRequestMap from "@/components/map/RideRequestMap";
 import { pricingService } from "@/lib/services/pricingService";
 import { supabase } from "@/lib/database/client";
 
@@ -309,7 +309,7 @@ export function EditConfirmationDetails({ reservationId }: EditConfirmationDetai
         <Suspense fallback={<Card className="p-4 md:p-6"><LoadingSpinner /></Card>}>
           <Card className="p-0 overflow-hidden bg-neutral-900 border-neutral-800 rounded-xl">
             <div className="h-48 md:h-64 lg:h-80">
-              <MapLibreMap
+              <RideRequestMap
                 departure={departure}
                 destination={destination}
                 onRouteCalculated={() => {}}

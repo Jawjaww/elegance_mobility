@@ -11,8 +11,8 @@ import { Coordinates } from "@/lib/types/map-types";
 import DateTimeStep from "@/components/reservation/DateTimeStep";
 import { formatDuration } from "@/lib/utils";
 
-// Import dynamique de MapLibre à la place de Leaflet
-import DynamicMapLibreMap from "@/components/map/DynamicMapLibreMap";
+// Use the unified map component (single map entrypoint)
+import UnifiedMap from "@/components/map/UnifiedMap";
 
 // Interface complète avec toutes les props nécessaires
 export interface LocationStepProps {
@@ -261,12 +261,13 @@ export function LocationStep({
       {/* Modifié: Afficher la carte avec une clé stable et un état de contrôle */}
       {showMap && (
         <Card className="p-0 h-[400px] overflow-hidden">
-          <DynamicMapLibreMap
+          <UnifiedMap
+            mode="REQUEST"
             key={mapKey}
-            origin={store.departure}
+            departure={store.departure}
             destination={store.destination}
             onRouteCalculated={handleRouteCalculated}
-            enableRouting={Boolean(store.departure && store.destination)}
+            height="100%"
           />
         </Card>
       )}

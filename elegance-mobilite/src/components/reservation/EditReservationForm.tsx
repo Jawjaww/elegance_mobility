@@ -11,6 +11,7 @@ import { useReservationStore } from "@/lib/stores/reservationStore";
 import EditReservationMap from "@/components/map/EditReservationMap";
 import { PriceSummary } from "@/components/reservation/PriceSummary";
 import { Database } from "@/lib/types/database.types";
+import { validateVehicleType, normalizeVehicleType } from '@/lib/utils/vehicle';
 
 interface EditReservationFormProps {
   initialData: Database["public"]["Tables"]["rides"]["Row"];
@@ -42,7 +43,10 @@ const EditReservationForm: React.FC<EditReservationFormProps> = ({
         address: { formatted: initialData.dropoff_address }
       });
       store.setPickupDateTime(new Date(initialData.pickup_time));
-      store.setSelectedVehicle(initialData.vehicle_type || "STANDARD");
+      // Validate vehicle type (UI boundary): use validate to avoid throwing in UI
+      const vt = initialData.vehicle_type as unknown;
+      const validated = validateVehicleType(vt);
+      store.setSelectedVehicle(validated as any);
       if (initialData.options) {
         store.setSelectedOptions(initialData.options);
       }
@@ -80,7 +84,7 @@ const EditReservationForm: React.FC<EditReservationFormProps> = ({
   };
 
   const handleVehicleChange = (value: string) => {
-    store.setSelectedVehicle(value);
+    store.setSelectedVehicle(validateVehicleType(value) as any);
   };
 
   const handleOptionToggle = (option: string) => {

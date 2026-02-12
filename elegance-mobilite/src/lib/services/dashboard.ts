@@ -1,5 +1,4 @@
 import { supabase } from "@/lib/database/client";
-// import type { Database } from "@/lib/types/database.types";
 
 export interface DashboardMetrics {
   todayRides: number;

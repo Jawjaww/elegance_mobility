@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -9,15 +9,12 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import CustomerSignup from "@/components/auth/CustomerSignup";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/database/client";
 import { getUserRole } from "@/lib/utils/auth-helpers";
 
 function SignupContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirectTo = searchParams?.get("redirectTo");
   const [isChecking, setIsChecking] = useState(true);
   const hasRedirected = useRef(false);
 

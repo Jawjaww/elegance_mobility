@@ -8,7 +8,6 @@ import {
   Clock,
   MapPinIcon,
   CarIcon,
-  User,
   PackageCheck,
   ArrowRight,
   Route,
@@ -16,13 +15,13 @@ import {
 import { Card } from "@/components/ui/card";
 import type { Database } from "@/lib/types/database.types";
 import { useReservationStore } from "@/lib/stores/reservationStore";
-import { supabase, debugRlsProblem } from "@/lib/database/client";
+import { supabase } from "@/lib/database/client";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "../ui/loading-spinner";
 import { Suspense, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
-import MapLibreMap from "@/components/map/MapLibreMap";
+import RideRequestMap from "@/components/map/RideRequestMap";
 import { AuthModal } from "../../app/auth/login/AuthModal";
 import { pricingService } from "@/lib/services/pricingService";
 
@@ -43,6 +42,7 @@ export function ConfirmationDetails() {
     totalPrice: number;
   } | null>(null);
 
+  const reservationStore = useReservationStore();
   const {
     departure,
     destination,
@@ -51,8 +51,7 @@ export function ConfirmationDetails() {
     selectedOptions,
     distance,
     duration,
-    reset,
-  } = useReservationStore();
+  } = reservationStore;
 
   // État local pour gérer la date formatée
   const [formattedDate, setFormattedDate] = useState("");
@@ -259,6 +258,18 @@ export function ConfirmationDetails() {
 
   const handleModify = () => {
     router.push("/reservation");
+  };
+
+  // Handler when the map calculates a route; normalize types and update store
+  const handleRouteCalculated = (distanceMeters: number, durationSeconds: number) => {
+    try {
+      const distanceKm = Math.round(distanceMeters / 1000);
+      const durationMin = Math.round(durationSeconds / 60);
+      reservationStore.setDistance(distanceKm);
+      reservationStore.setDuration(durationMin);
+    } catch (e) {
+      console.warn("Erreur lors de la mise à jour de la distance/durée:", e);
+    }
   };
 
   // Calculer le prix dès que les informations nécessaires sont disponibles
@@ -479,10 +490,11 @@ export function ConfirmationDetails() {
         >
           <Card className="p-0 overflow-hidden bg-neutral-900 border-neutral-800 rounded-xl">
             <div className="h-48 md:h-64 lg:h-80">
-              <MapLibreMap
+              <RideRequestMap
                 departure={departure}
                 destination={destination}
-                onRouteCalculated={(distance, duration) => {}}
+                // Met à jour le store de réservation lorsque la route est calculée
+                onRouteCalculated={handleRouteCalculated}
               />
             </div>
           </Card>

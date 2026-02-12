@@ -164,11 +164,6 @@ export function useReservation() {
       reservationStore.setDuration(duration);
       reservationStore.setPickupDateTime(pickupDateTime);
 
-      // Set all selected options at once
-      const selectedOptions = Object.entries(options)
-        .filter(([, value]) => value)
-        .map(([key]) => key);
-
       // Convertir les options activées en tableau
       const newSelectedOptions = Object.entries(options)
         .filter(([, value]) => value)

@@ -66,9 +66,11 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           {vehicleOptions.map((option) => (
-            <div
+            <button
               key={option.value}
-              className={`relative p-4 rounded-lg border transition-all duration-200 cursor-pointer ${
+              type="button"
+              aria-pressed={vehicleType === option.value}
+              className={`relative p-4 rounded-lg border transition-all duration-200 ${
                 vehicleType === option.value
                   ? "bg-blue-600/20 border-blue-500"
                   : "bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800"
@@ -81,7 +83,7 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
                 </h3>
                 <p className="text-sm text-neutral-400">{option.description}</p>
               </div>
-            </div>
+            </button>
           ))}
         </div>
 

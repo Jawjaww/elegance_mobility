@@ -1,8 +1,9 @@
-// Script to create seed users using Supabase Admin API (service_role key)
-// Usage: node scripts/create_seed_users.js
+// Script ESM to create seed users using Supabase Admin API (service_role key)
+// Usage: node --experimental-top-level-await scripts/create_seed_users.mjs
 
-const { createClient } = require('@supabase/supabase-js')
-require('dotenv').config({ path: './.env.local' })
+import { createClient } from '@supabase/supabase-js'
+import dotenv from 'dotenv'
+dotenv.config({ path: './.env.local' })
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321'
 const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -34,9 +35,9 @@ async function createUser(email, password, role, firstName, lastName) {
   }
 }
 
-async function main() {
-  console.log('Supabase URL:', SUPABASE_URL)
+console.log('Supabase URL:', SUPABASE_URL)
 
+try {
   const users = [
     ['admin1@elegance-mobilite.local', 'password123', 'app_super_admin', 'Admin', 'Principal'],
     ['admin2@elegance-mobilite.local', 'password123', 'app_admin', 'Admin', 'Secondaire'],
@@ -52,6 +53,7 @@ async function main() {
   }
 
   console.log('Done')
+} catch (e) {
+  console.error(e)
+  process.exit(1)
 }
-
-main()

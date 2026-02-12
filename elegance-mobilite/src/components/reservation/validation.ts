@@ -42,7 +42,7 @@ export function sanitizeRideData(data: Partial<RideData>): RideData {
     pickup_address: data.pickup_address || "",
     dropoff_address: data.dropoff_address || "",
     pickup_time: data.pickup_time || new Date().toISOString(),
-    vehicle_type: data.vehicle_type || "STANDARD",
+    vehicle_type: data.vehicle_type || ("STANDARD" as any),
     
     // Ajouter seulement les valeurs non-nulles
     ...(pickup_lat !== undefined && !isNaN(pickup_lat) && { pickup_lat }),

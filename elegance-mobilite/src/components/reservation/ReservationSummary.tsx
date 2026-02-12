@@ -84,12 +84,15 @@ export function ReservationSummary() {
         <div className="space-y-1">
           <p className="font-medium">Véhicule</p>
           <p className="text-sm text-muted-foreground">
-            {store.selectedVehicle === 'STANDARD' ? 'Berline Premium' : 
-             store.selectedVehicle === 'VAN' ? 'Van de Luxe' : 
-             store.selectedVehicle === 'berlineStandard' ? 'Berline Standard' :
-             store.selectedVehicle === 'berlinePremium' ? 'Berline Premium' :
-             store.selectedVehicle === 'van' ? 'Van de Luxe' : 
-             'Non sélectionné'}
+            {(() => {
+              const map: Record<string, string> = {
+                STANDARD: 'Berline Standard',
+                PREMIUM: 'Berline Premium',
+                VAN: 'Van de Luxe',
+                ELECTRIC: 'Berline Électrique',
+              };
+              return map[store.selectedVehicle as string] ?? 'Non sélectionné';
+            })()}
           </p>
         </div>
 
