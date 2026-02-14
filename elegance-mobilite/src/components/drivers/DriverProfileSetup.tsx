@@ -24,6 +24,7 @@ import { supabase } from "@/lib/database/client";
 import { useToast } from "@/hooks/useToast";
 import { PageLoading, ButtonLoading } from "@/components/ui/loading";
 import { Card, CardContent } from "@/components/ui/card";
+import DriverDocumentUploader from "./DriverDocumentUploader";
 
 interface DriverProfileData {
   first_name: string;
@@ -476,6 +477,53 @@ export default function DriverProfileSetup({ user }: { user: User }) {
                       handleInputChange("emergency_contact_phone", e.target.value)
                     }
                     placeholder="Téléphone du contact"
+                  />
+                </div>
+
+                {/* Uploaders */}
+                <div className="md:col-span-2">
+                  <DriverDocumentUploader
+                    driverId={driverId ?? ""}
+                    documentType="driving_license"
+                    label="Permis de conduire (recto/verso)"
+                    accept="image/*,application/pdf"
+                    onUploaded={(r) => console.log("uploaded license", r)}
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <DriverDocumentUploader
+                    driverId={driverId ?? ""}
+                    documentType="vtc_card"
+                    label="Carte VTC"
+                    accept="image/*,application/pdf"
+                    onUploaded={(r) => console.log("uploaded vtc", r)}
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <DriverDocumentUploader
+                    driverId={driverId ?? ""}
+                    documentType="insurance"
+                    label="Attestation d'assurance"
+                    accept="image/*,application/pdf"
+                    onUploaded={(r) => console.log("uploaded insurance", r)}
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <DriverDocumentUploader
+                    driverId={driverId ?? ""}
+                    documentType="id_card"
+                    label="Pièce d'identité"
+                    accept="image/*,application/pdf"
+                    onUploaded={(r) => console.log("uploaded id", r)}
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <DriverDocumentUploader
+                    driverId={driverId ?? ""}
+                    documentType="proof_of_address"
+                    label="Justificatif de domicile"
+                    accept="image/*,application/pdf"
+                    onUploaded={(r) => console.log("uploaded proof", r)}
                   />
                 </div>
               </div>
