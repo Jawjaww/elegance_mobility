@@ -267,6 +267,41 @@ export default function DriverProfileSetup({ user }: { user: User }) {
       });
 
       // Rediriger vers la page d'attente de validation
+      // If we uploaded temporary documents earlier, associate them with this driver now
+      if (data?.id) {
+        // move temp files: find documents with temp prefix for this user and insert proper records
+        try {
+          const { data: userData } = await supabase.auth.getUser();
+          const userId = userData?.user?.id;
+          if (userId) {
+            const { data: tmpFiles } = await supabase
+              .from('driver_documents')
+              .select('*')
+              .eq('validation_status', 'pending_temp')
+              .limit(100);
+
+            if (tmpFiles?.length) {
+              for (const f of tmpFiles) {
+                // move file in storage from tmp/... to driverId/...
+                const oldPath = f.file_url;
+                const newPath = oldPath.replace(`tmp/${userId}/`, `${data.id}/`);
+                // copy then remove (Supabase storage has move via copy + remove)
+                await supabase.storage.from('driver-documents').copy(oldPath, newPath);
+                await supabase.storage.from('driver-documents').remove([oldPath]);
+
+                // update DB record to reference new driver_id and file_url
+                await supabase
+                  .from('driver_documents')
+                  .update({ driver_id: data.id, file_url: newPath, validation_status: 'pending' })
+                  .eq('id', f.id);
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Erreur association fichiers temporaires', e);
+        }
+      }
+
       router.push("/driver-portal/pending");
     } catch (error: any) {
       console.error("Erreur lors de la création du profil:", error);

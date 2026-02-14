@@ -77,15 +77,54 @@ export default function DriverDocumentUploader({
       toast({ title: "Aucun fichier sélectionné" });
       return;
     }
-    if (!driverId) {
-      toast({ title: "Veuillez enregistrer votre profil avant d'uploader." });
-      return;
-    }
-
     setUploading(true);
 
     try {
       const safeName = file.name.replace(/\s+/g, "_");
+      // If driverId not present, upload to a temporary folder under the user's tmp/ prefix
+      if (!driverId) {
+        // get current user id
+        const { data: userData, error: userErr } = await supabase.auth.getUser();
+        const userId = userData?.user?.id ?? null;
+        if (!userId) {
+          toast({ title: "Vous devez être connecté pour uploader." });
+          setUploading(false);
+          return;
+        }
+
+        const tmpPath = `tmp/${userId}/${documentType}/${Date.now()}_${safeName}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("driver-documents")
+          .upload(tmpPath, file, { upsert: true });
+
+        if (uploadError) {
+          console.error("tmp uploadError", uploadError);
+          toast({ title: "Erreur upload", description: uploadError.message, variant: "destructive" });
+          setUploading(false);
+          return;
+        }
+
+        const { data: signed, error: signedErr } = await supabase.storage
+          .from("driver-documents")
+          .createSignedUrl(uploadData.path, 60 * 60 * 24);
+
+        setDocRecord({
+          file_url: uploadData.path,
+          file_name: file.name,
+          file_size: file.size,
+          upload_date: new Date().toISOString(),
+          validation_status: "pending_temp",
+          temp: true,
+        });
+
+        if (!signedErr && signed?.signedUrl) setPreviewUrl(signed.signedUrl);
+        toast({ title: "Fichier uploadé temporairement", description: "Le fichier sera associé à votre profil après sa création." });
+        onUploaded?.({ tempPath: uploadData.path });
+        setUploading(false);
+        return;
+      }
+
+      // Normal upload (driver exists): upload to driver's folder and create DB record
       const path = `${driverId}/${documentType}/${Date.now()}_${safeName}`;
 
       const { data: uploadData, error: uploadError } = await supabase.storage
