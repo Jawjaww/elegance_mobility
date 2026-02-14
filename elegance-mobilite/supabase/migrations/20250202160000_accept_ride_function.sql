@@ -20,7 +20,7 @@ BEGIN
   -- Vérifier que le chauffeur existe et est actif
   IF NOT EXISTS (
     SELECT 1 FROM drivers 
-    WHERE id = p_driver_id AND is_active = true
+    WHERE id = p_driver_id AND status = 'active'
   ) THEN
     RETURN jsonb_build_object(
       'success', false,
@@ -56,7 +56,7 @@ BEGIN
   UPDATE rides
   SET 
     driver_id = p_driver_id,
-    status = 'accepted',
+    status = 'scheduled',
     accepted_at = NOW(),
     updated_at = NOW()
   WHERE id = p_ride_id;
@@ -87,7 +87,7 @@ BEGIN
     'success', true,
     'ride_id', p_ride_id,
     'driver_id', p_driver_id,
-    'status', 'accepted',
+    'status', 'scheduled',
     'accepted_at', NOW()
   );
 END;

@@ -21,7 +21,7 @@ import { LoadingSpinner } from "../ui/loading-spinner";
 import { Suspense, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
-import RideRequestMap from "@/components/map/RideRequestMap";
+import ReservationMap from "@/components/map/ReservationMap";
 import { AuthModal } from "../../app/auth/login/AuthModal";
 import { pricingService } from "@/lib/services/pricingService";
 
@@ -261,7 +261,10 @@ export function ConfirmationDetails() {
   };
 
   // Handler when the map calculates a route; normalize types and update store
-  const handleRouteCalculated = (distanceMeters: number, durationSeconds: number) => {
+  const handleRouteCalculated = (
+    distanceMeters: number,
+    durationSeconds: number,
+  ) => {
     try {
       const distanceKm = Math.round(distanceMeters / 1000);
       const durationMin = Math.round(durationSeconds / 60);
@@ -343,7 +346,7 @@ export function ConfirmationDetails() {
       </div>
 
       <div className="grid gap-6 md:gap-8 max-w-4xl mx-auto">
-        <Card className="p-4 md:p-6 bg-neutral-900 border-neutral-800 card-elegant">
+        <Card className="p-4 md:p-6 bg-neutral-900 border-neutral-800">
           <h2 className="text-lg md:text-xl font-semibold mb-4 md:mb-6 flex items-center">
             <Route className="w-5 h-5 mr-2 text-blue-500" />
             Détails du trajet
@@ -490,11 +493,11 @@ export function ConfirmationDetails() {
         >
           <Card className="p-0 overflow-hidden bg-neutral-900 border-neutral-800 rounded-xl">
             <div className="h-48 md:h-64 lg:h-80">
-              <RideRequestMap
+              <ReservationMap
                 departure={departure}
                 destination={destination}
-                // Met à jour le store de réservation lorsque la route est calculée
                 onRouteCalculated={handleRouteCalculated}
+                className="h-48 md:h-64 lg:h-80"
               />
             </div>
           </Card>

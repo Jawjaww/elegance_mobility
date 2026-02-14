@@ -194,7 +194,7 @@ export function EditConfirmationDetails({ reservationId }: EditConfirmationDetai
         <p className="text-neutral-400">Vérifiez les changements avant de valider</p>
       </div>
       <div className="grid gap-6 md:gap-8 max-w-4xl mx-auto">
-        <Card className="p-4 md:p-6 bg-neutral-900 border-neutral-800 card-elegant">
+        <Card className="p-4 md:p-6 bg-neutral-900 border-neutral-800">
           <h2 className="text-lg md:text-xl font-semibold mb-4 md:mb-6 flex items-center">
             <Route className="w-5 h-5 mr-2 text-blue-500" />
             Détails du trajet

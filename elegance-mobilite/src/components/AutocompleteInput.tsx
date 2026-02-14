@@ -180,11 +180,9 @@ export function AutocompleteInput({
 
     if (newValue === '') {
       setSuggestions([]);
-      // Passer des paramètres zéro explicites pour signaler une réinitialisation
-      // plutôt que des valeurs invalides
-      if (onSelect) {
-        onSelect(0, 0, '');
-      }
+      // Do not call onSelect with 0,0 (which maps to the Gulf of Guinea).
+      // Let callers treat empty string as a reset via onChange and other UI logic.
+      return;
     }
   };
 

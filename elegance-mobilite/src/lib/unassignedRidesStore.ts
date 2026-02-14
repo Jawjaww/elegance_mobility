@@ -1,7 +1,7 @@
-import { create } from 'zustand';
-import type { Database } from './types/database.types';
+import { create } from "zustand";
+import type { Database } from "./types/database.types";
 
-type Ride = Database['public']['Tables']['rides']['Row'];
+type Ride = Database["public"]["Tables"]["rides"]["Row"];
 
 interface UnassignedRidesStore {
   rides: Ride[];
@@ -26,7 +26,7 @@ export const useUnassignedRidesStore = create<UnassignedRidesStore>((set) => ({
       // Stub implementation
       set({ rides: [], loading: false });
     } catch (error) {
-      set({ error: 'Failed to fetch rides', loading: false });
+      set({ error: "Failed to fetch rides", loading: false });
     }
   },
 }));

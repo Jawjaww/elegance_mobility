@@ -1,8 +1,64 @@
 {
-    "workbench.colorCustomizations": {
-        "activityBar.background": "#39283E",
-        "titleBar.activeBackground": "#4F3757",
-        "titleBar.activeForeground": "#FBFAFC"
-    },
-    "github.copilot.advanced": {}
+  "workbench.colorCustomizations": {
+    "activityBar.background": "#39283E",
+    "titleBar.activeBackground": "#4F3757",
+    "titleBar.activeForeground": "#FBFAFC"
+  },
+
+  "github.copilot.advanced": {},
+
+  "github.copilot.chat.agent.enabled": true,
+  "chat.agent.maxRequests": 300,
+
+  "chat.tools.terminal.autoApprove": {
+    "git status": true,
+    "git log": true,
+    "git diff": true,
+    "git branch": true,
+    "git checkout": true,
+    "git switch": true,
+    "git fetch": true,
+    "git pull": true,
+    "git stash": true,
+    "git add": true,
+    "git commit": true,
+
+    "npm": true,
+    "npx": true,
+    "pnpm": true,
+    "yarn": true,
+    "node": true,
+    "next": true,
+    "npm run build": true,
+    "npm run dev": true,
+    "npm run start": true,
+    "npm run test": true,
+    "npm run lint": true,
+
+    "supabase": true,
+    "npx supabase": true,
+
+    "ls": true,
+    "ll": true,
+    "cat": true,
+    "grep": true,
+    "find": true,
+    "head": true,
+    "tail": true,
+    "pwd": true,
+    "cd": true,
+    "ps": true,
+
+    "rm": false,
+    "rmdir": false,
+    "del": false,
+    "kill": false,
+    "curl": false,
+    "chmod": false,
+    "sudo": false,
+    "supabase db push": false,
+    "supabase db reset": false
+  },
+
+  "chat.tools.autoApprove": true
 }

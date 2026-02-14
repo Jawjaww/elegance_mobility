@@ -9,11 +9,16 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        // Glass default: translucent surface with subtle border and accent text
+        default:
+          "bg-[rgba(255,255,255,0.02)] border-[rgba(255,255,255,0.06)] text-slate-50 hover:bg-[rgba(255,255,255,0.04)] hover:text-white",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-input hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
+        // Outline becomes a glass-outline: transparent with subtle border and hover surface
+        outline:
+          "border-[rgba(255,255,255,0.06)] bg-transparent hover:bg-[rgba(255,255,255,0.02)] hover:text-white",
+        secondary:
+          "bg-[rgba(255,255,255,0.01)] border-[rgba(255,255,255,0.04)] text-slate-300 hover:bg-[rgba(255,255,255,0.03)]",
+        ghost: "hover:bg-[rgba(255,255,255,0.02)] hover:text-white",
         link: "underline-offset-4 hover:underline text-primary",
       },
       size: {

@@ -35,7 +35,11 @@ export default function DriversGrid({
         <DriverCard
           key={driver.id}
           driver={driver}
-          vehicle={driver.current_vehicle_id ? vehicles[driver.current_vehicle_id] : null}
+          vehicle={
+            driver.current_vehicle_id
+              ? vehicles[driver.current_vehicle_id]
+              : null
+          }
           onEdit={onEdit}
           onDelete={onDelete}
         />

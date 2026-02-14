@@ -32,8 +32,8 @@ export default function DriverProfileSetupPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[rgba(74,119,168,0.9)]"></div>
       </div>
     );
   }
@@ -43,9 +43,11 @@ export default function DriverProfileSetupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-8">
-        <DriverProfileSetup user={user} />
+    <div className="min-h-screen flex items-center justify-center py-12">
+      <div className="w-full max-w-2xl px-4 mx-auto flex justify-center">
+        <div className="glass-modal__sheet mx-auto">
+          <DriverProfileSetup user={user} />
+        </div>
       </div>
     </div>
   );

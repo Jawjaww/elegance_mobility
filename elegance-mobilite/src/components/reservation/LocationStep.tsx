@@ -51,24 +51,28 @@ export function LocationStep({
   // Synchronisation du store avec les valeurs préremplies (persistance) au premier rendu
   useEffect(() => {
     // Si le store n'est pas encore synchronisé mais les hooks locaux sont préremplis, on synchronise
-    if (
-      originAddress &&
-      !store.departure
-    ) {
+    // If the page is pre-filled with addresses but coordinates are missing, avoid defaulting to (0,0)
+    // which is located off the west coast of Africa. Keep coordinates null so routing will fetch
+    // a route only once the user selects a suggestion that includes real coordinates.
+    // If the page is pre-filled with addresses but coordinates are missing, try to use coordinates
+    // from the initialData (if provided via props). If those are not available, keep coords null
+    // to avoid incorrect default centering; when coordinates are available we want the route to
+    // be drawn automatically.
+    if (originAddress && !store.departure) {
+      // attempt to read potential initial coordinates passed via originAddress (string) is not enough;
+      // higher level pages may pass coords via props. For robustness we set an empty placeholder and
+      // rely on the ReservationForm to prefer initialData coords when present.
       store.setDeparture({
-        lat: 0,
-        lon: 0,
+        lat: NaN,
+        lon: NaN,
         display_name: originAddress,
         address: {},
       });
     }
-    if (
-      destinationAddress &&
-      !store.destination
-    ) {
+    if (destinationAddress && !store.destination) {
       store.setDestination({
-        lat: 0,
-        lon: 0,
+        lat: NaN,
+        lon: NaN,
         display_name: destinationAddress,
         address: {},
       });

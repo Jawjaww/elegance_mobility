@@ -38,6 +38,30 @@ vehicle_type_enum     -- STANDARD | PREMIUM | VAN | ELECTRIC
 
 ---
 
+## 🔎 Validation runtime des types de véhicule
+
+Note: bien que `vehicle_type_enum` soit la source de vérité TypeScript/DB, nous avons ajouté une validation runtime
+pour détecter et remonter rapidement les valeurs invalides provenant de la base de données ou du front-end.
+
+- Emplacement du helper: `src/lib/utils/vehicle.ts`
+  - `validateVehicleType(v): VehicleType | undefined` — validation stricte retournant `undefined` si invalide (usage UI).
+  - `assertVehicleType(v): VehicleType` — vérifie et lance une erreur si la valeur est invalide (usage aux frontières DB).
+  - `normalizeVehicleType(v): VehicleType` — fonction de compatibilité retournant un fallback `STANDARD`.
+
+- Comportement en production
+  - `assertVehicleType` logge maintenant un `console.error` structuré avant de throw pour que les anomalies
+    intermittentes (migrations incomplètes, payloads clients erronés) apparaissent dans les logs serveur.
+  - Objectif opérationnel: détecter rapidement les entrées corrompues et corriger la base plutôt que de laisser
+    des valeurs non conformes se propager dans l'application.
+
+- Suivi / recommandations
+  - Court terme: surveillance des logs serveur (console.error) après déploiement.
+  - Moyen terme: intégrer un outil de monitoring (Sentry) pour grouper/alerter automatiquement les erreurs
+    et faciliter le tri des lignes DB affectées.
+
+
+---
+
 ## 📊 Tables Principales
 
 ### 1. **users** (Profils Utilisateurs)

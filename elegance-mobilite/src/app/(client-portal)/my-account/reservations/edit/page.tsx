@@ -12,7 +12,7 @@ import { reservationService } from "@/lib/services/reservationService";
 import { Suspense } from "react";
 import LocationStep from "@/components/reservation/LocationStep";
 import VehicleStep from "@/components/reservation/VehicleStep";
-import { normalizeVehicleType } from '@/lib/utils/vehicle';
+import { normalizeVehicleType } from "@/lib/utils/vehicle";
 
 type RideUpdate = Database["public"]["Tables"]["rides"]["Update"];
 type Reservation = Database["public"]["Tables"]["rides"]["Row"];
@@ -78,13 +78,13 @@ function EditReservationContent() {
       // Use assertVehicleType at DB boundary to fail-fast on invalid DB values
       (async () => {
         try {
-          const { assertVehicleType } = await import('@/lib/utils/vehicle');
+          const { assertVehicleType } = await import("@/lib/utils/vehicle");
           const v = reservation.vehicle_type as unknown;
           reservationStore.setSelectedVehicle(assertVehicleType(v) as any);
         } catch (e) {
           // Re-throw so CI / dev sees DB inconsistencies. If you prefer to fall back in prod,
           // we can catch and fallback here, but for now we surface the error.
-          console.error('[VEHICLE] Invalid vehicle type from DB', e);
+          console.error("[VEHICLE] Invalid vehicle type from DB", e);
           throw e;
         }
       })();

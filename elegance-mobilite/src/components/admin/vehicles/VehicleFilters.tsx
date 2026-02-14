@@ -1,29 +1,40 @@
+"use client";
 
-"use client"
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search } from "lucide-react";
+import type { Database } from "@/lib/types/database.types";
 
-import { useState } from "react"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search } from "lucide-react"
-import type { Database } from "@/lib/types/database.types"
-
-type VehicleType = Database['public']['Enums']['vehicle_type_enum']
+type VehicleType = Database["public"]["Enums"]["vehicle_type_enum"];
 
 type Props = {
-  onFilterChange: (filters: { type?: VehicleType | 'all'; search?: string }) => void
-}
+  onFilterChange: (filters: {
+    type?: VehicleType | "all";
+    search?: string;
+  }) => void;
+};
 
 export function VehicleFilters({ onFilterChange }: Props) {
-  const [selectedType, setSelectedType] = useState<VehicleType | 'all'>('all')
+  const [selectedType, setSelectedType] = useState<VehicleType | "all">("all");
 
   function handleTypeChange(type: string) {
-    const t = type === 'all' ? 'all' : (type as VehicleType)
-    setSelectedType(t)
-    onFilterChange({ type: t, search: undefined })
+    const t = type === "all" ? "all" : (type as VehicleType);
+    setSelectedType(t);
+    onFilterChange({ type: t, search: undefined });
   }
 
   function handleSearchChange(value: string) {
-    onFilterChange({ type: selectedType as VehicleType | 'all', search: value })
+    onFilterChange({
+      type: selectedType as VehicleType | "all",
+      search: value,
+    });
   }
 
   return (
@@ -52,7 +63,7 @@ export function VehicleFilters({ onFilterChange }: Props) {
         </Select>
       </div>
     </div>
-  )
+  );
 }
 
-export default VehicleFilters
+export default VehicleFilters;

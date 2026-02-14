@@ -19,7 +19,7 @@ type RateInsert = Database["public"]["Tables"]["rates"]["Insert"];
 type VehicleType = Database["public"]["Enums"]["vehicle_type_enum"];
 
 // Valeurs directes depuis database.types.ts (source de vérité Supabase)
-import { VEHICLE_TYPES as RUNTIME_VEHICLE_TYPES } from '@/lib/utils/vehicle';
+import { VEHICLE_TYPES as RUNTIME_VEHICLE_TYPES } from "@/lib/utils/vehicle";
 // RUNTIME_VEHICLE_TYPES is declared `as const` in utils; cast it into the tuple shape z.enum expects
 const VEHICLE_TYPES = RUNTIME_VEHICLE_TYPES as unknown as [string, ...string[]];
 

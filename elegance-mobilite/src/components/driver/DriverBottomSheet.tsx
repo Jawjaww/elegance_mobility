@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import {
   Clock,
@@ -13,6 +13,8 @@ import {
   Circle,
 } from "lucide-react";
 import { useDriverStore } from "@/lib/driver/store";
+import { supabase } from "@/lib/database/client";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   formatPrice,
@@ -33,6 +35,12 @@ const SHEET_POSITIONS = {
 
 export function DriverBottomSheet() {
   const { isOnline, activeRide, availableRide } = useDriverStore();
+  const router = useRouter();
+  const [driverAuth, setDriverAuth] = useState<{
+    checking: boolean;
+    canAccept: boolean | null;
+    reason?: string | null;
+  }>({ checking: true, canAccept: null, reason: null });
   const [activeTab, setActiveTab] = useState<Tab>(
     activeRide ? "active" : "available",
   );
@@ -73,11 +81,65 @@ export function DriverBottomSheet() {
 
   const handleOpenRealtimeModal = () => {
     if (availableRide) {
+      // Before opening the ride modal, ensure driver is authorized to accept
+      if (driverAuth.checking) return; // still checking
+      if (driverAuth.canAccept === false) {
+        // show bottomsheet warning (reuse router to redirect to profile)
+        window.dispatchEvent(new CustomEvent("open-driver-profile-warning", { detail: { reason: driverAuth.reason } }));
+        return;
+      }
+
       window.dispatchEvent(
         new CustomEvent("open-ride-modal", { detail: availableRide }),
       );
     }
   };
+
+  // Fetch driver authorization status once on mount
+  useEffect(() => {
+    let mounted = true;
+    async function check() {
+        try {
+          // call Edge Function we created earlier
+          // Resolve functions URL from environment when available (preferred),
+          // otherwise fall back to local dev host at :54321.
+          const getFnUrl = () => {
+            const functionsBase = (process.env.NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL as string) || (process.env.NEXT_PUBLIC_SUPABASE_URL as string);
+            if (functionsBase) {
+              return `${functionsBase.replace(/\/$/, "")}/functions/v1/driver-authorization`;
+            }
+            const host = typeof window !== "undefined" ? window.location.hostname : "127.0.0.1";
+            const protocol = typeof window !== "undefined" ? window.location.protocol : "http:";
+            return `${protocol}//${host}:54321/functions/v1/driver-authorization`;
+          };
+          const fnUrl = getFnUrl();
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData?.user?.id;
+        if (!userId) {
+          if (!mounted) return;
+          setDriverAuth({ checking: false, canAccept: false, reason: 'Utilisateur non authentifié' });
+          return;
+        }
+
+        const res = await fetch(`${fnUrl}?user_id=${encodeURIComponent(userId)}`, {
+          headers: { Accept: 'application/json' },
+          credentials: 'omit',
+        });
+        const json = await res.json();
+        if (!mounted) return;
+        if (json?.ok) {
+          setDriverAuth({ checking: false, canAccept: !!json.can_accept, reason: json.reason ?? null });
+        } else {
+          setDriverAuth({ checking: false, canAccept: false, reason: json?.error ?? 'Erreur inconnue' });
+        }
+      } catch (err) {
+        if (!mounted) return;
+        setDriverAuth({ checking: false, canAccept: false, reason: String(err) });
+      }
+    }
+    check();
+    return () => { mounted = false };
+  }, []);
 
   return (
     <>
@@ -140,6 +202,26 @@ export function DriverBottomSheet() {
             </div>
           </div>
         </div>
+        {/* If driver not allowed, show a small banner inside the sheet */}
+        {!driverAuth.checking && driverAuth.canAccept === false && (
+          <div className="px-6 pb-2">
+            <div className="bg-yellow-700/10 border border-yellow-600/20 rounded-xl p-3 text-sm text-yellow-200 flex items-center justify-between">
+              <div>
+                <div className="font-semibold">Votre profil est incomplet</div>
+                <div className="text-xs text-yellow-300">{driverAuth.reason}</div>
+              </div>
+              <div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => router.push('/driver-portal/profile/setup?from=driver-setup')}
+                >
+                  Compléter
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="px-6 overflow-y-auto h-[calc(100%-110px)]">

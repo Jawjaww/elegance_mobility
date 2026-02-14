@@ -34,7 +34,7 @@
 /* Style du marqueur MapLibre */
 .maplibregl-marker {
   cursor: pointer;
-  z-index: 10;
+  z-index: 100;
 }
 
 /* Style du popup MapLibre */
@@ -118,7 +118,7 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   transform: translateZ(0); /* Optimisation GPU */
   will-change: transform; /* Optimisation de rendu */
-  z-index: 1;
+  z-index: 0; /* keep at base, route layers will render inside canvas */
 }
 
 /* Styles pour personnaliser les popups MapLibre */

@@ -23,7 +23,7 @@ interface SettingsFormProps {
 export default function SettingsForm({ user, initialData }: SettingsFormProps) {
   const router = useRouter();
   const { toast } = useToast();
-  
+
   const [firstName, setFirstName] = useState(initialData.first_name);
   const [lastName, setLastName] = useState(initialData.last_name);
   const [email, setEmail] = useState(initialData.email);
@@ -36,16 +36,16 @@ export default function SettingsForm({ user, initialData }: SettingsFormProps) {
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     try {
       const result = await updateProfile({
         first_name: firstName,
         last_name: lastName,
         email,
         phone,
-        userId: user.id
+        userId: user.id,
       });
-      
+
       if (result?.error) {
         toast({
           title: "Erreur",
@@ -63,7 +63,8 @@ export default function SettingsForm({ user, initialData }: SettingsFormProps) {
       console.error("Erreur lors de la mise à jour:", err);
       toast({
         title: "Erreur",
-        description: "Une erreur s'est produite lors de la mise à jour du profil.",
+        description:
+          "Une erreur s'est produite lors de la mise à jour du profil.",
         variant: "destructive",
       });
     } finally {
@@ -73,7 +74,7 @@ export default function SettingsForm({ user, initialData }: SettingsFormProps) {
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (newPassword !== confirmPassword) {
       toast({
         title: "Erreur",
@@ -82,16 +83,16 @@ export default function SettingsForm({ user, initialData }: SettingsFormProps) {
       });
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     try {
       const result = await updateProfile({
         currentPassword,
         newPassword,
-        userId: user.id
+        userId: user.id,
       });
-      
+
       if (result?.error) {
         toast({
           title: "Erreur",
@@ -111,7 +112,8 @@ export default function SettingsForm({ user, initialData }: SettingsFormProps) {
       console.error("Erreur lors du changement de mot de passe:", err);
       toast({
         title: "Erreur",
-        description: "Une erreur s'est produite lors du changement de mot de passe.",
+        description:
+          "Une erreur s'est produite lors du changement de mot de passe.",
         variant: "destructive",
       });
     } finally {
@@ -130,7 +132,10 @@ export default function SettingsForm({ user, initialData }: SettingsFormProps) {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="firstName" className="text-sm font-medium text-neutral-200">
+                  <label
+                    htmlFor="firstName"
+                    className="text-sm font-medium text-neutral-200"
+                  >
                     Prénom
                   </label>
                   <Input
@@ -141,7 +146,10 @@ export default function SettingsForm({ user, initialData }: SettingsFormProps) {
                   />
                 </div>
                 <div>
-                  <label htmlFor="lastName" className="text-sm font-medium text-neutral-200">
+                  <label
+                    htmlFor="lastName"
+                    className="text-sm font-medium text-neutral-200"
+                  >
                     Nom
                   </label>
                   <Input
@@ -152,9 +160,12 @@ export default function SettingsForm({ user, initialData }: SettingsFormProps) {
                   />
                 </div>
               </div>
-              
+
               <div>
-                <label htmlFor="email" className="text-sm font-medium text-neutral-200">
+                <label
+                  htmlFor="email"
+                  className="text-sm font-medium text-neutral-200"
+                >
                   Email
                 </label>
                 <Input
@@ -165,9 +176,12 @@ export default function SettingsForm({ user, initialData }: SettingsFormProps) {
                   className="mt-1 bg-neutral-800 border-neutral-700"
                 />
               </div>
-              
+
               <div>
-                <label htmlFor="phone" className="text-sm font-medium text-neutral-200">
+                <label
+                  htmlFor="phone"
+                  className="text-sm font-medium text-neutral-200"
+                >
                   Téléphone
                 </label>
                 <Input
@@ -178,14 +192,16 @@ export default function SettingsForm({ user, initialData }: SettingsFormProps) {
                 />
               </div>
             </div>
-            
+
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Enregistrement..." : "Enregistrer les modifications"}
+              {isLoading
+                ? "Enregistrement..."
+                : "Enregistrer les modifications"}
             </Button>
           </form>
         </CardContent>
       </Card>
-      
+
       <Card className="bg-neutral-900 border-neutral-800">
         <CardHeader>
           <CardTitle>Changer de mot de passe</CardTitle>
@@ -194,7 +210,10 @@ export default function SettingsForm({ user, initialData }: SettingsFormProps) {
           <form onSubmit={handlePasswordChange} className="space-y-6">
             <div className="space-y-4">
               <div>
-                <label htmlFor="currentPassword" className="text-sm font-medium text-neutral-200">
+                <label
+                  htmlFor="currentPassword"
+                  className="text-sm font-medium text-neutral-200"
+                >
                   Mot de passe actuel
                 </label>
                 <Input
@@ -206,9 +225,12 @@ export default function SettingsForm({ user, initialData }: SettingsFormProps) {
                   required
                 />
               </div>
-              
+
               <div>
-                <label htmlFor="newPassword" className="text-sm font-medium text-neutral-200">
+                <label
+                  htmlFor="newPassword"
+                  className="text-sm font-medium text-neutral-200"
+                >
                   Nouveau mot de passe
                 </label>
                 <Input
@@ -220,9 +242,12 @@ export default function SettingsForm({ user, initialData }: SettingsFormProps) {
                   required
                 />
               </div>
-              
+
               <div>
-                <label htmlFor="confirmPassword" className="text-sm font-medium text-neutral-200">
+                <label
+                  htmlFor="confirmPassword"
+                  className="text-sm font-medium text-neutral-200"
+                >
                   Confirmer le nouveau mot de passe
                 </label>
                 <Input
@@ -235,7 +260,7 @@ export default function SettingsForm({ user, initialData }: SettingsFormProps) {
                 />
               </div>
             </div>
-            
+
             <Button type="submit" variant="outline" disabled={isLoading}>
               {isLoading ? "Modification..." : "Modifier le mot de passe"}
             </Button>

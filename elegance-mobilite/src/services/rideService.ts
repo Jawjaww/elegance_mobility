@@ -34,8 +34,11 @@ export const acceptRide = async (rideId: string) => {
   });
 
   if (error) throw error;
-  // La fonction retourne typiquement un objet JSON { success, error?, ride_id?, status?, accepted_at? }
-  return data;
+  // Normaliser la réponse : certaines versions de supabase-js retournent un tableau
+  // quand la fonction SQL renvoie JSONB. On renvoie l'objet retourné ou le premier
+  // élément du tableau pour garder une signature stable côté client.
+  const normalized = Array.isArray(data) ? data[0] : data;
+  return normalized;
 };
 
 export default acceptRide;

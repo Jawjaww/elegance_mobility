@@ -11,7 +11,7 @@ import { useReservationStore } from "@/lib/stores/reservationStore";
 import EditReservationMap from "@/components/map/EditReservationMap";
 import { PriceSummary } from "@/components/reservation/PriceSummary";
 import { Database } from "@/lib/types/database.types";
-import { validateVehicleType, normalizeVehicleType } from '@/lib/utils/vehicle';
+import { validateVehicleType, normalizeVehicleType } from "@/lib/utils/vehicle";
 
 interface EditReservationFormProps {
   initialData: Database["public"]["Tables"]["rides"]["Row"];
@@ -34,13 +34,13 @@ const EditReservationForm: React.FC<EditReservationFormProps> = ({
         lat: initialData.pickup_lat || 0,
         lon: initialData.pickup_lon || 0,
         display_name: initialData.pickup_address,
-        address: { formatted: initialData.pickup_address }
+        address: { formatted: initialData.pickup_address },
       });
       store.setDestination({
         lat: initialData.dropoff_lat || 0,
         lon: initialData.dropoff_lon || 0,
         display_name: initialData.dropoff_address,
-        address: { formatted: initialData.dropoff_address }
+        address: { formatted: initialData.dropoff_address },
       });
       store.setPickupDateTime(new Date(initialData.pickup_time));
       // Validate vehicle type (UI boundary): use validate to avoid throwing in UI
@@ -66,16 +66,20 @@ const EditReservationForm: React.FC<EditReservationFormProps> = ({
       lat,
       lon,
       display_name: address,
-      address: { formatted: address }
+      address: { formatted: address },
     });
   };
 
-  const handleDestinationSelect = (lat: number, lon: number, address: string) => {
+  const handleDestinationSelect = (
+    lat: number,
+    lon: number,
+    address: string,
+  ) => {
     store.setDestination({
       lat,
       lon,
       display_name: address,
-      address: { formatted: address }
+      address: { formatted: address },
     });
   };
 
@@ -133,7 +137,9 @@ const EditReservationForm: React.FC<EditReservationFormProps> = ({
           />
         </div>
         <div>
-          <Label htmlFor="pickup-datetime">Date et heure de prise en charge</Label>
+          <Label htmlFor="pickup-datetime">
+            Date et heure de prise en charge
+          </Label>
           <DateTimePicker
             value={store.pickupDateTime || new Date()}
             onChange={handleDateChange}
@@ -185,7 +191,9 @@ const EditReservationForm: React.FC<EditReservationFormProps> = ({
           <Button variant="outline" onClick={onCancel} className="flex-1">
             Annuler
           </Button>
-          <Button onClick={handleSubmit} className="flex-1 btn-gradient"
+          <Button
+            onClick={handleSubmit}
+            className="flex-1 btn-gradient"
             disabled={
               !store.departure ||
               !store.destination ||

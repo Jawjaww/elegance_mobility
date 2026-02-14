@@ -9,21 +9,39 @@ BEGIN;
 -- 1. CRÉER LES UTILISATEURS DANS auth.users
 -- ============================================
 
--- Créer d'abord les utilisateurs dans auth.users (nécessaire pour la FK)
+-- Créer les utilisateurs dans auth.users (nécessaire pour la FK)
+-- IMPORTANT: on crée aussi auth.identities pour que GoTrue puisse les authentifier
 INSERT INTO auth.users (
-  id, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+  id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, 
+  raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+  confirmation_token, recovery_token, email_change_token_new, email_change
 ) VALUES 
-  ('00000000-0000-0000-0000-000000000001', 'admin1@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_super_admin"}', '{"first_name": "Admin", "last_name": "Principal"}', NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000002', 'admin2@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_admin"}', '{"first_name": "Admin", "last_name": "Secondaire"}', NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000003', 'jean.dupont@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_driver"}', '{"first_name": "Jean", "last_name": "Dupont"}', NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000004', 'marie.martin@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_driver"}', '{"first_name": "Marie", "last_name": "Martin"}', NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000005', 'pierre.bernard@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_driver"}', '{"first_name": "Pierre", "last_name": "Bernard"}', NOW(), NOW()),
+  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin1@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_super_admin", "provider": "email", "providers": ["email"]}', '{"first_name": "Admin", "last_name": "Principal"}', NOW(), NOW(), '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin2@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_admin", "provider": "email", "providers": ["email"]}', '{"first_name": "Admin", "last_name": "Secondaire"}', NOW(), NOW(), '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'jean.dupont@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_driver", "provider": "email", "providers": ["email"]}', '{"first_name": "Jean", "last_name": "Dupont"}', NOW(), NOW(), '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'marie.martin@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_driver", "provider": "email", "providers": ["email"]}', '{"first_name": "Marie", "last_name": "Martin"}', NOW(), NOW(), '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'pierre.bernard@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_driver", "provider": "email", "providers": ["email"]}', '{"first_name": "Pierre", "last_name": "Bernard"}', NOW(), NOW(), '', '', '', ''),
   -- Utilisateurs clients pour les rides
-  ('00000000-0000-0000-0000-000000000010', 'client1@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_customer"}', '{"first_name": "Client", "last_name": "Un"}', NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000011', 'client2@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_customer"}', '{"first_name": "Client", "last_name": "Deux"}', NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000012', 'client3@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_customer"}', '{"first_name": "Client", "last_name": "Trois"}', NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000013', 'client4@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_customer"}', '{"first_name": "Client", "last_name": "Quatre"}', NOW(), NOW())
+  ('00000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'client1@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_customer", "provider": "email", "providers": ["email"]}', '{"first_name": "Client", "last_name": "Un"}', NOW(), NOW(), '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'client2@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_customer", "provider": "email", "providers": ["email"]}', '{"first_name": "Client", "last_name": "Deux"}', NOW(), NOW(), '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000012', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'client3@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_customer", "provider": "email", "providers": ["email"]}', '{"first_name": "Client", "last_name": "Trois"}', NOW(), NOW(), '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000013', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'client4@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_customer", "provider": "email", "providers": ["email"]}', '{"first_name": "Client", "last_name": "Quatre"}', NOW(), NOW(), '', '', '', '')
 ON CONFLICT (id) DO NOTHING;
+
+-- Créer les identities pour chaque utilisateur (nécessaire pour que GoTrue accepte le login email/password)
+INSERT INTO auth.identities (
+  id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at
+) VALUES
+  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', '{"sub": "00000000-0000-0000-0000-000000000001", "email": "admin1@elegance-mobilite.local", "email_verified": true}', 'email', '00000000-0000-0000-0000-000000000001', NOW(), NOW(), NOW()),
+  ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002', '{"sub": "00000000-0000-0000-0000-000000000002", "email": "admin2@elegance-mobilite.local", "email_verified": true}', 'email', '00000000-0000-0000-0000-000000000002', NOW(), NOW(), NOW()),
+  ('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000003', '{"sub": "00000000-0000-0000-0000-000000000003", "email": "jean.dupont@elegance-mobilite.local", "email_verified": true}', 'email', '00000000-0000-0000-0000-000000000003', NOW(), NOW(), NOW()),
+  ('00000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000004', '{"sub": "00000000-0000-0000-0000-000000000004", "email": "marie.martin@elegance-mobilite.local", "email_verified": true}', 'email', '00000000-0000-0000-0000-000000000004', NOW(), NOW(), NOW()),
+  ('00000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000005', '{"sub": "00000000-0000-0000-0000-000000000005", "email": "pierre.bernard@elegance-mobilite.local", "email_verified": true}', 'email', '00000000-0000-0000-0000-000000000005', NOW(), NOW(), NOW()),
+  ('00000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000010', '{"sub": "00000000-0000-0000-0000-000000000010", "email": "client1@elegance-mobilite.local", "email_verified": true}', 'email', '00000000-0000-0000-0000-000000000010', NOW(), NOW(), NOW()),
+  ('00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000011', '{"sub": "00000000-0000-0000-0000-000000000011", "email": "client2@elegance-mobilite.local", "email_verified": true}', 'email', '00000000-0000-0000-0000-000000000011', NOW(), NOW(), NOW()),
+  ('00000000-0000-0000-0000-000000000012', '00000000-0000-0000-0000-000000000012', '{"sub": "00000000-0000-0000-0000-000000000012", "email": "client3@elegance-mobilite.local", "email_verified": true}', 'email', '00000000-0000-0000-0000-000000000012', NOW(), NOW(), NOW()),
+  ('00000000-0000-0000-0000-000000000013', '00000000-0000-0000-0000-000000000013', '{"sub": "00000000-0000-0000-0000-000000000013", "email": "client4@elegance-mobilite.local", "email_verified": true}', 'email', '00000000-0000-0000-0000-000000000013', NOW(), NOW(), NOW())
+ON CONFLICT DO NOTHING;
 
 -- Table users (infos de base) - sera aussi créée par le trigger handle_new_user
 INSERT INTO public.users (id, first_name, last_name, phone, created_at, updated_at)

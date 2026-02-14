@@ -37,13 +37,13 @@ export default function ReservationCard({
   // Déterminer le type de trajet à afficher dans l'en-tête
   const getVehicleTypeDisplay = () => {
     if (!ride.vehicle_type) return "Trajet VTC";
-    
+
     const vehicleType = ride.vehicle_type.toLowerCase();
-    
+
     if (vehicleType.includes("van")) return "Van";
     if (vehicleType.includes("premium")) return "Premium";
     if (vehicleType.includes("standard")) return "Standard";
-    
+
     // Capitaliser le type pour tout autre cas
     return `Trajet ${capitalize(vehicleType)}`;
   };
@@ -54,9 +54,15 @@ export default function ReservationCard({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Car className="h-5 w-5 text-blue-500" />
-            <h3 className="font-semibold text-neutral-100">{getVehicleTypeDisplay()}</h3>
+            <h3 className="font-semibold text-neutral-100">
+              {getVehicleTypeDisplay()}
+            </h3>
           </div>
-          <StatusBadge status={ride.status} className="shadow-sm" showDetailed={true} />
+          <StatusBadge
+            status={ride.status}
+            className="shadow-sm"
+            showDetailed={true}
+          />
         </div>
       </CardHeader>
 
@@ -76,11 +82,17 @@ export default function ReservationCard({
             <div className="space-y-3">
               <div className="space-y-1">
                 <p className="text-xs font-medium text-neutral-400">Départ</p>
-                <p className="text-sm text-neutral-100">{ride.pickup_address}</p>
+                <p className="text-sm text-neutral-100">
+                  {ride.pickup_address}
+                </p>
               </div>
               <div className="space-y-1">
-                <p className="text-xs font-medium text-neutral-400">Destination</p>
-                <p className="text-sm text-neutral-100">{ride.dropoff_address}</p>
+                <p className="text-xs font-medium text-neutral-400">
+                  Destination
+                </p>
+                <p className="text-sm text-neutral-100">
+                  {ride.dropoff_address}
+                </p>
               </div>
             </div>
           </div>
@@ -99,25 +111,25 @@ export default function ReservationCard({
         <div className="flex w-full justify-end gap-2">
           {onDetails && (
             <Button
-              variant="outline"  // Changé de "ghost" à "outline" pour avoir un contour
+              variant="outline" // Changé de "ghost" à "outline" pour avoir un contour
               size="sm"
-              className="h-8 px-3 text-xs bg-neutral-800 border-neutral-700 hover:bg-neutral-700 hover:text-neutral-100"  
+              className="h-8 px-3 text-xs bg-neutral-800 border-neutral-700 hover:bg-neutral-700 hover:text-neutral-100"
               onClick={() => onDetails(ride.id)}
             >
               Détails
             </Button>
           )}
-          {onEdit && ride.status === 'pending' && (
+          {onEdit && ride.status === "pending" && (
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-3 text-xs bg-blue-900/30 border-blue-600/50 text-blue-400 hover:bg-blue-900/50 hover:border-blue-500 hover:text-blue-300"  
+              className="h-8 px-3 text-xs bg-blue-900/30 border-blue-600/50 text-blue-400 hover:bg-blue-900/50 hover:border-blue-500 hover:text-blue-300"
               onClick={() => onEdit(ride.id)}
             >
               Modifier
             </Button>
           )}
-          {onCancel && ride.status === 'pending' && (
+          {onCancel && ride.status === "pending" && (
             <Button
               variant="outline"
               size="sm"

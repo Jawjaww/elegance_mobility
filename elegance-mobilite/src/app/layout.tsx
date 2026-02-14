@@ -41,6 +41,13 @@ export default function RootLayout({
       <body
         className={`${plusJakarta.variable} font-plus-jakarta min-h-screen`}
       >
+        {/* Fixed decorative background behind all content to avoid rendering issues
+            with backdrop-filter / stacking contexts. It's pointer-events-none so
+            it never interferes with interaction. */}
+        <div aria-hidden className="fixed inset-0 pointer-events-none -z-50">
+          <div className="bg-elegant-gradient w-full h-full" />
+        </div>
+
         <ClientProviders>{children}</ClientProviders>
       </body>
     </html>

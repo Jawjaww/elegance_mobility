@@ -97,6 +97,21 @@
 
 /* Variables pour le thème */
 @layer base {
+  /* Elegant bluish-gray theme tokens (light by default) */
+  :root {
+    --elegant-bg-start: #f7fbfd; /* very light blue-gray */
+    --elegant-bg-mid: #eef6fb;
+    --elegant-bg-end: #e6eef5;
+
+    --elegant-accent: #4a77a8; /* bluish-gray accent */
+    --elegant-accent-600: #395f84;
+
+    --glass-alpha: 0.58; /* surface translucency */
+    --glass-border: rgba(255, 255, 255, 0.6);
+    --glass-shadow: 0 10px 30px rgba(36, 50, 68, 0.06);
+  }
+
+  /* Dark mode overrides (preserve existing dark tokens and add elegant tokens) */
   .dark {
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
@@ -127,6 +142,16 @@
     --border: 0 0% 14.9%;
     --input: 0 0% 14.9%;
     --ring: 0 0% 83.1%;
+
+    /* Elegant tokens for dark mode */
+    --elegant-bg-start: #0b1220;
+    --elegant-bg-mid: #041428;
+    --elegant-bg-end: #041428;
+    --elegant-accent: #4a77a8;
+    --elegant-accent-600: #395f84;
+    --glass-alpha: 0.06;
+    --glass-border: rgba(255, 255, 255, 0.06);
+    --glass-shadow: 0 10px 30px rgba(2, 6, 23, 0.65);
   }
 }
 
@@ -152,9 +177,166 @@
 }
 
 @layer components {
-  /* Card styles */
+  /* Card styles (glass surfaces) — dark, subtle gradients to match FullscreenRideModal */
   .card-elegant {
-    @apply bg-neutral-900/50 backdrop-blur-lg rounded-lg border border-neutral-800 p-8;
+    @apply rounded-lg p-8;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.028),
+      rgba(255, 255, 255, 0.01)
+    );
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 6px 18px rgba(2, 6, 23, 0.45);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Reusable glass card (preferred) — dark surface */
+  .glass-card {
+    border-radius: 12px;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.02),
+      rgba(255, 255, 255, 0.008)
+    );
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 8px 24px rgba(2, 6, 23, 0.55);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    padding: 1.5rem;
+  }
+
+  .card-elegant::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    /* Subtle overall sheen only; corner highlights handled by ::after
+       which draws narrow top + left border glows (no filled corner blobs). */
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.02),
+      rgba(255, 255, 255, 0.008)
+    );
+    border-radius: inherit;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .card-elegant::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    /* top (horizontal) and left (vertical) ultra-fine, ultra-subtle glows */
+    background-image:
+      linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.07),
+        rgba(255, 255, 255, 0) 38%
+      ),
+      linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.07),
+        rgba(255, 255, 255, 0) 38%
+      );
+    background-repeat: no-repeat;
+    background-position:
+      top left,
+      top left;
+    background-size:
+      100% 2px,
+      2px 100%;
+    filter: blur(0.5px);
+    z-index: 1;
+  }
+
+  .card-elegant > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Modal sheet (glass) — mimic FullscreenRideModal dark glass */
+  .glass-modal__sheet {
+    width: min(1100px, 96%);
+    border-radius: 14px;
+    padding: 2rem;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.02),
+      rgba(255, 255, 255, 0.008)
+    );
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.01),
+      0 12px 36px rgba(2, 6, 23, 0.5);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Subtle vignette / highlight for modal/backdrop (very soft) */
+  .elegant-vignette {
+    /* Removed strong top-left radial to avoid visible bright/dark spot.
+       Keep a very subtle, even vignette if needed. */
+    background: radial-gradient(
+      closest-side at 50% 50%,
+      rgba(0, 0, 0, 0.06),
+      rgba(0, 0, 0, 0) 60%
+    );
+  }
+
+  .glass-modal__sheet::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    /* Subtle inner sheen; corner/border highlights handled by ::after */
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.03),
+      rgba(255, 255, 255, 0.01)
+    );
+    border-radius: inherit;
+    z-index: 0;
+    pointer-events: none;
+    box-shadow: inset 0 2px 14px rgba(255, 255, 255, 0.02);
+  }
+
+  .glass-modal__sheet::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    /* ultra-fine, ultra-subtle top/left border glows for modal sheets */
+    background-image:
+      linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.054),
+        rgba(255, 255, 255, 0) 36%
+      ),
+      linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.049),
+        rgba(255, 255, 255, 0) 36%
+      );
+    background-repeat: no-repeat;
+    background-position:
+      top left,
+      top left;
+    background-size:
+      100% 1.5px,
+      1.5px 100%;
+    filter: blur(0.5px);
+    z-index: 1;
+  }
+
+  .glass-modal__sheet > * {
+    position: relative;
+    z-index: 1;
   }
 
   /* Input container style */
@@ -167,13 +349,27 @@
     @apply text-lg font-semibold text-neutral-100 mb-2 block;
   }
 
-  /* Background effects */
+  /* Background gradient — mimic FullscreenRideModal: dark global backdrop with a light, subtle gradient */
   .bg-elegant-gradient {
     @apply relative;
+    /* Elegant gray -> black gradient (subtle, modern) */
+    background: linear-gradient(180deg, #2f3338 0%, #000000 100%);
+    background-repeat: no-repeat;
+    /* avoid background-attachment: fixed due to rendering issues with backdrop-filter/stacking contexts */
+    background-attachment: scroll;
+    /* fallback solid color to avoid black flash if gradient fails */
+    background-color: #0b1220;
   }
 
-  .bg-elegant-gradient::before {
-    @apply content-[''] absolute inset-0 bg-neutral-950/90 backdrop-blur-3xl -z-10;
+  /* Very soft radial overlay for depth — reduced intensity */
+  .bg-elegant-gradient::after {
+    /* remove metallic "lueur" effect for a cleaner backdrop */
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: transparent;
+    mix-blend-mode: normal;
   }
 
   /* Elegant backdrop */
@@ -207,7 +403,23 @@
   .btn-primary,
   .btn-gradient,
   .button-primary {
-    @apply py-2 px-6 h-11 bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 transition-all duration-300 ease-out rounded-md shadow-md;
+    @apply py-2 px-6 h-11 text-sm font-medium rounded-md transition-all duration-200 inline-flex items-center justify-center;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--elegant-accent);
+    box-shadow: 0 6px 18px rgba(2, 6, 23, 0.45);
+  }
+
+  .btn-primary:hover,
+  .btn-gradient:hover,
+  .button-primary:hover {
+    background: linear-gradient(
+      90deg,
+      rgba(74, 119, 168, 0.08),
+      rgba(74, 119, 168, 0.06)
+    );
+    color: #ffffff;
+    border-color: rgba(74, 119, 168, 0.16);
   }
 
   /* Bouton secondaire avec bordure et fond subtil */
@@ -226,7 +438,20 @@
   /* Bouton bleu plein */
   .btn-blue,
   .button-blue {
-    @apply py-2 px-6 bg-blue-600 text-white hover:bg-blue-700 transition-all duration-300 ease-out rounded-md shadow-md;
+    @apply py-2 px-6 h-11 rounded-md inline-flex items-center justify-center;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--elegant-accent);
+  }
+
+  .btn-blue:hover,
+  .button-blue:hover {
+    background: linear-gradient(
+      90deg,
+      rgba(74, 119, 168, 0.08),
+      rgba(74, 119, 168, 0.06)
+    );
+    color: #fff;
   }
 
   /* Bouton de petite taille */
@@ -248,6 +473,11 @@
 
   .content-container {
     @apply container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl;
+  }
+
+  /* Utility: force horizontal centering for sheets/containers when needed */
+  .centered-inline {
+    margin-inline: auto;
   }
 }
 

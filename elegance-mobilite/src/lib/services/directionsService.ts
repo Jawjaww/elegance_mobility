@@ -39,13 +39,24 @@ export async function getDirections(
 ): Promise<DirectionsResponse> {
   const { start, end } = params;
 
-  // Validation des coordonnées
-  if (!start?.lng || !start?.lat || !end?.lng || !end?.lat) {
+  // Validation des coordonnées: use Number.isFinite so 0 values are allowed
+  if (
+    !Number.isFinite(start?.lng) ||
+    !Number.isFinite(start?.lat) ||
+    !Number.isFinite(end?.lng) ||
+    !Number.isFinite(end?.lat)
+  ) {
     throw new Error("Coordonnées invalides");
   }
 
   // URL de l'API OSRM (routing.openstreetmap.de)
   const osrmUrl = `https://routing.openstreetmap.de/routed-car/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
+
+  // Debug: log the OSRM request URL during development
+  try {
+    // eslint-disable-next-line no-console
+    console.debug("[directionsService] OSRM URL", osrmUrl);
+  } catch (e) {}
 
   const response = await fetch(osrmUrl);
 
@@ -54,6 +65,14 @@ export async function getDirections(
   }
 
   const data = await response.json();
+
+  try {
+    // eslint-disable-next-line no-console
+    console.debug(
+      "[directionsService] OSRM response routes:",
+      Array.isArray(data?.routes) ? data.routes.length : "no-routes",
+    );
+  } catch (e) {}
 
   if (!data.routes || data.routes.length === 0) {
     throw new Error("Aucun itinéraire trouvé");

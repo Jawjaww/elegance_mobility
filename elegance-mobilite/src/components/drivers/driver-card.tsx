@@ -48,11 +48,16 @@ export default function DriverCard({
         <div className="flex flex-1 items-center space-x-4">
           <Avatar className="h-12 w-12">
             <AvatarImage src={driver.avatar_url || undefined} />
-            <AvatarFallback>{getDriverInitials(`${driver.first_name || ''} ${driver.last_name || ''}`.trim())}</AvatarFallback>
+            <AvatarFallback>
+              {getDriverInitials(
+                `${driver.first_name || ""} ${driver.last_name || ""}`.trim(),
+              )}
+            </AvatarFallback>
           </Avatar>
           <div className="flex-1 space-y-1">
             <CardTitle className="text-base font-medium">
-              {`${driver.first_name || ''} ${driver.last_name || ''}`.trim() || 'Chauffeur'}
+              {`${driver.first_name || ""} ${driver.last_name || ""}`.trim() ||
+                "Chauffeur"}
             </CardTitle>
             <p className="text-sm text-muted-foreground">{driver.phone}</p>
           </div>
@@ -71,7 +76,7 @@ export default function DriverCard({
               <CarIcon className="h-5 w-5 text-muted-foreground" />
               <div className="flex-1 space-y-1">
                 <p className="text-sm font-medium leading-none">
-                  {getVehicleLabel(vehicle.vehicle_type || '')}
+                  {getVehicleLabel(vehicle.vehicle_type || "")}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {vehicle.make} {vehicle.model} - {vehicle.license_plate}
@@ -80,8 +85,10 @@ export default function DriverCard({
             </div>
           )}
           <div className="space-y-2">
-            <p className="text-sm font-medium text-muted-foreground">Téléphone</p>
-            <p className="text-sm">{driver.phone || 'Non renseigné'}</p>
+            <p className="text-sm font-medium text-muted-foreground">
+              Téléphone
+            </p>
+            <p className="text-sm">{driver.phone || "Non renseigné"}</p>
           </div>
           {(onEdit || onDelete) && (
             <div className="flex gap-2 pt-2">

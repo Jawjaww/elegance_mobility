@@ -5,6 +5,7 @@ import maplibregl from "maplibre-gl";
 import { createRoot } from "react-dom/client";
 import { Navigation, MapPin, LandPlot } from "lucide-react";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { getDirections } from "@/lib/services/directionsService";
 
 interface Location {
   lat: number;
@@ -63,39 +64,33 @@ export function RideRequestMap({
         source: "route-approach",
         paint: {
           "line-width": 3,
-          "line-color": "#94a3b8",
+          "line-color": "#d6d6d6",
           "line-dasharray": [2, 2],
           "line-offset": 3,
           "line-opacity": 0.5,
         },
       });
+
       mapInstance.addLayer({
         id: "route-client-glow",
         type: "line",
         source: "route-client",
         paint: {
-          "line-width": 10,
-          "line-color": "#10b981",
+          "line-width": 9,
+          "line-color": "#ffc38f",
           "line-blur": 8,
-          "line-opacity": 0.3,
+          "line-opacity": 0.2,
         },
       });
+
       mapInstance.addLayer({
         id: "route-client-main",
         type: "line",
         source: "route-client",
         layout: { "line-join": "round", "line-cap": "round" },
         paint: {
-          "line-width": 5,
-          "line-gradient": [
-            "interpolate",
-            ["linear"],
-            ["line-progress"],
-            0,
-            "#34d399",
-            1,
-            "#10b981",
-          ],
+          "line-width": 3,
+          "line-color": "#fda456",
         },
       });
 
@@ -146,28 +141,35 @@ export function RideRequestMap({
         maxZoom: 14, // Empêche d'être trop près sur les micro-trajets
       });
 
-      // Chargement asynchrone des tracés sans bloquer l'UI
-      Promise.all([
-        fetch(
-          `/api/directions?start=${pickup.lng},${pickup.lat}&end=${dropoff.lng},${dropoff.lat}`,
-          { signal: controller.signal },
-        ).then((r) => r.json()),
-        driverLocation
-          ? fetch(
-              `/api/directions?start=${driverLocation.lng},${driverLocation.lat}&end=${pickup.lng},${pickup.lat}`,
-              { signal: controller.signal },
-            ).then((r) => r.json())
-          : Promise.resolve(null),
-      ])
-        .then(([clientData, approachData]) => {
+      // Chargement asynchrone des tracés côté client (CSR / Tauri-ready)
+      (async () => {
+        try {
+          const clientData = await getDirections({
+            start: { lng: pickup.lng, lat: pickup.lat },
+            end: { lng: dropoff.lng, lat: dropoff.lat },
+          });
+          let approachData = null;
+          if (driverLocation) {
+            try {
+              approachData = await getDirections({
+                start: { lng: driverLocation.lng, lat: driverLocation.lat },
+                end: { lng: pickup.lng, lat: pickup.lat },
+              });
+            } catch (e) {
+              approachData = null;
+            }
+          }
+
           if (clientData?.features?.[0])
             (mapInstance.getSource("route-client") as any).setData(clientData);
           if (approachData?.features?.[0])
             (mapInstance.getSource("route-approach") as any).setData(
               approachData,
             );
-        })
-        .catch(() => null);
+        } catch (e) {
+          console.warn("[RideRequestMap] getDirections failed", e);
+        }
+      })();
 
       setIsReady(true);
       onReady?.();

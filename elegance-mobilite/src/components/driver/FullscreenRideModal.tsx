@@ -21,6 +21,7 @@ import type { Ride } from "@/lib/driver/types";
 import { RideRequestMap } from "./RideRequestMap";
 import { NeonProgress } from "@/components/ui/NeonProgress";
 import { NeonSwipeButton } from "@/components/ui/NeonSwipeButton";
+import { getDirections } from "@/lib/services/directionsService";
 
 const COUNTDOWN_SECONDS = 20;
 
@@ -165,23 +166,16 @@ export function FullscreenRideModal() {
 
     const fetchDriverRoute = async () => {
       try {
-        const res = await fetch(
-          "/api/directions?" +
-            new URLSearchParams({
-              start: `${currentLocation.lng},${currentLocation.lat}`,
-              end: `${availableRide.pickupLng},${availableRide.pickupLat}`,
-            }),
-        );
-
-        if (res.ok) {
-          const data = await res.json();
-          const summary = data.features?.[0]?.properties?.summary;
-          if (summary) {
-            setDriverToPickupRoute({
-              distance: summary.distance,
-              duration: summary.duration,
-            });
-          }
+        const data = await getDirections({
+          start: { lng: currentLocation.lng, lat: currentLocation.lat },
+          end: { lng: availableRide.pickupLng, lat: availableRide.pickupLat },
+        });
+        const summary = data.features?.[0]?.properties?.summary;
+        if (summary) {
+          setDriverToPickupRoute({
+            distance: summary.distance,
+            duration: summary.duration,
+          });
         }
       } catch (e) {
         console.error("Erreur route chauffeur:", e);
@@ -293,10 +287,10 @@ export function FullscreenRideModal() {
               maxHeight: isShortHeight ? "100vh" : "calc(100vh - 40px)",
               width: "100%",
               borderColor: "rgba(255,255,255,0.06)",
-              boxShadow:
-                "inset 0 1px 0 rgba(255,255,255,0.02), 0 18px 60px rgba(2,6,23,0.65), 0 6px 24px rgba(6,150,87,0.06)",
+               boxShadow:
+                 "inset 0 1px 0 rgba(255,255,255,0.02), 0 18px 60px rgba(2,6,23,0.65), 0 6px 24px rgba(70,130,180,0.06)",
               background:
-                "linear-gradient(180deg, rgba(6,150,87,0.03), rgba(255,255,255,0.008))",
+                "linear-gradient(180deg, rgba(70,130,180,0.03), rgba(255,255,255,0.008))",
             }}
           >
             {/* Glass overlay for entire modal */}
