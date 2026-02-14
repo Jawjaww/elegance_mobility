@@ -16,6 +16,13 @@ function getSupabaseStorageClient(): SupabaseClient | null {
   const anon = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_ANON_KEY || "";
   if (!base || !anon) return null;
 
+  // Avoid creating a browser storage client when the supplied key looks like a publishable/access token
+  // (these tokens often start with sb_publishable_ or sbp_ and will cause 'Invalid Compact JWS' errors)
+  if (/^(sb_publishable_|sbp_)/i.test(anon)) {
+    console.warn('Refusing to create browser storage client: NEXT_PUBLIC_SUPABASE_STORAGE_ANON_KEY looks like a publishable/access token');
+    return null;
+  }
+
   try {
     return createClient(base, anon, { auth: { persistSession: false } });
   } catch (err) {
@@ -24,6 +31,19 @@ function getSupabaseStorageClient(): SupabaseClient | null {
     // (avoid exposing keys in logs)
     console.error("Failed creating supabase storage client", err);
     return null;
+  }
+}
+
+// Sanitize filenames for storage keys: remove diacritics, replace unsafe chars
+function sanitizeFileName(name: string) {
+  if (!name) return 'file'
+  try {
+    // Normalize diacritics (NFKD) then strip combining marks
+    const normalized = name.normalize('NFKD').replace(/['"`]/g, '').replace(/[\u0300-\u036f]/g, '')
+    // Keep only a safe subset of chars and collapse runs of underscores
+    return normalized.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '').slice(0, 240) || 'file'
+  } catch (e) {
+    return name.replace(/\s+/g, '_').replace(/[^\w.-]/g, '_').slice(0, 240) || 'file'
   }
 }
 
@@ -74,7 +94,7 @@ export default function DriverDocumentUploader({
 
   async function fetchExisting() {
     try {
-      const { data, error } = await supabase
+  const { data, error } = await supabase
         .from("driver_documents")
         .select("*")
         .eq("driver_id", driverId)
@@ -88,20 +108,37 @@ export default function DriverDocumentUploader({
         return;
       }
 
-      if (data) {
-        setDocRecord(data);
-        if (data.file_url) {
-          const storageClient = getSupabaseStorageClient();
-          if (storageClient) {
+    if (data) {
+      setDocRecord(data);
+      if (data.file_url) {
+        const storageClient = getSupabaseStorageClient();
+        if (storageClient) {
+          try {
             const { data: signed, error: signedErr } = await storageClient.storage
               .from("driver-documents")
               .createSignedUrl(data.file_url, 60 * 60);
             if (!signedErr && signed?.signedUrl) setExistingUrl(signed.signedUrl);
-          } else {
-            console.warn("Supabase storage client not configured - cannot create signed URL");
+          } catch (e) {
+            console.warn("Failed to create signed url via client storage", e);
+          }
+        } else {
+          // Fallback: try server endpoint which will use service role to create a signed url
+          try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const token = sessionData?.session?.access_token ?? null;
+            const resp = await fetch('/api/upload?op=signed&path=' + encodeURIComponent(data.file_url), {
+              headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            });
+            if (resp.ok) {
+              const json = await resp.json();
+              if (json?.signedUrl) setExistingUrl(json.signedUrl);
+            }
+          } catch (e) {
+            console.warn("Supabase storage client not configured - cannot create signed URL", e);
           }
         }
       }
+    }
     } catch (e) {
       console.error(e);
     }
@@ -125,7 +162,7 @@ export default function DriverDocumentUploader({
     setUploading(true);
 
     try {
-      const safeName = file.name.replace(/\s+/g, "_");
+      const safeName = sanitizeFileName(file.name);
       
       if (!hasDriver) {
         const { data: userData, error: userErr } = await supabase.auth.getUser();
@@ -138,87 +175,136 @@ export default function DriverDocumentUploader({
 
         const tmpPath = `tmp/${userId}/${documentType}/${Date.now()}_${safeName}`;
         const storageClient = getSupabaseStorageClient();
-        if (!storageClient) {
-          toast({ title: "Erreur configuration", description: "Storage client non configuré. Vérifiez vos variables d'environnement.", variant: "destructive" });
+        if (storageClient) {
+          try {
+            const { data: uploadData, error: uploadError } = await storageClient.storage
+              .from("driver-documents")
+              .upload(tmpPath, file, { upsert: true });
+
+            if (uploadError) throw uploadError;
+
+            setDocRecord({
+              file_url: uploadData.path,
+              file_name: file.name,
+              validation_status: "pending_temp",
+              temp: true,
+            });
+
+            toast({ title: "Fichier uploadé temporairement", description: "Le fichier sera associé à votre profil après sa création." });
+            onUploaded?.({ tempPath: uploadData.path });
+            setUploading(false);
+            return;
+          } catch (err) {
+            console.warn('Client storage upload failed, falling back to server upload', err);
+          }
+        }
+
+        // fallback to server-side upload
+        try {
+          const form = new FormData();
+          form.append('file', file as any);
+          form.append('document_type', documentType);
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData?.session?.access_token ?? null;
+          const resp = await fetch('/api/upload', { method: 'POST', body: form, headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+          const json = await resp.json().catch(() => null);
+          if (!resp.ok) {
+            throw new Error(json?.error || `Upload failed with status ${resp.status}`);
+          }
+
+          const insertPath = json.path ?? json.insert?.file_url ?? null;
+          setDocRecord({
+            file_url: insertPath,
+            file_name: file.name,
+            validation_status: 'pending_temp',
+            temp: true,
+          });
+
+          toast({ title: 'Fichier uploadé temporairement', description: 'Le fichier sera associé à votre profil après sa création.' });
+          onUploaded?.({ tempPath: insertPath });
+          setUploading(false);
+          return;
+        } catch (err: any) {
+          console.error('tmp upload error (server)', err);
+          toast({ title: 'Erreur upload', description: friendlyUploadErrorMessage(err), variant: 'destructive' });
           setUploading(false);
           return;
         }
-        const { data: uploadData, error: uploadError } = await storageClient.storage
-          .from("driver-documents")
-          .upload(tmpPath, file, { upsert: true });
-
-        if (uploadError) {
-          console.error("tmp uploadError", uploadError);
-          toast({ title: "Erreur upload", description: friendlyUploadErrorMessage(uploadError), variant: "destructive" });
-          setUploading(false);
-          return;
-        }
-
-        setDocRecord({
-          file_url: uploadData.path,
-          file_name: file.name,
-          validation_status: "pending_temp",
-          temp: true,
-        });
-        
-        toast({ title: "Fichier uploadé temporairement", description: "Le fichier sera associé à votre profil après sa création." });
-        onUploaded?.({ tempPath: uploadData.path });
-        setUploading(false);
-        return;
       }
 
       const path = `${driverId}/${documentType}/${Date.now()}_${safeName}`;
 
       const storageClient = getSupabaseStorageClient();
-      if (!storageClient) {
-        toast({ title: "Erreur configuration", description: "Storage client non configuré. Vérifiez vos variables d'environnement.", variant: "destructive" });
-        setUploading(false);
-        return;
+      if (storageClient) {
+        try {
+          const { data: uploadData, error: uploadError } = await storageClient.storage
+            .from("driver-documents")
+            .upload(path, file, { upsert: true });
+
+          if (uploadError) throw uploadError;
+
+          const { data: insertData, error: insertErr } = await supabase
+            .from("driver_documents")
+            .insert([
+              {
+                driver_id: driverId,
+                document_type: documentType,
+                file_url: uploadData.path,
+                file_name: file.name,
+                file_size: file.size,
+                upload_date: new Date().toISOString(),
+                validation_status: "pending",
+              },
+            ])
+            .select()
+            .maybeSingle();
+
+          if (insertErr) throw insertErr;
+
+          setDocRecord(insertData ?? null);
+
+          try {
+            const { data: signed } = await storageClient.storage
+              .from("driver-documents")
+              .createSignedUrl(uploadData.path, 60 * 60 * 24);
+            if (signed?.signedUrl) setPreviewUrl(signed.signedUrl);
+          } catch (e) {
+            console.warn('Could not create signed url via client', e);
+          }
+
+          toast({ title: "Fichier uploadé", description: "Le fichier est en attente de validation." });
+          onUploaded?.(insertData);
+          setUploading(false);
+          return;
+        } catch (err) {
+          console.warn('Client storage upload failed, falling back to server upload', err);
+          // continue to server upload fallback
+        }
       }
-      const { data: uploadData, error: uploadError } = await storageClient.storage
-        .from("driver-documents")
-        .upload(path, file, { upsert: true });
 
-      if (uploadError) {
-        console.error("uploadError", uploadError);
-        toast({ title: "Erreur upload", description: friendlyUploadErrorMessage(uploadError), variant: "destructive" });
-        setUploading(false);
-        return;
+      // fallback to server upload
+      try {
+        const form = new FormData();
+        form.append('file', file as any);
+        form.append('document_type', documentType);
+        if (driverId) form.append('driver_id', driverId);
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token ?? null;
+        const resp = await fetch('/api/upload', { method: 'POST', body: form, headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+        const json = await resp.json().catch(() => null);
+        if (!resp.ok) {
+          throw new Error(json?.error || `Upload failed with status ${resp.status}`);
+        }
+
+        const inserted = json.insert ?? null;
+        setDocRecord(inserted ?? { file_url: json.path, file_name: file.name, validation_status: 'pending' });
+        if (json.signedUrl) setPreviewUrl(json.signedUrl);
+        toast({ title: 'Fichier uploadé', description: 'Le fichier est en attente de validation.' });
+        onUploaded?.(inserted ?? { file_url: json.path });
+      } catch (err: any) {
+        console.error('upload error (server)', err);
+        toast({ title: 'Erreur upload', description: friendlyUploadErrorMessage(err), variant: 'destructive' });
       }
-
-      const { data: insertData, error: insertErr } = await supabase
-        .from("driver_documents")
-        .insert([
-          {
-            driver_id: driverId,
-            document_type: documentType,
-            file_url: uploadData.path,
-            file_name: file.name,
-            file_size: file.size,
-            upload_date: new Date().toISOString(),
-            validation_status: "pending",
-          },
-        ])
-        .select()
-        .maybeSingle();
-
-      if (insertErr) {
-        console.error("insertErr", insertErr);
-        toast({ title: "Erreur enregistrement", description: insertErr.message, variant: "destructive" });
-        setUploading(false);
-        return;
-      }
-
-      setDocRecord(insertData ?? null);
-      
-      const { data: signed } = await storageClient.storage
-        .from("driver-documents")
-        .createSignedUrl(uploadData.path, 60 * 60 * 24);
-      
-      if (signed?.signedUrl) setPreviewUrl(signed.signedUrl);
-      
-      toast({ title: "Fichier uploadé", description: "Le fichier est en attente de validation." });
-      onUploaded?.(insertData);
     } catch (e: any) {
       console.error(e);
       toast({ title: "Erreur", description: e.message || String(e), variant: "destructive" });

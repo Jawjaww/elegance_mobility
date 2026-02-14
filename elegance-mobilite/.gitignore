@@ -22,3 +22,4 @@ docs/external/
 
 # Ignore TypeScript build info
 tsconfig.tsbuildinfo
+scripts/test_*.sh

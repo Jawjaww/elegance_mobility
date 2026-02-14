@@ -16,8 +16,9 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Configuration Tauri-Ready : Export statique
-  output: "export",
+  // NOTE: removed static `output: 'export'` to allow server runtime (API routes)
+  // The project previously used static export for Tauri packaging. Server APIs
+  // are required for secure uploads and cannot be used with `output: 'export'`.
   images: {
     unoptimized: true,
   },
