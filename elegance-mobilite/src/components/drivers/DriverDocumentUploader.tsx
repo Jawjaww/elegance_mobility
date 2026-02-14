@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/database/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/useToast";
+import { Upload, FileText, Image, Check, AlertCircle } from "lucide-react";
 
 type Props = {
   driverId: string;
@@ -27,12 +26,16 @@ export default function DriverDocumentUploader({
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [docRecord, setDocRecord] = useState<any | null>(null);
+  const [existingUrl, setExistingUrl] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  
+  const hasDriver = driverId && driverId.trim().length > 0;
 
   useEffect(() => {
-    if (!driverId) return;
+    if (!hasDriver) return;
     fetchExisting();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [driverId]);
+  }, [hasDriver]);
 
   async function fetchExisting() {
     try {
@@ -56,7 +59,7 @@ export default function DriverDocumentUploader({
           const { data: signed, error: signedErr } = await supabase.storage
             .from("driver-documents")
             .createSignedUrl(data.file_url, 60 * 60);
-          if (!signedErr && signed?.signedUrl) setPreviewUrl(signed.signedUrl);
+          if (!signedErr && signed?.signedUrl) setExistingUrl(signed.signedUrl);
         }
       }
     } catch (e) {
@@ -69,6 +72,8 @@ export default function DriverDocumentUploader({
     setFile(f);
     if (f && f.type.startsWith("image/")) {
       setPreviewUrl(URL.createObjectURL(f));
+    } else {
+      setPreviewUrl(null);
     }
   };
 
@@ -81,9 +86,9 @@ export default function DriverDocumentUploader({
 
     try {
       const safeName = file.name.replace(/\s+/g, "_");
-      // If driverId not present, upload to a temporary folder under the user's tmp/ prefix
-      if (!driverId) {
-        // get current user id
+      
+      if (!hasDriver) {
+        // Upload to temporary folder
         const { data: userData, error: userErr } = await supabase.auth.getUser();
         const userId = userData?.user?.id ?? null;
         if (!userId) {
@@ -104,27 +109,20 @@ export default function DriverDocumentUploader({
           return;
         }
 
-        const { data: signed, error: signedErr } = await supabase.storage
-          .from("driver-documents")
-          .createSignedUrl(uploadData.path, 60 * 60 * 24);
-
         setDocRecord({
           file_url: uploadData.path,
           file_name: file.name,
-          file_size: file.size,
-          upload_date: new Date().toISOString(),
           validation_status: "pending_temp",
           temp: true,
         });
-
-        if (!signedErr && signed?.signedUrl) setPreviewUrl(signed.signedUrl);
+        
         toast({ title: "Fichier uploadé temporairement", description: "Le fichier sera associé à votre profil après sa création." });
         onUploaded?.({ tempPath: uploadData.path });
         setUploading(false);
         return;
       }
 
-      // Normal upload (driver exists): upload to driver's folder and create DB record
+      // Normal upload (driver exists)
       const path = `${driverId}/${documentType}/${Date.now()}_${safeName}`;
 
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -138,12 +136,7 @@ export default function DriverDocumentUploader({
         return;
       }
 
-      // create signed url for preview
-      const { data: signed, error: signedErr } = await supabase.storage
-        .from("driver-documents")
-        .createSignedUrl(uploadData.path, 60 * 60 * 24);
-
-      // insert DB record (store path in file_url)
+      // Insert DB record
       const { data: insertData, error: insertErr } = await supabase
         .from("driver_documents")
         .insert([
@@ -168,7 +161,14 @@ export default function DriverDocumentUploader({
       }
 
       setDocRecord(insertData ?? null);
-      if (signed && signed.signedUrl) setPreviewUrl(signed.signedUrl);
+      
+      // Create preview URL
+      const { data: signed } = await supabase.storage
+        .from("driver-documents")
+        .createSignedUrl(uploadData.path, 60 * 60 * 24);
+      
+      if (signed?.signedUrl) setPreviewUrl(signed.signedUrl);
+      
       toast({ title: "Fichier uploadé", description: "Le fichier est en attente de validation." });
       onUploaded?.(insertData);
     } catch (e: any) {
@@ -179,38 +179,90 @@ export default function DriverDocumentUploader({
     }
   };
 
+  const displayUrl = previewUrl || existingUrl;
+  const isImage = displayUrl && docRecord?.file_name?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+  const isPending = docRecord?.validation_status === "pending" || docRecord?.validation_status === "pending_temp";
+  const isApproved = docRecord?.validation_status === "approved";
+
   return (
-    <div className="p-4 bg-slate-800 rounded-md">
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <div className="text-sm font-medium text-slate-100">{label ?? documentType}</div>
-          <div className="text-xs text-slate-400">{docRecord ? `Statut: ${docRecord.validation_status}` : "Aucun fichier"}</div>
+    <div className="py-3 border-b border-white/5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-1.5 rounded">
+            {isApproved ? (
+              <Check className="h-4 w-4 text-green-400" />
+            ) : isPending ? (
+              <AlertCircle className="h-4 w-4 text-yellow-400" />
+            ) : (
+              <Upload className="h-4 w-4 text-slate-500" />
+            )}
+          </div>
+          <div>
+            <div className="text-sm font-medium text-white">{label ?? documentType}</div>
+            <div className="text-xs text-slate-400">
+              {docRecord 
+                ? docRecord.file_name 
+                : "Aucun fichier"}
+              {docRecord && (
+                <span className="ml-2">
+                  • {docRecord.validation_status === "approved" ? "Validé" : 
+                     docRecord.validation_status === "rejected" ? "Rejeté" : 
+                     "En attente"}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
+        
         <div className="flex items-center gap-2">
           <input
-            id={`input-${documentType}`}
+            ref={inputRef}
             type="file"
             accept={accept}
             onChange={handleFileChange}
             className="hidden"
           />
-          <label htmlFor={`input-${documentType}`}>
-            <Button variant="ghost">Choisir</Button>
-          </label>
-          <Button onClick={handleUpload} disabled={!file || uploading}>
-            {uploading ? "Upload..." : "Uploader"}
+          <Button 
+            type="button"
+            variant="ghost" 
+            size="sm"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            className="text-slate-400 hover:text-white hover:bg-white/5 h-7 text-xs"
+          >
+            {file ? "Fichier sélectionné" : "Choisir"}
           </Button>
+          {file && (
+            <Button 
+              onClick={handleUpload} 
+              disabled={uploading}
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 h-7 text-xs"
+            >
+              {uploading ? "..." : "Envoyer"}
+            </Button>
+          )}
         </div>
       </div>
 
-      {previewUrl && (
-        <div className="mt-3">
-          {docRecord && docRecord.file_name && docRecord.file_name.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-            // image preview
-            <img src={previewUrl} alt={docRecord.file_name} className="max-h-40 rounded" />
+      {displayUrl && (
+        <div className="mt-2 pl-7">
+          {isImage ? (
+            <a href={displayUrl} target="_blank" rel="noreferrer" className="inline-block">
+              <img 
+                src={displayUrl} 
+                alt={docRecord?.file_name} 
+                className="h-16 rounded object-cover opacity-80 hover:opacity-100 transition-opacity" 
+              />
+            </a>
           ) : (
-            <a href={previewUrl} target="_blank" rel="noreferrer" className="text-sm text-sky-300">
-              Voir le document
+            <a 
+              href={displayUrl} 
+              target="_blank" 
+              rel="noreferrer" 
+              className="text-xs text-blue-400/70 hover:text-blue-400"
+            >
+              Voir le fichier
             </a>
           )}
         </div>

@@ -43,12 +43,8 @@ export default function DriverProfileSetupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center py-12">
-      <div className="w-full max-w-2xl px-4 mx-auto flex justify-center">
-        <div className="glass-modal__sheet mx-auto">
-          <DriverProfileSetup user={user} />
-        </div>
-      </div>
+    <div className="min-h-screen py-8">
+      <DriverProfileSetup user={user} />
     </div>
   );
 }
