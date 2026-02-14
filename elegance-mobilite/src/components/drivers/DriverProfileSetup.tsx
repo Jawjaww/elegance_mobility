@@ -267,38 +267,27 @@ export default function DriverProfileSetup({ user }: { user: User }) {
       });
 
       // Rediriger vers la page d'attente de validation
-      // If we uploaded temporary documents earlier, associate them with this driver now
+      // If we uploaded temporary documents earlier, ask the server-side function to associate them with this driver
       if (data?.id) {
-        // move temp files: find documents with temp prefix for this user and insert proper records
         try {
-          const { data: userData } = await supabase.auth.getUser();
-          const userId = userData?.user?.id;
-          if (userId) {
-            const { data: tmpFiles } = await supabase
-              .from('driver_documents')
-              .select('*')
-              .eq('validation_status', 'pending_temp')
-              .limit(100);
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData?.session?.access_token;
+          if (token) {
+            // invoke the edge function that copies tmp files to driver folder and updates DB (service role)
+            const invokeRes = await supabase.functions.invoke('associate-temp-docs', {
+              body: JSON.stringify({ driver_id: data.id }),
+              headers: { Authorization: `Bearer ${token}` },
+            });
 
-            if (tmpFiles?.length) {
-              for (const f of tmpFiles) {
-                // move file in storage from tmp/... to driverId/...
-                const oldPath = f.file_url;
-                const newPath = oldPath.replace(`tmp/${userId}/`, `${data.id}/`);
-                // copy then remove (Supabase storage has move via copy + remove)
-                await supabase.storage.from('driver-documents').copy(oldPath, newPath);
-                await supabase.storage.from('driver-documents').remove([oldPath]);
-
-                // update DB record to reference new driver_id and file_url
-                await supabase
-                  .from('driver_documents')
-                  .update({ driver_id: data.id, file_url: newPath, validation_status: 'pending' })
-                  .eq('id', f.id);
-              }
+            if (invokeRes.error) {
+              console.error('associate-temp-docs error', invokeRes.error);
+              // fallback: leave tmp files and continue; admin or cron job will handle cleanup
+            } else {
+              console.log('associate-temp-docs result', invokeRes.data);
             }
           }
         } catch (e) {
-          console.error('Erreur association fichiers temporaires', e);
+          console.error('Erreur lors de l association des fichiers temporaires via function:', e);
         }
       }
 
