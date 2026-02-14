@@ -7,9 +7,8 @@ import { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ChevronLeft, ChevronRight, Save, Send, Check, AlertCircle, User as UserIcon, Building2, FileText, BarChart3 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, Send, Check, AlertCircle, User as UserIcon, Briefcase, FileText, Shield } from "lucide-react";
 import { supabase } from "@/lib/database/client";
 import { useToast } from "@/hooks/useToast";
 import { PageLoading, ButtonLoading } from "@/components/ui/loading";
@@ -40,14 +39,15 @@ const REQUIRED_DOCUMENTS: (keyof DocumentStatus)[] = [
 
 const DOC_LABELS: Record<keyof DocumentStatus, string> = {
   driving_license: "Permis de conduire", vtc_card: "Carte VTC",
-  insurance: "Assurance", id_card: "Pièce identité", proof_of_address: "Justificatif domicile",
+  insurance: "Attestation d'assurance", id_card: "Pièce d'identité", 
+  proof_of_address: "Justificatif de domicile",
 };
 
 const SECTIONS = [
-  { id: "informations", icon: UserIcon, label: "Informations" },
-  { id: "societe", icon: Building2, label: "Société" },
-  { id: "documents", icon: FileText, label: "Documents" },
-  { id: "progression", icon: BarChart3, label: "Progrès" },
+  { id: "profil", icon: UserIcon, label: "Profil", description: "Informations personnelles" },
+  { id: "professionnel", icon: Briefcase, label: "Professionnel", description: "Cartes et autorisations" },
+  { id: "documents", icon: FileText, label: "Documents", description: "Justificatifs à fournir" },
+  { id: "validation", icon: Shield, label: "Validation", description: "Vérification et envoi" },
 ];
 
 export default function DriverProfileSetup({ user }: { user: User }) {
@@ -183,59 +183,79 @@ export default function DriverProfileSetup({ user }: { user: User }) {
     if (currentSection > 0) setCurrentSection(curr => curr - 1);
   };
 
+  const canProceed = () => {
+    if (currentSection === 0) {
+      return formData.first_name && formData.last_name && formData.phone && formData.address && formData.city && formData.postal_code;
+    }
+    if (currentSection === 1) {
+      return formData.vtc_card_number && formData.vtc_card_expiry_date && formData.license_number && formData.driving_license_expiry_date;
+    }
+    return true;
+  };
+
   const CurrentIcon = SECTIONS[currentSection].icon;
 
   if (loading) return <PageLoading text="Vérification..." />;
 
   return (
-    <div className="min-h-screen w-full flex flex-col">
-      {/* Header avec stepper - visible sur mobile */}
-      <div className="sticky top-0 z-50 bg-black/40 backdrop-blur-xl border-b border-white/5 px-4 py-4 md:hidden">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <CurrentIcon className="h-4 w-4 text-blue-400" />
-            <span className="text-sm font-medium text-white">{SECTIONS[currentSection].label}</span>
+    <div className="min-h-screen w-full flex flex-col bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+      {/* Mobile Sticky Header */}
+      <div className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-white/5 md:hidden">
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-white/5">
+                <CurrentIcon className="h-4 w-4 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400">{SECTIONS[currentSection].description}</p>
+                <h2 className="text-sm font-semibold text-white">{SECTIONS[currentSection].label}</h2>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-slate-400">Progrès</p>
+              <p className="text-sm font-semibold text-blue-400">{currentSection + 1}/{SECTIONS.length}</p>
+            </div>
           </div>
-          <span className="text-xs text-slate-400">{currentSection + 1}/{SECTIONS.length}</span>
-        </div>
-        <div className="flex gap-1">
-          {SECTIONS.map((_, idx) => (
-            <div
-              key={idx}
-              className={`h-1 flex-1 rounded-full transition-colors ${
-                idx <= currentSection ? "bg-blue-500" : "bg-white/10"
-              }`}
-            />
-          ))}
+          <div className="flex gap-1 mt-3">
+            {SECTIONS.map((_, idx) => (
+              <div
+                key={idx}
+                className={`h-1 flex-1 rounded-full transition-colors ${
+                  idx < currentSection ? "bg-emerald-500" : 
+                  idx === currentSection ? "bg-blue-500" : "bg-white/10"
+                }`}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Desktop Header */}
-      <div className="hidden md:flex items-center justify-center pt-8 pb-6 px-4">
-        <div className="flex items-center gap-2">
+      <div className="hidden md:flex items-center justify-center py-8 px-4">
+        <div className="flex items-center gap-1 bg-white/5 rounded-2xl p-1.5 border border-white/5">
           {SECTIONS.map((section, idx) => (
-            <React.Fragment key={section.id}>
-              <button
-                onClick={() => setCurrentSection(idx)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors ${
-                  idx === currentSection
-                    ? "bg-white/10 text-white"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <section.icon className="h-4 w-4" />
-                <span>{section.label}</span>
-              </button>
-              {idx < SECTIONS.length - 1 && (
-                <div className="w-8 h-px bg-white/10" />
+            <button
+              key={section.id}
+              onClick={() => setCurrentSection(idx)}
+              className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all ${
+                idx === currentSection
+                  ? "bg-white/10 text-white shadow-lg"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <section.icon className="h-4 w-4" />
+              <span>{section.label}</span>
+              {idx < currentSection && (
+                <Check className="h-3.5 w-3.5 text-emerald-400 ml-1" />
               )}
-            </React.Fragment>
+            </button>
           ))}
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center p-4 md:p-8 lg:p-12">
+      <div className="flex-1 flex items-start md:items-center justify-center p-4 md:p-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -246,34 +266,31 @@ export default function DriverProfileSetup({ user }: { user: User }) {
           <div
             className="rounded-2xl md:rounded-3xl border overflow-hidden relative"
             style={{
-              borderColor: "rgba(255,255,255,0.06)",
-              background: "linear-gradient(180deg, rgba(30,41,59,0.4), rgba(15,23,42,0.6))",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.02)",
+              borderColor: "rgba(255,255,255,0.08)",
+              background: "linear-gradient(145deg, rgba(30,41,59,0.6) 0%, rgba(15,23,42,0.8) 100%)",
+              boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)",
             }}
           >
-            {/* Inner glow */}
+            {/* Inner gradient overlay */}
             <div
-              className="absolute inset-0 rounded-2xl md:rounded-3xl pointer-events-none"
+              className="absolute inset-0 pointer-events-none"
               style={{
-                background: "linear-gradient(180deg, rgba(255,255,255,0.03), transparent)",
+                background: "radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120,160,255,0.1), transparent)",
               }}
             />
 
             <div className="relative p-6 md:p-10 lg:p-12">
-              {/* Title */}
-              <div className="mb-8 md:mb-10">
-                <h1 className="text-xl md:text-2xl lg:text-3xl font-semibold text-white mb-2">
-                  {isSubmitted ? "Votre profil" : "Configuration de votre profil"}
-                </h1>
-                <p className="text-sm md:text-base text-slate-400">
-                  {isSubmitted ? "Consultez l'état de votre dossier." : "Complétez votre profil pour recevoir des courses"}
-                </p>
-                {isSubmitted && (
-                  <div className="mt-3 flex items-center gap-2 text-sm text-blue-300">
-                    <Send className="h-4 w-4" />
-                    <span>En attente de validation</span>
+              {/* Desktop Section Title */}
+              <div className="hidden md:block mb-8">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                    <CurrentIcon className="h-5 w-5 text-blue-400" />
                   </div>
-                )}
+                  <div>
+                    <h1 className="text-xl font-semibold text-white">{SECTIONS[currentSection].label}</h1>
+                    <p className="text-sm text-slate-400">{SECTIONS[currentSection].description}</p>
+                  </div>
+                </div>
               </div>
 
               {/* Content */}
@@ -285,86 +302,85 @@ export default function DriverProfileSetup({ user }: { user: User }) {
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {/* Informations */}
+                  {/* Profil */}
                   {currentSection === 0 && (
-                    <div className="space-y-5 md:space-y-6">
-                      <div className="space-y-4 md:space-y-5">
-                        {[
-                          { id: "first_name", label: "Prénom", required: true },
-                          { id: "last_name", label: "Nom", required: true },
-                          { id: "phone", label: "Téléphone", required: true, type: "tel" },
-                          { id: "date_of_birth", label: "Date de naissance", type: "date" },
-                        ].map((field) => (
-                          <div key={field.id}>
-                            <Label className="text-sm text-slate-300 mb-2 block">
-                              {field.label}
-                              {field.required && <span className="text-red-400 ml-1">*</span>}
-                            </Label>
-                            <Input
-                              id={field.id}
-                              type={field.type || "text"}
-                              value={formData[field.id as keyof DriverProfileData]}
-                              onChange={(e) => handleInputChange(field.id as keyof DriverProfileData, e.target.value)}
-                              disabled={isReadOnly}
-                              className="w-full bg-white/5 border-white/10 text-white h-11 md:h-12 rounded-lg focus:bg-white/10 focus:border-white/20"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                      
-                      <div className="pt-4 border-t border-white/5">
-                        <p className="text-sm text-slate-400 mb-4">Contact d'urgence</p>
-                        <div className="space-y-4 md:space-y-5">
-                          <div>
-                            <Label className="text-sm text-slate-300 mb-2 block">Nom du contact</Label>
-                            <Input
-                              id="emergency_contact_name"
-                              value={formData.emergency_contact_name}
-                              onChange={(e) => handleInputChange("emergency_contact_name", e.target.value)}
-                              disabled={isReadOnly}
-                              className="w-full bg-white/5 border-white/10 text-white h-11 md:h-12 rounded-lg"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-sm text-slate-300 mb-2 block">Téléphone</Label>
-                            <Input
-                              id="emergency_contact_phone"
-                              type="tel"
-                              value={formData.emergency_contact_phone}
-                              onChange={(e) => handleInputChange("emergency_contact_phone", e.target.value)}
-                              disabled={isReadOnly}
-                              className="w-full bg-white/5 border-white/10 text-white h-11 md:h-12 rounded-lg"
-                            />
-                          </div>
+                    <div className="space-y-6">
+                      <div className="space-y-5">
+                        <div>
+                          <Label className="text-sm text-slate-300 mb-2 block">
+                            Prénom <span className="text-red-400">*</span>
+                          </Label>
+                          <Input
+                            value={formData.first_name}
+                            onChange={(e) => handleInputChange("first_name", e.target.value)}
+                            disabled={isReadOnly}
+                            className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                            placeholder="Votre prénom"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm text-slate-300 mb-2 block">
+                            Nom <span className="text-red-400">*</span>
+                          </Label>
+                          <Input
+                            value={formData.last_name}
+                            onChange={(e) => handleInputChange("last_name", e.target.value)}
+                            disabled={isReadOnly}
+                            className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                            placeholder="Votre nom"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm text-slate-300 mb-2 block">
+                            Téléphone <span className="text-red-400">*</span>
+                          </Label>
+                          <Input
+                            type="tel"
+                            value={formData.phone}
+                            onChange={(e) => handleInputChange("phone", e.target.value)}
+                            disabled={isReadOnly}
+                            className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                            placeholder="+33 6 12 34 56 78"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm text-slate-300 mb-2 block">Date de naissance</Label>
+                          <Input
+                            type="date"
+                            value={formData.date_of_birth}
+                            onChange={(e) => handleInputChange("date_of_birth", e.target.value)}
+                            disabled={isReadOnly}
+                            className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                          />
                         </div>
                       </div>
                       
-                      <div className="pt-4 border-t border-white/5">
-                        <p className="text-sm text-slate-400 mb-4">Adresse</p>
-                        <div className="space-y-4 md:space-y-5">
+                      <div className="pt-6 border-t border-white/5">
+                        <h3 className="text-sm font-medium text-white mb-4">Adresse</h3>
+                        <div className="space-y-5">
                           <div>
                             <Label className="text-sm text-slate-300 mb-2 block">
-                              Adresse <span className="text-red-400">*</span>
+                              Adresse complète <span className="text-red-400">*</span>
                             </Label>
                             <Input
-                              id="address"
                               value={formData.address}
                               onChange={(e) => handleInputChange("address", e.target.value)}
                               disabled={isReadOnly}
-                              className="w-full bg-white/5 border-white/10 text-white h-11 md:h-12 rounded-lg"
+                              className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                              placeholder="123 Rue de la Paix"
                             />
                           </div>
-                          <div className="grid grid-cols-2 gap-4 md:gap-5">
+                          <div className="grid grid-cols-2 gap-4">
                             <div>
                               <Label className="text-sm text-slate-300 mb-2 block">
                                 Ville <span className="text-red-400">*</span>
                               </Label>
                               <Input
-                                id="city"
                                 value={formData.city}
                                 onChange={(e) => handleInputChange("city", e.target.value)}
                                 disabled={isReadOnly}
-                                className="w-full bg-white/5 border-white/10 text-white h-11 md:h-12 rounded-lg"
+                                className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                                placeholder="Paris"
                               />
                             </div>
                             <div>
@@ -372,54 +388,137 @@ export default function DriverProfileSetup({ user }: { user: User }) {
                                 Code postal <span className="text-red-400">*</span>
                               </Label>
                               <Input
-                                id="postal_code"
                                 value={formData.postal_code}
                                 onChange={(e) => handleInputChange("postal_code", e.target.value)}
                                 disabled={isReadOnly}
-                                className="w-full bg-white/5 border-white/10 text-white h-11 md:h-12 rounded-lg"
+                                className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                                placeholder="75001"
                               />
                             </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-6 border-t border-white/5">
+                        <h3 className="text-sm font-medium text-white mb-4">Contact d'urgence</h3>
+                        <div className="space-y-5">
+                          <div>
+                            <Label className="text-sm text-slate-300 mb-2 block">Nom du contact</Label>
+                            <Input
+                              value={formData.emergency_contact_name}
+                              onChange={(e) => handleInputChange("emergency_contact_name", e.target.value)}
+                              disabled={isReadOnly}
+                              className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                              placeholder="Nom complet"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm text-slate-300 mb-2 block">Téléphone</Label>
+                            <Input
+                              type="tel"
+                              value={formData.emergency_contact_phone}
+                              onChange={(e) => handleInputChange("emergency_contact_phone", e.target.value)}
+                              disabled={isReadOnly}
+                              className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                              placeholder="+33 6..."
+                            />
                           </div>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Société */}
+                  {/* Professionnel */}
                   {currentSection === 1 && (
-                    <div className="space-y-5 md:space-y-6">
-                      {[
-                        { id: "vtc_card_number", label: "Numéro de carte VTC", required: true },
-                        { id: "vtc_card_expiry_date", label: "Expiration VTC", required: true, type: "date" },
-                        { id: "license_number", label: "Numéro de permis", required: true },
-                        { id: "driving_license_expiry_date", label: "Expiration permis", required: true, type: "date" },
-                        { id: "insurance_number", label: "Numéro d'assurance" },
-                        { id: "company_siret", label: "SIRET (optionnel)" },
-                      ].map((field) => (
-                        <div key={field.id}>
+                    <div className="space-y-6">
+                      <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/10 mb-6">
+                        <p className="text-sm text-blue-200">
+                          Ces informations sont nécessaires pour vérifier votre autorisation d'exercer en tant que chauffeur VTC.
+                        </p>
+                      </div>
+
+                      <div className="space-y-5">
+                        <div>
                           <Label className="text-sm text-slate-300 mb-2 block">
-                            {field.label}
-                            {field.required && <span className="text-red-400 ml-1">*</span>}
+                            Numéro de carte VTC <span className="text-red-400">*</span>
                           </Label>
                           <Input
-                            id={field.id}
-                            type={field.type || "text"}
-                            value={formData[field.id as keyof DriverProfileData]}
-                            onChange={(e) => handleInputChange(field.id as keyof DriverProfileData, e.target.value)}
+                            value={formData.vtc_card_number}
+                            onChange={(e) => handleInputChange("vtc_card_number", e.target.value)}
                             disabled={isReadOnly}
-                            className="w-full bg-white/5 border-white/10 text-white h-11 md:h-12 rounded-lg"
+                            className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                            placeholder="Numéro de carte professionnelle"
                           />
                         </div>
-                      ))}
+                        <div>
+                          <Label className="text-sm text-slate-300 mb-2 block">
+                            Date d'expiration VTC <span className="text-red-400">*</span>
+                          </Label>
+                          <Input
+                            type="date"
+                            value={formData.vtc_card_expiry_date}
+                            onChange={(e) => handleInputChange("vtc_card_expiry_date", e.target.value)}
+                            disabled={isReadOnly}
+                            className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm text-slate-300 mb-2 block">
+                            Numéro de permis <span className="text-red-400">*</span>
+                          </Label>
+                          <Input
+                            value={formData.license_number}
+                            onChange={(e) => handleInputChange("license_number", e.target.value)}
+                            disabled={isReadOnly}
+                            className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                            placeholder="Numéro de permis de conduire"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm text-slate-300 mb-2 block">
+                            Date d'expiration permis <span className="text-red-400">*</span>
+                          </Label>
+                          <Input
+                            type="date"
+                            value={formData.driving_license_expiry_date}
+                            onChange={(e) => handleInputChange("driving_license_expiry_date", e.target.value)}
+                            disabled={isReadOnly}
+                            className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm text-slate-300 mb-2 block">Numéro d'assurance</Label>
+                          <Input
+                            value={formData.insurance_number}
+                            onChange={(e) => handleInputChange("insurance_number", e.target.value)}
+                            disabled={isReadOnly}
+                            className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                            placeholder="Numéro de contrat d'assurance"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm text-slate-300 mb-2 block">SIRET (optionnel)</Label>
+                          <Input
+                            value={formData.company_siret}
+                            onChange={(e) => handleInputChange("company_siret", e.target.value)}
+                            disabled={isReadOnly}
+                            className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                            placeholder="Si vous êtes en société"
+                          />
+                        </div>
+                      </div>
                     </div>
                   )}
 
                   {/* Documents */}
                   {currentSection === 2 && (
-                    <div className="space-y-5 md:space-y-6">
-                      <p className="text-sm text-slate-400">
-                        Formats acceptés: JPG, PNG, WebP, PDF. Taille max: 10MB.
-                      </p>
+                    <div className="space-y-6">
+                      <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/10">
+                        <p className="text-sm text-amber-200">
+                          Veuillez télécharger les documents demandés. Formats acceptés : JPG, PNG, PDF. Taille maximale : 10 Mo par fichier.
+                        </p>
+                      </div>
+
                       <div className="space-y-4">
                         {REQUIRED_DOCUMENTS.map((docType) => (
                           <DriverDocumentUploader
@@ -432,81 +531,133 @@ export default function DriverProfileSetup({ user }: { user: User }) {
                           />
                         ))}
                       </div>
+
+                      <div className="pt-4 border-t border-white/5">
+                        <div className="flex items-center gap-2 text-sm text-slate-400">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>Les documents sont vérifiés sous 24-48h ouvrées</span>
+                        </div>
+                      </div>
                     </div>
                   )}
 
-                  {/* Progression */}
+                  {/* Validation */}
                   {currentSection === 3 && (
-                    <div className="space-y-6 md:space-y-8">
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-base text-white">Progression</span>
-                          <span className={`text-xl font-bold ${isProfileComplete ? "text-emerald-400" : "text-blue-400"}`}>
+                    <div className="space-y-6">
+                      {/* Progress Overview */}
+                      <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="text-base text-white font-medium">Avancement</span>
+                          <span className={`text-2xl font-bold ${isProfileComplete ? "text-emerald-400" : "text-blue-400"}`}>
                             {Math.round(completionPercentage)}%
                           </span>
                         </div>
-                        <div className="h-3 bg-white/10 rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all duration-500"
-                            style={{
-                              width: `${completionPercentage}%`,
-                              background: isProfileComplete
-                                ? "linear-gradient(90deg, #10b981, #34d399)"
-                                : "linear-gradient(90deg, #3b82f6, #60a5fa)",
-                            }}
-                          />
-                        </div>
+                        <Progress value={completionPercentage} className="h-2.5" />
                       </div>
 
+                      {/* Stats Grid */}
                       <div className="grid grid-cols-2 gap-4">
                         <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                          <p className="text-xs text-slate-400 mb-1">Informations</p>
-                          <p className="text-lg font-semibold text-white">
+                          <div className="flex items-center gap-2 mb-2">
+                            <UserIcon className="h-4 w-4 text-blue-400" />
+                            <span className="text-xs text-slate-400">Profil</span>
+                          </div>
+                          <p className="text-2xl font-semibold text-white">
                             {REQUIRED_FIELDS.filter(f => formData[f]?.trim()).length}/{REQUIRED_FIELDS.length}
                           </p>
+                          <p className="text-xs text-slate-500">champs complétés</p>
                         </div>
                         <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                          <p className="text-xs text-slate-400 mb-1">Documents</p>
-                          <p className="text-lg font-semibold text-white">
+                          <div className="flex items-center gap-2 mb-2">
+                            <FileText className="h-4 w-4 text-amber-400" />
+                            <span className="text-xs text-slate-400">Documents</span>
+                          </div>
+                          <p className="text-2xl font-semibold text-white">
                             {REQUIRED_DOCUMENTS.filter(d => documents[d]).length}/{REQUIRED_DOCUMENTS.length}
                           </p>
+                          <p className="text-xs text-slate-500">fichiers reçus</p>
                         </div>
                       </div>
 
+                      {/* Missing Documents Alert */}
                       {missingDocuments.length > 0 && (
                         <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                          <p className="text-sm text-amber-300 mb-3">Documents manquants</p>
+                          <div className="flex items-center gap-2 mb-3">
+                            <AlertCircle className="h-4 w-4 text-amber-400" />
+                            <span className="text-sm font-medium text-amber-300">Documents manquants</span>
+                          </div>
                           <div className="space-y-2">
                             {missingDocuments.map((doc) => (
                               <div
                                 key={doc}
-                                className="flex items-center justify-between cursor-pointer"
+                                className="flex items-center justify-between py-1 cursor-pointer hover:text-amber-300 transition-colors"
                                 onClick={() => setCurrentSection(2)}
                               >
                                 <span className="text-sm text-slate-300">{DOC_LABELS[doc]}</span>
-                                <AlertCircle className="h-4 w-4 text-amber-400" />
+                                <ChevronRight className="h-4 w-4 text-amber-400" />
                               </div>
                             ))}
                           </div>
                         </div>
                       )}
 
-                      <div className="flex flex-wrap gap-3">
+                      {/* Success State */}
+                      {isProfileComplete && !isSubmitted && (
+                        <div className="p-5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 rounded-full bg-emerald-500/20">
+                              <Check className="h-5 w-5 text-emerald-400" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-emerald-300">Profil complet</p>
+                              <p className="text-xs text-emerald-400/80">Vous pouvez maintenant soumettre votre dossier</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Submitted State */}
+                      {isSubmitted && (
+                        <div className="p-5 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-full bg-blue-500/20">
+                              <Send className="h-5 w-5 text-blue-400" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-blue-300">Dossier envoyé</p>
+                              <p className="text-xs text-blue-400/80">En cours de validation par notre équipe</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex flex-col gap-3 pt-4">
                         <Button
                           variant="outline"
                           onClick={handleSaveProgress}
                           disabled={saving || !driverId || isSubmitted}
-                          className="flex-1 min-w-[120px] border-white/10 bg-white/5 text-white hover:bg-white/10 h-11"
+                          className="w-full border-white/10 bg-white/5 text-white hover:bg-white/10 h-12 rounded-xl"
                         >
-                          {saving ? <ButtonLoading /> : <><Save className="h-4 w-4 mr-2" /> Sauvegarder</>}
+                          {saving ? <ButtonLoading /> : <><Save className="h-4 w-4 mr-2" /> Sauvegarder la progression</>}
                         </Button>
+                        
                         {isProfileComplete && driverId && !isSubmitted && (
                           <Button
                             onClick={handleSubmitForReview}
                             disabled={submitting}
-                            className="flex-1 min-w-[120px] bg-emerald-600 hover:bg-emerald-700 text-white h-11"
+                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-12 rounded-xl font-medium"
                           >
-                            {submitting ? <ButtonLoading /> : <><Send className="h-4 w-4 mr-2" /> Soumettre</>}
+                            {submitting ? <ButtonLoading /> : <><Send className="h-4 w-4 mr-2" /> Soumettre pour validation</>}
+                          </Button>
+                        )}
+                        
+                        {!isProfileComplete && !isSubmitted && (
+                          <Button
+                            disabled
+                            className="w-full bg-white/5 text-slate-500 h-12 rounded-xl cursor-not-allowed"
+                          >
+                            Complétez toutes les sections pour soumettre
                           </Button>
                         )}
                       </div>
@@ -514,26 +665,29 @@ export default function DriverProfileSetup({ user }: { user: User }) {
                   )}
                 </motion.div>
               </AnimatePresence>
-            </div>
-          </div>
 
-          {/* Mobile Navigation */}
-          <div className="flex items-center justify-between mt-6 md:hidden">
-            <Button
-              variant="ghost"
-              onClick={prevSection}
-              disabled={currentSection === 0}
-              className="text-white disabled:text-slate-600"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-            <Button
-              onClick={nextSection}
-              disabled={currentSection === SECTIONS.length - 1}
-              className="bg-white/10 hover:bg-white/20 text-white disabled:opacity-50 px-6"
-            >
-              Suivant <ChevronRight className="h-4 w-4 ml-2" />
-            </Button>
+              {/* Mobile Navigation */}
+              <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/5 md:hidden">
+                <Button
+                  variant="ghost"
+                  onClick={prevSection}
+                  disabled={currentSection === 0}
+                  className="text-white disabled:text-slate-600 h-12 px-4"
+                >
+                  <ChevronLeft className="h-5 w-5 mr-1" />
+                  Retour
+                </Button>
+                
+                <Button
+                  onClick={nextSection}
+                  disabled={currentSection === SECTIONS.length - 1 || !canProceed()}
+                  className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:bg-white/10 h-12 px-6 rounded-xl"
+                >
+                  {currentSection === SECTIONS.length - 2 ? "Vérifier" : "Continuer"}
+                  <ChevronRight className="h-4 w-4 ml-2" />
+                </Button>
+              </div>
+            </div>
           </div>
         </motion.div>
       </div>
