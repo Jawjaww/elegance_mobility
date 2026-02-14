@@ -43,19 +43,24 @@ const DOC_LABELS: Record<keyof DocumentStatus, string> = {
   proof_of_address: "Justificatif de domicile",
 };
 
-const SECTIONS = [
+export const SECTIONS = [
   { id: "profil", icon: UserIcon, label: "Profil", description: "Informations personnelles" },
   { id: "professionnel", icon: Briefcase, label: "Professionnel", description: "Cartes et autorisations" },
   { id: "documents", icon: FileText, label: "Documents", description: "Justificatifs à fournir" },
   { id: "validation", icon: Shield, label: "Validation", description: "Vérification et envoi" },
 ];
 
-export default function DriverProfileSetup({ user }: { user: User }) {
+interface DriverProfileSetupProps {
+  user: User;
+  currentSection: number;
+  onSectionChange: (section: number) => void;
+}
+
+export default function DriverProfileSetup({ user, currentSection, onSectionChange }: DriverProfileSetupProps) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [driverId, setDriverId] = useState<string | null>(null);
-  const [currentSection, setCurrentSection] = useState(0);
   const [submissionStatus, setSubmissionStatus] = useState<string>('draft');
   const [documents, setDocuments] = useState<DocumentStatus>({
     driving_license: false, vtc_card: false, insurance: false, id_card: false, proof_of_address: false,
@@ -176,11 +181,11 @@ export default function DriverProfileSetup({ user }: { user: User }) {
   };
 
   const nextSection = () => {
-    if (currentSection < SECTIONS.length - 1) setCurrentSection(curr => curr + 1);
+    if (currentSection < SECTIONS.length - 1) onSectionChange(currentSection + 1);
   };
 
   const prevSection = () => {
-    if (currentSection > 0) setCurrentSection(curr => curr - 1);
+    if (currentSection > 0) onSectionChange(currentSection - 1);
   };
 
   const canProceed = () => {
@@ -198,46 +203,14 @@ export default function DriverProfileSetup({ user }: { user: User }) {
   if (loading) return <PageLoading text="Vérification..." />;
 
   return (
-    <div className="min-h-screen w-full flex flex-col bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-      {/* Mobile Sticky Header */}
-      <div className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-white/5 md:hidden">
-        <div className="px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-white/5">
-                <CurrentIcon className="h-4 w-4 text-blue-400" />
-              </div>
-              <div>
-                <p className="text-xs text-slate-400">{SECTIONS[currentSection].description}</p>
-                <h2 className="text-sm font-semibold text-white">{SECTIONS[currentSection].label}</h2>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-slate-400">Progrès</p>
-              <p className="text-sm font-semibold text-blue-400">{currentSection + 1}/{SECTIONS.length}</p>
-            </div>
-          </div>
-          <div className="flex gap-1 mt-3">
-            {SECTIONS.map((_, idx) => (
-              <div
-                key={idx}
-                className={`h-1 flex-1 rounded-full transition-colors ${
-                  idx < currentSection ? "bg-emerald-500" : 
-                  idx === currentSection ? "bg-blue-500" : "bg-white/10"
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
+    <div className="min-h-screen w-full flex flex-col">
       {/* Desktop Header */}
       <div className="hidden md:flex items-center justify-center py-8 px-4">
         <div className="flex items-center gap-1 bg-white/5 rounded-2xl p-1.5 border border-white/5">
           {SECTIONS.map((section, idx) => (
             <button
               key={section.id}
-              onClick={() => setCurrentSection(idx)}
+              onClick={() => onSectionChange(idx)}
               className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all ${
                 idx === currentSection
                   ? "bg-white/10 text-white shadow-lg"
@@ -591,7 +564,7 @@ export default function DriverProfileSetup({ user }: { user: User }) {
                               <div
                                 key={doc}
                                 className="flex items-center justify-between py-1 cursor-pointer hover:text-amber-300 transition-colors"
-                                onClick={() => setCurrentSection(2)}
+                                onClick={() => onSectionChange(2)}
                               >
                                 <span className="text-sm text-slate-300">{DOC_LABELS[doc]}</span>
                                 <ChevronRight className="h-4 w-4 text-amber-400" />

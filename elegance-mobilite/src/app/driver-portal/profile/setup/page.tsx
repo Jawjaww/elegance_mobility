@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import DriverProfileSetup from "@/components/drivers/DriverProfileSetup";
+import { MobileStepperHeader, SECTIONS } from "@/components/drivers/MobileStepperHeader";
 import { supabase } from "@/lib/database/client";
 import type { User } from "@supabase/supabase-js";
 
@@ -10,6 +11,7 @@ export default function DriverProfileSetupPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentSection, setCurrentSection] = useState(0);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -43,8 +45,18 @@ export default function DriverProfileSetupPage() {
   }
 
   return (
-    <div className="min-h-screen py-8">
-      <DriverProfileSetup user={user} />
-    </div>
+    <>
+      {/* Mobile Stepper Header - Fixed at top */}
+      <MobileStepperHeader currentSection={currentSection} sections={SECTIONS} />
+      
+      {/* Main Content with padding for mobile header */}
+      <div className="min-h-screen pt-[72px] md:pt-0">
+        <DriverProfileSetup 
+          user={user} 
+          currentSection={currentSection}
+          onSectionChange={setCurrentSection}
+        />
+      </div>
+    </>
   );
 }
