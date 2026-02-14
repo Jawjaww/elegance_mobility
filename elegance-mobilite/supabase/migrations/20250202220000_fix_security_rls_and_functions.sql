@@ -203,6 +203,13 @@ CREATE POLICY "admin_all_access_driver_documents" ON public.driver_documents
         )
     );
 
+-- Harden: prevent anonymous / public read by ensuring policies only allow authenticated users
+REVOKE ALL ON public.driver_documents FROM public;
+REVOKE ALL ON public.driver_documents FROM anon;
+REVOKE ALL ON public.driver_documents FROM authenticated;
+-- Re-grant minimal privileges to authenticated (via policies)
+GRANT SELECT, INSERT, UPDATE, DELETE, TRIGGER, REFERENCES ON public.driver_documents TO authenticated;
+
 -- ----------------------------------------
 -- VEHICLE_DOCUMENTS
 -- ----------------------------------------
