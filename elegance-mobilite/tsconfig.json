@@ -39,6 +39,7 @@
     "node_modules",
     "docs/",
     "out/",
-    "src/app/_unused_api_routes/"
+    "src/app/_unused_api_routes/",
+    "supabase/functions/"
   ]
 }

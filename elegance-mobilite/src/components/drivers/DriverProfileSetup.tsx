@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-// Using the glass sheet wrapper as the main surface; keep internal layout minimal
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -19,11 +18,23 @@ import {
   Upload,
   AlertCircle,
   CheckCircle,
+  Save,
+  Send,
+  FileText,
+  Eye,
+  Check,
+  X,
+  Clock,
+  Building2,
+  CreditCard,
+  Shield,
+  Home,
+  IdCard,
 } from "lucide-react";
 import { supabase } from "@/lib/database/client";
 import { useToast } from "@/hooks/useToast";
 import { PageLoading, ButtonLoading } from "@/components/ui/loading";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import DriverDocumentUploader from "./DriverDocumentUploader";
 
 interface DriverProfileData {
@@ -46,7 +57,6 @@ interface DriverProfileData {
   insurance_number: string;
   emergency_contact_name: string;
   emergency_contact_phone: string;
-  // Additional fields for compliance / payouts
   nationality?: string;
   driving_license_issue_date?: string;
   driving_license_categories?: string;
@@ -55,19 +65,41 @@ interface DriverProfileData {
   terms_accepted_at?: string;
 }
 
+interface DocumentStatus {
+  driving_license: boolean;
+  vtc_card: boolean;
+  insurance: boolean;
+  id_card: boolean;
+  proof_of_address: boolean;
+  passport?: boolean;
+}
+
+const REQUIRED_FIELDS = [
+  'first_name', 'last_name', 'phone', 
+  'license_number', 'driving_license_expiry_date',
+  'vtc_card_number', 'vtc_card_expiry_date',
+  'address', 'city', 'postal_code'
+] as const;
+
+const REQUIRED_DOCUMENTS: (keyof DocumentStatus)[] = [
+  'driving_license', 'vtc_card', 'insurance', 'id_card', 'proof_of_address'
+];
+
 export default function DriverProfileSetup({ user }: { user: User }) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [driverId, setDriverId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [emailVerified, setEmailVerified] = useState(false);
-  const [files, setFiles] = useState<Record<string, File | null>>({
-    driving_license: null,
-    vtc_card: null,
-    insurance: null,
-    id_card: null,
-    proof_of_address: null,
+  const [submissionStatus, setSubmissionStatus] = useState<string>('draft');
+  const [documents, setDocuments] = useState<DocumentStatus>({
+    driving_license: false,
+    vtc_card: false,
+    insurance: false,
+    id_card: false,
+    proof_of_address: false,
   });
   const [formData, setFormData] = useState<DriverProfileData>({
     first_name: "",
@@ -169,6 +201,11 @@ export default function DriverProfileSetup({ user }: { user: User }) {
             company_siret: existingDriver.company_siret || prev.company_siret,
           }));
 
+          // Get submission status
+          if ((existingDriver as any).submission_status) {
+            setSubmissionStatus((existingDriver as any).submission_status);
+          }
+
           setEditing(true);
         }
       } catch (error) {
@@ -183,6 +220,121 @@ export default function DriverProfileSetup({ user }: { user: User }) {
 
     checkExistingProfile();
   }, [router, user.id, searchParams]);
+
+  // Fetch document statuses
+  useEffect(() => {
+    const checkDocuments = async () => {
+      if (!driverId) return;
+      
+      try {
+        const { data: docs, error } = await supabase
+          .from("driver_documents")
+          .select("document_type, validation_status")
+          .eq("driver_id", driverId)
+          .eq("validation_status", "approved");
+        
+        if (!error && docs) {
+          const docTypes = docs.map(d => d.document_type as keyof DocumentStatus);
+          setDocuments({
+            driving_license: docTypes.includes("driving_license"),
+            vtc_card: docTypes.includes("vtc_card"),
+            insurance: docTypes.includes("insurance"),
+            id_card: docTypes.includes("id_card") as any || docTypes.includes("passport") as any,
+            proof_of_address: docTypes.includes("proof_of_address"),
+          });
+        }
+      } catch (err) {
+        console.error("Error checking documents:", err);
+      }
+    };
+    
+    checkDocuments();
+  }, [driverId, supabase]);
+
+  // Calculate precise completion percentage
+  const calculateCompletion = useCallback((): number => {
+    const filledFields = REQUIRED_FIELDS.filter(field => 
+      formData[field as keyof DriverProfileData]?.trim() !== ""
+    ).length;
+    
+    const filledDocs = REQUIRED_DOCUMENTS.filter(doc => documents[doc]).length;
+    
+    const fieldWeight = 0.5; // 50% for fields
+    const docWeight = 0.5;   // 50% for documents
+    
+    const fieldProgress = (filledFields / REQUIRED_FIELDS.length) * fieldWeight * 100;
+    const docProgress = (filledDocs / REQUIRED_DOCUMENTS.length) * docWeight * 100;
+    
+    return Math.min(100, fieldProgress + docProgress);
+  }, [formData, documents]);
+
+  const completionPercentage = calculateCompletion();
+  const isProfileComplete = completionPercentage >= 95;
+  const isSubmitted = submissionStatus === "pending_review";
+
+  const handleSaveProgress = async () => {
+    if (!driverId) {
+      toast({ title: "Erreur", description: "Aucun profil driver trouvé", variant: "destructive" });
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("drivers")
+        .update({ 
+          submission_status: 'draft',
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", driverId);
+      
+      if (error) throw error;
+      
+      toast({ 
+        title: "Progression sauvegardée", 
+        description: "Vous pouvez reprendre la completion de votre profil plus tard." 
+      });
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSubmitForReview = async () => {
+    if (!driverId || !isProfileComplete) {
+      toast({ 
+        title: "Profil incomplet", 
+        description: "Veuillez compléter tous les champs et documents requis avant de soumettre.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    setSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from("drivers")
+        .update({ 
+          submission_status: 'pending_review',
+          submitted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", driverId);
+      
+      if (error) throw error;
+      
+      setSubmissionStatus('pending_review');
+      toast({ 
+        title: "Profil soumis pour validation", 
+        description: "Nos équipes vont examiner votre dossier. Vous serez notifié par email." 
+      });
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleInputChange = (field: keyof DriverProfileData, value: string) => {
     setFormData((prev) => ({
@@ -201,13 +353,15 @@ export default function DriverProfileSetup({ user }: { user: User }) {
         return !!(formData.vtc_card_number && formData.vtc_card_expiry_date);
       case 4:
         return !!(formData.address && formData.city && formData.postal_code);
+      case 5:
+        return true; // Documents step is always valid (optional uploads)
       default:
         return false;
     }
   };
 
   const nextStep = () => {
-    if (validateStep(currentStep) && currentStep < 4) {
+    if (validateStep(currentStep) && currentStep < 5) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -310,34 +464,129 @@ export default function DriverProfileSetup({ user }: { user: User }) {
     return <PageLoading text="Vérification de votre profil..." />;
   }
 
-  const progress = (currentStep / 4) * 100;
-
   const pageInner = (
     <motion.div
-      className="max-w-2xl mx-auto px-4"
+      className="max-w-3xl mx-auto px-4"
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.87, 0, 0.13, 1] }}
     >
+      {/* Status Banner for Pending Review */}
+      {isSubmitted && (
+        <Card className="mb-6 bg-blue-500/10 border-blue-500/30">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-500/20 rounded-full">
+                <Clock className="h-8 w-8 text-blue-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-blue-100">Profil en cours de validation</h3>
+                <p className="text-sm text-blue-200/80">
+                  Votre dossier a été soumis et est en attente de validation par nos équipes.
+                  Vous recevrez une notification dès qu'il sera traité.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="mb-6 text-center">
         <h1 className="text-xl font-bold text-slate-50 mb-2 driver-setup-title">
-          Configuration de votre profil chauffeur
+          {isSubmitted ? "Votre profil" : "Configuration de votre profil chauffeur"}
         </h1>
         <p className="text-slate-300/80">
-          Complétez votre profil pour commencer à recevoir des demandes de
-          course
+          {isSubmitted 
+            ? " Consultez l'état de votre profil et vos documents soumis."
+            : "Complétez votre profil pour commencer à recevoir des demandes de course"}
         </p>
       </div>
 
-      {/* Minimal progress row (no extra card) */}
+      {/* Precise Progress Section */}
+      {!isSubmitted && (
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Progression du profil</CardTitle>
+              <Badge variant={isProfileComplete ? "default" : "secondary"} className={isProfileComplete ? "bg-green-500" : ""}>
+                {isProfileComplete ? (
+                  <><Check className="h-3 w-3 mr-1" /> Complet</>
+                ) : (
+                  `${Math.round(completionPercentage)}%`
+                )}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Progress value={completionPercentage} className="h-2" />
+            
+            {/* Field completion breakdown */}
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${REQUIRED_FIELDS.filter(f => formData[f as keyof DriverProfileData]?.trim()).length === REQUIRED_FIELDS.length ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                <span className="text-slate-400">Informations ({REQUIRED_FIELDS.filter(f => formData[f as keyof DriverProfileData]?.trim()).length}/{REQUIRED_FIELDS.length})</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${REQUIRED_DOCUMENTS.filter(d => documents[d]).length === REQUIRED_DOCUMENTS.length ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                <span className="text-slate-400">Documents ({REQUIRED_DOCUMENTS.filter(d => documents[d]).length}/{REQUIRED_DOCUMENTS.length})</span>
+              </div>
+            </div>
+
+            {/* Required documents checklist */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-700">
+              {REQUIRED_DOCUMENTS.map(doc => (
+                <div key={doc} className="flex items-center gap-2 text-sm">
+                  {documents[doc] ? (
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 text-yellow-500" />
+                  )}
+                  <span className={documents[doc] ? "text-green-400" : "text-yellow-400"}>
+                    {doc === 'driving_license' && 'Permis de conduire'}
+                    {doc === 'vtc_card' && 'Carte VTC'}
+                    {doc === 'insurance' && 'Assurance'}
+                    {doc === 'id_card' && 'Pièce identité'}
+                    {doc === 'proof_of_address' && 'Justificatif domicile'}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex flex-wrap gap-3 pt-3 border-t border-slate-700">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSaveProgress}
+                disabled={saving || !driverId}
+              >
+                {saving ? <ButtonLoading /> : <><Save className="h-4 w-4 mr-2" /> Sauvegarder</>}
+              </Button>
+              
+              {isProfileComplete && driverId && (
+                <Button
+                  size="sm"
+                  onClick={handleSubmitForReview}
+                  disabled={submitting}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {submitting ? <ButtonLoading /> : <><Send className="h-4 w-4 mr-2" /> Soumettre pour validation</>}
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Minimal progress row for navigation */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
           <div className="text-lg font-semibold text-slate-100">
-            Étape {currentStep} sur 4
+            Étape {currentStep} sur 5
           </div>
-          <Badge variant="secondary">{Math.round(progress)}% complété</Badge>
+          <Badge variant="secondary">{Math.round((currentStep / 5) * 100)}% de l'étape</Badge>
         </div>
-        <Progress value={progress} className="w-full" />
+        <Progress value={(currentStep / 5) * 100} className="w-full" />
       </div>
 
       {/* Main form area — motion animation on step change */}
@@ -359,18 +608,21 @@ export default function DriverProfileSetup({ user }: { user: User }) {
             )}
             {currentStep === 3 && <Car className="h-5 w-5 text-slate-200" />}
             {currentStep === 4 && <MapPin className="h-5 w-5 text-slate-200" />}
+            {currentStep === 5 && <FileText className="h-5 w-5 text-slate-200" />}
             <div>
               <div className="text-lg font-semibold text-slate-50">
                 {currentStep === 1 && "Informations personnelles"}
                 {currentStep === 2 && "Permis de conduire"}
-                {currentStep === 3 && "Informations du véhicule"}
+                {currentStep === 3 && "Carte VTC & Assurance"}
                 {currentStep === 4 && "Adresse"}
+                {currentStep === 5 && "Documents justificatifs"}
               </div>
               <div className="text-sm text-slate-300">
                 {currentStep === 1 && "Vos informations de base"}
                 {currentStep === 2 && "Votre permis de conduire"}
-                {currentStep === 3 && "Les détails de votre véhicule"}
+                {currentStep === 3 && "Vos informations professionnelles"}
                 {currentStep === 4 && "Votre adresse de résidence"}
+                {currentStep === 5 && "Téléchargez vos documents officiels"}
               </div>
             </div>
           </div>
@@ -496,58 +748,12 @@ export default function DriverProfileSetup({ user }: { user: User }) {
                   <Label htmlFor="emergency_contact_phone">Contact d'urgence - Téléphone</Label>
                   <Input
                     id="emergency_contact_phone"
+                    type="tel"
                     value={formData.emergency_contact_phone}
                     onChange={(e) =>
                       handleInputChange("emergency_contact_phone", e.target.value)
                     }
                     placeholder="Téléphone du contact"
-                  />
-                </div>
-
-                {/* Uploaders */}
-                <div className="md:col-span-2">
-                  <DriverDocumentUploader
-                    driverId={driverId ?? ""}
-                    documentType="driving_license"
-                    label="Permis de conduire (recto/verso)"
-                    accept="image/*,application/pdf"
-                    onUploaded={(r) => console.log("uploaded license", r)}
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <DriverDocumentUploader
-                    driverId={driverId ?? ""}
-                    documentType="vtc_card"
-                    label="Carte VTC"
-                    accept="image/*,application/pdf"
-                    onUploaded={(r) => console.log("uploaded vtc", r)}
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <DriverDocumentUploader
-                    driverId={driverId ?? ""}
-                    documentType="insurance"
-                    label="Attestation d'assurance"
-                    accept="image/*,application/pdf"
-                    onUploaded={(r) => console.log("uploaded insurance", r)}
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <DriverDocumentUploader
-                    driverId={driverId ?? ""}
-                    documentType="id_card"
-                    label="Pièce d'identité"
-                    accept="image/*,application/pdf"
-                    onUploaded={(r) => console.log("uploaded id", r)}
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <DriverDocumentUploader
-                    driverId={driverId ?? ""}
-                    documentType="proof_of_address"
-                    label="Justificatif de domicile"
-                    accept="image/*,application/pdf"
-                    onUploaded={(r) => console.log("uploaded proof", r)}
                   />
                 </div>
               </div>
@@ -593,26 +799,85 @@ export default function DriverProfileSetup({ user }: { user: User }) {
               </div>
             )}
 
+            {currentStep === 5 && (
+              <div className="space-y-6">
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <FileText className="h-5 w-5 text-blue-400 mt-0.5" />
+                    <div className="text-sm text-blue-200">
+                      <p className="font-medium text-blue-100 mb-1">Documents requis</p>
+                      <p>Veuillez télécharger des fichiers清晰lisibles (photo ou PDF). Formats acceptés: JPG, PNG, WebP, PDF.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <DriverDocumentUploader
+                    driverId={driverId ?? ""}
+                    documentType="driving_license"
+                    label="Permis de conduire (recto/verso) *"
+                    accept="image/*,application/pdf"
+                    onUploaded={(r) => console.log("uploaded license", r)}
+                  />
+                  <DriverDocumentUploader
+                    driverId={driverId ?? ""}
+                    documentType="vtc_card"
+                    label="Carte VTC *"
+                    accept="image/*,application/pdf"
+                    onUploaded={(r) => console.log("uploaded vtc", r)}
+                  />
+                  <DriverDocumentUploader
+                    driverId={driverId ?? ""}
+                    documentType="insurance"
+                    label="Attestation d'assurance *"
+                    accept="image/*,application/pdf"
+                    onUploaded={(r) => console.log("uploaded insurance", r)}
+                  />
+                  <DriverDocumentUploader
+                    driverId={driverId ?? ""}
+                    documentType="id_card"
+                    label="Pièce d'identité (CNIE ou passeport) *"
+                    accept="image/*,application/pdf"
+                    onUploaded={(r) => console.log("uploaded id", r)}
+                  />
+                  <DriverDocumentUploader
+                    driverId={driverId ?? ""}
+                    documentType="proof_of_address"
+                    label="Justificatif de domicile *"
+                    accept="image/*,application/pdf"
+                    onUploaded={(r) => console.log("uploaded proof", r)}
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-between">
               <Button
                 variant="outline"
                 onClick={prevStep}
-                disabled={currentStep === 1}
+                disabled={currentStep === 1 || isSubmitted}
               >
                 Précédent
               </Button>
 
-              {currentStep < 4 ? (
+              {currentStep < 5 ? (
                 <Button
                   onClick={nextStep}
-                  disabled={!validateStep(currentStep)}
+                  disabled={!validateStep(currentStep) || isSubmitted}
                 >
                   Suivant
+                </Button>
+              ) : driverId ? (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!validateStep(5) || submitting || isSubmitted}
+                >
+                  {submitting ? <ButtonLoading /> : isSubmitted ? "Profil soumis" : "Terminer"}
                 </Button>
               ) : (
                 <Button
                   onClick={handleSubmit}
-                  disabled={!validateStep(4) || submitting}
+                  disabled={!validateStep(5) || submitting}
                 >
                   {submitting ? <ButtonLoading /> : "Créer mon profil"}
                 </Button>

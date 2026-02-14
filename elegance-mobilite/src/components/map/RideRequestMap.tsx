@@ -191,7 +191,7 @@ export default function RideRequestMap({
               // Give browser one frame to apply layout changes
               requestAnimationFrame(() => {
                 try {
-                  mapRef.current.fitBounds(bounds, {
+                  mapRef.current?.fitBounds(bounds, {
                     padding: { top: 80, bottom: 80, left: 120, right: 120 },
                     maxZoom: 16,
                     duration: 300,

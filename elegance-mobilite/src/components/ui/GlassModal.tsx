@@ -64,7 +64,7 @@ export default function GlassModal({
 
     return () => {
       if (appRoot) {
-        if (prevAria === null) appRoot.removeAttribute("aria-hidden");
+        if (!prevAria) appRoot.removeAttribute("aria-hidden");
         else appRoot.setAttribute("aria-hidden", prevAria);
       }
       if (el && document.body.contains(el)) document.body.removeChild(el);
