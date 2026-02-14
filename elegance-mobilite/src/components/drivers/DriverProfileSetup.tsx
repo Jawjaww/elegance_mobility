@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User as UserIcon, Building2, FileText, BarChart3, Save, Send, Check, AlertCircle, Upload } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { User as UserIcon, Building2, FileText, BarChart3, Save, Send, Check, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/database/client";
 import { useToast } from "@/hooks/useToast";
 import { PageLoading, ButtonLoading } from "@/components/ui/loading";
@@ -172,53 +172,54 @@ export default function DriverProfileSetup({ user }: { user: User }) {
   if (loading) return <PageLoading text="Vérification..." />;
 
   return (
-    <div className="min-h-screen w-full p-4 flex items-center justify-center">
-      <div className="w-full max-w-xl">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.97 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.22 }}
-          className="w-full overflow-hidden border rounded-2xl shadow-2xl backdrop-blur-3xl relative"
+    <div className="min-h-screen w-full flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.22 }}
+        className="w-full max-w-md overflow-hidden border rounded-xl shadow-2xl backdrop-blur-3xl flex flex-col relative"
+        style={{
+          maxHeight: "calc(100vh - 40px)",
+          width: "100%",
+          borderColor: "rgba(255,255,255,0.06)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02), 0 18px 60px rgba(2,6,23,0.65), 0 6px 24px rgba(70,130,180,0.06)",
+          background: "linear-gradient(180deg, rgba(70,130,180,0.03), rgba(255,255,255,0.008))",
+        }}
+      >
+        {/* Glass overlay - exactement comme FullscreenRideModal */}
+        <div
+          className="absolute inset-0 rounded-xl pointer-events-none"
           style={{
-            borderColor: "rgba(255,255,255,0.06)",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02), 0 18px 60px rgba(2,6,23,0.65), 0 6px 24px rgba(70,130,180,0.06)",
-            background: "linear-gradient(180deg, rgba(70,130,180,0.03), rgba(255,255,255,0.008))",
+            background: "linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)), radial-gradient(1000px 120px at 10% 6%, rgba(255,255,255,0.08), rgba(255,255,255,0) 10%)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            boxShadow: "inset 0 2px 14px rgba(255,255,255,0.02)",
+            zIndex: 0,
           }}
-        >
-          {/* Glass overlay */}
-          <div
-            className="absolute inset-0 rounded-2xl pointer-events-none"
-            style={{
-              background: "linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)), radial-gradient(1000px 120px at 10% 6%, rgba(255,255,255,0.08), rgba(255,255,255,0) 10%)",
-              border: "1px solid rgba(255,255,255,0.06)",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              boxShadow: "inset 0 2px 14px rgba(255,255,255,0.02)",
-              zIndex: 0,
-            }}
-          />
-          
-          {/* Content */}
-          <div className="relative z-10">
-            {/* Header */}
-            <div className="px-6 pt-5 pb-4 border-b border-white/[0.06]">
-              <h1 className="text-lg font-semibold text-white mb-0.5">
-                {isSubmitted ? "Votre profil" : "Configuration de votre profil"}
-              </h1>
-              <p className="text-xs text-slate-400">
-                {isSubmitted ? "Consultez l'état de votre dossier." : "Complétez votre profil pour recevoir des courses"}
-              </p>
-              {isSubmitted && (
-                <div className="mt-2 flex items-center gap-2 text-xs text-blue-300">
-                  <Send className="h-3 w-3" />
-                  <span>En attente de validation</span>
-                </div>
-              )}
-            </div>
+        />
+        
+        {/* Content */}
+        <div className="flex flex-col relative z-10 overflow-hidden">
+          {/* Header */}
+          <div className="px-6 pb-4 pt-5 border-b border-white/[0.06]">
+            <h1 className="text-lg font-semibold text-white mb-1">
+              {isSubmitted ? "Votre profil" : "Configuration de votre profil"}
+            </h1>
+            <p className="text-xs text-slate-400">
+              {isSubmitted ? "Consultez l'état de votre dossier." : "Complétez votre profil pour recevoir des courses"}
+            </p>
+            {isSubmitted && (
+              <div className="mt-2 flex items-center gap-2 text-xs text-blue-300">
+                <Send className="h-3 w-3" />
+                <span>En attente de validation</span>
+              </div>
+            )}
+          </div>
 
           {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full justify-start bg-transparent border-b h-auto p-0 px-2" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 overflow-hidden flex flex-col">
+            <TabsList className="w-full justify-start bg-transparent border-b h-auto p-0 px-2 shrink-0" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
               {[
                 { id: "informations", icon: UserIcon, label: "Infos" },
                 { id: "societe", icon: Building2, label: "Société" },
@@ -238,15 +239,15 @@ export default function DriverProfileSetup({ user }: { user: User }) {
               ))}
             </TabsList>
 
-            {/* Content */}
-            <div className="p-6">
+            {/* Content - scrollable */}
+            <div className="flex-1 overflow-y-auto px-6 py-4">
               <AnimatePresence mode="wait">
                 <motion.div key={activeTab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
                   
                   {/* Informations */}
                   {activeTab === "informations" && (
-                    <div className="space-y-5">
-                      <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
                         {[
                           { id: "first_name", label: "Prénom *", type: "text" },
                           { id: "last_name", label: "Nom *", type: "text" },
@@ -254,75 +255,77 @@ export default function DriverProfileSetup({ user }: { user: User }) {
                           { id: "date_of_birth", label: "Date naissance", type: "date" },
                         ].map((field) => (
                           <div key={field.id}>
-                            <Label className="text-xs text-slate-400">{field.label}</Label>
+                            <Label className="text-[11px] text-slate-400 uppercase tracking-wide">{field.label}</Label>
                             <Input
                               id={field.id}
                               type={field.type}
                               value={formData[field.id as keyof DriverProfileData]}
                               onChange={(e) => handleInputChange(field.id as keyof DriverProfileData, e.target.value)}
                               disabled={isReadOnly}
-                              className="mt-1 bg-transparent border-white/10 text-white text-sm h-8 focus:border-white/20"
+                              className="mt-1 bg-white/[0.03] border-white/10 text-white text-sm h-9 rounded-md focus:bg-white/[0.05] focus:border-white/20"
                             />
                           </div>
                         ))}
                       </div>
-                      <div className="pt-4">
-                        <p className="text-xs text-slate-500 mb-3">Contact d'urgence</p>
-                        <div className="grid grid-cols-2 gap-4">
+                      
+                      <div className="pt-2">
+                        <p className="text-[11px] text-slate-500 uppercase tracking-wide mb-2">Contact d'urgence</p>
+                        <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <Label className="text-xs text-slate-500">Nom</Label>
+                            <Label className="text-[11px] text-slate-500">Nom</Label>
                             <Input
                               id="emergency_contact_name"
                               value={formData.emergency_contact_name}
                               onChange={(e) => handleInputChange("emergency_contact_name", e.target.value)}
                               disabled={isReadOnly}
-                              className="mt-1 bg-transparent border-white/10 text-white text-sm h-8 focus:border-white/20"
+                              className="mt-1 bg-white/[0.03] border-white/10 text-white text-sm h-9 rounded-md"
                             />
                           </div>
                           <div>
-                            <Label className="text-xs text-slate-500">Téléphone</Label>
+                            <Label className="text-[11px] text-slate-500">Téléphone</Label>
                             <Input
                               id="emergency_contact_phone"
                               value={formData.emergency_contact_phone}
                               onChange={(e) => handleInputChange("emergency_contact_phone", e.target.value)}
                               disabled={isReadOnly}
-                              className="mt-1 bg-transparent border-white/10 text-white text-sm h-8 focus:border-white/20"
+                              className="mt-1 bg-white/[0.03] border-white/10 text-white text-sm h-9 rounded-md"
                             />
                           </div>
                         </div>
                       </div>
-                      <div className="pt-4">
-                        <p className="text-xs text-slate-500 mb-3">Adresse</p>
+                      
+                      <div className="pt-2">
+                        <p className="text-[11px] text-slate-500 uppercase tracking-wide mb-2">Adresse</p>
                         <div className="space-y-3">
                           <div>
-                            <Label className="text-xs text-slate-400">Adresse *</Label>
+                            <Label className="text-[11px] text-slate-400 uppercase tracking-wide">Adresse *</Label>
                             <Input
                               id="address"
                               value={formData.address}
                               onChange={(e) => handleInputChange("address", e.target.value)}
                               disabled={isReadOnly}
-                              className="mt-1 bg-transparent border-white/10 text-white text-sm h-8 focus:border-white/20"
+                              className="mt-1 bg-white/[0.03] border-white/10 text-white text-sm h-9 rounded-md"
                             />
                           </div>
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <Label className="text-xs text-slate-400">Ville *</Label>
+                              <Label className="text-[11px] text-slate-400 uppercase tracking-wide">Ville *</Label>
                               <Input
                                 id="city"
                                 value={formData.city}
                                 onChange={(e) => handleInputChange("city", e.target.value)}
                                 disabled={isReadOnly}
-                                className="mt-1 bg-transparent border-white/10 text-white text-sm h-8 focus:border-white/20"
+                                className="mt-1 bg-white/[0.03] border-white/10 text-white text-sm h-9 rounded-md"
                               />
                             </div>
                             <div>
-                              <Label className="text-xs text-slate-400">Code postal *</Label>
+                              <Label className="text-[11px] text-slate-400 uppercase tracking-wide">Code postal *</Label>
                               <Input
                                 id="postal_code"
                                 value={formData.postal_code}
                                 onChange={(e) => handleInputChange("postal_code", e.target.value)}
                                 disabled={isReadOnly}
-                                className="mt-1 bg-transparent border-white/10 text-white text-sm h-8 focus:border-white/20"
+                                className="mt-1 bg-white/[0.03] border-white/10 text-white text-sm h-9 rounded-md"
                               />
                             </div>
                           </div>
@@ -333,8 +336,8 @@ export default function DriverProfileSetup({ user }: { user: User }) {
 
                   {/* Société */}
                   {activeTab === "societe" && (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
                         {[
                           { id: "vtc_card_number", label: "N° carte VTC *" },
                           { id: "vtc_card_expiry_date", label: "Exp. VTC *", type: "date" },
@@ -344,14 +347,14 @@ export default function DriverProfileSetup({ user }: { user: User }) {
                           { id: "company_siret", label: "SIRET" },
                         ].map((field) => (
                           <div key={field.id}>
-                            <Label className="text-xs text-slate-400">{field.label}</Label>
+                            <Label className="text-[11px] text-slate-400 uppercase tracking-wide">{field.label}</Label>
                             <Input
                               id={field.id}
                               type={field.type || "text"}
                               value={formData[field.id as keyof DriverProfileData]}
                               onChange={(e) => handleInputChange(field.id as keyof DriverProfileData, e.target.value)}
                               disabled={isReadOnly}
-                              className="mt-1 bg-transparent border-white/10 text-white text-sm h-8 focus:border-white/20"
+                              className="mt-1 bg-white/[0.03] border-white/10 text-white text-sm h-9 rounded-md"
                             />
                           </div>
                         ))}
@@ -361,9 +364,9 @@ export default function DriverProfileSetup({ user }: { user: User }) {
 
                   {/* Documents */}
                   {activeTab === "documents" && (
-                    <div className="space-y-4">
-                      <p className="text-xs text-slate-500">Formats: JPG, PNG, PDF. Max 10MB.</p>
-                      <div className="space-y-3">
+                    <div className="space-y-3">
+                      <p className="text-[11px] text-slate-500">Formats: JPG, PNG, PDF. Max 10MB.</p>
+                      <div className="space-y-1">
                         {REQUIRED_DOCUMENTS.map((docType) => (
                           <DriverDocumentUploader
                             key={docType}
@@ -380,73 +383,89 @@ export default function DriverProfileSetup({ user }: { user: User }) {
 
                   {/* Progression */}
                   {activeTab === "progression" && (
-                    <div className="space-y-5">
-                      <div>
+                    <div className="space-y-4">
+                      {/* Completion bar style FullscreenRideModal */}
+                      <div className="w-full rounded-md overflow-hidden border border-white/10 bg-white/[0.02] p-3">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm text-slate-300">Complétion</span>
-                          <Badge className={isProfileComplete ? "bg-green-500/80" : "bg-blue-500/80"}>
+                          <span className="text-xs text-slate-300 font-medium">Progression</span>
+                          <span className={`text-sm font-bold ${isProfileComplete ? "text-emerald-400" : "text-blue-400"}`}>
                             {Math.round(completionPercentage)}%
-                          </Badge>
+                          </span>
                         </div>
-                        <Progress value={completionPercentage} className="h-2" />
+                        <Progress value={completionPercentage} className="h-1.5" />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3 text-xs">
-                        <div>
-                          <div className="flex justify-between mb-1 text-slate-400">
+                      {/* Stats grid */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="rounded-md border border-white/10 bg-white/[0.02] p-2">
+                          <div className="flex justify-between text-[10px] text-slate-400 uppercase tracking-wide mb-1">
                             <span>Infos</span>
-                            <span>{REQUIRED_FIELDS.filter(f => formData[f]?.trim()).length}/{REQUIRED_FIELDS.length}</span>
+                            <span className="text-white">{REQUIRED_FIELDS.filter(f => formData[f]?.trim()).length}/{REQUIRED_FIELDS.length}</span>
                           </div>
                           <Progress value={(REQUIRED_FIELDS.filter(f => formData[f]?.trim()).length / REQUIRED_FIELDS.length) * 100} className="h-1" />
                         </div>
-                        <div>
-                          <div className="flex justify-between mb-1 text-slate-400">
+                        <div className="rounded-md border border-white/10 bg-white/[0.02] p-2">
+                          <div className="flex justify-between text-[10px] text-slate-400 uppercase tracking-wide mb-1">
                             <span>Docs</span>
-                            <span>{REQUIRED_DOCUMENTS.filter(d => documents[d]).length}/{REQUIRED_DOCUMENTS.length}</span>
+                            <span className="text-white">{REQUIRED_DOCUMENTS.filter(d => documents[d]).length}/{REQUIRED_DOCUMENTS.length}</span>
                           </div>
                           <Progress value={(REQUIRED_DOCUMENTS.filter(d => documents[d]).length / REQUIRED_DOCUMENTS.length) * 100} className="h-1" />
                         </div>
                       </div>
 
+                      {/* Missing documents alert */}
                       {missingDocuments.length > 0 && (
-                        <div>
-                          <p className="text-xs text-slate-400 mb-2">Documents manquants:</p>
-                          <div className="space-y-1">
+                        <div className="rounded-md border border-[#f9c2c2]/30 overflow-hidden">
+                          <div 
+                            className="px-3 py-2 flex items-center gap-2"
+                            style={{ background: "linear-gradient(90deg, rgba(247, 211, 211, 0.15) 0%, rgba(247, 211, 211, 0.05) 100%)" }}
+                          >
+                            <AlertCircle className="h-4 w-4 text-[#f87171]" />
+                            <span className="text-xs text-[#fca5a5] font-medium">{missingDocuments.length} document(s) manquant(s)</span>
+                          </div>
+                          <div className="px-3 py-2 space-y-1">
                             {missingDocuments.map((doc) => (
                               <div
                                 key={doc}
-                                className="flex items-center justify-between py-1 cursor-pointer hover:text-white text-slate-400"
+                                className="flex items-center justify-between py-1 cursor-pointer text-slate-400 hover:text-white transition-colors"
                                 onClick={() => setActiveTab("documents")}
                               >
                                 <span className="text-xs">{DOC_LABELS[doc]}</span>
-                                <AlertCircle className="h-3 w-3" />
+                                <span className="text-[10px] text-[#f87171]">Ajouter</span>
                               </div>
                             ))}
                           </div>
                         </div>
                       )}
 
-                      <div className="space-y-1">
-                        {REQUIRED_DOCUMENTS.map((doc) => (
-                          <div
-                            key={doc}
-                            className="flex items-center justify-between py-1 text-xs"
-                          >
-                            <span className={documents[doc] ? "text-green-400" : "text-slate-500"}>{DOC_LABELS[doc]}</span>
-                            {documents[doc] && <Check className="h-3 w-3 text-green-400" />}
-                          </div>
-                        ))}
+                      {/* Document list */}
+                      <div className="rounded-md border border-white/10 overflow-hidden">
+                        <div className="px-3 py-2 border-b border-white/10 bg-white/[0.02]">
+                          <span className="text-[10px] text-slate-400 uppercase tracking-wide">Documents requis</span>
+                        </div>
+                        <div className="divide-y divide-white/5">
+                          {REQUIRED_DOCUMENTS.map((doc) => (
+                            <div
+                              key={doc}
+                              className="px-3 py-2 flex items-center justify-between"
+                            >
+                              <span className={documents[doc] ? "text-xs text-emerald-300" : "text-xs text-slate-400"}>{DOC_LABELS[doc]}</span>
+                              {documents[doc] && <Check className="h-3.5 w-3.5 text-emerald-400" />}
+                            </div>
+                          ))}
+                        </div>
                       </div>
 
-                      <div className="flex gap-3 pt-2">
+                      {/* Action buttons */}
+                      <div className="flex gap-2 pt-2">
                         <Button variant="outline" size="sm" onClick={handleSaveProgress} disabled={saving || !driverId || isSubmitted}
-                          className="flex-1 border-slate-700/50 text-slate-300 hover:bg-slate-800/30">
-                          {saving ? <ButtonLoading /> : <><Save className="h-3.5 w-3.5 mr-1" /> Sauver</>}
+                          className="flex-1 border-white/10 bg-white/[0.03] text-slate-300 hover:bg-white/[0.06] hover:text-white h-9 text-xs">
+                          {saving ? <ButtonLoading /> : <><Save className="h-3.5 w-3.5 mr-1.5" /> Sauver</>}
                         </Button>
                         {isProfileComplete && driverId && !isSubmitted && (
                           <Button size="sm" onClick={handleSubmitForReview} disabled={submitting}
-                            className="flex-1 bg-green-600 hover:bg-green-700">
-                            {submitting ? <ButtonLoading /> : <><Send className="h-3.5 w-3.5 mr-1" /> Soumettre</>}
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white h-9 text-xs">
+                            {submitting ? <ButtonLoading /> : <><Send className="h-3.5 w-3.5 mr-1.5" /> Soumettre</>}
                           </Button>
                         )}
                       </div>
@@ -456,9 +475,8 @@ export default function DriverProfileSetup({ user }: { user: User }) {
               </AnimatePresence>
             </div>
           </Tabs>
-          </div>
-        </motion.div>
-      </div>
+        </div>
+      </motion.div>
     </div>
   );
 }
