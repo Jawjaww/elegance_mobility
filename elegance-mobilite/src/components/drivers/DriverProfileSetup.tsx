@@ -206,15 +206,15 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
     <div className="min-h-screen w-full flex flex-col">
       {/* Desktop Header */}
       <div className="hidden md:flex items-center justify-center py-8 px-4">
-        <div className="flex items-center gap-1 bg-white/5 rounded-2xl p-1.5 border border-white/5">
+        <div className="flex items-center gap-1 bg-white/[0.02] rounded-2xl p-1.5 border border-white/[0.06]">
           {SECTIONS.map((section, idx) => (
             <button
               key={section.id}
               onClick={() => onSectionChange(idx)}
               className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all ${
                 idx === currentSection
-                  ? "bg-white/10 text-white shadow-lg"
-                  : "text-slate-400 hover:text-white hover:bg-white/5"
+                  ? "bg-white/[0.06] text-white shadow-lg"
+                  : "text-slate-400 hover:text-white hover:bg-white/[0.03]"
               }`}
             >
               <section.icon className="h-4 w-4" />
@@ -228,27 +228,20 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex items-start md:items-center justify-center p-4 md:p-8">
+      <div className="flex-1 flex items-start md:items-center justify-center p-4 md:p-8 lg:p-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
           className="w-full max-w-lg md:max-w-2xl lg:max-w-3xl"
         >
-          {/* Glass Card */}
-          <div
-            className="rounded-2xl md:rounded-3xl border overflow-hidden relative"
-            style={{
-              borderColor: "rgba(255,255,255,0.08)",
-              background: "linear-gradient(145deg, rgba(30,41,59,0.6) 0%, rgba(15,23,42,0.8) 100%)",
-              boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)",
-            }}
-          >
+          {/* Glass Card using global.css classes */}
+          <div className="glass-card md:rounded-3xl overflow-hidden relative">
             {/* Inner gradient overlay */}
             <div
               className="absolute inset-0 pointer-events-none"
               style={{
-                background: "radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120,160,255,0.1), transparent)",
+                background: "radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120,160,255,0.03), transparent)",
               }}
             />
 
@@ -256,8 +249,8 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
               {/* Desktop Section Title */}
               <div className="hidden md:block mb-8">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                    <CurrentIcon className="h-5 w-5 text-blue-400" />
+                  <div className="p-2.5 rounded-xl bg-white/[0.05] border border-white/[0.1]">
+                    <CurrentIcon className="h-5 w-5 text-slate-300" />
                   </div>
                   <div>
                     <h1 className="text-xl font-semibold text-white">{SECTIONS[currentSection].label}</h1>
@@ -287,7 +280,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                             value={formData.first_name}
                             onChange={(e) => handleInputChange("first_name", e.target.value)}
                             disabled={isReadOnly}
-                            className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
                             placeholder="Votre prénom"
                           />
                         </div>
@@ -299,7 +292,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                             value={formData.last_name}
                             onChange={(e) => handleInputChange("last_name", e.target.value)}
                             disabled={isReadOnly}
-                            className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
                             placeholder="Votre nom"
                           />
                         </div>
@@ -312,7 +305,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                             value={formData.phone}
                             onChange={(e) => handleInputChange("phone", e.target.value)}
                             disabled={isReadOnly}
-                            className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
                             placeholder="+33 6 12 34 56 78"
                           />
                         </div>
@@ -323,13 +316,13 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                             value={formData.date_of_birth}
                             onChange={(e) => handleInputChange("date_of_birth", e.target.value)}
                             disabled={isReadOnly}
-                            className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2]"
                           />
                         </div>
                       </div>
                       
-                      <div className="pt-6 border-t border-white/5">
-                        <h3 className="text-sm font-medium text-white mb-4">Adresse</h3>
+                      <div className="pt-6 border-t border-white/[0.06]">
+                        <h3 className="text-sm font-medium text-slate-200 mb-4">Adresse</h3>
                         <div className="space-y-5">
                           <div>
                             <Label className="text-sm text-slate-300 mb-2 block">
@@ -339,7 +332,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                               value={formData.address}
                               onChange={(e) => handleInputChange("address", e.target.value)}
                               disabled={isReadOnly}
-                              className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                              className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
                               placeholder="123 Rue de la Paix"
                             />
                           </div>
@@ -352,7 +345,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                                 value={formData.city}
                                 onChange={(e) => handleInputChange("city", e.target.value)}
                                 disabled={isReadOnly}
-                                className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                                className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
                                 placeholder="Paris"
                               />
                             </div>
@@ -364,7 +357,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                                 value={formData.postal_code}
                                 onChange={(e) => handleInputChange("postal_code", e.target.value)}
                                 disabled={isReadOnly}
-                                className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                                className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
                                 placeholder="75001"
                               />
                             </div>
@@ -372,8 +365,8 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                         </div>
                       </div>
 
-                      <div className="pt-6 border-t border-white/5">
-                        <h3 className="text-sm font-medium text-white mb-4">Contact d'urgence</h3>
+                      <div className="pt-6 border-t border-white/[0.06]">
+                        <h3 className="text-sm font-medium text-slate-200 mb-4">Contact d'urgence</h3>
                         <div className="space-y-5">
                           <div>
                             <Label className="text-sm text-slate-300 mb-2 block">Nom du contact</Label>
@@ -381,7 +374,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                               value={formData.emergency_contact_name}
                               onChange={(e) => handleInputChange("emergency_contact_name", e.target.value)}
                               disabled={isReadOnly}
-                              className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                              className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
                               placeholder="Nom complet"
                             />
                           </div>
@@ -392,7 +385,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                               value={formData.emergency_contact_phone}
                               onChange={(e) => handleInputChange("emergency_contact_phone", e.target.value)}
                               disabled={isReadOnly}
-                              className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                              className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
                               placeholder="+33 6..."
                             />
                           </div>
@@ -404,8 +397,8 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                   {/* Professionnel */}
                   {currentSection === 1 && (
                     <div className="space-y-6">
-                      <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/10 mb-6">
-                        <p className="text-sm text-blue-200">
+                      <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08] mb-6">
+                        <p className="text-sm text-slate-300">
                           Ces informations sont nécessaires pour vérifier votre autorisation d'exercer en tant que chauffeur VTC.
                         </p>
                       </div>
@@ -419,7 +412,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                             value={formData.vtc_card_number}
                             onChange={(e) => handleInputChange("vtc_card_number", e.target.value)}
                             disabled={isReadOnly}
-                            className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
                             placeholder="Numéro de carte professionnelle"
                           />
                         </div>
@@ -432,7 +425,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                             value={formData.vtc_card_expiry_date}
                             onChange={(e) => handleInputChange("vtc_card_expiry_date", e.target.value)}
                             disabled={isReadOnly}
-                            className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2]"
                           />
                         </div>
                         <div>
@@ -443,7 +436,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                             value={formData.license_number}
                             onChange={(e) => handleInputChange("license_number", e.target.value)}
                             disabled={isReadOnly}
-                            className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
                             placeholder="Numéro de permis de conduire"
                           />
                         </div>
@@ -456,7 +449,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                             value={formData.driving_license_expiry_date}
                             onChange={(e) => handleInputChange("driving_license_expiry_date", e.target.value)}
                             disabled={isReadOnly}
-                            className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2]"
                           />
                         </div>
                         <div>
@@ -465,7 +458,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                             value={formData.insurance_number}
                             onChange={(e) => handleInputChange("insurance_number", e.target.value)}
                             disabled={isReadOnly}
-                            className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
                             placeholder="Numéro de contrat d'assurance"
                           />
                         </div>
@@ -475,7 +468,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                             value={formData.company_siret}
                             onChange={(e) => handleInputChange("company_siret", e.target.value)}
                             disabled={isReadOnly}
-                            className="w-full bg-white/5 border-white/10 text-white h-12 rounded-xl focus:bg-white/10 focus:border-blue-500/50"
+                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
                             placeholder="Si vous êtes en société"
                           />
                         </div>
@@ -486,8 +479,8 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                   {/* Documents */}
                   {currentSection === 2 && (
                     <div className="space-y-6">
-                      <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/10">
-                        <p className="text-sm text-amber-200">
+                      <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+                        <p className="text-sm text-slate-300">
                           Veuillez télécharger les documents demandés. Formats acceptés : JPG, PNG, PDF. Taille maximale : 10 Mo par fichier.
                         </p>
                       </div>
@@ -505,8 +498,8 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                         ))}
                       </div>
 
-                      <div className="pt-4 border-t border-white/5">
-                        <div className="flex items-center gap-2 text-sm text-slate-400">
+                      <div className="pt-4 border-t border-white/[0.06]">
+                        <div className="flex items-center gap-2 text-sm text-slate-500">
                           <AlertCircle className="h-4 w-4" />
                           <span>Les documents sont vérifiés sous 24-48h ouvrées</span>
                         </div>
@@ -518,10 +511,10 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                   {currentSection === 3 && (
                     <div className="space-y-6">
                       {/* Progress Overview */}
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
+                      <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
                         <div className="flex items-center justify-between mb-4">
-                          <span className="text-base text-white font-medium">Avancement</span>
-                          <span className={`text-2xl font-bold ${isProfileComplete ? "text-emerald-400" : "text-blue-400"}`}>
+                          <span className="text-base text-slate-200 font-medium">Avancement</span>
+                          <span className={`text-2xl font-bold ${isProfileComplete ? "text-emerald-400" : "text-slate-300"}`}>
                             {Math.round(completionPercentage)}%
                           </span>
                         </div>
@@ -530,44 +523,44 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
 
                       {/* Stats Grid */}
                       <div className="grid grid-cols-2 gap-4">
-                        <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                        <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08]">
                           <div className="flex items-center gap-2 mb-2">
-                            <UserIcon className="h-4 w-4 text-blue-400" />
-                            <span className="text-xs text-slate-400">Profil</span>
+                            <UserIcon className="h-4 w-4 text-slate-400" />
+                            <span className="text-xs text-slate-500">Profil</span>
                           </div>
-                          <p className="text-2xl font-semibold text-white">
+                          <p className="text-2xl font-semibold text-slate-200">
                             {REQUIRED_FIELDS.filter(f => formData[f]?.trim()).length}/{REQUIRED_FIELDS.length}
                           </p>
-                          <p className="text-xs text-slate-500">champs complétés</p>
+                          <p className="text-xs text-slate-600">champs complétés</p>
                         </div>
-                        <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                        <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08]">
                           <div className="flex items-center gap-2 mb-2">
-                            <FileText className="h-4 w-4 text-amber-400" />
-                            <span className="text-xs text-slate-400">Documents</span>
+                            <FileText className="h-4 w-4 text-slate-400" />
+                            <span className="text-xs text-slate-500">Documents</span>
                           </div>
-                          <p className="text-2xl font-semibold text-white">
+                          <p className="text-2xl font-semibold text-slate-200">
                             {REQUIRED_DOCUMENTS.filter(d => documents[d]).length}/{REQUIRED_DOCUMENTS.length}
                           </p>
-                          <p className="text-xs text-slate-500">fichiers reçus</p>
+                          <p className="text-xs text-slate-600">fichiers reçus</p>
                         </div>
                       </div>
 
                       {/* Missing Documents Alert */}
                       {missingDocuments.length > 0 && (
-                        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                        <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08]">
                           <div className="flex items-center gap-2 mb-3">
                             <AlertCircle className="h-4 w-4 text-amber-400" />
-                            <span className="text-sm font-medium text-amber-300">Documents manquants</span>
+                            <span className="text-sm font-medium text-slate-300">Documents manquants</span>
                           </div>
                           <div className="space-y-2">
                             {missingDocuments.map((doc) => (
                               <div
                                 key={doc}
-                                className="flex items-center justify-between py-1 cursor-pointer hover:text-amber-300 transition-colors"
+                                className="flex items-center justify-between py-1 cursor-pointer hover:text-white transition-colors"
                                 onClick={() => onSectionChange(2)}
                               >
-                                <span className="text-sm text-slate-300">{DOC_LABELS[doc]}</span>
-                                <ChevronRight className="h-4 w-4 text-amber-400" />
+                                <span className="text-sm text-slate-400">{DOC_LABELS[doc]}</span>
+                                <ChevronRight className="h-4 w-4 text-slate-500" />
                               </div>
                             ))}
                           </div>
@@ -576,14 +569,14 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
 
                       {/* Success State */}
                       {isProfileComplete && !isSubmitted && (
-                        <div className="p-5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                        <div className="p-5 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/[0.15]">
                           <div className="flex items-center gap-3 mb-2">
                             <div className="p-2 rounded-full bg-emerald-500/20">
                               <Check className="h-5 w-5 text-emerald-400" />
                             </div>
                             <div>
                               <p className="text-sm font-medium text-emerald-300">Profil complet</p>
-                              <p className="text-xs text-emerald-400/80">Vous pouvez maintenant soumettre votre dossier</p>
+                              <p className="text-xs text-emerald-400/70">Vous pouvez maintenant soumettre votre dossier</p>
                             </div>
                           </div>
                         </div>
@@ -591,14 +584,14 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
 
                       {/* Submitted State */}
                       {isSubmitted && (
-                        <div className="p-5 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                        <div className="p-5 rounded-xl bg-white/[0.03] border border-white/[0.08]">
                           <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-full bg-blue-500/20">
-                              <Send className="h-5 w-5 text-blue-400" />
+                            <div className="p-2 rounded-full bg-white/[0.1]">
+                              <Send className="h-5 w-5 text-slate-300" />
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-blue-300">Dossier envoyé</p>
-                              <p className="text-xs text-blue-400/80">En cours de validation par notre équipe</p>
+                              <p className="text-sm font-medium text-slate-200">Dossier envoyé</p>
+                              <p className="text-xs text-slate-500">En cours de validation par notre équipe</p>
                             </div>
                           </div>
                         </div>
@@ -610,7 +603,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                           variant="outline"
                           onClick={handleSaveProgress}
                           disabled={saving || !driverId || isSubmitted}
-                          className="w-full border-white/10 bg-white/5 text-white hover:bg-white/10 h-12 rounded-xl"
+                          className="w-full border-white/[0.1] bg-white/[0.03] text-slate-300 hover:bg-white/[0.06] hover:text-white h-12 rounded-xl"
                         >
                           {saving ? <ButtonLoading /> : <><Save className="h-4 w-4 mr-2" /> Sauvegarder la progression</>}
                         </Button>
@@ -628,7 +621,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                         {!isProfileComplete && !isSubmitted && (
                           <Button
                             disabled
-                            className="w-full bg-white/5 text-slate-500 h-12 rounded-xl cursor-not-allowed"
+                            className="w-full bg-white/[0.03] text-slate-600 h-12 rounded-xl cursor-not-allowed border border-white/[0.06]"
                           >
                             Complétez toutes les sections pour soumettre
                           </Button>
@@ -640,12 +633,12 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
               </AnimatePresence>
 
               {/* Mobile Navigation */}
-              <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/5 md:hidden">
+              <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/[0.06] md:hidden">
                 <Button
                   variant="ghost"
                   onClick={prevSection}
                   disabled={currentSection === 0}
-                  className="text-white disabled:text-slate-600 h-12 px-4"
+                  className="text-slate-300 disabled:text-slate-700 h-12 px-4"
                 >
                   <ChevronLeft className="h-5 w-5 mr-1" />
                   Retour
@@ -653,8 +646,8 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                 
                 <Button
                   onClick={nextSection}
-                  disabled={currentSection === SECTIONS.length - 1 || !canProceed()}
-                  className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:bg-white/10 h-12 px-6 rounded-xl"
+                  disabled={currentSection === SECTIONS.length - 1 || (currentSection === SECTIONS.length - 2 && !canProceed())}
+                  className="bg-white/[0.1] hover:bg-white/[0.15] text-white disabled:opacity-50 disabled:bg-white/[0.03] h-12 px-6 rounded-xl"
                 >
                   {currentSection === SECTIONS.length - 2 ? "Vérifier" : "Continuer"}
                   <ChevronRight className="h-4 w-4 ml-2" />

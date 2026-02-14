@@ -2,6 +2,31 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/database/client";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
+
+function getSupabaseStorageClient(): SupabaseClient | null {
+  // Only create the storage client in the browser (avoid SSR issues)
+  if (typeof window === "undefined") return null;
+
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_URL || "";
+  // Ensure we pass the project root (no /storage/v1 suffix)
+  let base = rawUrl.replace(/\/+$/g, "");
+  base = base.replace(/\/storage\/v1\/?$/i, "");
+
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_ANON_KEY || "";
+  if (!base || !anon) return null;
+
+  try {
+    return createClient(base, anon, { auth: { persistSession: false } });
+  } catch (err) {
+    // don't crash the app, return null so callers can handle it
+    // console.error intentionally left for debugging
+    // (avoid exposing keys in logs)
+    console.error("Failed creating supabase storage client", err);
+    return null;
+  }
+}
+
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/useToast";
 import { Upload, FileText, Check, AlertCircle } from "lucide-react";
@@ -31,6 +56,17 @@ export default function DriverDocumentUploader({
   
   const hasDriver = driverId && driverId.trim().length > 0;
 
+  function friendlyUploadErrorMessage(uploadError: any) {
+    const msg = uploadError?.message || uploadError?.error || String(uploadError);
+    if (msg?.toString().includes("Bucket not found")) {
+      return "Bucket non trouvé. Vérifiez que le bucket 'driver-documents' existe dans votre projet Supabase distant.";
+    }
+    if (msg?.toString().includes("Invalid Compact JWS") || msg?.toString().toLowerCase().includes("unauthorized")) {
+      return "Clé API invalide ou mal formée. Vérifiez NEXT_PUBLIC_SUPABASE_STORAGE_ANON_KEY (utilisez la clé 'anon public' du dashboard Supabase) et assurez-vous qu'elle ne contient pas de préfixe 'Bearer ' ni de guillemets.";
+    }
+    return msg;
+  }
+
   useEffect(() => {
     if (!hasDriver) return;
     fetchExisting();
@@ -55,10 +91,15 @@ export default function DriverDocumentUploader({
       if (data) {
         setDocRecord(data);
         if (data.file_url) {
-          const { data: signed, error: signedErr } = await supabase.storage
-            .from("driver-documents")
-            .createSignedUrl(data.file_url, 60 * 60);
-          if (!signedErr && signed?.signedUrl) setExistingUrl(signed.signedUrl);
+          const storageClient = getSupabaseStorageClient();
+          if (storageClient) {
+            const { data: signed, error: signedErr } = await storageClient.storage
+              .from("driver-documents")
+              .createSignedUrl(data.file_url, 60 * 60);
+            if (!signedErr && signed?.signedUrl) setExistingUrl(signed.signedUrl);
+          } else {
+            console.warn("Supabase storage client not configured - cannot create signed URL");
+          }
         }
       }
     } catch (e) {
@@ -96,13 +137,19 @@ export default function DriverDocumentUploader({
         }
 
         const tmpPath = `tmp/${userId}/${documentType}/${Date.now()}_${safeName}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const storageClient = getSupabaseStorageClient();
+        if (!storageClient) {
+          toast({ title: "Erreur configuration", description: "Storage client non configuré. Vérifiez vos variables d'environnement.", variant: "destructive" });
+          setUploading(false);
+          return;
+        }
+        const { data: uploadData, error: uploadError } = await storageClient.storage
           .from("driver-documents")
           .upload(tmpPath, file, { upsert: true });
 
         if (uploadError) {
           console.error("tmp uploadError", uploadError);
-          toast({ title: "Erreur upload", description: uploadError.message, variant: "destructive" });
+          toast({ title: "Erreur upload", description: friendlyUploadErrorMessage(uploadError), variant: "destructive" });
           setUploading(false);
           return;
         }
@@ -122,13 +169,19 @@ export default function DriverDocumentUploader({
 
       const path = `${driverId}/${documentType}/${Date.now()}_${safeName}`;
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const storageClient = getSupabaseStorageClient();
+      if (!storageClient) {
+        toast({ title: "Erreur configuration", description: "Storage client non configuré. Vérifiez vos variables d'environnement.", variant: "destructive" });
+        setUploading(false);
+        return;
+      }
+      const { data: uploadData, error: uploadError } = await storageClient.storage
         .from("driver-documents")
         .upload(path, file, { upsert: true });
 
       if (uploadError) {
         console.error("uploadError", uploadError);
-        toast({ title: "Erreur upload", description: uploadError.message, variant: "destructive" });
+        toast({ title: "Erreur upload", description: friendlyUploadErrorMessage(uploadError), variant: "destructive" });
         setUploading(false);
         return;
       }
@@ -158,7 +211,7 @@ export default function DriverDocumentUploader({
 
       setDocRecord(insertData ?? null);
       
-      const { data: signed } = await supabase.storage
+      const { data: signed } = await storageClient.storage
         .from("driver-documents")
         .createSignedUrl(uploadData.path, 60 * 60 * 24);
       
