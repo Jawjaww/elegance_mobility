@@ -172,14 +172,14 @@ export default function DriverProfileSetup({ user }: { user: User }) {
   if (loading) return <PageLoading text="Vérification..." />;
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4">
+    <div className="min-h-screen w-full flex items-center justify-center p-6 md:p-12 lg:p-16">
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.22 }}
-        className="w-full max-w-md overflow-hidden border rounded-xl shadow-2xl backdrop-blur-3xl flex flex-col relative"
+        className="w-full max-w-md md:max-w-2xl lg:max-w-4xl overflow-hidden border rounded-xl md:rounded-2xl shadow-2xl backdrop-blur-3xl flex flex-col relative"
         style={{
-          maxHeight: "calc(100vh - 40px)",
+          maxHeight: "calc(100vh - 80px)",
           width: "100%",
           borderColor: "rgba(255,255,255,0.06)",
           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02), 0 18px 60px rgba(2,6,23,0.65), 0 6px 24px rgba(70,130,180,0.06)",
@@ -202,16 +202,16 @@ export default function DriverProfileSetup({ user }: { user: User }) {
         {/* Content */}
         <div className="flex flex-col relative z-10 overflow-hidden">
           {/* Header */}
-          <div className="px-6 pb-4 pt-5 border-b border-white/[0.06]">
-            <h1 className="text-lg font-semibold text-white mb-1">
+          <div className="px-6 md:px-10 lg:px-12 pb-5 md:pb-6 pt-6 md:pt-8 border-b border-white/[0.06]">
+            <h1 className="text-lg md:text-xl lg:text-2xl font-semibold text-white mb-2">
               {isSubmitted ? "Votre profil" : "Configuration de votre profil"}
             </h1>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs md:text-sm text-slate-400">
               {isSubmitted ? "Consultez l'état de votre dossier." : "Complétez votre profil pour recevoir des courses"}
             </p>
             {isSubmitted && (
-              <div className="mt-2 flex items-center gap-2 text-xs text-blue-300">
-                <Send className="h-3 w-3" />
+              <div className="mt-3 flex items-center gap-2 text-xs md:text-sm text-blue-300">
+                <Send className="h-3 w-3 md:h-4 md:w-4" />
                 <span>En attente de validation</span>
               </div>
             )}
@@ -219,7 +219,7 @@ export default function DriverProfileSetup({ user }: { user: User }) {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 overflow-hidden flex flex-col">
-            <TabsList className="w-full justify-start bg-transparent border-b h-auto p-0 px-2 shrink-0" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+            <TabsList className="w-full justify-start bg-transparent border-b h-auto p-0 px-2 md:px-4 lg:px-6 shrink-0" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
               {[
                 { id: "informations", icon: UserIcon, label: "Infos" },
                 { id: "societe", icon: Building2, label: "Société" },
@@ -229,10 +229,10 @@ export default function DriverProfileSetup({ user }: { user: User }) {
                 <TabsTrigger
                   key={tab.id}
                   value={tab.id}
-                  className="flex items-center gap-1.5 px-3 py-3 text-xs text-slate-400 data-[state=active]:text-blue-400 data-[state=active]:border-b-2 rounded-none bg-transparent border-0"
+                  className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 lg:px-5 py-3 md:py-4 text-xs md:text-sm text-slate-400 data-[state=active]:text-blue-400 data-[state=active]:border-b-2 rounded-none bg-transparent border-0"
                   disabled={isReadOnly && tab.id !== "progression"}
                 >
-                  <tab.icon className="h-3.5 w-3.5" />
+                  <tab.icon className="h-3.5 w-3.5 md:h-4 md:w-4" />
                   <span>{tab.label}</span>
                   {(tab.badge || 0) > 0 && <Badge variant="destructive" className="ml-0.5 h-4 text-[10px] px-1">{tab.badge}</Badge>}
                 </TabsTrigger>
@@ -240,7 +240,7 @@ export default function DriverProfileSetup({ user }: { user: User }) {
             </TabsList>
 
             {/* Content - scrollable */}
-            <div className="flex-1 overflow-y-auto px-6 py-4">
+            <div className="flex-1 overflow-y-auto px-6 md:px-10 lg:px-12 py-5 md:py-8">
               <AnimatePresence mode="wait">
                 <motion.div key={activeTab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
                   
