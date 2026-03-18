@@ -190,10 +190,22 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
 
   const canProceed = () => {
     if (currentSection === 0) {
-      return formData.first_name && formData.last_name && formData.phone && formData.address && formData.city && formData.postal_code;
+      return (
+        formData.first_name.trim() &&
+        formData.last_name.trim() &&
+        formData.phone.trim() &&
+        formData.address.trim() &&
+        formData.city.trim() &&
+        formData.postal_code.trim()
+      );
     }
     if (currentSection === 1) {
-      return formData.vtc_card_number && formData.vtc_card_expiry_date && formData.license_number && formData.driving_license_expiry_date;
+      return (
+        formData.vtc_card_number.trim() &&
+        formData.vtc_card_expiry_date.trim() &&
+        formData.license_number.trim() &&
+        formData.driving_license_expiry_date.trim()
+      );
     }
     return true;
   };
