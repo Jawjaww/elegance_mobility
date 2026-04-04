@@ -52,7 +52,7 @@ function RentabilityBadge({
     );
   }
   return (
-    <div className="flex items-center gap-1.5 text-slate-400 text-xs font-medium">
+    <div className="flex items-center gap-1.5 text-gray-400 text-xs font-medium">
       <span>Standard</span>
     </div>
   );
@@ -384,14 +384,14 @@ export function FullscreenRideModal() {
 
                   <div className="absolute bottom-0 left-0 right-0 flex flex-col z-10">
                     <div className="flex items-center gap-2 bg-white/95 px-2 py-1 rounded border border-white/40 shadow-sm">
-                      <MapPin className="h-4 w-4 text-slate-400" />
-                      <span className="text-xs text-slate-700 truncate whitespace-nowrap">
+                      <MapPin className="h-4 w-4 text-gray-400" />
+                      <span className="text-xs text-gray-700 truncate whitespace-nowrap">
                         Départ : {rideToShow.pickupLocation}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 bg-white/95 px-2 py-1 rounded border border-white/40 shadow-sm">
                       <Flag className="h-4 w-4 text-emerald-400" />
-                      <span className="text-xs text-slate-700 truncate font-bold whitespace-nowrap">
+                      <span className="text-xs text-gray-700 truncate font-bold whitespace-nowrap">
                         {rideToShow.dropoffLocation}
                       </span>
                     </div>
@@ -399,7 +399,7 @@ export function FullscreenRideModal() {
 
                   {!mapReady && (
                     <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-20">
-                      <div className="w-10 h-10 border-4 border-slate-300 border-t-emerald-500 rounded-full animate-spin" />
+                      <div className="w-10 h-10 border-4 border-gray-300 border-t-emerald-500 rounded-full animate-spin" />
                     </div>
                   )}
                 </div>
@@ -413,7 +413,7 @@ export function FullscreenRideModal() {
 
                 <button
                   onClick={handleDecline}
-                  className="mt-3 text-sm text-slate-300/80"
+                  className="mt-3 text-sm text-gray-300/80"
                 >
                   Décliner
                 </button>

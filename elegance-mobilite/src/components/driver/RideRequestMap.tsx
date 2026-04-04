@@ -184,7 +184,7 @@ export function RideRequestMap({
   }, [pickup.lat, pickup.lng, dropoff.lat, dropoff.lng]);
 
   return (
-    <div className="relative w-full h-full min-h-[300px] bg-slate-100">
+    <div className="relative w-full h-full min-h-[300px] bg-gray-100">
       <div ref={mapContainer} className="w-full h-full" />
       {!isReady && (
         <div className="absolute inset-0 bg-white/20 backdrop-blur-sm flex items-center justify-center z-50">

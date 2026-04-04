@@ -226,7 +226,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
               className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all ${
                 idx === currentSection
                   ? "bg-white/[0.06] text-white shadow-lg"
-                  : "text-slate-400 hover:text-white hover:bg-white/[0.03]"
+                  : "text-gray-400 hover:text-white hover:bg-white/[0.03]"
               }`}
             >
               <section.icon className="h-4 w-4" />
@@ -262,11 +262,11 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
               <div className="hidden md:block mb-8">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="p-2.5 rounded-xl bg-white/[0.05] border border-white/[0.1]">
-                    <CurrentIcon className="h-5 w-5 text-slate-300" />
+                    <CurrentIcon className="h-5 w-5 text-gray-300" />
                   </div>
                   <div>
                     <h1 className="text-xl font-semibold text-white">{SECTIONS[currentSection].label}</h1>
-                    <p className="text-sm text-slate-400">{SECTIONS[currentSection].description}</p>
+                    <p className="text-sm text-gray-400">{SECTIONS[currentSection].description}</p>
                   </div>
                 </div>
               </div>
@@ -285,31 +285,31 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                     <div className="space-y-6">
                       <div className="space-y-5">
                         <div>
-                          <Label className="text-sm text-slate-300 mb-2 block">
+                          <Label className="text-sm text-gray-300 mb-2 block">
                             Prénom <span className="text-red-400">*</span>
                           </Label>
                           <Input
                             value={formData.first_name}
                             onChange={(e) => handleInputChange("first_name", e.target.value)}
                             disabled={isReadOnly}
-                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
+                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-gray-600"
                             placeholder="Votre prénom"
                           />
                         </div>
                         <div>
-                          <Label className="text-sm text-slate-300 mb-2 block">
+                          <Label className="text-sm text-gray-300 mb-2 block">
                             Nom <span className="text-red-400">*</span>
                           </Label>
                           <Input
                             value={formData.last_name}
                             onChange={(e) => handleInputChange("last_name", e.target.value)}
                             disabled={isReadOnly}
-                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
+                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-gray-600"
                             placeholder="Votre nom"
                           />
                         </div>
                         <div>
-                          <Label className="text-sm text-slate-300 mb-2 block">
+                          <Label className="text-sm text-gray-300 mb-2 block">
                             Téléphone <span className="text-red-400">*</span>
                           </Label>
                           <Input
@@ -317,12 +317,12 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                             value={formData.phone}
                             onChange={(e) => handleInputChange("phone", e.target.value)}
                             disabled={isReadOnly}
-                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
+                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-gray-600"
                             placeholder="+33 6 12 34 56 78"
                           />
                         </div>
                         <div>
-                          <Label className="text-sm text-slate-300 mb-2 block">Date de naissance</Label>
+                          <Label className="text-sm text-gray-300 mb-2 block">Date de naissance</Label>
                           <Input
                             type="date"
                             value={formData.date_of_birth}
@@ -334,42 +334,42 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                       </div>
                       
                       <div className="pt-6 border-t border-white/[0.06]">
-                        <h3 className="text-sm font-medium text-slate-200 mb-4">Adresse</h3>
+                        <h3 className="text-sm font-medium text-gray-200 mb-4">Adresse</h3>
                         <div className="space-y-5">
                           <div>
-                            <Label className="text-sm text-slate-300 mb-2 block">
+                            <Label className="text-sm text-gray-300 mb-2 block">
                               Adresse complète <span className="text-red-400">*</span>
                             </Label>
                             <Input
                               value={formData.address}
                               onChange={(e) => handleInputChange("address", e.target.value)}
                               disabled={isReadOnly}
-                              className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
+                              className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-gray-600"
                               placeholder="123 Rue de la Paix"
                             />
                           </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <Label className="text-sm text-slate-300 mb-2 block">
+                              <Label className="text-sm text-gray-300 mb-2 block">
                                 Ville <span className="text-red-400">*</span>
                               </Label>
                               <Input
                                 value={formData.city}
                                 onChange={(e) => handleInputChange("city", e.target.value)}
                                 disabled={isReadOnly}
-                                className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
+                                className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-gray-600"
                                 placeholder="Paris"
                               />
                             </div>
                             <div>
-                              <Label className="text-sm text-slate-300 mb-2 block">
+                              <Label className="text-sm text-gray-300 mb-2 block">
                                 Code postal <span className="text-red-400">*</span>
                               </Label>
                               <Input
                                 value={formData.postal_code}
                                 onChange={(e) => handleInputChange("postal_code", e.target.value)}
                                 disabled={isReadOnly}
-                                className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
+                                className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-gray-600"
                                 placeholder="75001"
                               />
                             </div>
@@ -378,26 +378,26 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                       </div>
 
                       <div className="pt-6 border-t border-white/[0.06]">
-                        <h3 className="text-sm font-medium text-slate-200 mb-4">Contact d'urgence</h3>
+                        <h3 className="text-sm font-medium text-gray-200 mb-4">Contact d'urgence</h3>
                         <div className="space-y-5">
                           <div>
-                            <Label className="text-sm text-slate-300 mb-2 block">Nom du contact</Label>
+                            <Label className="text-sm text-gray-300 mb-2 block">Nom du contact</Label>
                             <Input
                               value={formData.emergency_contact_name}
                               onChange={(e) => handleInputChange("emergency_contact_name", e.target.value)}
                               disabled={isReadOnly}
-                              className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
+                              className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-gray-600"
                               placeholder="Nom complet"
                             />
                           </div>
                           <div>
-                            <Label className="text-sm text-slate-300 mb-2 block">Téléphone</Label>
+                            <Label className="text-sm text-gray-300 mb-2 block">Téléphone</Label>
                             <Input
                               type="tel"
                               value={formData.emergency_contact_phone}
                               onChange={(e) => handleInputChange("emergency_contact_phone", e.target.value)}
                               disabled={isReadOnly}
-                              className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
+                              className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-gray-600"
                               placeholder="+33 6..."
                             />
                           </div>
@@ -410,26 +410,26 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                   {currentSection === 1 && (
                     <div className="space-y-6">
                       <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08] mb-6">
-                        <p className="text-sm text-slate-300">
+                        <p className="text-sm text-gray-300">
                           Ces informations sont nécessaires pour vérifier votre autorisation d'exercer en tant que chauffeur VTC.
                         </p>
                       </div>
 
                       <div className="space-y-5">
                         <div>
-                          <Label className="text-sm text-slate-300 mb-2 block">
+                          <Label className="text-sm text-gray-300 mb-2 block">
                             Numéro de carte VTC <span className="text-red-400">*</span>
                           </Label>
                           <Input
                             value={formData.vtc_card_number}
                             onChange={(e) => handleInputChange("vtc_card_number", e.target.value)}
                             disabled={isReadOnly}
-                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
+                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-gray-600"
                             placeholder="Numéro de carte professionnelle"
                           />
                         </div>
                         <div>
-                          <Label className="text-sm text-slate-300 mb-2 block">
+                          <Label className="text-sm text-gray-300 mb-2 block">
                             Date d'expiration VTC <span className="text-red-400">*</span>
                           </Label>
                           <Input
@@ -441,19 +441,19 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                           />
                         </div>
                         <div>
-                          <Label className="text-sm text-slate-300 mb-2 block">
+                          <Label className="text-sm text-gray-300 mb-2 block">
                             Numéro de permis <span className="text-red-400">*</span>
                           </Label>
                           <Input
                             value={formData.license_number}
                             onChange={(e) => handleInputChange("license_number", e.target.value)}
                             disabled={isReadOnly}
-                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
+                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-gray-600"
                             placeholder="Numéro de permis de conduire"
                           />
                         </div>
                         <div>
-                          <Label className="text-sm text-slate-300 mb-2 block">
+                          <Label className="text-sm text-gray-300 mb-2 block">
                             Date d'expiration permis <span className="text-red-400">*</span>
                           </Label>
                           <Input
@@ -465,22 +465,22 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                           />
                         </div>
                         <div>
-                          <Label className="text-sm text-slate-300 mb-2 block">Numéro d'assurance</Label>
+                          <Label className="text-sm text-gray-300 mb-2 block">Numéro d'assurance</Label>
                           <Input
                             value={formData.insurance_number}
                             onChange={(e) => handleInputChange("insurance_number", e.target.value)}
                             disabled={isReadOnly}
-                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
+                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-gray-600"
                             placeholder="Numéro de contrat d'assurance"
                           />
                         </div>
                         <div>
-                          <Label className="text-sm text-slate-300 mb-2 block">SIRET (optionnel)</Label>
+                          <Label className="text-sm text-gray-300 mb-2 block">SIRET (optionnel)</Label>
                           <Input
                             value={formData.company_siret}
                             onChange={(e) => handleInputChange("company_siret", e.target.value)}
                             disabled={isReadOnly}
-                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-slate-600"
+                            className="w-full bg-white/[0.03] border-white/[0.1] text-white h-12 rounded-xl focus:bg-white/[0.05] focus:border-white/[0.2] placeholder:text-gray-600"
                             placeholder="Si vous êtes en société"
                           />
                         </div>
@@ -492,7 +492,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                   {currentSection === 2 && (
                     <div className="space-y-6">
                       <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08]">
-                        <p className="text-sm text-slate-300">
+                        <p className="text-sm text-gray-300">
                           Veuillez télécharger les documents demandés. Formats acceptés : JPG, PNG, PDF. Taille maximale : 10 Mo par fichier.
                         </p>
                       </div>
@@ -511,7 +511,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                       </div>
 
                       <div className="pt-4 border-t border-white/[0.06]">
-                        <div className="flex items-center gap-2 text-sm text-slate-500">
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
                           <AlertCircle className="h-4 w-4" />
                           <span>Les documents sont vérifiés sous 24-48h ouvrées</span>
                         </div>
@@ -525,8 +525,8 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                       {/* Progress Overview */}
                       <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
                         <div className="flex items-center justify-between mb-4">
-                          <span className="text-base text-slate-200 font-medium">Avancement</span>
-                          <span className={`text-2xl font-bold ${isProfileComplete ? "text-emerald-400" : "text-slate-300"}`}>
+                          <span className="text-base text-gray-200 font-medium">Avancement</span>
+                          <span className={`text-2xl font-bold ${isProfileComplete ? "text-emerald-400" : "text-gray-300"}`}>
                             {Math.round(completionPercentage)}%
                           </span>
                         </div>
@@ -537,23 +537,23 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                       <div className="grid grid-cols-2 gap-4">
                         <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08]">
                           <div className="flex items-center gap-2 mb-2">
-                            <UserIcon className="h-4 w-4 text-slate-400" />
-                            <span className="text-xs text-slate-500">Profil</span>
+                            <UserIcon className="h-4 w-4 text-gray-400" />
+                            <span className="text-xs text-gray-500">Profil</span>
                           </div>
-                          <p className="text-2xl font-semibold text-slate-200">
+                          <p className="text-2xl font-semibold text-gray-200">
                             {REQUIRED_FIELDS.filter(f => formData[f]?.trim()).length}/{REQUIRED_FIELDS.length}
                           </p>
-                          <p className="text-xs text-slate-600">champs complétés</p>
+                          <p className="text-xs text-gray-600">champs complétés</p>
                         </div>
                         <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08]">
                           <div className="flex items-center gap-2 mb-2">
-                            <FileText className="h-4 w-4 text-slate-400" />
-                            <span className="text-xs text-slate-500">Documents</span>
+                            <FileText className="h-4 w-4 text-gray-400" />
+                            <span className="text-xs text-gray-500">Documents</span>
                           </div>
-                          <p className="text-2xl font-semibold text-slate-200">
+                          <p className="text-2xl font-semibold text-gray-200">
                             {REQUIRED_DOCUMENTS.filter(d => documents[d]).length}/{REQUIRED_DOCUMENTS.length}
                           </p>
-                          <p className="text-xs text-slate-600">fichiers reçus</p>
+                          <p className="text-xs text-gray-600">fichiers reçus</p>
                         </div>
                       </div>
 
@@ -562,7 +562,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                         <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08]">
                           <div className="flex items-center gap-2 mb-3">
                             <AlertCircle className="h-4 w-4 text-amber-400" />
-                            <span className="text-sm font-medium text-slate-300">Documents manquants</span>
+                            <span className="text-sm font-medium text-gray-300">Documents manquants</span>
                           </div>
                           <div className="space-y-2">
                             {missingDocuments.map((doc) => (
@@ -571,8 +571,8 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                                 className="flex items-center justify-between py-1 cursor-pointer hover:text-white transition-colors"
                                 onClick={() => onSectionChange(2)}
                               >
-                                <span className="text-sm text-slate-400">{DOC_LABELS[doc]}</span>
-                                <ChevronRight className="h-4 w-4 text-slate-500" />
+                                <span className="text-sm text-gray-400">{DOC_LABELS[doc]}</span>
+                                <ChevronRight className="h-4 w-4 text-gray-500" />
                               </div>
                             ))}
                           </div>
@@ -599,11 +599,11 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                         <div className="p-5 rounded-xl bg-white/[0.03] border border-white/[0.08]">
                           <div className="flex items-center gap-3">
                             <div className="p-2 rounded-full bg-white/[0.1]">
-                              <Send className="h-5 w-5 text-slate-300" />
+                              <Send className="h-5 w-5 text-gray-300" />
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-slate-200">Dossier envoyé</p>
-                              <p className="text-xs text-slate-500">En cours de validation par notre équipe</p>
+                              <p className="text-sm font-medium text-gray-200">Dossier envoyé</p>
+                              <p className="text-xs text-gray-500">En cours de validation par notre équipe</p>
                             </div>
                           </div>
                         </div>
@@ -615,7 +615,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                           variant="outline"
                           onClick={handleSaveProgress}
                           disabled={saving || !driverId || isSubmitted}
-                          className="w-full border-white/[0.1] bg-white/[0.03] text-slate-300 hover:bg-white/[0.06] hover:text-white h-12 rounded-xl"
+                          className="w-full border-white/[0.1] bg-white/[0.03] text-gray-300 hover:bg-white/[0.06] hover:text-white h-12 rounded-xl"
                         >
                           {saving ? <ButtonLoading /> : <><Save className="h-4 w-4 mr-2" /> Sauvegarder la progression</>}
                         </Button>
@@ -633,7 +633,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                         {!isProfileComplete && !isSubmitted && (
                           <Button
                             disabled
-                            className="w-full bg-white/[0.03] text-slate-600 h-12 rounded-xl cursor-not-allowed border border-white/[0.06]"
+                            className="w-full bg-white/[0.03] text-gray-600 h-12 rounded-xl cursor-not-allowed border border-white/[0.06]"
                           >
                             Complétez toutes les sections pour soumettre
                           </Button>
@@ -650,7 +650,7 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
                   variant="ghost"
                   onClick={prevSection}
                   disabled={currentSection === 0}
-                  className="text-slate-300 disabled:text-slate-700 h-12 px-4"
+                  className="text-gray-300 disabled:text-gray-700 h-12 px-4"
                 >
                   <ChevronLeft className="h-5 w-5 mr-1" />
                   Retour

@@ -120,7 +120,7 @@ export function RideRequestModal() {
                     <div className="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center">
                       <MapPin className="w-5 h-5 text-green-400" />
                     </div>
-                    <div className="absolute top-10 left-1/2 w-0.5 h-8 bg-neutral-700 -translate-x-1/2" />
+                    <div className="absolute top-10 left-1/2 w-0.5 h-8 bg-neutral-700 -trangray-x-1/2" />
                   </div>
                   <div className="flex-1 pt-1">
                     <p className="text-xs text-neutral-500 uppercase tracking-wider mb-1">Prise en charge</p>

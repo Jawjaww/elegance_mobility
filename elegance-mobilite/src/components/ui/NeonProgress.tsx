@@ -71,7 +71,7 @@ export function NeonProgress({
   return (
     <div
       ref={scope}
-      className={`relative h-1.5 w-full overflow-hidden rounded-full bg-slate-950/90 border border-green-500/30 ${className}`}
+      className={`relative h-1.5 w-full overflow-hidden rounded-full bg-gray-950/90 border border-green-500/30 ${className}`}
     >
       {/* Conteneur qui se remplit */}
       <motion.div
@@ -83,7 +83,7 @@ export function NeonProgress({
 
         {/* BLOB 1 - Vert fluo */}
         <motion.div
-          className="absolute top-1/2 -translate-y-1/2 w-20 h-20 rounded-full blur-xl"
+          className="absolute top-1/2 -trangray-y-1/2 w-20 h-20 rounded-full blur-xl"
           style={{
             left: useTransform(blob1X, (v) => `${v}%`),
             background: "radial-gradient(circle, #00ff88 0%, transparent 70%)",
@@ -93,7 +93,7 @@ export function NeonProgress({
 
         {/* BLOB 2 - Cyan */}
         <motion.div
-          className="absolute top-1/2 -translate-y-1/2 w-16 h-16 rounded-full blur-lg"
+          className="absolute top-1/2 -trangray-y-1/2 w-16 h-16 rounded-full blur-lg"
           style={{
             left: useTransform(blob2X, (v) => `${v}%`),
             background: "radial-gradient(circle, #00ffcc 0%, transparent 70%)",
@@ -103,7 +103,7 @@ export function NeonProgress({
 
         {/* BLOB 3 - Vert lime */}
         <motion.div
-          className="absolute top-1/2 -translate-y-1/2 w-24 h-24 rounded-full blur-2xl"
+          className="absolute top-1/2 -trangray-y-1/2 w-24 h-24 rounded-full blur-2xl"
           style={{
             left: useTransform(blob3X, (v) => `${v}%`),
             background: "radial-gradient(circle, #4ade80 0%, transparent 70%)",
@@ -124,7 +124,7 @@ export function NeonProgress({
 
       {/* Glow externe qui suit */}
       <motion.div
-        className="absolute top-1/2 -translate-y-1/2 h-8 w-1 rounded-full blur-xl bg-green-400"
+        className="absolute top-1/2 -trangray-y-1/2 h-8 w-1 rounded-full blur-xl bg-green-400"
         style={{
           left: currentWidth,
           opacity: useTransform(progress, [0, 5, 100], [0, 1, 1]),

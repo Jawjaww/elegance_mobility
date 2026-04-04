@@ -32,7 +32,7 @@ export default function HomePage() {
       {/* 3D CSS effect */}
       <div className="absolute inset-0 perspective-1000">
         <div className="relative h-full w-full transform-style-3d">
-          <div className="absolute inset-0 transform translate-z-[-100px] scale-1.2">
+          <div className="absolute inset-0 transform trangray-z-[-100px] scale-1.2">
             <Image
               src="/car-bg.jpg"
               alt="Background luxury car"
@@ -43,7 +43,7 @@ export default function HomePage() {
               sizes="100vw"
             />
           </div>
-          <div className="absolute inset-0 bg-neutral-950/90 backdrop-blur-3xl transform translate-z-[-50px]" />
+          <div className="absolute inset-0 bg-neutral-950/90 backdrop-blur-3xl transform trangray-z-[-50px]" />
         </div>
       </div>
 

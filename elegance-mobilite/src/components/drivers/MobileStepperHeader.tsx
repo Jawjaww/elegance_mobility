@@ -43,7 +43,7 @@ export function MobileStepperHeader({
               <CurrentIcon className="h-4 w-4" style={{ color: "#4a77a8" }} />
             </div>
             <div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-gray-500">
                 {sections[currentSection].description}
               </p>
               <h2
@@ -55,7 +55,7 @@ export function MobileStepperHeader({
             </div>
           </div>
           <div className="text-right">
-            <p className="text-xs text-slate-500">Progrès</p>
+            <p className="text-xs text-gray-500">Progrès</p>
             <p className="text-sm font-semibold" style={{ color: "#4a77a8" }}>
               {currentSection + 1}/{sections.length}
             </p>

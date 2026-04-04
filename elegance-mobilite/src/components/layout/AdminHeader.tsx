@@ -66,7 +66,19 @@ export function AdminHeader() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    console.debug(
+      "[AdminHeader] mounted. headers in DOM:",
+      document.querySelectorAll("[data-header]").length,
+    );
+
+    return () => {
+      try {
+        subscription.unsubscribe();
+      } catch (e) {
+        /* ignore */
+      }
+      console.debug("[AdminHeader] unmounted");
+    };
   }, []);
 
   const handleLogout = async () => {
@@ -94,7 +106,10 @@ export function AdminHeader() {
   // Ne pas afficher le menu utilisateur si pas connecté
   if (!userEmail && !isLoading) {
     return (
-      <header className="sticky top-0 z-50 w-full border-b border-neutral-700/30">
+      <header
+        data-header="admin"
+        className="sticky top-0 z-50 w-full border-b border-neutral-700/30"
+      >
         <div className="bg-gradient-to-r from-neutral-950/95 to-neutral-900/90 backdrop-blur-sm">
           <div className="container flex h-16 max-w-screen-2xl items-center">
             <div className="mr-8 hidden md:flex">
@@ -117,7 +132,10 @@ export function AdminHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-neutral-700/30">
+    <header
+      data-header="admin"
+      className="sticky top-0 z-50 w-full border-b border-neutral-700/30"
+    >
       <div className="bg-gradient-to-r from-neutral-950/95 to-neutral-900/90 backdrop-blur-sm">
         <div className="container flex h-16 max-w-screen-2xl items-center">
           <div className="mr-8 hidden md:flex">

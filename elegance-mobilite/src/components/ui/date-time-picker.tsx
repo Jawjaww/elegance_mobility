@@ -118,7 +118,7 @@ export function DateTimePicker({
         <button
           type="button"
           onClick={() => inputRef.current?.showPicker()}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white"
+          className="absolute right-3 top-1/2 -trangray-y-1/2 text-neutral-400 hover:text-white"
           aria-label="Ouvrir le calendrier"
         >
           <CalendarDays className="h-5 w-5" />

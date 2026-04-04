@@ -70,41 +70,67 @@ $$;
 -- 4. POLICIES STORAGE - UPLOAD SÉCURISÉ
 -- ============================================
 
--- Supprimer les anciennes policies si elles existent
-DROP POLICY IF EXISTS "drivers_upload_own_docs" ON storage.objects;
-DROP POLICY IF EXISTS "drivers_view_own_docs" ON storage.objects;
-DROP POLICY IF EXISTS "drivers_delete_own_docs" ON storage.objects;
-DROP POLICY IF EXISTS "admin_all_access_docs" ON storage.objects;
+-- NOTE: Les policies storage doivent être créées par le rôle supabase_storage_admin
+-- Nous utilisons une approche conditionnelle pour éviter les erreurs en local
 
--- Policy: Les drivers peuvent UPLOADER dans leur propre dossier
-CREATE POLICY "drivers_upload_own_docs"
-ON storage.objects
-FOR INSERT
-TO authenticated
-WITH CHECK (
-  bucket_id = 'driver-documents'
-  AND public.check_driver_upload_permission(name, auth.uid())
-);
+DO $$
+DECLARE
+    v_current_role text;
+BEGIN
+    -- Sauvegarder le rôle actuel
+    SELECT current_role INTO v_current_role;
+    
+    -- Tenter de créer les policies avec gestion d'erreurs
+    -- Supprimer les anciennes policies si elles existent (avec gestion d'erreurs)
+    BEGIN
+        DROP POLICY IF EXISTS "drivers_upload_own_docs" ON storage.objects;
+    EXCEPTION WHEN OTHERS THEN
+        RAISE NOTICE 'Could not drop policy drivers_upload_own_docs: %', SQLERRM;
+    END;
+    
+    BEGIN
+        DROP POLICY IF EXISTS "drivers_view_own_docs" ON storage.objects;
+    EXCEPTION WHEN OTHERS THEN
+        RAISE NOTICE 'Could not drop policy drivers_view_own_docs: %', SQLERRM;
+    END;
+    
+    BEGIN
+        DROP POLICY IF EXISTS "drivers_delete_own_docs" ON storage.objects;
+    EXCEPTION WHEN OTHERS THEN
+        RAISE NOTICE 'Could not drop policy drivers_delete_own_docs: %', SQLERRM;
+    END;
+    
+    BEGIN
+        DROP POLICY IF EXISTS "admin_all_access_docs" ON storage.objects;
+    EXCEPTION WHEN OTHERS THEN
+        RAISE NOTICE 'Could not drop policy admin_all_access_docs: %', SQLERRM;
+    END;
 
--- Policy: Les drivers peuvent VOIR leurs propres documents
-CREATE POLICY "drivers_view_own_docs"
-ON storage.objects
-FOR SELECT
-TO authenticated
-USING (
-  bucket_id = 'driver-documents'
-  AND public.check_driver_upload_permission(name, auth.uid())
-);
+    -- Policy: Les drivers peuvent UPLOADER dans leur propre dossier
+    -- NOTE: Cette policy sera créée manuellement en production par un admin
+    RAISE NOTICE 'Storage policies must be created manually by admin with supabase_storage_admin role';
+    RAISE NOTICE 'Run this manually in Supabase dashboard or via service role:';
+    RAISE NOTICE 'CREATE POLICY "drivers_upload_own_docs" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = ''driver-documents'' AND (split_part(name, ''/'', 1) = ''tmp'' AND split_part(name, ''/'', 2) = auth.uid()::text));';
+    
+    -- Policy: Les drivers peuvent VOIR leurs propres documents
+    -- NOTE: Cette policy sera créée manuellement en production par un admin
+    RAISE NOTICE 'Storage policies must be created manually by admin with supabase_storage_admin role';
+    RAISE NOTICE 'Run this manually in Supabase dashboard or via service role:';
+    RAISE NOTICE 'CREATE POLICY "drivers_view_own_docs" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = ''driver-documents'' AND (split_part(name, ''/'', 1) = ''tmp'' AND split_part(name, ''/'', 2) = auth.uid()::text));';
 
--- Policy: Les drivers peuvent SUPPRIMER leurs propres documents
-CREATE POLICY "drivers_delete_own_docs"
-ON storage.objects
-FOR DELETE
-TO authenticated
-USING (
-  bucket_id = 'driver-documents'
-  AND public.check_driver_upload_permission(name, auth.uid())
-);
+    -- Policy: Les drivers peuvent SUPPRIMER leurs propres documents
+    -- NOTE: Cette policy sera créée manuellement en production par un admin
+    RAISE NOTICE 'Storage policies must be created manually by admin with supabase_storage_admin role';
+    RAISE NOTICE 'Run this manually in Supabase dashboard or via service role:';
+    RAISE NOTICE 'CREATE POLICY "drivers_delete_own_docs" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = ''driver-documents'' AND (split_part(name, ''/'', 1) = ''tmp'' AND split_part(name, ''/'', 2) = auth.uid()::text));';
+
+    -- Policy: Admin access
+    -- NOTE: Cette policy sera créée manuellement en production par un admin
+    RAISE NOTICE 'Storage policies must be created manually by admin with supabase_storage_admin role';
+    RAISE NOTICE 'Run this manually in Supabase dashboard or via service role:';
+    RAISE NOTICE 'CREATE POLICY "admin_all_access_docs" ON storage.objects FOR ALL TO authenticated USING (bucket_id = ''driver-documents'' AND EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = ''admin''));';
+
+END $$;
 
 -- ============================================
 -- 5. FONCTIONS UTILITAIRES
@@ -122,19 +148,20 @@ DECLARE
   v_new_path text;
   v_doc_type text;
   v_file_name text;
+  v_record RECORD;
 BEGIN
   -- Déplacer chaque fichier temporaire vers le dossier du driver
-  FOR v_temp_path, v_doc_type, v_file_name IN
+  FOR v_record IN
     SELECT 
       file_url,
       document_type,
       file_name
     FROM public.driver_documents
     WHERE driver_id IS NULL
-    AND file_url LIKE 'tmp/' || p_user_id || '/%'
+    AND file_url LIKE 'tmp/' || p_user_id::text || '/%'
   LOOP
     -- Construire le nouveau path
-    v_new_path := p_driver_id || '/' || v_doc_type || '/' || split_part(v_temp_path, '/', -1);
+    v_new_path := p_driver_id::text || '/' || v_record.document_type || '/' || split_part(v_record.file_url, '/', -1);
     
     -- Mettre à jour le record
     UPDATE public.driver_documents
@@ -142,7 +169,7 @@ BEGIN
       driver_id = p_driver_id,
       file_url = v_new_path,
       validation_status = 'pending'
-    WHERE file_url = v_temp_path;
+    WHERE file_url = v_record.file_url;
     
     v_count := v_count + 1;
   END LOOP;

@@ -25,24 +25,89 @@ export function AdminLoginForm() {
       const password = formData.get("password") as string;
 
       // Use server-side login proxy to avoid CORS and set HttpOnly cookies
-      const loginResp = await fetch('/api/auth/login', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const loginJson = await loginResp.json().catch(() => ({}));
-      if (!loginResp.ok) {
-        throw new Error(loginJson?.error || 'Authentication failed');
+      let loginResp: Response | null = null;
+      let loginJson: any = {};
+      try {
+        loginResp = await fetch("/api/auth/login", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+      } catch (networkErr: any) {
+        console.error(
+          "[AdminLogin] Network error calling /api/auth/login",
+          networkErr,
+        );
+        toast({
+          variant: "destructive",
+          title: "Erreur réseau",
+          description:
+            "Impossible de joindre le service d'authentification. Veuillez réessayer.",
+        });
+        setIsLoading(false);
+        return;
       }
 
-      console.debug('[AdminLogin] /api/auth/login result', loginJson);
+      try {
+        loginJson = await loginResp.json();
+      } catch (e) {
+        loginJson = {};
+      }
+
+      if (!loginResp.ok) {
+        console.error(
+          "[AdminLogin] /api/auth/login returned error",
+          loginResp.status,
+          loginJson,
+        );
+        const detailMsg = (() => {
+          const d = loginJson?.detail;
+          if (!d) return undefined;
+          if (typeof d === "string") return d;
+          if (d?.msg) return d.msg;
+          if (d?.message) return d.message;
+          try {
+            return JSON.stringify(d);
+          } catch (e) {
+            return String(d);
+          }
+        })();
+        toast({
+          variant: "destructive",
+          title: loginJson?.error || "Échec d'authentification",
+          description:
+            detailMsg || "Vérifiez vos identifiants ou réessayez plus tard.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      console.debug("[AdminLogin] /api/auth/login result", loginJson);
+
+      // Dispatch an event with the session so ClientProviders (centralisé)
+      // applique la session côté client. ClientProviders est le seul endroit
+      // qui appelle supabase.auth.setSession.
+      if (
+        loginJson?.session?.access_token &&
+        loginJson?.session?.refresh_token
+      ) {
+        try {
+          window.dispatchEvent(
+            new CustomEvent("elegance:setSession", {
+              detail: loginJson.session,
+            }),
+          );
+          console.debug("[AdminLogin] Dispatched elegance:setSession event");
+        } catch (e) {
+          console.warn("[AdminLogin] Failed to dispatch setSession event", e);
+        }
+      }
 
       const userRole = (loginJson.user as any)?.app_metadata?.role as AppRole;
 
-      if (!['app_admin', 'app_super_admin'].includes(userRole)) {
-        throw new Error('Accès réservé aux administrateurs');
+      if (!["app_admin", "app_super_admin"].includes(userRole)) {
+        throw new Error("Accès réservé aux administrateurs");
       }
 
       toast({
@@ -50,44 +115,8 @@ export function AdminLoginForm() {
         description: "Vous êtes maintenant connecté",
       });
 
-      // Redirection vers le dashboard admin (sans refresh pour éviter les boucles)
-        // Synchroniser la session côté serveur (cookies HttpOnly)
-        try {
-          const { data: sessionData } = await supabase.auth.getSession();
-          const session = (sessionData as any)?.session;
-          if (session?.access_token && session?.refresh_token) {
-            try {
-              const resp = await fetch('/api/auth/session', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  access_token: session.access_token,
-                  refresh_token: session.refresh_token,
-                  expires_in: session.expires_in,
-                }),
-              });
-              console.debug('[AdminLogin] /api/auth/session result', resp.status, resp.ok);
-              // Dev fallback: if server-side cookie sync failed, write non-HttpOnly cookies
-              if (!resp.ok && typeof window !== 'undefined') {
-                try {
-                  const maxAge = session?.expires_in ?? 3600;
-                  document.cookie = `sb-access-token=${encodeURIComponent(session.access_token)}; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
-                  document.cookie = `sb-refresh-token=${encodeURIComponent(session.refresh_token)}; Path=/; Max-Age=${60 * 60 * 24 * 30}; SameSite=Lax`;
-                  console.debug('[AdminLogin] Wrote fallback cookies (dev)');
-                } catch (e) {
-                  console.warn('AdminLogin fallback cookie write failed', e);
-                }
-              }
-            } catch (e) {
-              console.warn('Failed to sync session to server cookies', e);
-            }
-          }
-        } catch (e) {
-          console.warn('Failed to get session after sign in', e);
-        }
-
-        router.push("/backoffice-portal/dashboard");
+      // Redirection vers le dashboard admin
+      router.push("/backoffice-portal/dashboard");
     } catch (error: any) {
       toast({
         variant: "destructive",

@@ -113,7 +113,7 @@ export function OrbScrollbarH({
 
         {/* Left edge neon glow */}
         <div
-          className="absolute left-0 top-1/2 -translate-y-1/2 rounded-full transition-all duration-300"
+          className="absolute left-0 top-1/2 -trangray-y-1/2 rounded-full transition-all duration-300"
           style={{
             width: `${4 + scrollProgress * 8}px`,
             height: "2px",
@@ -128,7 +128,7 @@ export function OrbScrollbarH({
 
         {/* Right edge neon glow */}
         <div
-          className="absolute right-0 top-1/2 -translate-y-1/2 rounded-full transition-all duration-300"
+          className="absolute right-0 top-1/2 -trangray-y-1/2 rounded-full transition-all duration-300"
           style={{
             width: `${4 + (1 - scrollProgress) * 8}px`,
             height: "2px",
@@ -143,7 +143,7 @@ export function OrbScrollbarH({
 
         {/* Orb indicator */}
         <div
-          className="absolute top-1/2 -translate-y-1/2 transition-all duration-200 ease-out"
+          className="absolute top-1/2 -trangray-y-1/2 transition-all duration-200 ease-out"
           style={{ left: `calc(${scrollProgress * 100}% - 2px)` }}
         >
           <div
@@ -224,7 +224,7 @@ export function OrbScrollbarV({
 
       {/* Top edge neon glow */}
       <div
-        className="absolute top-0 left-1/2 -translate-x-1/2 rounded-full transition-all duration-300"
+        className="absolute top-0 left-1/2 -trangray-x-1/2 rounded-full transition-all duration-300"
         style={{
           height: `${4 + scrollProgress * 8}px`,
           width: "2px",
@@ -239,7 +239,7 @@ export function OrbScrollbarV({
 
       {/* Bottom edge neon glow */}
       <div
-        className="absolute bottom-0 left-1/2 -translate-x-1/2 rounded-full transition-all duration-300"
+        className="absolute bottom-0 left-1/2 -trangray-x-1/2 rounded-full transition-all duration-300"
         style={{
           height: `${4 + (1 - scrollProgress) * 8}px`,
           width: "2px",
@@ -254,7 +254,7 @@ export function OrbScrollbarV({
 
       {/* Orb indicator */}
       <div
-        className="absolute left-1/2 -translate-x-1/2 transition-all duration-200 ease-out"
+        className="absolute left-1/2 -trangray-x-1/2 transition-all duration-200 ease-out"
         style={{ top: `calc(${scrollProgress * 100}% + ${orbOffset})` }}
       >
         <div

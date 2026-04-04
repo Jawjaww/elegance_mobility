@@ -40,7 +40,7 @@ export function VehicleFilters({ onFilterChange }: Props) {
   return (
     <div className="flex items-center gap-4 w-full">
       <div className="flex-1 relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+        <Search className="absolute left-3 top-1/2 -trangray-y-1/2 h-4 w-4 text-neutral-400" />
         <Input
           placeholder="Rechercher par plaque ou modèle..."
           onChange={(e) => handleSearchChange(e.target.value)}

@@ -328,12 +328,12 @@ export default function DriverDocumentUploader({
             ) : isPending ? (
               <AlertCircle className="h-3.5 w-3.5 text-amber-400" />
             ) : (
-              <Upload className="h-3.5 w-3.5 text-slate-500" />
+              <Upload className="h-3.5 w-3.5 text-gray-500" />
             )}
           </div>
           <div>
             <div className="text-xs font-medium text-white">{label ?? documentType}</div>
-            <div className="text-[10px] text-slate-500">
+            <div className="text-[10px] text-gray-500">
               {docRecord 
                 ? `${docRecord.file_name} • ${isApproved ? "Validé" : isPending ? "En attente" : "Rejeté"}`
                 : "Aucun fichier"}
@@ -355,7 +355,7 @@ export default function DriverDocumentUploader({
             size="sm"
             onClick={() => inputRef.current?.click()}
             disabled={uploading}
-            className="text-[10px] text-slate-400 hover:text-white hover:bg-white/[0.05] h-7 px-2"
+            className="text-[10px] text-gray-400 hover:text-white hover:bg-white/[0.05] h-7 px-2"
           >
             {file ? "Changer" : "Choisir"}
           </Button>

@@ -10,7 +10,7 @@ const Card = React.forwardRef<
     ref={ref}
     className={cn(
       // keep Card a neutral, reusable container (no heavy glass by default)
-      "rounded-lg text-slate-100/95 bg-neutral-900 border border-neutral-800",
+      "rounded-lg text-gray-100/95 bg-neutral-900 border border-neutral-800",
       className
     )}
     {...props}

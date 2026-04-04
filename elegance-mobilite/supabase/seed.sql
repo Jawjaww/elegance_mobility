@@ -6,44 +6,105 @@
 BEGIN;
 
 -- ============================================
--- 1. CRÉER LES UTILISATEURS DANS auth.users
+-- CRÉATION DES UTILISATEURS AUTH (GoTrue)
+-- Utilise pgcrypto pour le hash du mot de passe
 -- ============================================
 
--- Créer les utilisateurs dans auth.users (nécessaire pour la FK)
--- IMPORTANT: on crée aussi auth.identities pour que GoTrue puisse les authentifier
-INSERT INTO auth.users (
-  id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, 
-  raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
-  confirmation_token, recovery_token, email_change_token_new, email_change
-) VALUES 
-  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin1@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_super_admin", "provider": "email", "providers": ["email"]}', '{"first_name": "Admin", "last_name": "Principal"}', NOW(), NOW(), '', '', '', ''),
-  ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin2@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_admin", "provider": "email", "providers": ["email"]}', '{"first_name": "Admin", "last_name": "Secondaire"}', NOW(), NOW(), '', '', '', ''),
-  ('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'jean.dupont@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_driver", "provider": "email", "providers": ["email"]}', '{"first_name": "Jean", "last_name": "Dupont"}', NOW(), NOW(), '', '', '', ''),
-  ('00000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'marie.martin@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_driver", "provider": "email", "providers": ["email"]}', '{"first_name": "Marie", "last_name": "Martin"}', NOW(), NOW(), '', '', '', ''),
-  ('00000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'pierre.bernard@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_driver", "provider": "email", "providers": ["email"]}', '{"first_name": "Pierre", "last_name": "Bernard"}', NOW(), NOW(), '', '', '', ''),
-  -- Utilisateurs clients pour les rides
-  ('00000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'client1@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_customer", "provider": "email", "providers": ["email"]}', '{"first_name": "Client", "last_name": "Un"}', NOW(), NOW(), '', '', '', ''),
-  ('00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'client2@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_customer", "provider": "email", "providers": ["email"]}', '{"first_name": "Client", "last_name": "Deux"}', NOW(), NOW(), '', '', '', ''),
-  ('00000000-0000-0000-0000-000000000012', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'client3@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_customer", "provider": "email", "providers": ["email"]}', '{"first_name": "Client", "last_name": "Trois"}', NOW(), NOW(), '', '', '', ''),
-  ('00000000-0000-0000-0000-000000000013', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'client4@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_customer", "provider": "email", "providers": ["email"]}', '{"first_name": "Client", "last_name": "Quatre"}', NOW(), NOW(), '', '', '', '')
-ON CONFLICT (id) DO NOTHING;
+-- Activer pgcrypto pour le hash des mots de passe
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- Créer les identities pour chaque utilisateur (nécessaire pour que GoTrue accepte le login email/password)
-INSERT INTO auth.identities (
-  id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at
-) VALUES
-  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', '{"sub": "00000000-0000-0000-0000-000000000001", "email": "admin1@elegance-mobilite.local", "email_verified": true}', 'email', '00000000-0000-0000-0000-000000000001', NOW(), NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002', '{"sub": "00000000-0000-0000-0000-000000000002", "email": "admin2@elegance-mobilite.local", "email_verified": true}', 'email', '00000000-0000-0000-0000-000000000002', NOW(), NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000003', '{"sub": "00000000-0000-0000-0000-000000000003", "email": "jean.dupont@elegance-mobilite.local", "email_verified": true}', 'email', '00000000-0000-0000-0000-000000000003', NOW(), NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000004', '{"sub": "00000000-0000-0000-0000-000000000004", "email": "marie.martin@elegance-mobilite.local", "email_verified": true}', 'email', '00000000-0000-0000-0000-000000000004', NOW(), NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000005', '{"sub": "00000000-0000-0000-0000-000000000005", "email": "pierre.bernard@elegance-mobilite.local", "email_verified": true}', 'email', '00000000-0000-0000-0000-000000000005', NOW(), NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000010', '{"sub": "00000000-0000-0000-0000-000000000010", "email": "client1@elegance-mobilite.local", "email_verified": true}', 'email', '00000000-0000-0000-0000-000000000010', NOW(), NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000011', '{"sub": "00000000-0000-0000-0000-000000000011", "email": "client2@elegance-mobilite.local", "email_verified": true}', 'email', '00000000-0000-0000-0000-000000000011', NOW(), NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000012', '00000000-0000-0000-0000-000000000012', '{"sub": "00000000-0000-0000-0000-000000000012", "email": "client3@elegance-mobilite.local", "email_verified": true}', 'email', '00000000-0000-0000-0000-000000000012', NOW(), NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000013', '00000000-0000-0000-0000-000000000013', '{"sub": "00000000-0000-0000-0000-000000000013", "email": "client4@elegance-mobilite.local", "email_verified": true}', 'email', '00000000-0000-0000-0000-000000000013', NOW(), NOW(), NOW())
-ON CONFLICT DO NOTHING;
+-- Créer les utilisateurs avec mot de passe "password123"
+DO $$
+DECLARE
+  v_user_id UUID;
+BEGIN
+  -- User 1: Admin Principal
+  v_user_id := '00000000-0000-0000-0000-000000000001';
+  INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change)
+  VALUES (v_user_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin1@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_super_admin", "provider": "email", "providers": ["email"]}', '{"first_name": "Admin", "last_name": "Principal"}', NOW(), NOW(), '', '', '', '')
+  ON CONFLICT (id) DO UPDATE SET encrypted_password = EXCLUDED.encrypted_password;
+  INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
+  VALUES (v_user_id, v_user_id, format('{"sub": "%s", "email": "admin1@elegance-mobilite.local", "email_verified": true}', v_user_id)::jsonb, 'email', v_user_id, NOW(), NOW(), NOW())
+  ON CONFLICT DO NOTHING;
 
--- Table users (infos de base) - sera aussi créée par le trigger handle_new_user
+  -- User 2: Admin Secondaire
+  v_user_id := '00000000-0000-0000-0000-000000000002';
+  INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change)
+  VALUES (v_user_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin2@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_admin", "provider": "email", "providers": ["email"]}', '{"first_name": "Admin", "last_name": "Secondaire"}', NOW(), NOW(), '', '', '', '')
+  ON CONFLICT (id) DO UPDATE SET encrypted_password = EXCLUDED.encrypted_password;
+  INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
+  VALUES (v_user_id, v_user_id, format('{"sub": "%s", "email": "admin2@elegance-mobilite.local", "email_verified": true}', v_user_id)::jsonb, 'email', v_user_id, NOW(), NOW(), NOW())
+  ON CONFLICT DO NOTHING;
+
+  -- User 3: Jean Dupont (Driver)
+  v_user_id := '00000000-0000-0000-0000-000000000003';
+  INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change)
+  VALUES (v_user_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'jean.dupont@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_driver", "provider": "email", "providers": ["email"]}', '{"first_name": "Jean", "last_name": "Dupont"}', NOW(), NOW(), '', '', '', '')
+  ON CONFLICT (id) DO UPDATE SET encrypted_password = EXCLUDED.encrypted_password;
+  INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
+  VALUES (v_user_id, v_user_id, format('{"sub": "%s", "email": "jean.dupont@elegance-mobilite.local", "email_verified": true}', v_user_id)::jsonb, 'email', v_user_id, NOW(), NOW(), NOW())
+  ON CONFLICT DO NOTHING;
+
+  -- User 4: Marie Martin (Driver)
+  v_user_id := '00000000-0000-0000-0000-000000000004';
+  INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change)
+  VALUES (v_user_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'marie.martin@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_driver", "provider": "email", "providers": ["email"]}', '{"first_name": "Marie", "last_name": "Martin"}', NOW(), NOW(), '', '', '', '')
+  ON CONFLICT (id) DO UPDATE SET encrypted_password = EXCLUDED.encrypted_password;
+  INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
+  VALUES (v_user_id, v_user_id, format('{"sub": "%s", "email": "marie.martin@elegance-mobilite.local", "email_verified": true}', v_user_id)::jsonb, 'email', v_user_id, NOW(), NOW(), NOW())
+  ON CONFLICT DO NOTHING;
+
+  -- User 5: Pierre Bernard (Driver)
+  v_user_id := '00000000-0000-0000-0000-000000000005';
+  INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change)
+  VALUES (v_user_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'pierre.bernard@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_driver", "provider": "email", "providers": ["email"]}', '{"first_name": "Pierre", "last_name": "Bernard"}', NOW(), NOW(), '', '', '', '')
+  ON CONFLICT (id) DO UPDATE SET encrypted_password = EXCLUDED.encrypted_password;
+  INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
+  VALUES (v_user_id, v_user_id, format('{"sub": "%s", "email": "pierre.bernard@elegance-mobilite.local", "email_verified": true}', v_user_id)::jsonb, 'email', v_user_id, NOW(), NOW(), NOW())
+  ON CONFLICT DO NOTHING;
+
+  -- User 10: Client 1
+  v_user_id := '00000000-0000-0000-0000-000000000010';
+  INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change)
+  VALUES (v_user_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'client1@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_customer", "provider": "email", "providers": ["email"]}', '{"first_name": "Client", "last_name": "Un"}', NOW(), NOW(), '', '', '', '')
+  ON CONFLICT (id) DO UPDATE SET encrypted_password = EXCLUDED.encrypted_password;
+  INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
+  VALUES (v_user_id, v_user_id, format('{"sub": "%s", "email": "client1@elegance-mobilite.local", "email_verified": true}', v_user_id)::jsonb, 'email', v_user_id, NOW(), NOW(), NOW())
+  ON CONFLICT DO NOTHING;
+
+  -- User 11: Client 2
+  v_user_id := '00000000-0000-0000-0000-000000000011';
+  INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change)
+  VALUES (v_user_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'client2@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_customer", "provider": "email", "providers": ["email"]}', '{"first_name": "Client", "last_name": "Deux"}', NOW(), NOW(), '', '', '', '')
+  ON CONFLICT (id) DO UPDATE SET encrypted_password = EXCLUDED.encrypted_password;
+  INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
+  VALUES (v_user_id, v_user_id, format('{"sub": "%s", "email": "client2@elegance-mobilite.local", "email_verified": true}', v_user_id)::jsonb, 'email', v_user_id, NOW(), NOW(), NOW())
+  ON CONFLICT DO NOTHING;
+
+  -- User 12: Client 3
+  v_user_id := '00000000-0000-0000-0000-000000000012';
+  INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change)
+  VALUES (v_user_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'client3@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_customer", "provider": "email", "providers": ["email"]}', '{"first_name": "Client", "last_name": "Trois"}', NOW(), NOW(), '', '', '', '')
+  ON CONFLICT (id) DO UPDATE SET encrypted_password = EXCLUDED.encrypted_password;
+  INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
+  VALUES (v_user_id, v_user_id, format('{"sub": "%s", "email": "client3@elegance-mobilite.local", "email_verified": true}', v_user_id)::jsonb, 'email', v_user_id, NOW(), NOW(), NOW())
+  ON CONFLICT DO NOTHING;
+
+  -- User 13: Client 4
+  v_user_id := '00000000-0000-0000-0000-000000000013';
+  INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change)
+  VALUES (v_user_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'client4@elegance-mobilite.local', crypt('password123', gen_salt('bf')), NOW(), '{"role": "app_customer", "provider": "email", "providers": ["email"]}', '{"first_name": "Client", "last_name": "Quatre"}', NOW(), NOW(), '', '', '', '')
+  ON CONFLICT (id) DO UPDATE SET encrypted_password = EXCLUDED.encrypted_password;
+  INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
+  VALUES (v_user_id, v_user_id, format('{"sub": "%s", "email": "client4@elegance-mobilite.local", "email_verified": true}', v_user_id)::jsonb, 'email', v_user_id, NOW(), NOW(), NOW())
+  ON CONFLICT DO NOTHING;
+END $$;
+
+-- ============================================
+-- CRÉER LES DONNÉES PUBLIQUES
+-- ============================================
+
+-- Table users
 INSERT INTO public.users (id, first_name, last_name, phone, created_at, updated_at)
 VALUES 
   ('00000000-0000-0000-0000-000000000001', 'Admin', 'Principal', '+33600000001', NOW(), NOW()),
@@ -57,13 +118,17 @@ VALUES
   ('00000000-0000-0000-0000-000000000013', 'Client', 'Quatre', '+33610000004', NOW(), NOW())
 ON CONFLICT (id) DO NOTHING;
 
--- Profils avec rôles (suppression préalable car pas de contrainte unique sur user_id)
+-- Profils avec rôles
 DELETE FROM public.user_profiles WHERE user_id IN (
   '00000000-0000-0000-0000-000000000001'::uuid,
   '00000000-0000-0000-0000-000000000002'::uuid,
   '00000000-0000-0000-0000-000000000003'::uuid,
   '00000000-0000-0000-0000-000000000004'::uuid,
-  '00000000-0000-0000-0000-000000000005'::uuid
+  '00000000-0000-0000-0000-000000000005'::uuid,
+  '00000000-0000-0000-0000-000000000010'::uuid,
+  '00000000-0000-0000-0000-000000000011'::uuid,
+  '00000000-0000-0000-0000-000000000012'::uuid,
+  '00000000-0000-0000-0000-000000000013'::uuid
 );
 INSERT INTO public.user_profiles (user_id, app_metadata, created_at, updated_at)
 VALUES 

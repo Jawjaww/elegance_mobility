@@ -287,7 +287,7 @@ export default function UnifiedMap({
 
   return (
     <div
-      className="relative w-full overflow-hidden bg-slate-100"
+      className="relative w-full overflow-hidden bg-gray-100"
       style={{ height }}
     >
       <div

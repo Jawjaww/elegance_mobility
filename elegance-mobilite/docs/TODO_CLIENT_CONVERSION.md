@@ -32,8 +32,9 @@ Ces fichiers utilisent `createServerSupabaseClient` mais sont appelés depuis de
 Ces routes API utilisent `createServerSupabaseClient` mais c'est normal - elles seront simplement non incluses dans le build export :
 
 - `src/app/auth/verify-email/route.ts`
-- `src/app/api/auth/logout/route.ts`
 - `src/app/api/driver/accept-ride/route.ts`
+
+````
 
 ## Fichier `server.ts`
 
@@ -54,7 +55,7 @@ export default async function Page() {
   const user = await getServerUser();
   // ...
 }
-```
+````
 
 **Après (Client Component) :**
 
