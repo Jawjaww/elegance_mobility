@@ -24,30 +24,25 @@ export function AdminLoginForm() {
       const email = formData.get("email") as string;
       const password = formData.get("password") as string;
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      // Use server-side login proxy to avoid CORS and set HttpOnly cookies
+      const loginResp = await fetch('/api/auth/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       });
 
-      if (error) {
-        if (error.message.includes("Email not confirmed")) {
-          throw new Error(
-            "Votre email n'a pas été confirmé. Veuillez vérifier votre boîte de réception.",
-          );
-        }
-        if (error.message.includes("Invalid login credentials")) {
-          throw new Error("Email ou mot de passe incorrect.");
-        }
-        throw error;
+      const loginJson = await loginResp.json().catch(() => ({}));
+      if (!loginResp.ok) {
+        throw new Error(loginJson?.error || 'Authentication failed');
       }
 
-      // Vérification typée du rôle pour les admins (source: app_metadata uniquement - serveur)
-      const userRole = data.user?.app_metadata?.role as AppRole;
+      console.debug('[AdminLogin] /api/auth/login result', loginJson);
 
-      // Seuls les admins et super admins peuvent se connecter ici
-      if (!["app_admin", "app_super_admin"].includes(userRole)) {
-        await supabase.auth.signOut();
-        throw new Error("Accès réservé aux administrateurs");
+      const userRole = (loginJson.user as any)?.app_metadata?.role as AppRole;
+
+      if (!['app_admin', 'app_super_admin'].includes(userRole)) {
+        throw new Error('Accès réservé aux administrateurs');
       }
 
       toast({
@@ -56,7 +51,43 @@ export function AdminLoginForm() {
       });
 
       // Redirection vers le dashboard admin (sans refresh pour éviter les boucles)
-      router.push("/backoffice-portal/dashboard");
+        // Synchroniser la session côté serveur (cookies HttpOnly)
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const session = (sessionData as any)?.session;
+          if (session?.access_token && session?.refresh_token) {
+            try {
+              const resp = await fetch('/api/auth/session', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  access_token: session.access_token,
+                  refresh_token: session.refresh_token,
+                  expires_in: session.expires_in,
+                }),
+              });
+              console.debug('[AdminLogin] /api/auth/session result', resp.status, resp.ok);
+              // Dev fallback: if server-side cookie sync failed, write non-HttpOnly cookies
+              if (!resp.ok && typeof window !== 'undefined') {
+                try {
+                  const maxAge = session?.expires_in ?? 3600;
+                  document.cookie = `sb-access-token=${encodeURIComponent(session.access_token)}; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
+                  document.cookie = `sb-refresh-token=${encodeURIComponent(session.refresh_token)}; Path=/; Max-Age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+                  console.debug('[AdminLogin] Wrote fallback cookies (dev)');
+                } catch (e) {
+                  console.warn('AdminLogin fallback cookie write failed', e);
+                }
+              }
+            } catch (e) {
+              console.warn('Failed to sync session to server cookies', e);
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to get session after sign in', e);
+        }
+
+        router.push("/backoffice-portal/dashboard");
     } catch (error: any) {
       toast({
         variant: "destructive",

@@ -32,41 +32,31 @@ export function LoginForm({ onSuccess }: LoginFormProps = {}) {
       const email = formData.get("email") as string;
       const password = formData.get("password") as string;
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      // Use server-side login proxy to avoid CORS and set HttpOnly cookies
+      const loginResp = await fetch('/api/auth/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       });
 
-      if (error) {
-        if (error.message.includes("Email not confirmed")) {
-          throw new Error(
-            "Votre email n'a pas été confirmé. Veuillez vérifier votre boîte de réception.",
-          );
+      const loginJson = await loginResp.json().catch(() => ({}));
+      if (!loginResp.ok) {
+        if (loginJson?.error) {
+          // Supabase error message
+          throw new Error(loginJson.error || 'Authentication failed');
         }
-        if (error.message.includes("Invalid login credentials")) {
-          throw new Error("Email ou mot de passe incorrect.");
-        }
-        throw error;
+        throw new Error('Authentication failed');
       }
 
-      // Récupérer l'utilisateur frais pour obtenir app_metadata complet
-      const {
-        data: { user: freshUser },
-      } = await supabase.auth.getUser();
+      console.debug('[LoginForm] /api/auth/login result', loginJson);
 
-      // Vérification typée du rôle (via helper centralisé)
+      const freshUser = loginJson.user || null;
       const userRole = getAppRole(freshUser as any) as AppRole;
 
       // Seuls les admins et super admins ne peuvent pas se connecter sur la page login normale
-      // Ils doivent utiliser la page login admin
-      if (
-        (userRole === "app_admin" || userRole === "app_super_admin") &&
-        from !== "admin"
-      ) {
-        await supabase.auth.signOut();
-        throw new Error(
-          "Veuillez utiliser la page de connexion administrateur",
-        );
+      if ((userRole === 'app_admin' || userRole === 'app_super_admin') && from !== 'admin') {
+        throw new Error('Veuillez utiliser la page de connexion administrateur');
       }
 
       toast({
@@ -78,6 +68,37 @@ export function LoginForm({ onSuccess }: LoginFormProps = {}) {
       if (onSuccess) {
         onSuccess();
         return;
+      }
+
+      // Synchroniser la session côté serveur (cookies HttpOnly) pour SSR
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const session = (sessionData as any)?.session;
+        if (session?.access_token && session?.refresh_token) {
+          const resp = await fetch('/api/auth/session', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              access_token: session.access_token,
+              refresh_token: session.refresh_token,
+              expires_in: session.expires_in,
+            }),
+          });
+          console.debug('[LoginForm] /api/auth/session result', resp.status, resp.ok);
+          if (!resp.ok && typeof window !== 'undefined') {
+            try {
+              const maxAge = session?.expires_in ?? 3600;
+              document.cookie = `sb-access-token=${encodeURIComponent(session.access_token)}; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
+              document.cookie = `sb-refresh-token=${encodeURIComponent(session.refresh_token)}; Path=/; Max-Age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+              console.debug('[LoginForm] Wrote fallback cookies (dev)');
+            } catch (e) {
+              console.warn('LoginForm fallback cookie write failed', e);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to sync session to server cookies', e);
       }
 
       // Redirection basée sur le rôle ou redirectTo

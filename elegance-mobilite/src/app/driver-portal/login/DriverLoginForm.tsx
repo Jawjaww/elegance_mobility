@@ -24,40 +24,26 @@ export function DriverLoginForm() {
       const email = ((formData.get("email") as string) || "").trim();
       const password = ((formData.get("password") as string) || "").trim();
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      // Use server-side login proxy to avoid CORS and set HttpOnly cookies
+      const loginResp = await fetch('/api/auth/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       });
 
-      // Log détaillé pour diagnostiquer les 400 Bad Request
-      if (error) {
-        console.error(
-          "DriverLoginForm: signInWithPassword error:",
-          error,
-          "data:",
-          data,
-        );
-        if (error.message?.includes("Email not confirmed")) {
-          throw new Error(
-            "Votre email n'a pas été confirmé. Veuillez vérifier votre boîte de réception.",
-          );
-        }
-        if (error.message?.includes("Invalid login credentials")) {
-          throw new Error("Email ou mot de passe incorrect.");
-        }
-        // Cas: 400 sans message clair — exposer le message brut
-        throw new Error(error.message || JSON.stringify(error));
+      const loginJson = await loginResp.json().catch(() => ({}));
+      if (!loginResp.ok) {
+        console.error('DriverLoginForm: /api/auth/login error', loginJson);
+        throw new Error(loginJson?.error || 'Authentication failed');
       }
 
-      // Vérification typée du rôle pour les chauffeurs (app_metadata moderne)
-      const userRole =
-        (data.user as any)?.app_metadata?.role ||
-        (data.user as any)?.raw_app_meta_data?.role;
+      console.debug('[DriverLogin] /api/auth/login result', loginJson);
 
-      // Seuls les chauffeurs peuvent se connecter ici
-      if (userRole !== "app_driver") {
-        await supabase.auth.signOut();
-        throw new Error("Accès réservé aux chauffeurs partenaires");
+      const userRole = (loginJson.user as any)?.app_metadata?.role || (loginJson.user as any)?.raw_app_meta_data?.role;
+
+      if (userRole !== 'app_driver') {
+        throw new Error('Accès réservé aux chauffeurs partenaires');
       }
 
       toast({
@@ -65,8 +51,41 @@ export function DriverLoginForm() {
         description: "Bienvenue dans votre espace chauffeur",
       });
 
-      // Ajouter un délai pour s'assurer que la session est établie
+      // Attendre que Supabase ait établi la session, puis récupérer la session
       await new Promise((resolve) => setTimeout(resolve, 500));
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const session = (sessionData as any)?.session;
+        if (session?.access_token && session?.refresh_token) {
+          try {
+            const resp = await fetch('/api/auth/session', {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                access_token: session.access_token,
+                refresh_token: session.refresh_token,
+                expires_in: session.expires_in,
+              }),
+            });
+            console.debug('[DriverLogin] /api/auth/session result', resp.status, resp.ok);
+            if (!resp.ok && typeof window !== 'undefined') {
+              try {
+                const maxAge = session?.expires_in ?? 3600;
+                document.cookie = `sb-access-token=${encodeURIComponent(session.access_token)}; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
+                document.cookie = `sb-refresh-token=${encodeURIComponent(session.refresh_token)}; Path=/; Max-Age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+                console.debug('[DriverLogin] Wrote fallback cookies (dev)');
+              } catch (e) {
+                console.warn('DriverLogin fallback cookie write failed', e);
+              }
+            }
+          } catch (e) {
+            console.warn('Failed to sync session to server cookies', e);
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to get session after sign in', e);
+      }
 
       // Redirection complète vers le portail chauffeur
       window.location.href = "/driver-portal/dashboard";
