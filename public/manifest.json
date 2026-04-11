@@ -1,0 +1,11 @@
+{
+  "name": "Elegance Driver",
+  "short_name": "Driver",
+  "description": "App chauffeur - Recevez des courses en temps réel",
+  "start_url": "/driver-portal",
+  "scope": "/driver-portal",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0a",
+  "theme_color": "#10b981"
+}

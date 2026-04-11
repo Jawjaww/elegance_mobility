@@ -1,0 +1,38 @@
+cat > .rooignore << 'EOF'
+node_modules/
+dist/
+build/
+.next/
+*.log
+.env*
+
+legacy/
+old/
+backup/
+__old__/
+deprecated/
+v1/
+v2/
+archive/
+
+**/*.bak
+**/*.old.*
+**/.backup.*
+**/OLD_*
+**/TEMP_*
+**/TODO_*
+
+# Fichiers de config générés/temporaires
+.DS_Store
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Dossiers temporaires
+tmp/
+temp/
+.cache/
+.parcel-cache/
+EOF
