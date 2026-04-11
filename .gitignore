@@ -1,0 +1,25 @@
+# Ignore environment files
+.env*
+!.env.example
+
+# Ignore node_modules
+node_modules/
+
+# Ignore build directories
+.next/
+out/
+dist/
+
+# Ignore IDE specific files
+.idea/
+.vscode/
+
+# Ignore system files
+.DS_Store
+
+# Ignore locally downloaded external documentation
+docs/external/
+
+# Ignore TypeScript build info
+tsconfig.tsbuildinfo
+scripts/test_*.sh
