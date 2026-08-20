@@ -203,44 +203,6 @@ export function DriversManagement() {
     }
   };
 
-  const updateDriverStatus = async (
-    driverId: string,
-    newStatus: DriverStatus,
-  ) => {
-    try {
-      const { error } = await supabase
-        .from("drivers")
-        .update({ status: newStatus })
-        .eq("id", driverId);
-
-      if (error) {
-        console.error("❌ Erreur lors de la mise à jour:", error);
-        toast({
-          title: "Erreur",
-          description:
-            "Impossible de mettre à jour le statut: " + error.message,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({
-        title: "Succès",
-        description: "Statut mis à jour avec succès",
-        variant: "default",
-      });
-
-      loadDrivers();
-    } catch (err) {
-      console.error("❌ Erreur lors de la mise à jour:", err);
-      toast({
-        title: "Erreur",
-        description: "Une erreur inattendue est survenue",
-        variant: "destructive",
-      });
-    }
-  };
-
   const filteredDrivers = drivers.filter(
     (driver) =>
       `${driver.first_name ?? ""} ${driver.last_name ?? ""}`

@@ -142,6 +142,21 @@ class DriverRideService {
     }
   }
 
+  async recordOffer(rideId: string) {
+    const { error } = await supabase.rpc("record_ride_offer", {
+      p_ride_id: rideId,
+    });
+    if (error) console.warn("[DriverRideService] record_ride_offer", error);
+  }
+
+  async respondOffer(rideId: string, response: "declined" | "timeout") {
+    const { error } = await supabase.rpc("respond_ride_offer", {
+      p_ride_id: rideId,
+      p_response: response,
+    });
+    if (error) console.warn("[DriverRideService] respond_ride_offer", error);
+  }
+
   /**
    * Mapper une ride DB vers Ride
    */

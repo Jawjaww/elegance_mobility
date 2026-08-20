@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
-import { driverRideService, PendingRide, AcceptRideResult } from "./rideService";
+import { driverRideService, AcceptRideResult } from "./rideService";
 import { useDriverStore } from "./store";
 
 /**
@@ -19,29 +19,25 @@ export function usePendingRides() {
       return;
     }
 
-    // Récupérer les courses existantes d'abord
     driverRideService.fetchPendingRides().then((rides) => {
       if (rides.length > 0 && !availableRide) {
-        // Prendre la plus récente
         setAvailableRide(rides[0]);
+        void driverRideService.recordOffer(rides[0].id);
       }
     });
 
-    // S'abonner aux nouvelles courses
     driverRideService.subscribeToPendingRides(
-      // Nouvelle course
       (ride) => {
         console.log("[usePendingRides] New ride received:", ride.id);
         setAvailableRide(ride);
+        void driverRideService.recordOffer(ride.id);
       },
-      // Course mise à jour
       (ride) => {
         console.log("[usePendingRides] Ride updated:", ride.id);
         if (availableRide?.id === ride.id) {
           setAvailableRide(ride);
         }
       },
-      // Course supprimée/acceptée
       (rideId) => {
         console.log("[usePendingRides] Ride removed:", rideId);
         if (availableRide?.id === rideId) {
@@ -77,10 +73,15 @@ export function usePendingRides() {
   /**
    * Refuser la course actuelle (la cacher temporairement)
    */
-  const declineCurrentRide = useCallback(() => {
-    setAvailableRide(null);
-  }, [setAvailableRide]);
-
+  const declineCurrentRide = useCallback(
+    (reason: "declined" | "timeout" = "declined") => {
+      if (availableRide) {
+        void driverRideService.respondOffer(availableRide.id, reason);
+      }
+      setAvailableRide(null);
+    },
+    [availableRide, setAvailableRide],
+  );
   return {
     availableRide,
     acceptCurrentRide,

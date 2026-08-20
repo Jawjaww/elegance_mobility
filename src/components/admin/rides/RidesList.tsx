@@ -6,31 +6,69 @@ import { useUnifiedRidesStore } from "@/lib/stores/unifiedRidesStore";
 import { useDriversStore } from "@/lib/stores/driversStore";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/reservation/StatusBadge";
-import { MapPin, AlertCircle, User, Car } from "lucide-react";
+import { MapPin, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { Database } from "@/lib/types/database.types";
+import { useToast } from "@/hooks/useToast";
 import {
-  RIDE_STATUS_CONFIG,
-  getStatusLabel,
-  getStatusColor,
-  getStatusIcon,
-} from "@/lib/types/stores.types";
+  adminCancelRide,
+} from "@/services/adminRideService";
 
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
 
+const CANCELABLE = new Set([
+  "pending",
+  "scheduled",
+  "in-progress",
+  "delayed",
+  "no-show",
+]);
+
+const LOADING_SKELETON_IDS = [
+  "ride-skel-1",
+  "ride-skel-2",
+  "ride-skel-3",
+  "ride-skel-4",
+  "ride-skel-5",
+  "ride-skel-6",
+] as const;
+
 export function RidesList() {
-  const { filteredRides, loading } = useUnifiedRidesStore();
+  const { filteredRides, loading, fetchRides } = useUnifiedRidesStore();
   const { drivers } = useDriversStore();
   const router = useRouter();
+  const { toast } = useToast();
+
+  const handleCancel = async (rideId: string) => {
+    const reason = window.prompt("Motif d'annulation admin (optionnel) :") ?? "";
+    try {
+      const result: any = await adminCancelRide(rideId, reason || undefined);
+      if (result?.success === false) {
+        toast({
+          title: "Annulation impossible",
+          description: result.error || "Erreur",
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({ title: "Course annulée" });
+      await fetchRides?.();
+    } catch (e: any) {
+      toast({
+        title: "Erreur",
+        description: e?.message || String(e),
+        variant: "destructive",
+      });
+    }
+  };
 
   if (loading) {
     return (
       <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {[...Array(6)].map((_, i) => (
+        {LOADING_SKELETON_IDS.map((id) => (
           <Card
-            key={i}
+            key={id}
             className="elegant-backdrop animate-pulse border-neutral-800 bg-neutral-900/50"
           >
             <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
@@ -59,10 +97,7 @@ export function RidesList() {
 
   return (
     <div className="flex flex-col items-center gap-4 w-full">
-      {filteredRides.map((ride: Ride) => {
-        const StatusIcon = getStatusIcon(ride.status) || AlertCircle;
-
-        return (
+      {filteredRides.map((ride: Ride) => (
           <Card
             key={ride.id}
             className="overflow-hidden border-neutral-800 bg-neutral-900 mx-auto"
@@ -119,8 +154,8 @@ export function RidesList() {
                 </div>
               </div>
 
-              {!ride.driver_id && ride.status === "pending" && (
-                <div className="flex gap-2 mt-3 sm:mt-4">
+              <div className="flex flex-wrap gap-2 mt-3 sm:mt-4">
+                {(ride.status === "pending" || ride.status === "scheduled") && (
                   <Button
                     variant="outline"
                     className="flex-1 btn-secondary h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm"
@@ -131,24 +166,22 @@ export function RidesList() {
                     }
                   >
                     <User className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                    Assigner
+                    {ride.driver_id ? "Réassigner" : "Assigner"}
                   </Button>
+                )}
+                {CANCELABLE.has(ride.status) && (
                   <Button
                     variant="outline"
-                    className="flex-1 btn-secondary h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm"
-                    onClick={() =>
-                      router.push(`/backoffice-portal/rides/${ride.id}/vehicle`)
-                    }
+                    className="flex-1 h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm border-red-800 text-red-300 hover:bg-red-950"
+                    onClick={() => handleCancel(ride.id)}
                   >
-                    <Car className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                    Véhicule
+                    Annuler
                   </Button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </Card>
-        );
-      })}
+      ))}
     </div>
   );
 }

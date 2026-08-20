@@ -48,21 +48,21 @@ export const useUnassignedRidesStore = create<UnassignedRidesState>((set, get) =
     }
   },
 
-  assignRide: async (rideId: string, driverId: string, vehicleId: string) => {
+  assignRide: async (rideId: string, driverId: string, _vehicleId: string) => {
     try {
       set({ loading: true, error: null });
-      const { error } = await supabase
-        .from('rides')
-        .update({
-          driver_id: driverId,
-          vehicle_id: vehicleId,
-          status: 'assigned'
-        })
-        .eq('id', rideId);
-
+      const { data, error } = await supabase.rpc('admin_reassign_ride', {
+        p_ride_id: rideId,
+        p_driver_id: driverId,
+      });
       if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      if (row && (row as { success?: boolean }).success === false) {
+        throw new Error(
+          (row as { error?: string }).error || 'Réaffectation refusée',
+        );
+      }
 
-      // Mettre à jour la liste des courses non attribuées
       const rides = get().rides.filter(ride => ride.id !== rideId);
       set({ rides });
     } catch (error) {

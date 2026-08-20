@@ -238,14 +238,21 @@ export const useUnifiedRidesStore = create<RidesState>()(
       updateRideStatus: async (rideId, status) => {
         try {
           const supabase = createClient();
-          const { error } = await (supabase.from("rides") as any)
-            .update({
-              status,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", rideId);
 
-          if (error) throw error;
+          if (status === "admin-canceled") {
+            const { data, error } = await supabase.rpc("admin_cancel_ride", {
+              p_ride_id: rideId,
+            });
+            if (error) throw error;
+            const row = Array.isArray(data) ? data[0] : data;
+            if ((row as any)?.success === false) {
+              throw new Error((row as any).error || "Annulation refusée");
+            }
+          } else {
+            throw new Error(
+              "Mise à jour de statut admin via RPC uniquement (admin_cancel_ride / admin_reassign_ride)",
+            );
+          }
 
           const updateRide = (rides: RideWithDriver[]): RideWithDriver[] =>
             rides.map((ride) =>
@@ -288,15 +295,15 @@ export const useUnifiedRidesStore = create<RidesState>()(
           const supabase = createClient();
           const newStatus: RideStatus = "scheduled";
 
-          const { error } = await (supabase.from("rides") as any)
-            .update({
-              driver_id: driverId,
-              status: newStatus,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", rideId);
-
+          const { data, error } = await supabase.rpc("admin_reassign_ride", {
+            p_ride_id: rideId,
+            p_driver_id: driverId,
+          });
           if (error) throw error;
+          const row = Array.isArray(data) ? data[0] : data;
+          if ((row as any)?.success === false) {
+            throw new Error((row as any).error || "Réaffectation refusée");
+          }
 
           const { data: driver, error: driverError } = await supabase
             .from("drivers")

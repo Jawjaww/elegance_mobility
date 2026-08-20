@@ -306,17 +306,40 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
     }
   }
 
-  async function updateDriverStatus(newStatus: DriverStatus) {
+  async function approveOrRejectDossier(approved: boolean) {
     try {
-      const { error } = await supabase
-        .from("drivers")
-        .update({ status: newStatus })
-        .eq("id", driverId);
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+      if (authError || !user) throw new Error("Admin non authentifié");
+
+      let rejectionReason: string | null = null;
+      if (!approved) {
+        rejectionReason =
+          window.prompt("Motif de rejet (optionnel) :")?.trim() || null;
+      }
+
+      const { data, error } = await supabase.rpc("validate_driver_dossier", {
+        p_driver_id: driverId,
+        p_admin_user_id: user.id,
+        p_approved: approved,
+        p_rejection_reason: rejectionReason,
+      });
       if (error) throw error;
-      toast({ title: "Statut mis à jour" });
+
+      const row = Array.isArray(data) ? data[0] : data;
+      if (row?.success === false) {
+        throw new Error(row.message || "Validation refusée");
+      }
+
+      toast({
+        title: approved ? "Dossier validé" : "Dossier rejeté",
+        description: row?.message,
+      });
       loadData();
     } catch (e: any) {
-      console.warn("DriverFolderAdmin.updateDriverStatus error:", e);
+      console.warn("DriverFolderAdmin.approveOrRejectDossier error:", e);
       const msg =
         e?.message ?? (typeof e === "object" ? JSON.stringify(e) : String(e));
       toast({ title: "Erreur", description: msg, variant: "destructive" });
@@ -418,6 +441,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
       <div className="flex gap-2 overflow-x-auto">
         {SECTIONS.map((s, i) => (
           <button
+            type="button"
             key={s.id}
             onClick={() => setActiveSection(i)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${
@@ -542,24 +566,18 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
           ))}
         </div>
 
-        {/* Status change */}
+        {/* Status (read-only chips — dossier transitions via RPC only) */}
         <div className="mt-6 pt-4 border-t border-gray-700">
           <span className="text-sm text-gray-400 mb-2 block">
-            Changer le statut
+            Statut actuel
           </span>
-          <div className="flex flex-wrap gap-2">
-            {(Object.keys(statusLabels) as DriverStatus[]).map((s) => (
-              <Button
-                key={s}
-                size="sm"
-                variant={driver?.status === s ? "default" : "outline"}
-                onClick={() => updateDriverStatus(s)}
-                className={`text-xs ${driver?.status === s ? "" : "border-gray-600 text-gray-300"}`}
-              >
-                {statusLabels[s]}
-              </Button>
-            ))}
-          </div>
+          <Badge className={statusColors[driver?.status ?? "draft"]}>
+            {statusLabels[driver?.status ?? "draft"]}
+          </Badge>
+          <p className="text-xs text-gray-500 mt-2">
+            Approuver / rejeter uniquement via les actions dossier (RPC
+            validate_driver_dossier) quand le statut est pending_review.
+          </p>
         </div>
       </div>
     );
@@ -723,43 +741,29 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
             Actions sur le dossier
           </span>
           <div className="flex flex-wrap gap-2">
-            {driver?.status !== "active" && isComplete && (
-              <Button
-                size="sm"
-                onClick={() => updateDriverStatus("active")}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                ✓ Activer le chauffeur
-              </Button>
+            {driver?.status === "pending_review" && (
+              <>
+                <Button
+                  size="sm"
+                  onClick={() => approveOrRejectDossier(true)}
+                  className="bg-green-600 hover:bg-green-700"
+                  disabled={!isComplete}
+                >
+                  ✓ Valider le dossier
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => approveOrRejectDossier(false)}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  ✗ Rejeter le dossier
+                </Button>
+              </>
             )}
             {driver?.status !== "pending_review" && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => updateDriverStatus("pending_review")}
-                className="border-gray-600 text-gray-300"
-              >
-                Remettre en attente
-              </Button>
-            )}
-            {driver?.status !== "rejected" && (
-              <Button
-                size="sm"
-                onClick={() => updateDriverStatus("rejected")}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                ✗ Rejeter le dossier
-              </Button>
-            )}
-            {driver?.status !== "draft" && !isComplete && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => updateDriverStatus("draft")}
-                className="border-gray-600 text-gray-300"
-              >
-                Remettre en brouillon
-              </Button>
+              <p className="text-xs text-gray-500">
+                Validation RPC disponible uniquement en statut pending_review.
+              </p>
             )}
           </div>
         </div>
@@ -808,7 +812,7 @@ function DocumentPreview({
   doc: DriverDocRow;
   signedUrl?: string;
 }>) {
-  const isImage = doc.file_url?.match(/\.(jpg|jpeg|png|webp|gif)$/i);
+  const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.exec(doc.file_url ?? "");
 
   if (signedUrl && isImage) {
     return (

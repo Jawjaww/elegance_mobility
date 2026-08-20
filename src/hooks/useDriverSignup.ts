@@ -15,13 +15,27 @@ export function useDriverValidation(): UseDriverValidationReturn {
     setIsLoading(true)
 
     try {
-      const { data, error } = await supabase.rpc('validate_driver', {
-        driver_id: driverId,
-        approved,
-        rejection_reason: reason
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser()
+      if (authError || !user) {
+        throw new Error('Admin non authentifié')
+      }
+
+      const { data, error } = await supabase.rpc('validate_driver_dossier', {
+        p_driver_id: driverId,
+        p_admin_user_id: user.id,
+        p_approved: approved,
+        p_rejection_reason: reason ?? null,
       })
 
       if (error) throw error
+
+      const row = Array.isArray(data) ? data[0] : data
+      if (row?.success === false) {
+        throw new Error(row.message || 'Validation refusée')
+      }
 
       toast({
         title: approved ? "Chauffeur validé" : "Chauffeur refusé",
