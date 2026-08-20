@@ -1,9 +1,7 @@
 'use client'
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { LoginForm } from "./LoginForm"
-import { Card } from "@/components/ui/card"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 
@@ -21,11 +19,10 @@ export function AuthModal({
   open,
   onClose,
   onSuccess,
-  defaultTab = "login",
   title = "Connexion requise",
   description = "Connectez-vous ou créez un compte pour continuer",
-  embedded = false
-}: AuthModalProps) {
+  embedded = false,
+}: Readonly<AuthModalProps>) {
   const searchParams = useSearchParams();
   const from = searchParams?.get('from');
   
@@ -50,7 +47,7 @@ export function AuthModal({
             href={signupUrl}
             className="font-medium text-primary hover:underline"
           >
-            S'inscrire
+            S&apos;inscrire
           </Link>
         </div>
       </div>
@@ -62,7 +59,7 @@ export function AuthModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

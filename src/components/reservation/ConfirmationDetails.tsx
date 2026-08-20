@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/useToast";
 import ReservationMap from "@/components/map/ReservationMap";
 import { AuthModal } from "../../app/auth/login/AuthModal";
 import { pricingService } from "@/lib/services/pricingService";
+import { resolveRideFinalPrice } from "@/lib/services/resolveRideFinalPrice";
 
 // Type de la table rides de Supabase
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
@@ -168,59 +169,19 @@ export function ConfirmationDetails() {
         });
 
         if (data && data.id) {
-          // Déclenchement manuel de l'Edge Function pour calculer et enregistrer le tarif final
-          let finalPrice = null;
-          try {
-            const { data: edgeFunctionData, error: edgeFunctionError } =
-              await supabase.functions.invoke("price-calculator", {
-                body: {
-                  new: {
-                    id: data.id,
-                    vehicle_type: selectedVehicle,
-                    pickup_lat: departure.lat,
-                    pickup_lon: departure.lon,
-                    dropoff_lat: destination.lat,
-                    dropoff_lon: destination.lon,
-                    options: Array.isArray(selectedOptions)
-                      ? selectedOptions
-                      : [],
-                    distance: distance || null,
-                    duration: duration || null,
-                  },
-                },
-                headers: session
-                  ? {
-                      Authorization: `Bearer ${session.access_token}`,
-                    }
-                  : undefined,
-              });
-            if (edgeFunctionError) {
-              console.error(
-                "Erreur lors du calcul du tarif final (Edge Function):",
-                edgeFunctionError,
-              );
-            } else {
-              console.log(
-                "Tarif final calculé et enregistré (Edge Function):",
-                edgeFunctionData,
-              );
-              // Relire la réservation pour récupérer le prix final
-              const { data: refreshedRide, error: refreshError } =
-                await supabase
-                  .from("rides")
-                  .select("final_price")
-                  .eq("id", data.id)
-                  .single();
-              if (!refreshError && refreshedRide?.final_price) {
-                finalPrice = refreshedRide.final_price;
-              }
-            }
-          } catch (err) {
-            console.error(
-              "Erreur inattendue lors de l'appel à l'Edge Function price-calculator:",
-              err,
-            );
-          }
+          const finalPrice = await resolveRideFinalPrice({
+            rideId: data.id,
+            vehicleType: selectedVehicle,
+            pickupLat: departure.lat,
+            pickupLon: departure.lon,
+            dropoffLat: destination.lat,
+            dropoffLon: destination.lon,
+            options: Array.isArray(selectedOptions) ? selectedOptions : [],
+            distance: distance ?? null,
+            duration: duration ?? null,
+            fallbackPrice: priceDetails?.totalPrice ?? data.estimated_price,
+          });
+
           sessionStorage.setItem("last_confirmed_reservation", data.id);
           // Afficher le toast de confirmation avec le prix final si disponible
           toast({

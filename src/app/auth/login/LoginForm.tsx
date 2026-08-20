@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/lib/database/client";
 import { getUserRole as getAppRole } from "@/lib/utils/auth-helpers";
 import { useToast } from "@/hooks/useToast";
 import { type AppRole } from "@/lib/utils/roles";
@@ -14,9 +13,33 @@ interface LoginFormProps {
   onSuccess?: () => void;
 }
 
-export function LoginForm({ onSuccess }: LoginFormProps = {}) {
+function loginErrorMessage(
+  status: number,
+  loginJson: { error?: string; detail?: unknown },
+): string {
+  const detail = loginJson?.detail;
+  if (typeof detail === "string" && detail.trim()) return detail;
+  if (detail && typeof detail === "object") {
+    const d = detail as { msg?: string; message?: string };
+    if (d.msg) return d.msg;
+    if (d.message) return d.message;
+  }
+  if (typeof loginJson?.error === "string" && loginJson.error.trim()) {
+    return loginJson.error;
+  }
+  if (status === 401) {
+    return "Email ou mot de passe incorrect.";
+  }
+  if (status === 429) {
+    return "Trop de tentatives. Réessayez dans quelques minutes.";
+  }
+  return "La connexion a échoué. Réessayez plus tard.";
+}
+
+export function LoginForm({ onSuccess }: Readonly<LoginFormProps> = {}) {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -26,15 +49,16 @@ export function LoginForm({ onSuccess }: LoginFormProps = {}) {
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsLoading(true);
+    setFormError(null);
 
     try {
       const formData = new FormData(event.currentTarget);
       const email = formData.get("email") as string;
       const password = formData.get("password") as string;
 
-      // Use server-side login proxy to avoid CORS and set HttpOnly cookies
       let loginResp: Response | null = null;
-      let loginJson: any = {};
+      let loginJson: { error?: string; detail?: unknown; session?: unknown; user?: unknown } =
+        {};
       try {
         loginResp = await fetch("/api/auth/login", {
           method: "POST",
@@ -42,85 +66,52 @@ export function LoginForm({ onSuccess }: LoginFormProps = {}) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
         });
-      } catch (networkErr: any) {
-        console.error(
-          "[LoginForm] Network error calling /api/auth/login",
-          networkErr,
+      } catch {
+        setFormError(
+          "Impossible de joindre le service d'authentification. Vérifiez votre connexion.",
         );
-        toast({
-          variant: "destructive",
-          title: "Erreur réseau",
-          description:
-            "Impossible de joindre le service d'authentification. Vérifiez votre connexion.",
-        });
-        setIsLoading(false);
         return;
       }
 
       try {
         loginJson = await loginResp.json();
-      } catch (e) {
+      } catch {
         loginJson = {};
       }
 
       if (!loginResp.ok) {
-        console.error(
-          "[LoginForm] /api/auth/login returned error",
-          loginResp.status,
-          loginJson,
-        );
-        const detailMsg = (() => {
-          const d = loginJson?.detail;
-          if (!d) return undefined;
-          if (typeof d === "string") return d;
-          if (d?.msg) return d.msg;
-          if (d?.message) return d.message;
-          try {
-            return JSON.stringify(d);
-          } catch (e) {
-            return String(d);
-          }
-        })();
-        toast({
-          variant: "destructive",
-          title: loginJson?.error || "Échec d'authentification",
-          description:
-            detailMsg || "Vérifiez vos identifiants ou réessayez plus tard.",
-        });
-        setIsLoading(false);
+        setFormError(loginErrorMessage(loginResp.status, loginJson));
         return;
       }
 
-      console.debug("[LoginForm] /api/auth/login result", loginJson);
-
       // Dispatch session to ClientProviders which centralise l'appel à setSession
-      if (
-        loginJson?.session?.access_token &&
-        loginJson?.session?.refresh_token
-      ) {
+      const session = loginJson.session as
+        | { access_token?: string; refresh_token?: string }
+        | undefined;
+      if (session?.access_token && session?.refresh_token) {
         try {
           window.dispatchEvent(
             new CustomEvent("elegance:setSession", {
-              detail: loginJson.session,
+              detail: session,
             }),
           );
-          console.debug("[LoginForm] Dispatched elegance:setSession event");
-        } catch (e) {
-          console.warn("[LoginForm] Failed to dispatch setSession event", e);
+        } catch {
+          /* ignore dispatch errors */
         }
       }
 
       const freshUser = loginJson.user || null;
-      const userRole = getAppRole(freshUser as any) as AppRole;
+      const userRole = getAppRole(freshUser as Parameters<typeof getAppRole>[0]) as AppRole;
 
       // Seuls les admins et super admins ne peuvent pas se connecter sur la page login normale
       if (
         (userRole === "app_admin" || userRole === "app_super_admin") &&
         from !== "admin"
       ) {
-        throw new Error(
-          "Veuillez utiliser la page de connexion administrateur",
+        setFormError(
+          "Veuillez utiliser la page de connexion administrateur.",
         );
+        return;
       }
 
       toast({
@@ -128,49 +119,39 @@ export function LoginForm({ onSuccess }: LoginFormProps = {}) {
         description: "Vous êtes maintenant connecté",
       });
 
-      // Si onSuccess est fourni, l'appeler (pour les modals inline)
       if (onSuccess) {
         onSuccess();
         return;
       }
 
-      // No server cookie sync in client-JWT mode; session is handled client-side
-
-      // Redirection basée sur le rôle ou redirectTo
       let redirectPath = redirectTo || "/my-account";
 
-      // Si pas de redirectTo spécifique, utiliser le rôle
       if (!redirectTo && from) {
-        // Vérifier que la redirection est autorisée pour le rôle
-        if (
-          (from === "driver" && userRole !== "app_driver") ||
-          (from === "admin" &&
-            !["app_admin", "app_super_admin"].includes(userRole))
-        ) {
-          throw new Error("Accès non autorisé pour ce portail");
+        const isDriverDenied = from === "driver" && userRole !== "app_driver";
+        const isAdminDenied =
+          from === "admin" &&
+          !["app_admin", "app_super_admin"].includes(userRole);
+        if (isDriverDenied || isAdminDenied) {
+          setFormError("Accès non autorisé pour ce portail.");
+          return;
         }
-        redirectPath =
-          from === "driver"
-            ? "/driver-portal/dashboard"
-            : from === "admin"
-              ? "/backoffice-portal"
-              : "/my-account";
+        if (from === "driver") redirectPath = "/driver-portal/dashboard";
+        else if (from === "admin") redirectPath = "/backoffice-portal";
+        else redirectPath = "/my-account";
       }
 
-      await router.push(redirectPath);
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Erreur de connexion",
-        description: error?.message || "Une erreur est survenue",
-      });
+      router.push(redirectPath);
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Une erreur est survenue";
+      setFormError(message);
     } finally {
       setIsLoading(false);
     }
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form onSubmit={onSubmit} className="space-y-4" noValidate>
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input
@@ -181,6 +162,7 @@ export function LoginForm({ onSuccess }: LoginFormProps = {}) {
           required
           autoComplete="email"
           disabled={isLoading}
+          aria-invalid={Boolean(formError)}
           suppressHydrationWarning
         />
       </div>
@@ -194,6 +176,7 @@ export function LoginForm({ onSuccess }: LoginFormProps = {}) {
             required
             autoComplete="current-password"
             disabled={isLoading}
+            aria-invalid={Boolean(formError)}
             suppressHydrationWarning
           />
           <button
@@ -210,6 +193,15 @@ export function LoginForm({ onSuccess }: LoginFormProps = {}) {
           </button>
         </div>
       </div>
+
+      {formError && (
+        <p
+          role="alert"
+          className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300"
+        >
+          {formError}
+        </p>
+      )}
 
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? "Connexion en cours..." : "Se connecter"}

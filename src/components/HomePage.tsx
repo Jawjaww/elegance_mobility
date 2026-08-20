@@ -34,12 +34,12 @@ export default function HomePage() {
         <div className="relative h-full w-full transform-style-3d">
           <div className="absolute inset-0 transform trangray-z-[-100px] scale-1.2">
             <Image
-              src="/car-bg.jpg"
+              src="/images/car-bg.jpg"
               alt="Background luxury car"
               fill
               className="object-cover"
               priority
-              quality={90}
+              quality={75}
               sizes="100vw"
             />
           </div>
@@ -84,8 +84,8 @@ export default function HomePage() {
                 title: "3. Réservation garantie",
                 description: "Votre chauffeur est confirmé. Vous recevrez ses coordonnées avant le départ.",
               }
-            ].map((step, index) => (
-              <div key={index}>
+            ].map((step) => (
+              <div key={step.title}>
                 <Card className="h-full transform transition-all duration-300 hover:scale-105 hover:shadow-lg border-neutral-800 bg-neutral-900/50">
                   <CardHeader>
                     <CardTitle>{step.title}</CardTitle>
@@ -133,8 +133,8 @@ export default function HomePage() {
                 title: "Van de Luxe",
                 description: "Mercedes Classe V - Jusqu'à 7 passagers - 7 bagages - Idéal pour les groupes",
               }
-            ].map((vehicle, index) => (
-              <div key={index}>
+            ].map((vehicle) => (
+              <div key={vehicle.title}>
                 <Card className="transform transition-all duration-300 hover:scale-105 hover:shadow-lg border-neutral-800 bg-neutral-900/50">
                   <CardHeader>
                     <CardTitle>{vehicle.title}</CardTitle>

@@ -40,6 +40,100 @@ interface UnifiedMapProps {
   readonly height?: string;
 }
 
+function isValidCoord(c: { lat: number; lng: number } | undefined): c is Coord {
+  return (
+    !!c &&
+    Number.isFinite(c.lat) &&
+    Number.isFinite(c.lng) &&
+    Math.abs(c.lat) <= 90 &&
+    Math.abs(c.lng) <= 180
+  );
+}
+
+function toCoord(
+  pickup?: Coord,
+  departure?: LegacyLocation | null,
+): Coord | undefined {
+  if (isValidCoord(pickup)) return pickup;
+  if (departure) {
+    const c = { lat: departure.lat, lng: departure.lon };
+    if (isValidCoord(c)) return c;
+  }
+  return undefined;
+}
+
+function clearMarker(
+  id: string,
+  markers: Map<string, maplibregl.Marker>,
+  roots: Map<string, { unmount: () => void }>,
+) {
+  const marker = markers.get(id);
+  if (marker) {
+    try {
+      marker.remove();
+    } catch {
+      /* ignore */
+    }
+    markers.delete(id);
+  }
+  const root = roots.get(id);
+  if (root) {
+    try {
+      root.unmount();
+    } catch {
+      /* ignore */
+    }
+    roots.delete(id);
+  }
+}
+
+function syncEndpointMarker(
+  mapInstance: maplibregl.Map,
+  id: "pickup" | "dropoff",
+  loc: Coord | undefined,
+  icon: unknown,
+  color: string,
+  markers: Map<string, maplibregl.Marker>,
+  roots: Map<string, { unmount: () => void }>,
+) {
+  if (loc) {
+    syncMarker(mapInstance, id, loc, icon, color, markers, roots);
+  } else {
+    clearMarker(id, markers, roots);
+  }
+}
+
+function fitMapToPoints(
+  mapInstance: maplibregl.Map,
+  points: Coord[],
+  mode: MapMode,
+) {
+  if (points.length === 0) return;
+
+  const coords = points.map((p): [number, number] => [p.lng, p.lat]);
+  const isShort =
+    globalThis.window !== undefined && globalThis.window.innerHeight <= 700;
+  const padding = isShort
+    ? { top: 40, bottom: 120, left: 40, right: 40 }
+    : 80;
+
+  if (coords.length >= 2) {
+    const bounds = coords.reduce(
+      (b, c) => b.extend(c),
+      new maplibregl.LngLatBounds(coords[0], coords[0]),
+    );
+    mapInstance.fitBounds(bounds, {
+      padding,
+      animate: mode === "TRACKING",
+      maxZoom: 15,
+    });
+    return;
+  }
+
+  mapInstance.setCenter(coords[0]);
+  mapInstance.setZoom(13);
+}
+
 export default function UnifiedMap({
   mode,
   pickup,
@@ -54,26 +148,20 @@ export default function UnifiedMap({
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markers = useRef<Map<string, maplibregl.Marker>>(new Map());
-  const roots = useRef<Map<string, any>>(new Map());
+  const roots = useRef<Map<string, { unmount: () => void }>>(new Map());
+  const onReadyRef = useRef(onReady);
+  const onRouteCalculatedRef = useRef(onRouteCalculated);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // helpers moved to map-helpers/*
+  onReadyRef.current = onReady;
+  onRouteCalculatedRef.current = onRouteCalculated;
 
+  // Create the map once; remount only when mode changes (different layers).
   useEffect(() => {
     if (!mapContainer.current) return;
-    const controller = new AbortController();
 
-    // normalize coordinates: prefer new shape, fallback to legacy departure/destination
-    const p: Coord | undefined =
-      pickup ??
-      (departure ? { lat: departure.lat, lng: departure.lon } : undefined);
-    const d: Coord | undefined =
-      dropoff ??
-      (destination
-        ? { lat: destination.lat, lng: destination.lon }
-        : undefined);
-
-    // Default center: prefer driver location, then pickup/dropoff, otherwise Paris
+    const p = toCoord(pickup, departure);
+    const d = toCoord(dropoff, destination);
     const paris: [number, number] = [2.3522, 48.8566];
     let initialCenter: [number, number] = paris;
     let initialZoom = 9;
@@ -102,179 +190,70 @@ export default function UnifiedMap({
 
     mapInstance.on("load", () => {
       ensureSourcesAndLayers(mapInstance, mode);
-
-      // Only sync markers when we have valid coords
-      if (p) {
-        syncMarker(
-          mapInstance,
-          "pickup",
-          p,
-          MapPin,
-          "#64748b",
-          markers.current,
-          roots.current,
-        );
-      }
-      if (d) {
-        syncMarker(
-          mapInstance,
-          "dropoff",
-          d,
-          mode === "EDIT" ? Flag : LandPlot,
-          "#10b981",
-          markers.current,
-          roots.current,
-        );
-      }
-      if (driverLocation) {
-        syncMarker(
-          mapInstance,
-          "driver",
-          driverLocation,
-          Navigation,
-          "#3b82f6",
-          markers.current,
-          roots.current,
-        );
-      } else if (
-        mode === "TRACKING" &&
-        typeof navigator !== "undefined" &&
-        navigator.geolocation
-      ) {
-        // Ask for permission once to center the dashboard map to current position (prompts the browser)
-        try {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => {
-              const loc = {
-                lat: pos.coords.latitude,
-                lng: pos.coords.longitude,
-                heading: pos.coords.heading ?? undefined,
-              };
-              try {
-                syncMarker(
-                  mapInstance,
-                  "driver",
-                  loc,
-                  Navigation,
-                  "#3b82f6",
-                  markers.current,
-                  roots.current,
-                );
-                mapInstance.setCenter([loc.lng, loc.lat]);
-                mapInstance.setZoom(13);
-              } catch (e) {
-                // ignore marker errors
-              }
-            },
-            (err) => {
-              // user denied or unavailable — keep default center
-              // do not spam console
-            },
-            { enableHighAccuracy: true, timeout: 10000 },
-          );
-        } catch (e) {
-          // navigator may be unavailable in some environments
-        }
-      }
-
-      // Fit bounds responsive when we have at least two points; otherwise keep initial center/zoom
-      const coords: Array<[number, number]> = [];
-      if (p) coords.push([p.lng, p.lat]);
-      if (d) coords.push([d.lng, d.lat]);
-      if (driverLocation) coords.push([driverLocation.lng, driverLocation.lat]);
-
-      const isShort =
-        typeof globalThis.window !== "undefined" &&
-        globalThis.window.innerHeight <= 700;
-      const padding = isShort
-        ? { top: 40, bottom: 120, left: 40, right: 40 }
-        : 80;
-
-      if (coords.length >= 2) {
-        const bounds = coords.reduce(
-          (b, c) => b.extend(c),
-          new maplibregl.LngLatBounds(coords[0], coords[0]),
-        );
-        mapInstance.fitBounds(bounds, {
-          padding,
-          animate: mode === "TRACKING",
-          maxZoom: 15,
-        });
-      } else if (coords.length === 1) {
-        mapInstance.setCenter(coords[0]);
-        mapInstance.setZoom(13);
-      } else {
-        // no points -> keep Paris/initialCenter
-        mapInstance.setCenter(initialCenter);
-        mapInstance.setZoom(initialZoom);
-      }
-
-      if (mode !== "EDIT") {
-        // Only fetch route when both endpoints are available
-        if (p && d)
-          fetchAndSetRoutes(mapInstance, p, d, controller, onRouteCalculated);
-      } else {
-        // In EDIT mode we draw a straight line only when both endpoints exist
-        if (p && d) {
-          try {
-            (mapInstance.getSource("route-main") as any).setData({
-              type: "Feature",
-              geometry: {
-                type: "LineString",
-                coordinates: [
-                  [p.lng, p.lat],
-                  [d.lng, d.lat],
-                ],
-              },
-            });
-          } catch (e) {
-            // ignore
-          }
-        }
-      }
-
       setIsLoaded(true);
-      onReady?.();
+      onReadyRef.current?.();
     });
 
     return () => {
-      controller.abort();
-      // Unmount roots safely in next microtask to avoid sync unmount during render
-      try {
-        queueMicrotask(() => {
-          roots.current.forEach((r) => {
-            try {
-              r.unmount();
-            } catch {}
-          });
-        });
-      } catch (e) {
-        setTimeout(() => {
-          roots.current.forEach((r) => {
-            try {
-              r.unmount();
-            } catch {}
-          });
-        }, 0);
-      }
+      markers.current.forEach((m) => {
+        try {
+          m.remove();
+        } catch {
+          /* ignore */
+        }
+      });
+      markers.current.clear();
+      roots.current.forEach((r) => {
+        try {
+          r.unmount();
+        } catch {
+          /* ignore */
+        }
+      });
+      roots.current.clear();
       try {
         mapInstance.remove();
-      } catch (e) {}
+      } catch {
+        /* ignore */
+      }
       map.current = null;
+      setIsLoaded(false);
     };
+    // Initial coords only seed center; marker/route sync lives in the next effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    JSON.stringify(pickup ?? departure ?? {}),
-    JSON.stringify(dropoff ?? destination ?? {}),
-    mode,
-  ]);
+  }, [mode]);
 
-  // Update driver marker without remounting the map when location changes
+  // Sync markers + route when points change — without remounting the map.
   useEffect(() => {
-    if (!map.current || !driverLocation) return;
-    try {
+    const mapInstance = map.current;
+    if (!mapInstance || !isLoaded) return;
+
+    const controller = new AbortController();
+    const p = toCoord(pickup, departure);
+    const d = toCoord(dropoff, destination);
+
+    syncEndpointMarker(
+      mapInstance,
+      "pickup",
+      p,
+      MapPin,
+      "#059669",
+      markers.current,
+      roots.current,
+    );
+    syncEndpointMarker(
+      mapInstance,
+      "dropoff",
+      d,
+      mode === "EDIT" ? Flag : LandPlot,
+      "#dc2626",
+      markers.current,
+      roots.current,
+    );
+
+    if (driverLocation && isValidCoord(driverLocation)) {
       syncMarker(
-        map.current,
+        mapInstance,
         "driver",
         driverLocation,
         Navigation,
@@ -282,8 +261,84 @@ export default function UnifiedMap({
         markers.current,
         roots.current,
       );
-    } catch (e) {}
-  }, [driverLocation]);
+    }
+
+    const points = [p, d, driverLocation].filter(isValidCoord);
+    fitMapToPoints(mapInstance, points, mode);
+
+    if (p && d) {
+      if (mode === "EDIT") {
+        try {
+          (
+            mapInstance.getSource("route-main") as maplibregl.GeoJSONSource
+          )?.setData({
+            type: "Feature",
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [p.lng, p.lat],
+                [d.lng, d.lat],
+              ],
+            },
+            properties: {},
+          });
+        } catch {
+          /* ignore */
+        }
+      } else {
+        fetchAndSetRoutes(
+          mapInstance,
+          p,
+          d,
+          controller,
+          onRouteCalculatedRef.current,
+        );
+      }
+    }
+
+    return () => controller.abort();
+  }, [
+    isLoaded,
+    mode,
+    pickup,
+    dropoff,
+    departure,
+    destination,
+    driverLocation,
+  ]);
+
+  // TRACKING without an external driverLocation: ask once for browser GPS.
+  useEffect(() => {
+    const mapInstance = map.current;
+    if (!mapInstance || !isLoaded) return;
+    if (mode !== "TRACKING" || driverLocation) return;
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const loc = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          heading: pos.coords.heading ?? undefined,
+        };
+        syncMarker(
+          mapInstance,
+          "driver",
+          loc,
+          Navigation,
+          "#3b82f6",
+          markers.current,
+          roots.current,
+        );
+        mapInstance.setCenter([loc.lng, loc.lat]);
+        mapInstance.setZoom(13);
+      },
+      () => {
+        /* permission denied / unavailable */
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }, [isLoaded, mode, driverLocation]);
 
   return (
     <div

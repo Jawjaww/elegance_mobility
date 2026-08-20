@@ -26,12 +26,17 @@
 }
 
 .suggestion {
+  display: block;
+  width: 100%;
+  text-align: left;
   padding: 0.75rem 1rem;
   cursor: pointer;
   color: rgb(250, 250, 250);
   transition: all 0.2s ease-in-out;
   font-size: 0.875rem;
   position: relative;
+  background: transparent;
+  border: none;
 }
 
 .suggestion:not(:last-child) {

@@ -1,5 +1,7 @@
 import { Plus_Jakarta_Sans } from "next/font/google";
+import Script from "next/script";
 import { ClientProviders } from "@/components/ClientProviders";
+import { STRIP_EXTENSION_DOM_ATTRS_SCRIPT } from "@/lib/strip-extension-dom-attrs";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -33,14 +35,20 @@ export const viewport = {
  */
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
       <body
         className={`${plusJakarta.variable} font-plus-jakarta min-h-screen`}
+        suppressHydrationWarning
       >
+        <Script
+          id="strip-extension-dom-attrs"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: STRIP_EXTENSION_DOM_ATTRS_SCRIPT }}
+        />
         {/* Fixed decorative background behind all content to avoid rendering issues
             with backdrop-filter / stacking contexts. It's pointer-events-none so
             it never interferes with interaction. */}

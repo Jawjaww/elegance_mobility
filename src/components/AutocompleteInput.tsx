@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { useDebounce } from "../hooks/useDebounce";
+import { useToast } from "../hooks/useToast";
 import styles from "./AutocompleteInput.module.css";
 
 // Définir le type Coordinates localement en utilisant lon
@@ -62,6 +63,27 @@ function formatAddress(feature: AddressFeature): string {
   return label;
 }
 
+function getGeolocationErrorMessage(error: GeolocationPositionError): string {
+  switch (error.code) {
+    case error.PERMISSION_DENIED:
+      return "Accès refusé. Autorisez la géolocalisation pour ce site dans les paramètres du navigateur.";
+    case error.POSITION_UNAVAILABLE:
+      return "Position indisponible. Vérifiez le GPS/Wi‑Fi ou désactivez les extensions (VPN, bloqueurs) qui interceptent la localisation.";
+    case error.TIMEOUT:
+      return "Délai dépassé. Réessayez dans un endroit avec un meilleur signal.";
+    default:
+      return "Impossible d'obtenir votre position actuelle. Saisissez l'adresse manuellement.";
+  }
+}
+
+function getCurrentPosition(
+  options?: PositionOptions,
+): Promise<GeolocationPosition> {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, options);
+  });
+}
+
 export function AutocompleteInput({
   id,
   value,
@@ -70,7 +92,7 @@ export function AutocompleteInput({
   onSelect,
   className,
   defaultValue
-}: AutocompleteInputProps) {
+}: Readonly<AutocompleteInputProps>) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState<string>(value || defaultValue || "");
   const debouncedQuery = useDebounce<string>(query, 300);
@@ -78,6 +100,7 @@ export function AutocompleteInput({
   const [isLocating, setIsLocating] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const ignoreNextQueryChange = useRef(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (ignoreNextQueryChange.current || !hasUserInteracted) {
@@ -104,58 +127,54 @@ export function AutocompleteInput({
   }, [debouncedQuery, hasUserInteracted]);
 
   const handleGeolocation = async () => {
-    if (navigator.geolocation) {
-      setIsLocating(true);
-      try {
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            const { latitude, longitude } = position.coords;
-            
-            // S'assurer que les deux coordonnées sont présentes et valides
-            if (latitude === undefined || latitude === null || 
-                longitude === undefined || longitude === null) {
-              console.error("Coordonnées de géolocalisation invalides");
-              setIsLocating(false);
-              return;
-            }
-            
-            // Conversion explicite en numbers pour éviter des problèmes de types
-            const lat = parseFloat(latitude.toString());
-            const lon = parseFloat(longitude.toString()); 
-            
-            // Utilisez ces coordonnées pour obtenir l'adresse
-            try {
-              const address = await reverseGeocode(lat, lon);
-              
-              // Mise à jour de l'entrée et déclenchement du gestionnaire onSelect
-              if (onSelect && address) {
-                // Passer les coordonnées dans le format standardisé
-                onSelect(lat, lon, address);
-              }
-              
-              // Mettre à jour l'entrée avec l'adresse
-              if (address) {
-                setQuery(address);
-                onChange?.(address);
-              }
-              
-              setIsLocating(false);
-            } catch (error) {
-              console.error("Erreur lors du géocodage inversé:", error);
-              setIsLocating(false);
-            }
-          },
-          (error) => {
-            console.error("Erreur de géolocalisation:", error);
-            setIsLocating(false);
-          }
-        );
-      } catch (error) {
-        console.error("Erreur lors de la géolocalisation:", error);
-        setIsLocating(false);
+    if (!navigator.geolocation) {
+      toast({
+        title: "Géolocalisation indisponible",
+        description: "Votre navigateur ne prend pas en charge la géolocalisation.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLocating(true);
+    try {
+      const position = await getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 60000,
+      });
+
+      const { latitude, longitude } = position.coords;
+      const lat = latitude;
+      const lon = longitude;
+
+      const address = await reverseGeocode(lat, lon);
+      if (!address) {
+        toast({
+          title: "Adresse introuvable",
+          description:
+            "Position obtenue, mais aucune adresse n'a pu être déterminée.",
+          variant: "destructive",
+        });
+        return;
       }
-    } else {
-      console.error("La géolocalisation n'est pas prise en charge par ce navigateur");
+
+      onSelect?.(lat, lon, address);
+      setQuery(address);
+      onChange?.(address);
+    } catch (error) {
+      const geoError = error as GeolocationPositionError;
+      toast({
+        title: "Géolocalisation impossible",
+        description: getGeolocationErrorMessage(geoError),
+        variant: "destructive",
+      });
+      console.warn("[AutocompleteInput] geolocation failed", {
+        code: geoError.code,
+        message: geoError.message,
+      });
+    } finally {
+      setIsLocating(false);
     }
   };
 
@@ -182,7 +201,6 @@ export function AutocompleteInput({
       setSuggestions([]);
       // Do not call onSelect with 0,0 (which maps to the Gulf of Guinea).
       // Let callers treat empty string as a reset via onChange and other UI logic.
-      return;
     }
   };
 
@@ -213,23 +231,27 @@ export function AutocompleteInput({
           }}
         />
         {suggestions.length > 0 && (
-          <ul className={styles.suggestions}>
-            {suggestions.map((feature, idx) => (
-              <li
-                key={idx}
-                className={styles.suggestion}
-                onClick={() => {
-                  const lat = feature.geometry.coordinates[1];
-                  const lon = feature.geometry.coordinates[0]; // Standardisé sur lon
-                  onSelect?.(lat, lon, feature.properties.label);
-                  ignoreNextQueryChange.current = true;
-                  setQuery(feature.properties.label);
-                  setSuggestions([]);
-                }}
-              >
-                {formatAddress(feature)}
-              </li>
-            ))}
+          <ul className={styles.suggestions} role="listbox">
+            {suggestions.map((feature) => {
+              const label = feature.properties.label;
+              const [lon, lat] = feature.geometry.coordinates;
+              return (
+                <li key={`${label}-${lon}-${lat}`} role="option" aria-selected={false}>
+                  <button
+                    type="button"
+                    className={styles.suggestion}
+                    onClick={() => {
+                      onSelect?.(lat, lon, label);
+                      ignoreNextQueryChange.current = true;
+                      setQuery(label);
+                      setSuggestions([]);
+                    }}
+                  >
+                    {formatAddress(feature)}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-const path = require('path');
+const path = require('node:path');
 
 const nextConfig = {
   webpack: (config) => {
@@ -21,6 +21,8 @@ const nextConfig = {
   // are required for secure uploads and cannot be used with `output: 'export'`.
   images: {
     unoptimized: true,
+    // Next 16 will require explicit qualities; keep common values allowed.
+    qualities: [75, 90],
   },
 };
 

@@ -100,14 +100,15 @@ export function ReservationSummary() {
           <p className="font-medium">Options</p>
           {store.selectedOptions.length > 0 ? (
             <ul className="text-sm text-muted-foreground">
-              {store.selectedOptions.map(option => (
-                <li key={option}>
-                  {option === 'accueil' ? 'Accueil personnalisé' :
-                   option === 'boissons' ? 'Boissons fraîches' :
-                   option === 'childSeat' ? 'Siège enfant' :
-                   option === 'pets' ? 'Animaux acceptés' : option}
-                </li>
-              ))}
+              {store.selectedOptions.map((option) => {
+                const labels: Record<string, string> = {
+                  accueil: "Accueil personnalisé",
+                  boissons: "Boissons fraîches",
+                  childSeat: "Siège enfant",
+                  petFriendly: "Animaux acceptés",
+                };
+                return <li key={option}>{labels[option] ?? option}</li>;
+              })}
             </ul>
           ) : (
             <p className="text-sm text-muted-foreground">Aucune option sélectionnée</p>

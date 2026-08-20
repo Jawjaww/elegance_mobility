@@ -24,9 +24,9 @@ export const maplibreConfig = {
   routing: {
     serviceUrl: 'https://router.project-osrm.org/route/v1',
     profile: 'driving',
-    lineColor: '#3388ff',
+    lineColor: '#2563eb',
     lineWidth: 6,
-    lineOpacity: 0.8
+    lineOpacity: 0.95
   },
   markers: {
     departure: {

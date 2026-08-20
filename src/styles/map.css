@@ -41,10 +41,11 @@
 .maplibregl-popup-content {
   background-color: #1f1f1f;
   color: #ffffff;
-  padding: 10px;
+  padding: 12px;
   border-radius: 6px;
   font-size: 14px;
   border: 1px solid #333333;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
 }
 
 /* Styles améliorés pour les marqueurs et le tracé */
@@ -127,16 +128,6 @@
   z-index: 10;
 }
 
-.maplibregl-popup-content {
-  background-color: #1f1f1f;
-  color: white;
-  padding: 12px;
-  border-radius: 6px;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
-  border: 1px solid #333333;
-  font-size: 14px;
-}
-
 .maplibregl-popup-close-button {
   color: white;
   font-size: 16px;
@@ -163,7 +154,7 @@
   height: 30px;
   border: 3px solid #fff;
   border-radius: 50%;
-  border-top-color: #0078d4;
+  border-top-color: #2563eb;
   animation: spin 1s ease-in-out infinite;
 }
 

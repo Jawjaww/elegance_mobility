@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,10 +9,12 @@ import type { Database } from "@/lib/types/database.types";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { supabase, debugRlsProblem } from "@/lib/database/client";
 import { reservationService } from "@/lib/services/reservationService";
-import { Suspense } from "react";
 import LocationStep from "@/components/reservation/LocationStep";
 import VehicleStep from "@/components/reservation/VehicleStep";
-import { normalizeVehicleType } from "@/lib/utils/vehicle";
+import {
+  selectedFromVehicleOptions,
+  vehicleOptionsFromSelected,
+} from "@/lib/vehicle";
 
 type RideUpdate = Database["public"]["Tables"]["rides"]["Update"];
 type Reservation = Database["public"]["Tables"]["rides"]["Row"];
@@ -205,6 +207,68 @@ function EditReservationContent() {
     );
   }
 
+  let body: ReactNode;
+  if (loading) {
+    body = (
+      <div className="flex justify-center my-12">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  } else if (error) {
+    body = (
+      <div className="text-center space-y-4">
+        <h2 className="text-xl font-bold text-red-600">Erreur</h2>
+        <p>{error}</p>
+        <Button onClick={() => router.back()}>Retour</Button>
+      </div>
+    );
+  } else if (reservation) {
+    body =
+      step === 1 ? (
+        <LocationStep
+          onNextStep={handleNextStep}
+          isEditing={true}
+          onLocationDetected={() => {}}
+          onOriginChange={() => {}}
+          onDestinationChange={() => {}}
+          onOriginSelect={() => {}}
+          onDestinationSelect={() => {}}
+          onRouteCalculated={() => {}}
+          onDateTimeChange={reservationStore.setPickupDateTime}
+          pickupDateTime={reservationStore.pickupDateTime}
+          originAddress={reservationStore.departure?.display_name || ""}
+          destinationAddress={
+            reservationStore.destination?.display_name || ""
+          }
+        />
+      ) : (
+        <VehicleStep
+          vehicleType={reservationStore.selectedVehicle}
+          options={vehicleOptionsFromSelected(
+            reservationStore.selectedOptions,
+          )}
+          distance={reservationStore.distance ?? undefined}
+          duration={reservationStore.duration ?? undefined}
+          onVehicleTypeChange={reservationStore.setSelectedVehicle}
+          onOptionsChange={(nextOptions) =>
+            reservationStore.setSelectedOptions(
+              selectedFromVehicleOptions(nextOptions),
+            )
+          }
+          onPrevious={handlePrevStep}
+          onConfirm={handleEditConfirm}
+          isEditing={true}
+        />
+      );
+  } else {
+    body = (
+      <div className="text-center space-y-4">
+        <p>Réservation non trouvée</p>
+        <Button onClick={() => router.back()}>Retour</Button>
+      </div>
+    );
+  }
+
   return (
     <section className="relative grid min-h-screen bg-neutral-950 overflow-hidden">
       <div className="absolute inset-0 perspective-[1000px]">
@@ -215,55 +279,7 @@ function EditReservationContent() {
       </div>
       <div className="relative z-10 place-self-center w-full max-w-2xl mx-auto px-4 py-8">
         <div className="bg-neutral-900/50 backdrop-blur-lg rounded-lg border border-neutral-800 p-8">
-          {loading ? (
-            <div className="flex justify-center my-12">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-          ) : error ? (
-            <div className="text-center space-y-4">
-              <h2 className="text-xl font-bold text-red-600">Erreur</h2>
-              <p>{error}</p>
-              <Button onClick={() => router.back()}>Retour</Button>
-            </div>
-          ) : reservation ? (
-            <>
-              {step === 1 ? (
-                <LocationStep
-                  onNextStep={handleNextStep}
-                  isEditing={true}
-                  onLocationDetected={() => {}}
-                  onOriginChange={() => {}}
-                  onDestinationChange={() => {}}
-                  onOriginSelect={() => {}}
-                  onDestinationSelect={() => {}}
-                  onRouteCalculated={() => {}}
-                  onDateTimeChange={reservationStore.setPickupDateTime}
-                  pickupDateTime={reservationStore.pickupDateTime}
-                  originAddress={reservationStore.departure?.display_name || ""}
-                  destinationAddress={
-                    reservationStore.destination?.display_name || ""
-                  }
-                />
-              ) : (
-                <VehicleStep
-                  vehicleType={reservationStore.selectedVehicle}
-                  options={reservationStore.selectedOptions}
-                  distance={reservationStore.distance}
-                  duration={reservationStore.duration}
-                  onVehicleTypeChange={reservationStore.setSelectedVehicle}
-                  onOptionsChange={reservationStore.setSelectedOptions}
-                  onPrevious={handlePrevStep}
-                  onConfirm={handleEditConfirm}
-                  isEditing={true}
-                />
-              )}
-            </>
-          ) : (
-            <div className="text-center space-y-4">
-              <p>Réservation non trouvée</p>
-              <Button onClick={() => router.back()}>Retour</Button>
-            </div>
-          )}
+          {body}
         </div>
       </div>
     </section>

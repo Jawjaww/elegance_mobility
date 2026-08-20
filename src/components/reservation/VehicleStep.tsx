@@ -103,7 +103,7 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
             <div>
               <Switch
                 id="child-seat"
-                checked={options.childSeat}
+                checked={Boolean(options.childSeat)}
                 onCheckedChange={(checked) =>
                   handleOptionChange("childSeat", checked)
                 }
@@ -124,7 +124,7 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
             <div>
               <Switch
                 id="petFriendly"
-                checked={options.petFriendly}
+                checked={Boolean(options.petFriendly)}
                 onCheckedChange={(checked) =>
                   handleOptionChange("petFriendly", checked)
                 }

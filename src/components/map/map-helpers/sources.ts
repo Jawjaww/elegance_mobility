@@ -1,5 +1,8 @@
 import maplibregl from "maplibre-gl";
 import type { MapMode } from "../UnifiedMap";
+import { colors } from "@/styles/design-tokens";
+
+const { map: m } = colors;
 
 export function ensureSourcesAndLayers(
   mapInstance: maplibregl.Map,
@@ -23,10 +26,11 @@ export function ensureSourcesAndLayers(
         id: "line-alt",
         type: "line",
         source: "route-alt",
+        layout: { "line-join": "round", "line-cap": "round" },
         paint: {
           "line-width": 3,
-          "line-color": "#94a3b8",
-          "line-opacity": 0.5,
+          "line-color": m.routeAlt,
+          "line-opacity": 0.55,
           "line-dasharray": [2, 2],
           "line-offset": modeLocal === "REQUEST" ? 3 : 0,
         },
@@ -38,12 +42,28 @@ export function ensureSourcesAndLayers(
         id: "line-glow",
         type: "line",
         source: "route-main",
+        layout: { "line-join": "round", "line-cap": "round" },
         paint: {
-          // reduced thickness (user requested thinner) and softer glow color
-          "line-width": 9,
-          "line-color": "#ffc38f",
-          "line-blur": 8,
-          "line-opacity": 0.2,
+          "line-width": 10,
+          "line-color": m.routeGlow,
+          "line-blur": 6,
+          "line-opacity": 0.35,
+        },
+      });
+    }
+
+    // Casing under main route for contrast against soft basemap roads
+    if (!mapInstance.getLayer("line-main-casing")) {
+      mapInstance.addLayer({
+        id: "line-main-casing",
+        type: "line",
+        source: "route-main",
+        layout: { "line-join": "round", "line-cap": "round" },
+        paint: {
+          "line-width": 6,
+          "line-color":
+            modeLocal === "REQUEST" ? m.routeCasing : "#1d4ed8",
+          "line-opacity": 0.9,
         },
       });
     }
@@ -55,9 +75,9 @@ export function ensureSourcesAndLayers(
         source: "route-main",
         layout: { "line-join": "round", "line-cap": "round" },
         paint: {
-          // significantly thinner main line for clear separation from glow
-          "line-width": 3,
-          "line-color": modeLocal === "REQUEST" ? "#fda456" : "#3b82f6",
+          "line-width": 3.5,
+          "line-color": modeLocal === "REQUEST" ? m.route : "#3b82f6",
+          "line-opacity": 1,
         },
       });
     }

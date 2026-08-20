@@ -25,7 +25,34 @@ export const VEHICLE_TYPES = {
 export interface VehicleOptions {
   childSeat: boolean;
   petFriendly: boolean;
+  accueil?: boolean;
+  boissons?: boolean;
   [key: string]: boolean | undefined;
+}
+
+export const DEFAULT_VEHICLE_OPTIONS: VehicleOptions = {
+  childSeat: false,
+  petFriendly: false,
+  accueil: false,
+  boissons: false,
+};
+
+export function vehicleOptionsFromSelected(
+  selected: string[] | undefined | null,
+): VehicleOptions {
+  const set = new Set(Array.isArray(selected) ? selected : []);
+  return {
+    childSeat: set.has("childSeat"),
+    petFriendly: set.has("petFriendly"),
+    accueil: set.has("accueil"),
+    boissons: set.has("boissons"),
+  };
+}
+
+export function selectedFromVehicleOptions(options: VehicleOptions): string[] {
+  return Object.entries(options)
+    .filter(([, value]) => Boolean(value))
+    .map(([key]) => key);
 }
 
 // Utilise le singleton `supabase` configuré dans `src/lib/database/client.ts`

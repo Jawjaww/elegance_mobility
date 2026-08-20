@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -10,27 +9,25 @@ import { type VehicleOptions } from "@/lib/vehicle";
 
 interface OptionsStepProps {
   options: VehicleOptions;
+  onOptionsChange: (options: VehicleOptions) => void;
   onSubmit: () => void;
   onPrevStep?: () => void;
 }
 
 export default function OptionsStep({
   options,
+  onOptionsChange,
   onSubmit,
   onPrevStep,
-}: OptionsStepProps) {
-  const [selectedOptions, setSelectedOptions] =
-    useState<VehicleOptions>(options);
-
-  const handleOptionChange = (option: keyof VehicleOptions) => {
-    setSelectedOptions((prev) => ({
-      ...prev,
-      [option]: !prev[option],
-    }));
-  };
-
-  const handleSubmit = () => {
-    onSubmit();
+}: Readonly<OptionsStepProps>) {
+  const handleOptionChange = (
+    option: keyof VehicleOptions,
+    checked: boolean,
+  ) => {
+    onOptionsChange({
+      ...options,
+      [option]: checked,
+    });
   };
 
   return (
@@ -54,24 +51,28 @@ export default function OptionsStep({
             </div>
             <Switch
               id="childSeat"
-              checked={selectedOptions.childSeat || false}
-              onCheckedChange={() => handleOptionChange("childSeat")}
+              checked={Boolean(options.childSeat)}
+              onCheckedChange={(checked) =>
+                handleOptionChange("childSeat", checked)
+              }
             />
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <Label htmlFor="pets" className="text-base font-medium">
+              <Label htmlFor="petFriendly" className="text-base font-medium">
                 Animaux acceptés
               </Label>
               <p className="text-sm text-neutral-400">
-                Transport d'animaux domestiques
+                Transport d&apos;animaux domestiques
               </p>
             </div>
             <Switch
-              id="pets"
-              checked={selectedOptions.pets || false}
-              onCheckedChange={() => handleOptionChange("pets")}
+              id="petFriendly"
+              checked={Boolean(options.petFriendly)}
+              onCheckedChange={(checked) =>
+                handleOptionChange("petFriendly", checked)
+              }
             />
           </div>
 
@@ -81,13 +82,15 @@ export default function OptionsStep({
                 Accueil personnalisé
               </Label>
               <p className="text-sm text-neutral-400">
-                Pancarte à votre nom à l'aéroport/gare
+                Pancarte à votre nom à l&apos;aéroport/gare
               </p>
             </div>
             <Switch
               id="accueil"
-              checked={selectedOptions.accueil || false}
-              onCheckedChange={() => handleOptionChange("accueil")}
+              checked={Boolean(options.accueil)}
+              onCheckedChange={(checked) =>
+                handleOptionChange("accueil", checked)
+              }
             />
           </div>
 
@@ -102,8 +105,10 @@ export default function OptionsStep({
             </div>
             <Switch
               id="boissons"
-              checked={selectedOptions.boissons || false}
-              onCheckedChange={() => handleOptionChange("boissons")}
+              checked={Boolean(options.boissons)}
+              onCheckedChange={(checked) =>
+                handleOptionChange("boissons", checked)
+              }
             />
           </div>
         </div>
@@ -120,7 +125,7 @@ export default function OptionsStep({
 
           <Button
             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-            onClick={handleSubmit}
+            onClick={onSubmit}
           >
             <CheckCircle className="mr-2 h-4 w-4" />
             Finaliser

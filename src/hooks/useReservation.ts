@@ -4,7 +4,12 @@ import { useState, useCallback } from "react";
 import { useToast } from "@/hooks/useToast";
 import { useRouter } from "next/navigation";
 import { Coordinates } from "../lib/types/map-types";
-import { type VehicleType, type VehicleOptions } from "../lib/vehicle";
+import {
+  type VehicleType,
+  type VehicleOptions,
+  selectedFromVehicleOptions,
+  vehicleOptionsFromSelected,
+} from "../lib/vehicle";
 import { useReservationStore } from "../lib/stores/reservationStore";
 
 interface LocationState {
@@ -59,20 +64,9 @@ export function useReservation() {
   );
   const [pickup, setPickup] = useState<LocationState>(DEFAULT_LOCATION_STATE);
   const [dropoff, setDropoff] = useState<LocationState>(DEFAULT_LOCATION_STATE);
-  const [options, setOptions] = useState<VehicleOptions>(() => {
-    // Récupérer les options précédemment sélectionnées du store
-    const storedOptions = Array.isArray(reservationStore.selectedOptions)
-      ? reservationStore.selectedOptions
-      : [];
-
-    // Initialiser toutes les options à false par défaut
-    return {
-      childSeat: storedOptions.includes("childSeat"),
-      petFriendly: storedOptions.includes("petFriendly"),
-      accueil: storedOptions.includes("accueil"),
-      boissons: storedOptions.includes("boissons"),
-    };
-  });
+  const [options, setOptions] = useState<VehicleOptions>(() =>
+    vehicleOptionsFromSelected(reservationStore.selectedOptions),
+  );
 
   const handleNextStep = useCallback(() => {
     // Supporter les cas où le store contient déjà les adresses (préremplies)
@@ -165,9 +159,7 @@ export function useReservation() {
       reservationStore.setPickupDateTime(pickupDateTime);
 
       // Convertir les options activées en tableau
-      const newSelectedOptions = Object.entries(options)
-        .filter(([, value]) => value)
-        .map(([key]) => key);
+      const newSelectedOptions = selectedFromVehicleOptions(options);
 
       // La persistance est gérée automatiquement par le middleware Zustand
       reservationStore.setSelectedOptions(newSelectedOptions);
@@ -296,9 +288,13 @@ export function useReservation() {
     [reservationStore],
   );
 
-  const handleOptionsChange = useCallback((newOptions: VehicleOptions) => {
-    setOptions(newOptions);
-  }, []);
+  const handleOptionsChange = useCallback(
+    (newOptions: VehicleOptions) => {
+      setOptions(newOptions);
+      reservationStore.setSelectedOptions(selectedFromVehicleOptions(newOptions));
+    },
+    [reservationStore],
+  );
 
   return {
     step,
