@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Card,
@@ -91,28 +91,13 @@ function AssignDriverContent() {
 
     setAssigning(true);
     try {
-      const { error } = await supabase
-        .from("rides")
-        .update({
-          driver_id: selectedDriverId,
-          status: "scheduled",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", ride.id);
+      const { adminReassignRide } = await import(
+        "@/services/adminRideService"
+      );
+      const result: any = await adminReassignRide(ride.id, selectedDriverId);
 
-      if (error) throw error;
-
-      const { error: historyError } = await supabase
-        .from("ride_status_history")
-        .insert({
-          ride_id: ride.id,
-          status: "scheduled",
-          previous_status: ride.status,
-          changed_at: new Date().toISOString(),
-        });
-
-      if (historyError) {
-        console.error("Erreur lors de l'ajout à l'historique:", historyError);
+      if (result?.success === false) {
+        throw new Error(result.error || "Réaffectation impossible");
       }
 
       toast({
@@ -308,11 +293,10 @@ function AssignDriverContent() {
                   {filteredDrivers.length === 0 ? (
                     <div className="text-center py-8">
                       <p className="text-neutral-400">
-                        {drivers.length === 0
-                          ? "Aucun chauffeur trouvé dans la base de données"
-                          : availableDrivers.length === 0
-                            ? "Aucun chauffeur actif"
-                            : "Aucun chauffeur trouvé pour cette recherche"}
+                        {getEmptyDriversMessage(
+                          drivers.length,
+                          availableDrivers.length,
+                        )}
                       </p>
                       {searchQuery && (
                         <Button
@@ -326,11 +310,14 @@ function AssignDriverContent() {
                       )}
                     </div>
                   ) : (
-                    filteredDrivers.map((driver) => (
-                      <div
+                    filteredDrivers.map((driver) => {
+                      const isSelected = selectedDriverId === driver.id;
+                      return (
+                      <button
+                        type="button"
                         key={driver.id}
-                        className={`p-4 rounded-md cursor-pointer transition-colors border ${
-                          selectedDriverId === driver.id
+                        className={`w-full text-left p-4 rounded-md cursor-pointer transition-colors border ${
+                          isSelected
                             ? "bg-primary/20 border-primary shadow-md"
                             : "bg-neutral-800 hover:bg-neutral-700 border-neutral-700"
                         }`}
@@ -353,14 +340,15 @@ function AssignDriverContent() {
                               </p>
                             </div>
                           </div>
-                          {selectedDriverId === driver.id && (
+                          {isSelected && (
                             <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
                               <div className="h-2 w-2 rounded-full bg-white" />
                             </div>
                           )}
                         </div>
-                      </div>
-                    ))
+                      </button>
+                      );
+                    })
                   )}
                 </div>
               </TabsContent>
@@ -394,16 +382,7 @@ function AssignDriverContent() {
                 disabled={!selectedDriverId || assigning}
                 onClick={assignDriver}
               >
-                {assigning ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Assignation en cours...
-                  </>
-                ) : selectedDriverId ? (
-                  "Assigner ce chauffeur"
-                ) : (
-                  "Sélectionnez d'abord un chauffeur"
-                )}
+                {getAssignButtonContent(assigning, Boolean(selectedDriverId))}
               </Button>
             </div>
           </CardContent>
@@ -411,6 +390,37 @@ function AssignDriverContent() {
       </div>
     </div>
   );
+}
+
+function getEmptyDriversMessage(
+  totalDrivers: number,
+  activeDrivers: number,
+): string {
+  if (totalDrivers === 0) {
+    return "Aucun chauffeur trouvé dans la base de données";
+  }
+  if (activeDrivers === 0) {
+    return "Aucun chauffeur actif";
+  }
+  return "Aucun chauffeur trouvé pour cette recherche";
+}
+
+function getAssignButtonContent(
+  assigning: boolean,
+  hasSelection: boolean,
+): ReactNode {
+  if (assigning) {
+    return (
+      <>
+        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+        Assignation en cours...
+      </>
+    );
+  }
+  if (hasSelection) {
+    return "Assigner ce chauffeur";
+  }
+  return "Sélectionnez d'abord un chauffeur";
 }
 
 export default function AssignDriverPage() {

@@ -5,7 +5,6 @@ import { supabase } from "@/lib/database/client";
 import type {
   Database,
   Driver as DbDriver,
-  DriverStatus,
 } from "@/lib/types/database.types";
 
 // Types de base (generated schema)
@@ -169,40 +168,60 @@ export const useDriversStore = create<DriversState>((set, get) => ({
 
   updateDriverStatus: async (driverId: string, status: Driver["status"]) => {
     try {
-      const { error } = await supabase
-        .from("drivers")
-        .update({
-          status,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", driverId);
+      if (status !== "active" && status !== "rejected") {
+        throw new Error(
+          "Seules les transitions active/rejected via validate_driver_dossier sont supportées",
+        );
+      }
 
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+      if (authError || !user) throw new Error("Non authentifié");
+
+      const { data, error } = await supabase.rpc("validate_driver_dossier", {
+        p_driver_id: driverId,
+        p_admin_user_id: user.id,
+        p_approved: status === "active",
+        p_rejection_reason: null,
+      });
       if (error) throw error;
 
-      // Mise à jour optimiste du state
+      const row = Array.isArray(data) ? data[0] : data;
+      if (row?.success === false) {
+        throw new Error(row.message || "Validation refusée");
+      }
+
+      const nextStatus = (row?.new_status as Driver["status"]) || status;
+
+      // Optimistic local update
       set((state) => ({
         drivers: state.drivers.map((driver) =>
           driver.id === driverId
-            ? { ...driver, status, updated_at: new Date().toISOString() }
+            ? {
+                ...driver,
+                status: nextStatus,
+                updated_at: new Date().toISOString(),
+              }
             : driver,
         ),
       }));
 
-      // Mettre à jour activeDriver si nécessaire
       const activeDriver = get().activeDriver;
-      if (activeDriver && activeDriver.id === driverId) {
+      if (activeDriver?.id === driverId) {
         set({
           activeDriver: {
             ...activeDriver,
-            status,
+            status: nextStatus,
             updated_at: new Date().toISOString(),
           },
         });
       }
     } catch (error: any) {
-      console.error("Erreur lors de la mise à jour du statut:", error);
-      // Recharger en cas d'erreur
+      console.error("Erreur updateDriverStatus:", error);
       get().fetchDrivers();
+      throw error;
     }
   },
 
@@ -241,7 +260,7 @@ export const useDriversStore = create<DriversState>((set, get) => ({
 
       // Mettre à jour activeDriver si nécessaire
       const activeDriver = get().activeDriver;
-      if (activeDriver && activeDriver.id === driverId) {
+      if (activeDriver?.id === driverId) {
         set({
           activeDriver: {
             ...activeDriver,
