@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/database/client'
+import { pushDriverLocation } from '@/lib/services/locationService'
 import { useDriverStore } from '@/stores/driverStore'
 
 export function useDriverLocation(enabled: boolean) {
@@ -14,10 +15,9 @@ export function useDriverLocation(enabled: boolean) {
   const retryCount = useRef(0)
   const { setCurrentLocation } = useDriverStore()
 
-  // Mettre à jour la location sur le serveur
   const updateLocation = useCallback(async (position: GeolocationPosition) => {
     const now = Date.now()
-    
+
     // Throttle: max 1 update / 5 secondes
     if (now - lastUpdate.current < 5000) return
     lastUpdate.current = now
@@ -28,74 +28,32 @@ export function useDriverLocation(enabled: boolean) {
       lng: coords.longitude,
       heading: coords.heading,
       speed: coords.speed,
-      accuracy: coords.accuracy
+      accuracy: coords.accuracy,
     }
 
-    // Mettre à jour le store local
     setCurrentLocation(location)
 
     try {
-      // Vérifier auth d'abord
       const { data: userData, error: authError } = await supabase.auth.getUser()
       if (authError || !userData.user) {
         console.warn('[Location] Not authenticated, skipping update')
         return
       }
 
-      // Use simple insert with conflict handling
-      // Note: DB uses 'lon' not 'lng', and 'recorded_at' not 'last_updated'
-      const { error: insertError } = await supabase
-        .from('driver_locations')
-        .insert({
-          driver_id: userData.user.id,
-          lat: location.lat,
-          lon: location.lng,
-          heading: location.heading,
-          speed: location.speed,
-          accuracy: location.accuracy,
-          is_online: true,
-          recorded_at: new Date().toISOString()
-        })
+      const { error: rpcError } = await pushDriverLocation(supabase, location)
 
-      if (insertError) {
-        // If insert fails (duplicate), try update
-        if (insertError.code === '23505') { // unique_violation
-          const { error: updateError } = await supabase
-            .from('driver_locations')
-            .update({
-              lat: location.lat,
-              lon: location.lng,
-              heading: location.heading,
-              speed: location.speed,
-              accuracy: location.accuracy,
-              is_online: true,
-              recorded_at: new Date().toISOString()
-            })
-            .eq('driver_id', userData.user.id)
-          
-          if (updateError) {
-            console.error('[Location] Update error:', JSON.stringify(updateError, null, 2))
-            if (retryCount.current < 3) {
-              retryCount.current++
-              setTimeout(() => updateLocation(position), 1000 * retryCount.current)
-            }
-          } else {
-            retryCount.current = 0
-            console.log('[Location] Updated via UPDATE')
-          }
-        } else {
-          console.error('[Location] Insert error:', JSON.stringify(insertError, null, 2))
-          if (retryCount.current < 3) {
-            retryCount.current++
-            setTimeout(() => updateLocation(position), 1000 * retryCount.current)
-          }
+      if (rpcError) {
+        console.error('[Location] update_driver_location failed:', rpcError)
+        if (retryCount.current < 3) {
+          retryCount.current++
+          setTimeout(() => updateLocation(position), 1000 * retryCount.current)
         }
       } else {
         retryCount.current = 0
-        console.log('[Location] Inserted new location')
       }
-    } catch (err: any) {
-      console.error('[Location] Failed to update:', err?.message || err)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : err
+      console.error('[Location] Failed to update:', message)
     }
   }, [setCurrentLocation])
 

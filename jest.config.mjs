@@ -13,12 +13,9 @@ const config = {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   clearMocks: true,
-  collectCoverage: true,
-  collectCoverageFrom: [
-    './src/**/*.{ts,tsx}',
-    '!./src/**/*.d.ts',
-    '!./src/**/types.ts',
-  ],
+  collectCoverage: false,
+  watchman: false,
 }
+
 
 export default createJestConfig(config)
