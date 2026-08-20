@@ -158,7 +158,7 @@ export function DriversManagement() {
         .insert([
           {
             ...newDriver,
-            status: "pending_validation",
+            status: "draft",
           },
         ])
         .select();

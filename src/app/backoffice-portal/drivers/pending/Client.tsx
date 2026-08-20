@@ -49,7 +49,7 @@ export default function PendingDriversPage() {
           vtc_card_expiry_date,
           created_at
         `)
-        .eq("status", "pending_validation")
+        .eq("status", "pending_review")
         .order("created_at", { ascending: false })
 
       if (error) throw error
@@ -75,7 +75,7 @@ export default function PendingDriversPage() {
           event: '*',
           schema: 'public',
           table: 'drivers',
-          filter: 'status=eq.pending_validation'
+          filter: 'status=eq.pending_review'
         },
         () => {
           loadPendingDrivers()

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/database/client";
-import { getAppRole } from "@/lib/types/common.types";
+import { getUserRole as getAppRole } from "@/lib/utils/auth-helpers";
 import { useRouter } from "next/navigation";
 import ModernDriverSignup from "@/components/auth/ModernDriverSignup";
 import { PageLoading } from "@/components/ui/loading";

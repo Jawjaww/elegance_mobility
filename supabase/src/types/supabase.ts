@@ -7,31 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       audit_logs: {
@@ -143,6 +118,8 @@ export type Database = {
           id: string
           rejection_reason: string | null
           upload_date: string | null
+          validated_at: string | null
+          validated_by: string | null
           validation_status: string | null
         }
         Insert: {
@@ -156,6 +133,8 @@ export type Database = {
           id?: string
           rejection_reason?: string | null
           upload_date?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
           validation_status?: string | null
         }
         Update: {
@@ -169,6 +148,8 @@ export type Database = {
           id?: string
           rejection_reason?: string | null
           upload_date?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
           validation_status?: string | null
         }
         Relationships: [
@@ -300,6 +281,56 @@ export type Database = {
           },
         ]
       }
+      driver_submission_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: Json | null
+          driver_id: string
+          error_message: string | null
+          id: string
+          ip_address: unknown
+          new_status: string | null
+          previous_status: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: Json | null
+          driver_id: string
+          error_message?: string | null
+          id?: string
+          ip_address?: unknown
+          new_status?: string | null
+          previous_status?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: Json | null
+          driver_id?: string
+          error_message?: string | null
+          id?: string
+          ip_address?: unknown
+          new_status?: string | null
+          previous_status?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_submission_logs_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drivers: {
         Row: {
           address_line1: string | null
@@ -309,11 +340,14 @@ export type Database = {
           city: string | null
           company_name: string | null
           company_phone: string | null
+          company_siret: string | null
           created_at: string
           current_vehicle_id: string | null
           date_of_birth: string | null
           document_urls: Json | null
+          driving_license_categories: string[] | null
           driving_license_expiry_date: string | null
+          driving_license_issue_date: string | null
           driving_license_number: string | null
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
@@ -325,11 +359,14 @@ export type Database = {
           insurance_number: string | null
           languages_spoken: string[] | null
           last_name: string | null
+          nationality: string | null
+          payment_provider_account_id: string | null
           phone: string | null
           postal_code: string | null
           preferred_zones: string[] | null
           rating: number | null
           status: Database["public"]["Enums"]["driver_status"]
+          terms_accepted_at: string | null
           total_rides: number | null
           updated_at: string
           user_id: string
@@ -344,11 +381,14 @@ export type Database = {
           city?: string | null
           company_name?: string | null
           company_phone?: string | null
+          company_siret?: string | null
           created_at?: string
           current_vehicle_id?: string | null
           date_of_birth?: string | null
           document_urls?: Json | null
+          driving_license_categories?: string[] | null
           driving_license_expiry_date?: string | null
+          driving_license_issue_date?: string | null
           driving_license_number?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
@@ -360,11 +400,14 @@ export type Database = {
           insurance_number?: string | null
           languages_spoken?: string[] | null
           last_name?: string | null
+          nationality?: string | null
+          payment_provider_account_id?: string | null
           phone?: string | null
           postal_code?: string | null
           preferred_zones?: string[] | null
           rating?: number | null
           status?: Database["public"]["Enums"]["driver_status"]
+          terms_accepted_at?: string | null
           total_rides?: number | null
           updated_at?: string
           user_id: string
@@ -379,11 +422,14 @@ export type Database = {
           city?: string | null
           company_name?: string | null
           company_phone?: string | null
+          company_siret?: string | null
           created_at?: string
           current_vehicle_id?: string | null
           date_of_birth?: string | null
           document_urls?: Json | null
+          driving_license_categories?: string[] | null
           driving_license_expiry_date?: string | null
+          driving_license_issue_date?: string | null
           driving_license_number?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
@@ -395,11 +441,14 @@ export type Database = {
           insurance_number?: string | null
           languages_spoken?: string[] | null
           last_name?: string | null
+          nationality?: string | null
+          payment_provider_account_id?: string | null
           phone?: string | null
           postal_code?: string | null
           preferred_zones?: string[] | null
           rating?: number | null
           status?: Database["public"]["Enums"]["driver_status"]
+          terms_accepted_at?: string | null
           total_rides?: number | null
           updated_at?: string
           user_id?: string
@@ -934,6 +983,7 @@ export type Database = {
       }
       rides: {
         Row: {
+          accepted_at: string | null
           created_at: string
           distance: number | null
           driver_id: string | null
@@ -958,6 +1008,7 @@ export type Database = {
           vehicle_type: string
         }
         Insert: {
+          accepted_at?: string | null
           created_at?: string
           distance?: number | null
           driver_id?: string | null
@@ -982,6 +1033,7 @@ export type Database = {
           vehicle_type: string
         }
         Update: {
+          accepted_at?: string | null
           created_at?: string
           distance?: number | null
           driver_id?: string | null
@@ -1385,6 +1437,10 @@ export type Database = {
         Args: { p_driver_id?: string; p_ride_id: string }
         Returns: Json
       }
+      associate_temp_documents: {
+        Args: { p_driver_id: string; p_user_id: string }
+        Returns: Json
+      }
       calculate_driver_rating: {
         Args: { driver_uuid: string }
         Returns: {
@@ -1401,6 +1457,10 @@ export type Database = {
           validation_status: string
         }[]
       }
+      can_edit_driver_dossier: {
+        Args: { p_driver_id: string; p_user_id: string }
+        Returns: boolean
+      }
       check_driver_profile_completeness: {
         Args: { driver_user_id: string }
         Returns: {
@@ -1409,8 +1469,13 @@ export type Database = {
           missing_fields: string[]
         }[]
       }
+      check_driver_upload_permission: {
+        Args: { p_path: string; p_user_id: string }
+        Returns: boolean
+      }
       check_user_role_update: { Args: never; Returns: boolean }
       cleanup_old_driver_locations: { Args: never; Returns: undefined }
+      cleanup_orphaned_documents: { Args: never; Returns: number }
       create_pending_driver: {
         Args: {
           p_company_name?: string
@@ -1509,7 +1574,34 @@ export type Database = {
           section: string
         }[]
       }
+      get_driver_dossier_status: {
+        Args: { p_driver_id: string }
+        Returns: {
+          can_edit_documents: boolean
+          can_submit: boolean
+          completion_percentage: number
+          is_editable: boolean
+          rejected_at: string
+          rejection_reason: string
+          status: string
+          submitted_at: string
+          validated_at: string
+        }[]
+      }
       get_driver_id_from_auth: { Args: never; Returns: string }
+      get_driver_submission_history: {
+        Args: { p_driver_id: string }
+        Returns: {
+          action: string
+          created_at: string
+          details: Json
+          error_message: string
+          formatted_date: string
+          id: string
+          new_status: string
+          previous_status: string
+        }[]
+      }
       get_drivers_completeness_stats: {
         Args: never
         Returns: {
@@ -1540,12 +1632,32 @@ export type Database = {
       is_customer: { Args: never; Returns: boolean }
       is_driver: { Args: never; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
+      log_driver_action: {
+        Args: {
+          p_action: string
+          p_details?: Json
+          p_driver_id: string
+          p_error_message?: string
+          p_new_status?: string
+          p_previous_status?: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       mark_notification_read: {
         Args: { notification_uuid: string }
         Returns: undefined
       }
       set_driver_offline: { Args: never; Returns: undefined }
       setup_admin_policies: { Args: { admin_id: string }; Returns: undefined }
+      submit_driver_dossier: {
+        Args: { p_driver_id: string; p_user_id: string }
+        Returns: {
+          message: string
+          new_status: string
+          success: boolean
+        }[]
+      }
       test_driver_completeness_full: {
         Args: { target_user_id?: string }
         Returns: {
@@ -1588,6 +1700,23 @@ export type Database = {
         }
         Returns: Json
       }
+      validate_driver_document: {
+        Args: { p_approve: boolean; p_document_id: string; p_reason?: string }
+        Returns: Json
+      }
+      validate_driver_dossier: {
+        Args: {
+          p_admin_user_id: string
+          p_approved: boolean
+          p_driver_id: string
+          p_rejection_reason?: string
+        }
+        Returns: {
+          message: string
+          new_status: string
+          success: boolean
+        }[]
+      }
     }
     Enums: {
       discount_type_enum: "percentage" | "fixed"
@@ -1598,6 +1727,9 @@ export type Database = {
         | "on_vacation"
         | "suspended"
         | "incomplete"
+        | "draft"
+        | "rejected"
+        | "pending_review"
       promo_type_enum: "percentage" | "fixed_amount"
       reward_type_enum: "bonus" | "commission_increase"
       ride_status:
@@ -1736,9 +1868,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       discount_type_enum: ["percentage", "fixed"],
@@ -1749,6 +1878,9 @@ export const Constants = {
         "on_vacation",
         "suspended",
         "incomplete",
+        "draft",
+        "rejected",
+        "pending_review",
       ],
       promo_type_enum: ["percentage", "fixed_amount"],
       reward_type_enum: ["bonus", "commission_increase"],
@@ -1768,3 +1900,13 @@ export const Constants = {
   },
 } as const
 
+// Convenience aliases for app consumers (Next.js / Expo). Do not edit manually —
+// regenerate via scripts/gen-types.sh
+export type Driver = Database["public"]["Tables"]["drivers"]["Row"]
+export type Ride = Database["public"]["Tables"]["rides"]["Row"]
+export type DriverLocation = Database["public"]["Tables"]["driver_locations"]["Row"]
+export type DriverDocument = Database["public"]["Tables"]["driver_documents"]["Row"]
+export type Vehicle = Database["public"]["Tables"]["vehicles"]["Row"]
+export type DriverStatus = Database["public"]["Enums"]["driver_status"]
+export type RideStatus = Database["public"]["Enums"]["ride_status"]
+export type VehicleType = Database["public"]["Enums"]["vehicle_type_enum"]

@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/database/client";
-import { getAppRole } from "@/lib/types/common.types";
+import { getUserRole as getAppRole } from "@/lib/utils/auth-helpers";
 
 interface AuthCheckProps {
   children: React.ReactNode;

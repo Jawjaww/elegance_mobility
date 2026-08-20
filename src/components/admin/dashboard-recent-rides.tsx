@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { supabase } from '@/lib/database/client'
-import type { Ride } from '@/lib/types/common.types';
+import type { Ride } from '@/lib/types/database.types';
 
 // Importer les variables d'environnement nécessaires à Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';

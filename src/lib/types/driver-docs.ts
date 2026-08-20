@@ -1,3 +1,5 @@
+import type { DriverStatus } from "./database.types";
+
 export type ValidationStatus =
   | "pending"
   | "pending_temp"
@@ -5,13 +7,7 @@ export type ValidationStatus =
   | "rejected"
   | null;
 
-export type DriverStatus =
-  | "pending_validation"
-  | "active"
-  | "inactive"
-  | "on_vacation"
-  | "suspended"
-  | "incomplete";
+export type { DriverStatus };
 
 export interface DriverDocument {
   id: string;

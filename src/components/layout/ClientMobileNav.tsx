@@ -6,8 +6,8 @@ import { useEffect, useState } from "react";
 import { Car, Calendar, Home, User as UserIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/database/client";
-import { isCustomer } from "@/lib/types/common.types";
-import type { User } from "@/lib/types/common.types";
+import { isCustomer } from "@/lib/utils/roles";
+import { getUserRole } from "@/lib/utils/auth-helpers";
 
 export default function ClientMobileNav() {
   const pathname = usePathname() || "";
@@ -18,7 +18,7 @@ export default function ClientMobileNav() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      setIsCustomerRole(isCustomer(user as User | null));
+      setIsCustomerRole(isCustomer(getUserRole(user)));
     };
     checkRole();
   }, []);

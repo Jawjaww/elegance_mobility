@@ -5,7 +5,7 @@
 
 import { createServerClient as createSupabaseServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { AppRole } from '@/lib/types/common.types'
+import { AppRole } from '@/lib/utils/roles'
 import { getEffectiveRole, ROLES } from './roles'
 
 /**

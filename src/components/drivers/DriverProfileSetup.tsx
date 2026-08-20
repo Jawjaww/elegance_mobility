@@ -103,8 +103,8 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
             address: existingDriver.address_line1 || "", city: existingDriver.city || "",
             postal_code: existingDriver.postal_code || "",
           });
-          if ((existingDriver as any).submission_status) {
-            setSubmissionStatus((existingDriver as any).submission_status);
+          if (existingDriver.status) {
+            setSubmissionStatus(existingDriver.status);
           }
         }
       } catch (error) { console.error("Error:", error); }
@@ -156,8 +156,31 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
     if (!driverId) { toast({ title: "Erreur", description: "Aucun profil trouvé", variant: "destructive" }); return; }
     setSaving(true);
     try {
-      const { error } = await supabase.from("drivers").update({ submission_status: 'draft', updated_at: new Date().toISOString() }).eq("id", driverId);
+      // Persist profile fields; keep dossier editable (draft) when not already under review
+      const payload: Record<string, unknown> = {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone: formData.phone,
+        date_of_birth: formData.date_of_birth || null,
+        emergency_contact_name: formData.emergency_contact_name || null,
+        emergency_contact_phone: formData.emergency_contact_phone || null,
+        driving_license_number: formData.license_number || null,
+        driving_license_expiry_date: formData.driving_license_expiry_date || null,
+        vtc_card_number: formData.vtc_card_number || null,
+        vtc_card_expiry_date: formData.vtc_card_expiry_date || null,
+        insurance_number: formData.insurance_number || null,
+        company_siret: formData.company_siret || null,
+        address_line1: formData.address || null,
+        city: formData.city || null,
+        postal_code: formData.postal_code || null,
+        updated_at: new Date().toISOString(),
+      };
+      if (submissionStatus === "draft" || submissionStatus === "incomplete" || submissionStatus === "rejected") {
+        payload.status = "draft";
+      }
+      const { error } = await supabase.from("drivers").update(payload).eq("id", driverId);
       if (error) throw error;
+      if (payload.status) setSubmissionStatus("draft");
       toast({ title: "Progression sauvegardée", description: "Vous pouvez reprendre plus tard." });
     } catch (err: any) { toast({ title: "Erreur", description: err.message, variant: "destructive" }); }
     finally { setSaving(false); }
@@ -170,11 +193,38 @@ export default function DriverProfileSetup({ user, currentSection, onSectionChan
     }
     setSubmitting(true);
     try {
-      const { error } = await supabase.from("drivers").update({
-        submission_status: 'pending_review', submitted_at: new Date().toISOString(), updated_at: new Date().toISOString()
+      // Save latest fields first
+      const { error: saveError } = await supabase.from("drivers").update({
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone: formData.phone,
+        date_of_birth: formData.date_of_birth || null,
+        emergency_contact_name: formData.emergency_contact_name || null,
+        emergency_contact_phone: formData.emergency_contact_phone || null,
+        driving_license_number: formData.license_number || null,
+        driving_license_expiry_date: formData.driving_license_expiry_date || null,
+        vtc_card_number: formData.vtc_card_number || null,
+        vtc_card_expiry_date: formData.vtc_card_expiry_date || null,
+        insurance_number: formData.insurance_number || null,
+        company_siret: formData.company_siret || null,
+        address_line1: formData.address || null,
+        city: formData.city || null,
+        postal_code: formData.postal_code || null,
+        status: "draft",
+        updated_at: new Date().toISOString(),
       }).eq("id", driverId);
+      if (saveError) throw saveError;
+
+      const { data, error } = await supabase.rpc("submit_driver_dossier", {
+        p_driver_id: driverId,
+        p_user_id: user.id,
+      });
       if (error) throw error;
-      setSubmissionStatus('pending_review');
+      const result = Array.isArray(data) ? data[0] : data;
+      if (!result?.success) {
+        throw new Error(result?.message || "Soumission refusée");
+      }
+      setSubmissionStatus(result.new_status || "pending_review");
       toast({ title: "Profil soumis", description: "Nos équipes vont examiner votre dossier." });
     } catch (err: any) { toast({ title: "Erreur", description: err.message, variant: "destructive" }); }
     finally { setSubmitting(false); }

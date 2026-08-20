@@ -131,7 +131,7 @@ class DriverRideService {
       return {
         success: true,
         rideId: rpcResult.ride_id ?? rideId,
-        status: rpcResult.status ?? "accepted",
+        status: rpcResult.status ?? "scheduled",
       };
     } catch (error) {
       console.error("[DriverRideService] Error accepting ride:", error);

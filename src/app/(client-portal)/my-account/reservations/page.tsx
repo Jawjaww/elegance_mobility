@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ReservationsClient from "./reservations-client";
 import { supabase } from "@/lib/database/client";
-import { getAppRole } from "@/lib/types/common.types";
+import { getUserRole as getAppRole } from "@/lib/utils/auth-helpers";
 
 export default function ReservationsPage() {
   const router = useRouter();

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { AppRole } from "@/lib/types/common.types";
+import { AppRole } from "@/lib/utils/roles";
 
 /**
  * Hook de navigation basé sur les rôles (Pure Client-Side)

@@ -1,7 +1,8 @@
 # Processus d'Inscription et Validation des Chauffeurs
 
-> **Source de vérité:** `init.sql.sql` - Enum `driver_status` et fonctions associées  
-> **Date de mise à jour:** Février 2026
+> **Source de vérité:** `infra-supabase` migrations + `driver_status` enum  
+> **Mise à jour:** Août 2026 — flux unifié sur `drivers.status` (`draft` → `pending_review` → `active` | `rejected`).  
+> Les sections historiques ci-dessous parlant de `incomplete` / `submission_status` sont **obsolètes** ; préférer `AGENTS.md` (racine) et `database.types.ts`.
 
 ---
 

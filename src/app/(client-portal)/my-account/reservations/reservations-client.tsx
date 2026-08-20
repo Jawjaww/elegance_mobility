@@ -14,7 +14,7 @@ import {
   createColumnHelper,
 } from "@tanstack/react-table";
 import { supabase } from "@/lib/database/client";
-import type { User } from "@/lib/types/common.types";
+import type { AppUser as User } from "@/lib/types/common.types";
 import { reservationService } from "@/lib/services/reservationService";
 
 import type { Database } from "@/lib/types/database.types";

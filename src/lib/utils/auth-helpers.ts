@@ -6,8 +6,7 @@
  */
 
 import { User } from '@supabase/supabase-js'
-import { AppRole } from '@/lib/types/common.types'
-import { getEffectiveRole, ROLES } from './roles'
+import { getEffectiveRole, ROLES, type AppRole } from './roles'
 
 /**
  * Extrait le rôle applicatif d'un utilisateur Supabase
@@ -27,6 +26,9 @@ export function getUserRole(user: User | null | undefined): AppRole {
   
   return getEffectiveRole(role)
 }
+
+/** @deprecated Prefer getUserRole */
+export const getAppRole = getUserRole
 
 /**
  * Vérifie si l'utilisateur a un rôle spécifique

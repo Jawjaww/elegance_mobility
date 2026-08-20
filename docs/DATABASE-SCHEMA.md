@@ -1,14 +1,14 @@
 # Schéma de Base de Données - Élégance Mobilité
 
-> **Source de vérité:** `supabase/migrations/20260201234023_supabase/migrations/init.sql.sql`  
-> **Date d'analyse:** Février 2026  
-> **Lignes:** 3590
+> **Source de vérité:** `infra-supabase/supabase/migrations/` (+ types générés `infra-supabase/supabase/types/database.types.ts`)  
+> **Date d'analyse:** Août 2026 (aligné post-unify driver status)  
+> **Note:** Ce document peut encore contenir des sections historiques ; pour les enums et colonnes exacts, préférer `database.types.ts`.
 
 ---
 
 ## 📋 Vue d'Ensemble
 
-Ce document décrit le schéma complet de la base de données PostgreSQL pour l'application Élégance Mobilité.
+Ce document décrit le schéma de la base de données PostgreSQL pour l'application Élégance Mobilité.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -29,7 +29,8 @@ Ce document décrit le schéma complet de la base de données PostgreSQL pour l'
 
 ```sql
 discount_type_enum    -- percentage | fixed
-driver_status         -- pending_validation | active | inactive | on_vacation | suspended | incomplete
+driver_status         -- pending_validation | active | inactive | on_vacation | suspended | incomplete | draft | rejected | pending_review
+                      -- Flux dossier unifié: draft → pending_review → active | rejected
 promo_type_enum       -- percentage | fixed_amount
 reward_type_enum      -- bonus | commission_increase
 ride_status           -- pending | scheduled | in-progress | completed | client-canceled | driver-canceled | admin-canceled | no-show | delayed

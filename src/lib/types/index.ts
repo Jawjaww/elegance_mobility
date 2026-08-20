@@ -1,7 +1,20 @@
 /**
- * Point d'entrée unifié pour tous les types de l'application
+ * Point d'entrée types applicatifs.
+ *
+ * Schema / enums / tables: prefer `@/lib/types/database.types` (generated).
+ * App-only (roles UI helpers): `@/lib/types/common.types`.
  */
 
-// Exporter tous les types depuis common.types
-export * from "./common.types";
-export * from "./map-types"; // Import all map types from map-types.ts
+export type {
+  Database,
+  Driver,
+  Ride,
+  DriverStatus,
+  RideStatus,
+  VehicleType,
+  Tables,
+  Enums,
+} from "./database.types";
+
+export type { AppRole, AppUser, User, FilterRideStatus } from "./common.types";
+export * from "./map-types";

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/database/client";
 import { useRoleNavigation } from "@/lib/auth/navigation.client";
 import { usePathname } from "next/navigation";
-import { getAppRole } from "@/lib/types/common.types";
+import { getUserRole as getAppRole } from "@/lib/utils/auth-helpers";
 
 /**
  * AuthGuard — Protection client-side des routes

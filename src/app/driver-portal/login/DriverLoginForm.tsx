@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/lib/database/client";
 import { useToast } from "@/hooks/useToast";
-import { type AppRole } from "@/lib/types/common.types";
+import { type AppRole } from "@/lib/utils/roles";
 
 export function DriverLoginForm() {
   const [isLoading, setIsLoading] = useState(false);

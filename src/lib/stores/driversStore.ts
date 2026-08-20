@@ -2,25 +2,31 @@
 
 import { create } from "zustand";
 import { supabase } from "@/lib/database/client";
-import type { Database, User } from "@/lib/types/common.types";
+import type {
+  Database,
+  Driver as DbDriver,
+  DriverStatus,
+} from "@/lib/types/database.types";
 
-// Types de base
-type RideRow = Database["public"]["rides"]["Row"];
-type VehicleRow = Database["public"]["vehicles"]["Row"];
+// Types de base (generated schema)
+type RideRow = Database["public"]["Tables"]["rides"]["Row"];
+type VehicleRow = Database["public"]["Tables"]["vehicles"]["Row"];
 
-interface Driver {
-  id: string;
-  user_id: string;
-  status: "active" | "inactive" | "suspended";
-  first_name: string;
-  last_name: string;
-  phone?: string;
+type Driver = Pick<
+  DbDriver,
+  | "id"
+  | "user_id"
+  | "status"
+  | "first_name"
+  | "last_name"
+  | "phone"
+  | "current_vehicle_id"
+  | "created_at"
+  | "updated_at"
+> & {
   license_number?: string;
-  current_vehicle_id?: string;
   default_vehicle_id?: string;
-  created_at: string;
-  updated_at: string;
-}
+};
 
 interface DriverWithDetails extends Driver {
   vehicle?: VehicleRow;

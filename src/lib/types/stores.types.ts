@@ -1,4 +1,4 @@
-import type { RideStatus as DbRideStatus } from './common.types'
+import type { RideStatus as DbRideStatus } from './database.types'
 import { 
   Clock, 
   CheckCircle2, 

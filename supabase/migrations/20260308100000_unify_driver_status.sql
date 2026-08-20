@@ -1,12 +1,9 @@
 
 -- Migration: Unify driver status into single column
 -- Consolidates 'status' and 'submission_status' into 'status' only
+-- Enum values draft/rejected/pending_review are added in 20260308090000.
 
--- 1. Add new enum values to driver_status
-ALTER TYPE public.driver_status ADD VALUE IF NOT EXISTS 'draft';
-ALTER TYPE public.driver_status ADD VALUE IF NOT EXISTS 'rejected';
-
--- 2. Update status based on submission_status
+-- 1. Update status based on submission_status
 UPDATE public.drivers 
 SET status = CASE 
   WHEN submission_status = 'pending_review' THEN 'pending_review'::driver_status
@@ -30,6 +27,9 @@ ALTER TABLE public.drivers DROP COLUMN IF EXISTS review_notes;
 ALTER TABLE public.drivers DROP COLUMN IF EXISTS submission_status;
 
 -- 5. Update get_driver_dossier_status function
+-- DROP required: previous version returned status VARCHAR(50), now TEXT
+DROP FUNCTION IF EXISTS public.get_driver_dossier_status(UUID);
+
 CREATE OR REPLACE FUNCTION public.get_driver_dossier_status(p_driver_id UUID)
 RETURNS TABLE (
   status TEXT,

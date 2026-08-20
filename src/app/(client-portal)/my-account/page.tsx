@@ -15,7 +15,7 @@ import {
   Settings,
   ChevronRight,
 } from "lucide-react";
-import type { User } from "@/lib/types/common.types";
+import type { AppUser as User } from "@/lib/types/common.types";
 
 export default function MyAccount() {
   const router = useRouter();

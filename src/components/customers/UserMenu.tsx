@@ -12,8 +12,8 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { signOut } from '@/lib/database/client'
-import type { User } from '@/lib/types/common.types'
-import { getAppRole } from '@/lib/types/common.types'
+import type { AppUser as User } from '@/lib/types/common.types'
+import { getUserRole as getAppRole } from '@/lib/utils/auth-helpers'
 import { useToast } from "@/hooks/useToast"
 
 interface UserMenuProps {

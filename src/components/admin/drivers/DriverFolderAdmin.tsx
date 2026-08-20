@@ -330,22 +330,31 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-        <div className="flex items-start justify-between">
+      <div className="relative bg-gradient-to-br from-gray-900 to-gray-800 p-6 rounded-xl border border-gray-700/60 shadow-xl overflow-hidden">
+        {/* Decorative background element */}
+        <div className="absolute top-0 right-0 p-32 bg-blue-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
+        
+        <div className="relative flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-white">
-              {driver?.first_name ?? "—"} {driver?.last_name ?? ""}
-            </h2>
-            <div className="mt-2 flex items-center gap-3">
-              <Badge
-                className={
-                  statusColors[driver?.status as DriverStatus] ||
-                  "bg-gray-100 text-gray-800"
-                }
-              >
-                {statusLabels[driver?.status as DriverStatus] || driver?.status}
-              </Badge>
-              <span className="text-xs text-gray-400">ID: {driver?.id}</span>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-white tracking-tight">
+                {driver?.first_name ?? "—"} {driver?.last_name ?? ""}
+              </h2>
+              {driver?.status !== "draft" && (
+                <Badge
+                  className={`px-2.5 py-0.5 text-xs font-semibold ${
+                    statusColors[driver?.status as DriverStatus] ||
+                    "bg-gray-100 text-gray-800"
+                  }`}
+                >
+                  {statusLabels[driver?.status as DriverStatus] || driver?.status}
+                </Badge>
+              )}
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <span className="px-2 py-1 bg-gray-800/80 text-gray-400 text-xs rounded-md border border-gray-700/50 font-mono shadow-sm">
+                ID: {driver?.id}
+              </span>
             </div>
           </div>
           <div className="flex gap-2">
@@ -355,7 +364,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                   onClick={saveDriver}
                   disabled={saving}
                   size="sm"
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-green-600 hover:bg-green-700 shadow-md transition-all"
                 >
                   {saving ? "Enregistrement..." : "Enregistrer"}
                 </Button>
@@ -366,29 +375,41 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                     setEditing(false);
                     setForm(driver ?? {});
                   }}
+                  className="border-gray-600 hover:bg-gray-700 transition-all"
                 >
                   Annuler
                 </Button>
               </>
             ) : (
-              <Button onClick={() => setEditing(true)} size="sm">
-                Modifier
+              <Button onClick={() => setEditing(true)} size="sm" className="shadow-md transition-all">
+                Modifier le profil
               </Button>
             )}
           </div>
         </div>
 
         {/* Progress bar */}
-        <div className="mt-4">
-          <div className="flex justify-between text-xs text-gray-400 mb-1">
-            <span>Complétion du dossier</span>
-            <span>{Math.round(completion)}%</span>
+        <div className="relative mt-6 pt-4 border-t border-gray-700/50">
+          <div className="flex justify-between items-end mb-2">
+            <div>
+              <span className="text-sm font-medium text-gray-300">Complétion du dossier</span>
+              {completion < 100 && (
+                <p className="text-xs text-yellow-400/80 mt-0.5">Le dossier nécessite votre attention</p>
+              )}
+            </div>
+            <span className="text-lg font-bold text-white">{Math.round(completion)}%</span>
           </div>
-          <div className="w-full bg-gray-700 rounded-full h-2">
+          <div className="w-full bg-gray-800 rounded-full h-2.5 shadow-inner border border-gray-700/50 overflow-hidden">
             <div
-              className={`h-2 rounded-full transition-all ${completion >= 100 ? "bg-green-500" : "bg-yellow-500"}`}
+              className={`h-full rounded-full transition-all duration-1000 ease-out relative ${
+                completion >= 100 
+                  ? "bg-gradient-to-r from-green-500 to-emerald-400" 
+                  : "bg-gradient-to-r from-yellow-500 to-amber-400"
+              }`}
               style={{ width: `${Math.min(100, completion)}%` }}
-            />
+            >
+              <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -711,11 +732,11 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                 ✓ Activer le chauffeur
               </Button>
             )}
-            {driver?.status !== "pending_validation" && (
+            {driver?.status !== "pending_review" && (
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => updateDriverStatus("pending_validation")}
+                onClick={() => updateDriverStatus("pending_review")}
                 className="border-gray-600 text-gray-300"
               >
                 Remettre en attente
@@ -730,14 +751,14 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                 ✗ Rejeter le dossier
               </Button>
             )}
-            {driver?.status !== "incomplete" && !isComplete && (
+            {driver?.status !== "draft" && !isComplete && (
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => updateDriverStatus("incomplete")}
+                onClick={() => updateDriverStatus("draft")}
                 className="border-gray-600 text-gray-300"
               >
-                Marquer incomplet
+                Remettre en brouillon
               </Button>
             )}
           </div>

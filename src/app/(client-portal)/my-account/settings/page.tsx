@@ -3,8 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import SettingsForm from "./settings-form";
-import type { User } from "@/lib/types/common.types";
-import { getAppRole } from "@/lib/types/common.types";
+import type { AppUser as User } from "@/lib/types/common.types";
+import { getUserRole as getAppRole } from "@/lib/utils/auth-helpers";
 import { supabase } from "@/lib/database/client";
 
 export default function SettingsPage() {

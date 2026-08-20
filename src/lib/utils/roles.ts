@@ -13,7 +13,12 @@
  * raw_user_meta_data est client-side et ne doit pas être utilisé pour l'autorisation
  */
 
-import { AppRole } from '@/lib/types/common.types'
+/** Application roles stored in auth.users.raw_app_meta_data.role */
+export type AppRole =
+  | 'app_customer'
+  | 'app_driver'
+  | 'app_admin'
+  | 'app_super_admin'
 
 /**
  * Constantes des rôles pour éviter les fautes de frappe

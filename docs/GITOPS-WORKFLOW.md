@@ -188,7 +188,7 @@ CREATE INDEX IF NOT EXISTS idx_name ON table(column);
 ```sql
 -- Commenter les objets importants
 COMMENT ON TABLE drivers IS 'Profils chauffeurs avec validation workflow';
-COMMENT ON COLUMN drivers.status IS 'pending_validation | active | inactive | on_vacation | suspended | incomplete';
+COMMENT ON COLUMN drivers.status IS 'pending_validation | active | inactive | on_vacation | suspended | incomplete | draft | rejected | pending_review';
 ```
 
 ---
