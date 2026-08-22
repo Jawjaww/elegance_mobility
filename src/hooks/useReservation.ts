@@ -10,6 +10,7 @@ import {
   selectedFromVehicleOptions,
   vehicleOptionsFromSelected,
 } from "../lib/vehicle";
+import { normalizeSelectedOptions } from "../lib/services/optionsCatalogService";
 import { useReservationStore } from "../lib/stores/reservationStore";
 
 interface LocationState {
@@ -65,7 +66,9 @@ export function useReservation() {
   const [pickup, setPickup] = useState<LocationState>(DEFAULT_LOCATION_STATE);
   const [dropoff, setDropoff] = useState<LocationState>(DEFAULT_LOCATION_STATE);
   const [options, setOptions] = useState<VehicleOptions>(() =>
-    vehicleOptionsFromSelected(reservationStore.selectedOptions),
+    vehicleOptionsFromSelected(
+      normalizeSelectedOptions(reservationStore.selectedOptions),
+    ),
   );
 
   const handleNextStep = useCallback(() => {
@@ -158,10 +161,10 @@ export function useReservation() {
       reservationStore.setDuration(duration);
       reservationStore.setPickupDateTime(pickupDateTime);
 
-      // Convertir les options activées en tableau
-      const newSelectedOptions = selectedFromVehicleOptions(options);
-
-      // La persistance est gérée automatiquement par le middleware Zustand
+      // Persist selected option names (catalog / DB)
+      const newSelectedOptions = normalizeSelectedOptions(
+        selectedFromVehicleOptions(options),
+      );
       reservationStore.setSelectedOptions(newSelectedOptions);
 
       // Vérifier si nous sommes en mode édition
@@ -291,7 +294,9 @@ export function useReservation() {
   const handleOptionsChange = useCallback(
     (newOptions: VehicleOptions) => {
       setOptions(newOptions);
-      reservationStore.setSelectedOptions(selectedFromVehicleOptions(newOptions));
+      reservationStore.setSelectedOptions(
+        normalizeSelectedOptions(selectedFromVehicleOptions(newOptions)),
+      );
     },
     [reservationStore],
   );

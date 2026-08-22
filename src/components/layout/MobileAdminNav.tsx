@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Layout, Car, Users } from "lucide-react"
+import { Layout, Car, Users, Truck } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const NAV_ITEMS = [
@@ -20,6 +20,11 @@ const NAV_ITEMS = [
     href: "/backoffice-portal/drivers",
     label: "Chauffeurs",
     icon: Users,
+  },
+  {
+    href: "/backoffice-portal/vehicles",
+    label: "Véhicules",
+    icon: Truck,
   },
 ]
 

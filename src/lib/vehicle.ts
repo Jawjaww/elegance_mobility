@@ -21,32 +21,22 @@ export const VEHICLE_TYPES = {
   ELECTRIC: VEHICLE_TYPE_ELECTRIC,
 } as const;
 
-// Options de réservation
+// Options de réservation (keys = option names from DB, plus legacy aliases)
 export interface VehicleOptions {
-  childSeat: boolean;
-  petFriendly: boolean;
-  accueil?: boolean;
-  boissons?: boolean;
   [key: string]: boolean | undefined;
 }
 
-export const DEFAULT_VEHICLE_OPTIONS: VehicleOptions = {
-  childSeat: false,
-  petFriendly: false,
-  accueil: false,
-  boissons: false,
-};
+export const DEFAULT_VEHICLE_OPTIONS: VehicleOptions = {};
 
 export function vehicleOptionsFromSelected(
   selected: string[] | undefined | null,
 ): VehicleOptions {
-  const set = new Set(Array.isArray(selected) ? selected : []);
-  return {
-    childSeat: set.has("childSeat"),
-    petFriendly: set.has("petFriendly"),
-    accueil: set.has("accueil"),
-    boissons: set.has("boissons"),
-  };
+  const result: VehicleOptions = { ...DEFAULT_VEHICLE_OPTIONS };
+  for (const raw of selected ?? []) {
+    if (!raw) continue;
+    result[raw] = true;
+  }
+  return result;
 }
 
 export function selectedFromVehicleOptions(options: VehicleOptions): string[] {

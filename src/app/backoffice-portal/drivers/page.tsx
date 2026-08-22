@@ -1,27 +1,18 @@
-/**
- * Page de gestion des chauffeurs pour l'admin
- */
-import { Suspense } from 'react'
-import { DriversManagement } from '@/components/admin/drivers/DriversManagement'
-import { SectionLoading } from '@/components/ui/loading'
+import { Suspense } from "react";
+import { DriversManagement } from "@/components/admin/drivers/DriversManagement";
+
+function DriversLoading() {
+  return (
+    <div className="min-h-[200px] flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent" />
+    </div>
+  );
+}
 
 export default async function AdminDriversPage() {
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-white">
-            Gestion des Chauffeurs
-          </h1>
-          <p className="text-gray-300 mt-2">
-            Gérez les chauffeurs de votre flotte
-          </p>
-        </div>
-      </div>
-
-      <Suspense fallback={<SectionLoading text="Chargement des chauffeurs..." />}>
-        <DriversManagement />
-      </Suspense>
-    </div>
-  )
+    <Suspense fallback={<DriversLoading />}>
+      <DriversManagement />
+    </Suspense>
+  );
 }

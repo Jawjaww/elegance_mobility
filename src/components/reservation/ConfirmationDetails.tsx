@@ -380,13 +380,7 @@ export function ConfirmationDetails() {
                   <ul className="space-y-1">
                     {selectedOptions?.map((option) => (
                       <li key={option} className="text-neutral-100">
-                        {
-                          option === "accueil"
-                            ? "Accueil personnalisé"
-                            : option === "boissons"
-                              ? "Boissons fraîches"
-                              : option // Fallback for unrecognized options
-                        }
+                        {option}
                       </li>
                     ))}
                   </ul>

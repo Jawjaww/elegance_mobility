@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { MapPin, Navigation, Clock, Star, DollarSign, User, X, Check } from 'lucide-react'
+import { MapPin, Navigation, Clock, DollarSign, User, X, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet } from './Sheet'
 import { usePendingRides } from '@/lib/driver/usePendingRides'
 import { formatPrice, formatDistance, formatDuration } from '@/lib/driver/utils'
+import { RideOfferExtras } from './RideOfferExtras'
 
 const COUNTDOWN_SECONDS = 15
 
@@ -50,6 +51,7 @@ export function RideRequest() {
         setError(result.error || "Impossible d'accepter cette course")
       }
     } catch (e) {
+      console.error("[RideRequest] accept failed", e)
       setError("Erreur lors de l'acceptation")
     } finally {
       setIsAccepting(false)
@@ -131,6 +133,13 @@ export function RideRequest() {
         />
       </div>
 
+      <RideOfferExtras
+        variant="sheet"
+        className="mb-6"
+        options={availableRide.options}
+        vehicleType={availableRide.vehicleType}
+      />
+
       {/* Passager - Info non dispo pour l'instant */}
       <div className="flex items-center gap-3 bg-neutral-800/30 rounded-xl p-4 mb-6 border border-white/5">
         <div className="w-12 h-12 bg-neutral-700 rounded-xl flex items-center justify-center">
@@ -163,7 +172,7 @@ export function RideRequest() {
           {isAccepting ? (
             <span className="flex items-center gap-2">
               <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Traitement...
+              <span>Traitement...</span>
             </span>
           ) : (
             <span className="flex items-center gap-2">
@@ -192,12 +201,12 @@ function LocationRow({
   label, 
   address,
   color 
-}: { 
+}: Readonly<{ 
   icon: React.ElementType
   label: string
   address: string
   color: 'emerald' | 'blue'
-}) {
+}>) {
   const colors = {
     emerald: 'bg-emerald-500/20 text-emerald-400',
     blue: 'bg-blue-500/20 text-blue-400',
@@ -220,11 +229,11 @@ function StatBox({
   icon: Icon, 
   value, 
   label 
-}: { 
+}: Readonly<{ 
   icon: React.ElementType
   value: string
   label: string
-}) {
+}>) {
   return (
     <div className="bg-neutral-800/50 rounded-xl p-3 text-center border border-white/5">
       <Icon className="w-5 h-5 mx-auto mb-1 text-neutral-400" />

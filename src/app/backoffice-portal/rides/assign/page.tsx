@@ -20,7 +20,6 @@ import { useToast } from "@/hooks/useToast";
 import { useDriversStore } from "@/lib/stores/driversStore";
 import { supabase } from "@/lib/database/client";
 import type { Database } from "@/lib/types/database.types";
-import { syncExistingDrivers } from "@/lib/utils/driver-sync";
 
 type Driver = Database["public"]["Tables"]["drivers"]["Row"];
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
@@ -233,32 +232,28 @@ function AssignDriverContent() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => fetchDrivers()}
-                disabled={driversLoading}
-              >
-                {driversLoading ? "Chargement..." : "Actualiser"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
                 onClick={async () => {
                   try {
-                    const result = await syncExistingDrivers();
-                    toast({
-                      title: "Synchronisation réussie",
-                      description: result.message || "Chauffeurs synchronisés",
-                    });
                     await fetchDrivers();
-                  } catch (err: any) {
+                    toast({
+                      title: "Liste actualisée",
+                      description: "Chauffeurs rechargés depuis la base",
+                    });
+                  } catch (err: unknown) {
+                    const message =
+                      err instanceof Error
+                        ? err.message
+                        : "Impossible d'actualiser les chauffeurs";
                     toast({
                       variant: "destructive",
-                      title: "Erreur de synchronisation",
-                      description: err.message,
+                      title: "Erreur",
+                      description: message,
                     });
                   }
                 }}
+                disabled={driversLoading}
               >
-                Sync Drivers
+                {driversLoading ? "Chargement..." : "Actualiser les chauffeurs"}
               </Button>
             </div>
           </CardHeader>

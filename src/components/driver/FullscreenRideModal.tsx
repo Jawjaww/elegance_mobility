@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
-  Navigation,
   MapPin,
   Flag,
   AlertCircle,
@@ -14,7 +13,6 @@ import { useDriverStore } from "@/lib/driver/store";
 import { usePendingRides } from "@/lib/driver/usePendingRides";
 import {
   formatPrice,
-  formatDistance,
   formatDuration,
 } from "@/lib/driver/utils";
 import type { Ride } from "@/lib/driver/types";
@@ -22,6 +20,7 @@ import { RideRequestMap } from "./RideRequestMap";
 import { NeonProgress } from "@/components/ui/NeonProgress";
 import { NeonSwipeButton } from "@/components/ui/NeonSwipeButton";
 import { getDirections } from "@/lib/services/directionsService";
+import { RideOfferExtras } from "./RideOfferExtras";
 
 const COUNTDOWN_SECONDS = 20;
 
@@ -31,10 +30,10 @@ const COUNTDOWN_SECONDS = 20;
 function RentabilityBadge({
   distance,
   price,
-}: {
+}: Readonly<{
   distance: number;
   price: number;
-}) {
+}>) {
   const perKm = distance > 0 ? price / distance : 0;
   if (perKm >= 2.5) {
     return (
@@ -202,8 +201,6 @@ export function FullscreenRideModal() {
     }
   };
 
-  const handleClose = () => setIsOpen(false);
-
   // Mémoriser les coordonnées AVANT le return conditionnel
   const rideToShow = pendingRideRef.current || availableRide;
 
@@ -232,8 +229,6 @@ export function FullscreenRideModal() {
   // Afficher la modal dès que isOpen est true
   if (!rideToShow || !isOpen) return null;
 
-  const isUrgent = countdown <= 5;
-
   // Trajet client depuis la BDD (pickup → dropoff)
   const tripDistKm = rideToShow.estimatedDistance || 0;
   const tripTimeMin = rideToShow.estimatedDuration || 0;
@@ -245,22 +240,6 @@ export function FullscreenRideModal() {
   const driverTimeMin = driverToPickupRoute
     ? Math.round(driverToPickupRoute.duration / 60)
     : 0;
-
-  // Couleur en fonction de la distance client
-  const getDistanceColor = (km: number) => {
-    if (km <= 5) return "text-emerald-400";
-    if (km <= 15) return "text-cyan-400";
-    if (km <= 30) return "text-amber-400";
-    return "text-rose-400";
-  };
-
-  // Couleur pour aller chercher
-  const getPickupColor = (km: number) => {
-    if (km <= 3) return "text-emerald-400";
-    if (km <= 8) return "text-cyan-400";
-    if (km <= 15) return "text-amber-400";
-    return "text-rose-400";
-  };
 
   return (
     <AnimatePresence>
@@ -382,7 +361,11 @@ export function FullscreenRideModal() {
                     onReady={() => setMapReady(true)}
                   />
 
-                  <div className="absolute bottom-0 left-0 right-0 flex flex-col z-10">
+                  <div className="absolute bottom-0 left-0 right-0 flex flex-col gap-1.5 z-10 p-2 bg-white/80">
+                    <RideOfferExtras
+                      options={rideToShow.options}
+                      vehicleType={rideToShow.vehicleType}
+                    />
                     <div className="flex items-center gap-2 bg-white/95 px-2 py-1 rounded border border-white/40 shadow-sm">
                       <MapPin className="h-4 w-4 text-gray-400" />
                       <span className="text-xs text-gray-700 truncate whitespace-nowrap">
@@ -412,6 +395,7 @@ export function FullscreenRideModal() {
                 </div>
 
                 <button
+                  type="button"
                   onClick={handleDecline}
                   className="mt-3 text-sm text-gray-300/80"
                 >

@@ -4,12 +4,10 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { useDriverValidation } from "@/hooks/useDriverSignup"
 import { Button } from "@/components/ui/button"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { supabase } from "@/lib/database/client"
-import { useRouter } from "next/navigation"
 
 interface PendingDriver {
   id: string
@@ -24,7 +22,6 @@ interface PendingDriver {
 }
 
 export default function PendingDriversPage() {
-  const router = useRouter()
   const { validateDriver, isLoading: isValidating } = useDriverValidation()
   const [pendingDrivers, setPendingDrivers] = useState<PendingDriver[]>([])
   const [loading, setLoading] = useState(true)
@@ -117,15 +114,22 @@ export default function PendingDriversPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <LoadingSpinner size="lg" />
+      <div className="min-h-[200px] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent" />
       </div>
     )
   }
 
   return (
-    <div className="container py-6">
-      <h1 className="text-2xl font-bold mb-6">Chauffeurs en attente de validation</h1>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-neutral-100">
+          Chauffeurs en attente
+        </h2>
+        <p className="text-neutral-400 text-sm mt-1">
+          Dossiers soumis en attente de validation
+        </p>
+      </div>
       
       {pendingDrivers.length === 0 ? (
         <Card>

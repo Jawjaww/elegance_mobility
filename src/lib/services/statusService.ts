@@ -1,4 +1,5 @@
 import type { Database } from "@/lib/types/database.types";
+import { getPendingRideDisplayLabel } from "@/lib/utils/ridePickup";
 
 type DbStatus = Database["public"]["Enums"]["ride_status"];
 
@@ -142,4 +143,16 @@ export function isValidDbStatus(status: string): status is DbStatus {
  */
 export function isValidUiStatus(status: string): status is UiStatus {
   return ALL_UI_STATUSES.includes(status as UiStatus);
+}
+
+/** Pending label reflects pickup_time grace window before cron expires the ride */
+export function getRideStatusLabelForRide(
+  dbStatus: DbStatus,
+  pickupTime?: string | null,
+): string {
+  if (dbStatus === "pending") {
+    return getPendingRideDisplayLabel(pickupTime);
+  }
+  const uiStatus = mapStatusFromDb(dbStatus);
+  return STATUS_LABELS[uiStatus];
 }

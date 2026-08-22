@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Layout, Users, Settings, Car, LogOut } from "lucide-react";
+import { Layout, Users, Car, LogOut, CreditCard, PackageOpen, Truck } from "lucide-react";
 import { supabase } from "@/lib/database/client";
 
 const NAV_ITEMS = [
@@ -30,6 +30,21 @@ const NAV_ITEMS = [
     name: "Chauffeurs",
     href: "/backoffice-portal/drivers",
     icon: Users,
+  },
+  {
+    name: "Véhicules",
+    href: "/backoffice-portal/vehicles",
+    icon: Truck,
+  },
+  {
+    name: "Tarifs",
+    href: "/backoffice-portal/rates",
+    icon: CreditCard,
+  },
+  {
+    name: "Options",
+    href: "/backoffice-portal/options",
+    icon: PackageOpen,
   },
 ];
 
@@ -203,15 +218,6 @@ export function AdminHeader() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-[200px] p-2">
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/backoffice-portal/settings"
-                      className="flex items-center gap-2"
-                    >
-                      <Settings className="h-4 w-4" />
-                      <span>Paramètres</span>
-                    </Link>
-                  </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={handleLogout}
                     disabled={isLoggingOut}

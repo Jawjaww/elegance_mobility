@@ -1,47 +1,63 @@
-import { supabase } from '@/lib/database/client'
-import { getUserRole, isUserAdmin } from '@/lib/utils/auth-helpers'
+import { supabase } from "@/lib/database/client";
+import { isUserAdmin } from "@/lib/utils/auth-helpers";
+
+function formatError(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (error && typeof error === "object") {
+    const e = error as { message?: string; details?: string; hint?: string };
+    if (e.message) return e.message;
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
+  }
+  return String(error);
+}
 
 /**
- * Utilitaires pour la synchronisation des chauffeurs
+ * Refreshes the drivers table for admin views (no legacy RPC).
  */
-
-/**
- * Synchronise les utilisateurs existants avec le rôle app_driver vers la table drivers
- */
-export async function syncExistingDrivers() {
+export async function refreshDriversList() {
   try {
-    console.log('🔄 Début de la synchronisation des chauffeurs existants...')
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    // Vérifier que nous sommes connectés en tant qu'admin
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
     if (userError || !user) {
-      throw new Error('Utilisateur non connecté')
+      throw new Error("Utilisateur non connecté");
     }
 
-    // Utilise uniquement app_metadata (serveur) pour la vérification du rôle
-    const userRole = getUserRole(user)
     if (!isUserAdmin(user)) {
-      throw new Error('Accès refusé - rôle administrateur requis')
+      throw new Error("Accès refusé - rôle administrateur requis");
     }
 
-    console.log('✅ Connecté en tant qu\'admin:', user.email)
-
-    // Exécuter la fonction de synchronisation
-    const { data, error } = await supabase.rpc('sync_existing_drivers')
+    const { data, error } = await supabase
+      .from("drivers")
+      .select("id, first_name, last_name, user_id, status")
+      .order("created_at", { ascending: false });
 
     if (error) {
-      throw error
+      throw new Error(formatError(error));
     }
 
-    console.log('✅ Synchronisation réussie:', data)
-    
-    return data
-
+    return {
+      drivers: data ?? [],
+      message: `${data?.length ?? 0} chauffeur(s) chargé(s)`,
+    };
   } catch (error) {
-    console.error('❌ Erreur lors de la synchronisation:', error)
-    throw error
+    console.error(
+      "[driver-sync] Failed to refresh drivers:",
+      formatError(error),
+    );
+    throw error instanceof Error ? error : new Error(formatError(error));
   }
+}
+
+/** @deprecated Use refreshDriversList — kept for any residual imports */
+export async function syncExistingDrivers() {
+  return refreshDriversList();
 }
 
 /**
@@ -50,19 +66,20 @@ export async function syncExistingDrivers() {
 export async function checkDriversTable() {
   try {
     const { data, error } = await supabase
-      .from('drivers')
-      .select('id, first_name, last_name, user_id, status')
-      .order('created_at', { ascending: false })
+      .from("drivers")
+      .select("id, first_name, last_name, user_id, status")
+      .order("created_at", { ascending: false });
 
     if (error) {
-      throw error
+      throw new Error(formatError(error));
     }
 
-    console.log('📊 Chauffeurs dans la table drivers:', data)
-    return data
-
+    return data;
   } catch (error) {
-    console.error('❌ Erreur lors de la vérification:', error)
-    throw error
+    console.error(
+      "[driver-sync] Failed to check drivers table:",
+      formatError(error),
+    );
+    throw error instanceof Error ? error : new Error(formatError(error));
   }
 }

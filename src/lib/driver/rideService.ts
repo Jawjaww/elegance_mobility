@@ -1,5 +1,9 @@
 import { supabase } from "@/lib/database/client";
 import type { Database } from "@/lib/types/database.types";
+import {
+  isRidePickupStillOfferable,
+  ridePickupExpiryCutoffIso,
+} from "@/lib/utils/ridePickup";
 
 type DbRide = Database["public"]["Tables"]["rides"]["Row"];
 
@@ -44,8 +48,9 @@ class DriverRideService {
           filter: "status=eq.pending",
         },
         (payload) => {
-          const ride = this.mapToPendingRide(payload.new as DbRide);
-          onNewRide(ride);
+          const ride = payload.new as DbRide;
+          if (!isRidePickupStillOfferable(ride.pickup_time)) return;
+          onNewRide(this.mapToPendingRide(ride));
         },
       )
       .on(
@@ -57,8 +62,12 @@ class DriverRideService {
           filter: "status=eq.pending",
         },
         (payload) => {
-          const ride = this.mapToPendingRide(payload.new as DbRide);
-          onRideUpdated(ride);
+          const ride = payload.new as DbRide;
+          if (!isRidePickupStillOfferable(ride.pickup_time)) {
+            onRideRemoved(ride.id);
+            return;
+          }
+          onRideUpdated(this.mapToPendingRide(ride));
         },
       )
       .on(
@@ -99,6 +108,7 @@ class DriverRideService {
       .from("rides")
       .select("*")
       .eq("status", "pending")
+      .gt("pickup_time", ridePickupExpiryCutoffIso())
       .order("created_at", { ascending: false })
       .limit(10);
 

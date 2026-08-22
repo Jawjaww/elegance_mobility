@@ -2,6 +2,7 @@
 
 import { type VehicleType } from "@/lib/vehicle";
 import { supabase } from "@/lib/database/client";
+import { normalizeSelectedOptions } from "@/lib/services/optionsCatalogService";
 
 export interface Rate {
   vehicleType: string;
@@ -26,10 +27,9 @@ const DEFAULT_RATES: Record<
   { base_price: number; price_per_km: number; min_price: number }
 > = {
   STANDARD: { base_price: 15, price_per_km: 2.5, min_price: 20 },
-  EXECUTIVE: { base_price: 30, price_per_km: 4, min_price: 50 },
-  LUXURY: { base_price: 60, price_per_km: 7, min_price: 100 },
+  PREMIUM: { base_price: 30, price_per_km: 4, min_price: 50 },
   VAN: { base_price: 25, price_per_km: 3.5, min_price: 40 },
-  ECO: { base_price: 10, price_per_km: 1.8, min_price: 15 },
+  ELECTRIC: { base_price: 20, price_per_km: 2.8, min_price: 25 },
 };
 
 class PricingService {
@@ -69,13 +69,18 @@ class PricingService {
       // 3. Ajouter le prix des options
       let optionsTotal = 0;
       if (options.length > 0) {
+        const optionNames = normalizeSelectedOptions(options);
         const { data: optionsData, error: optionsError } = await supabase
           .from("options")
           .select("price")
-          .in("name", options);
+          .in("name", optionNames)
+          .eq("available", true);
 
         if (!optionsError && optionsData) {
-          optionsTotal = optionsData.reduce((sum, opt) => sum + opt.price, 0);
+          optionsTotal = optionsData.reduce(
+            (sum, opt) => sum + Number(opt.price),
+            0,
+          );
           totalPrice += optionsTotal;
         }
       }

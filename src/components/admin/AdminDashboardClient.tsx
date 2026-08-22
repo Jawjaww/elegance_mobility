@@ -113,7 +113,7 @@ export function AdminDashboardClient({
           title="Courses restantes"
           value={metrics.remainingRides.toString()}
           icon={<CalendarCheck className="h-4 w-4" />}
-          href="/backoffice-portal/rides/remaining"
+          href="/backoffice-portal/rides?filter=remaining"
         />
         <DashboardMetricCard
           title="Véhicules disponibles"

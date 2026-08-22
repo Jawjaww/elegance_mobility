@@ -1,5 +1,9 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/database/client';
+import {
+  isRidePickupStillOfferable,
+  ridePickupExpiryCutoffIso,
+} from '@/lib/utils/ridePickup';
 
 interface UnassignedRide {
   id: string;
@@ -36,11 +40,16 @@ export const useUnassignedRidesStore = create<UnassignedRidesState>((set, get) =
         .from('rides')
         .select('*')
         .eq('status', 'pending')
-        .is('driver_id', null);
+        .is('driver_id', null)
+        .gt('pickup_time', ridePickupExpiryCutoffIso());
 
       if (error) throw error;
 
-      set({ rides: data as UnassignedRide[] });
+      set({
+        rides: (data as UnassignedRide[]).filter((r) =>
+          isRidePickupStillOfferable(r.pickup_time),
+        ),
+      });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Une erreur est survenue' });
     } finally {
@@ -87,7 +96,10 @@ const unassignedChannel = supabase
     (payload) => {
       // Vérifier que driver_id est null
       if (!payload.new.driver_id) {
-        useUnassignedRidesStore.getState().fetchRides();
+        const pickupTime = (payload.new as { pickup_time?: string }).pickup_time;
+        if (isRidePickupStillOfferable(pickupTime)) {
+          useUnassignedRidesStore.getState().fetchRides();
+        }
       }
     }
   )

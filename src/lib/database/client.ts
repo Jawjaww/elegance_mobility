@@ -65,7 +65,6 @@ supabase.auth.onAuthStateChange((event, session) => {
     // Vérifier si on est sur une page protégée
     const protectedPaths = [
       "/backoffice-portal/",
-      "/admin/",
       "/driver-portal/",
     ];
     const isProtected = protectedPaths.some((p) =>

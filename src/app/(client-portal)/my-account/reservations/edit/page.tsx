@@ -15,6 +15,7 @@ import {
   selectedFromVehicleOptions,
   vehicleOptionsFromSelected,
 } from "@/lib/vehicle";
+import { normalizeSelectedOptions } from "@/lib/services/optionsCatalogService";
 
 type RideUpdate = Database["public"]["Tables"]["rides"]["Update"];
 type Reservation = Database["public"]["Tables"]["rides"]["Row"];
@@ -92,7 +93,9 @@ function EditReservationContent() {
       })();
       reservationStore.setDistance(reservation.distance || 0);
       reservationStore.setDuration(reservation.duration || 0);
-      reservationStore.setSelectedOptions(reservation.options || []);
+      reservationStore.setSelectedOptions(
+        normalizeSelectedOptions(reservation.options || []),
+      );
       setStoreInitialized(true);
     }
   }, [reservation, storeInitialized, reservationStore]);
@@ -245,14 +248,16 @@ function EditReservationContent() {
         <VehicleStep
           vehicleType={reservationStore.selectedVehicle}
           options={vehicleOptionsFromSelected(
-            reservationStore.selectedOptions,
+            normalizeSelectedOptions(reservationStore.selectedOptions),
           )}
           distance={reservationStore.distance ?? undefined}
           duration={reservationStore.duration ?? undefined}
           onVehicleTypeChange={reservationStore.setSelectedVehicle}
           onOptionsChange={(nextOptions) =>
             reservationStore.setSelectedOptions(
-              selectedFromVehicleOptions(nextOptions),
+              normalizeSelectedOptions(
+                selectedFromVehicleOptions(nextOptions),
+              ),
             )
           }
           onPrevious={handlePrevStep}

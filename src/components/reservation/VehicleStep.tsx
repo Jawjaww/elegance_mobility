@@ -1,10 +1,9 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { type VehicleType, type VehicleOptions } from "@/lib/vehicle";
 import { formatDuration } from "@/lib/utils";
+import { ReservationOptionsToggles } from "@/components/reservation/ReservationOptionsToggles";
 
 export interface VehicleStepProps {
   vehicleType: VehicleType;
@@ -46,17 +45,6 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
   onPrevious,
   onConfirm,
 }) => {
-  const handleOptionChange = (
-    optionName: keyof VehicleOptions,
-    value: boolean,
-  ) => {
-    const updatedOptions = {
-      ...options,
-      [optionName]: value,
-    };
-    onOptionsChange(updatedOptions);
-  };
-
   return (
     <div className="space-y-8">
       <div>
@@ -89,52 +77,15 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
 
         <div className="space-y-4 pt-4 border-t border-neutral-700">
           <h3 className="font-semibold text-neutral-100">Options</h3>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <Label
-                htmlFor="child-seat"
-                className="text-neutral-100 text-sm font-medium"
-              >
-                Siège enfant
-              </Label>
-              <p className="text-neutral-400 text-xs">Ajout 15€</p>
-            </div>
-            <div>
-              <Switch
-                id="child-seat"
-                checked={Boolean(options.childSeat)}
-                onCheckedChange={(checked) =>
-                  handleOptionChange("childSeat", checked)
-                }
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <Label
-                htmlFor="petFriendly"
-                className="text-neutral-100 text-sm font-medium"
-              >
-                Animaux domestiques
-              </Label>
-              <p className="text-neutral-400 text-xs">Ajout 10€</p>
-            </div>
-            <div>
-              <Switch
-                id="petFriendly"
-                checked={Boolean(options.petFriendly)}
-                onCheckedChange={(checked) =>
-                  handleOptionChange("petFriendly", checked)
-                }
-              />
-            </div>
-          </div>
+          <ReservationOptionsToggles
+            options={options}
+            onOptionsChange={onOptionsChange}
+            compact
+          />
         </div>
       </div>
 
-      {distance && duration && (
+      {distance && duration ? (
         <div className="bg-neutral-800 rounded-lg p-4 space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-neutral-400">Distance</span>
@@ -149,7 +100,7 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
             </span>
           </div>
         </div>
-      )}
+      ) : null}
 
       <div className="flex justify-between pt-4">
         <Button
