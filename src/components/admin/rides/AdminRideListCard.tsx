@@ -11,7 +11,7 @@ import {
   cancelBadgeLabel,
   formatPersonName,
 } from "@/lib/rides/rideCancelLabels";
-import { useToast } from "@/hooks/useToast";
+import { CopyableRef } from "@/components/admin/CopyableRef";
 
 const CANCELABLE = new Set([
   "pending",
@@ -58,43 +58,6 @@ function RideStatusCorner({
   );
 }
 
-function CopyableRideRef({ id }: Readonly<{ id: string }>) {
-  const { toast } = useToast();
-  const short = id.slice(0, 8);
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(id);
-      toast({ title: "Référence copiée", description: id });
-    } catch {
-      toast({
-        title: "Copie impossible",
-        description: id,
-        variant: "destructive",
-      });
-    }
-  };
-
-  return (
-    <button
-      type="button"
-      title="Clic droit ou clic pour copier l'ID complet"
-      onClick={(e) => {
-        e.stopPropagation();
-        void copy();
-      }}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        void copy();
-      }}
-      className="font-mono text-[10px] sm:text-xs text-neutral-600 hover:text-neutral-400 tracking-wide select-all"
-    >
-      #{short}
-    </button>
-  );
-}
-
 export function AdminRideListCard({
   ride,
   driverLabel,
@@ -116,10 +79,7 @@ export function AdminRideListCard({
   const showDriver = Boolean(ride.driver_id);
 
   return (
-    <Card
-      className="overflow-hidden border-neutral-800 bg-neutral-900 mx-auto hover:border-neutral-700 transition-colors"
-      style={{ width: "80vw", maxWidth: "80vw", minWidth: 320 }}
-    >
+    <Card className="overflow-hidden border-neutral-800 bg-neutral-900 w-full hover:border-neutral-700 transition-colors">
       <div className="p-4 sm:p-5">
         {/* Header: date/time left — status right */}
         <div className="flex items-start justify-between gap-3 mb-4">
@@ -192,7 +152,7 @@ export function AdminRideListCard({
               <p className="text-xs text-amber-500/80">Non assigné</p>
             )}
           </div>
-          <CopyableRideRef id={ride.id} />
+          <CopyableRef value={ride.id} toastTitle="ID course copié" />
         </div>
 
         {/* Actions */}

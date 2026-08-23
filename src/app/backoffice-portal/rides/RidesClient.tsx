@@ -27,6 +27,8 @@ export default function RidesPage() {
       setSelectedDate(new Date());
     } else if (filter === "pending") {
       setSelectedStatus("pending");
+    } else if (filter === "in-progress") {
+      setSelectedStatus("in-progress");
     }
   }, [searchParams, setSelectedStatus, setViewMode, setSelectedDate]);
 

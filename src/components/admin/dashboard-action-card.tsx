@@ -1,16 +1,15 @@
-'use client'
+"use client";
 
-import { Card } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
-import Link from "next/link"
+import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 interface DashboardActionCardProps {
-  title: string
-  description: string
-  icon: React.ReactNode
-  href: string
-  iconColor?: string
-  className?: string
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  href: string;
+  iconClassName?: string;
+  className?: string;
 }
 
 export function DashboardActionCard({
@@ -18,34 +17,32 @@ export function DashboardActionCard({
   description,
   icon,
   href,
-  iconColor = "text-blue-500",
+  iconClassName = "bg-blue-500/10 border-blue-500/20 text-blue-400",
   className,
-}: DashboardActionCardProps) {
-  const content = (
-    <div className={cn(
-      "relative p-6 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-all duration-200 hover:border-blue-500/30 hover:shadow-md",
-      className
-    )}>
-      <div className="flex gap-4">
-        <div className={cn(
-          "p-2 rounded-full bg-blue-500/10",
-          iconColor
-        )}>
-          {icon}
-        </div>
-        <div>
-          <h3 className="font-semibold">{title}</h3>
-          <p className="text-sm text-muted-foreground">
-            {description}
-          </p>
-        </div>
-      </div>
-    </div>
-  )
-
+}: Readonly<DashboardActionCardProps>) {
   return (
     <Link href={href}>
-      {content}
+      <div
+        className={cn(
+          "relative p-5 sm:p-6 overflow-hidden rounded-xl border border-neutral-800 bg-neutral-900 text-white transition-all duration-200 hover:border-neutral-700",
+          className,
+        )}
+      >
+        <div className="flex gap-4 items-start">
+          <div
+            className={cn(
+              "w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border",
+              iconClassName,
+            )}
+          >
+            {icon}
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-semibold text-neutral-100">{title}</h3>
+            <p className="text-sm text-neutral-400 mt-0.5">{description}</p>
+          </div>
+        </div>
+      </div>
     </Link>
-  )
+  );
 }

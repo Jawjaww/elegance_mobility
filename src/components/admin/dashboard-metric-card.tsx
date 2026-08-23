@@ -1,19 +1,38 @@
-'use client'
+"use client";
 
-import { Card } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
-import Link from "next/link"
-import { ArrowDownIcon, ArrowUpIcon } from "lucide-react"
+import Link from "next/link";
+import { ArrowDownIcon, ArrowUpIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+type MetricTone = "default" | "highlighted" | "pending";
 
 interface DashboardMetricCardProps {
-  title: string
-  value: string
-  icon: React.ReactNode
-  trend?: string
-  trendUp?: boolean
-  href?: string
-  className?: string
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  trend?: string;
+  trendUp?: boolean;
+  href?: string;
+  className?: string;
+  /** @deprecated Prefer tone="highlighted" */
+  highlighted?: boolean;
+  tone?: MetricTone;
+  subtitle?: string;
 }
+
+const TONE_SURFACE: Record<MetricTone, string> = {
+  default: "bg-neutral-900 border-neutral-800 hover:border-neutral-700",
+  highlighted:
+    "bg-blue-950/40 border-blue-500/20 hover:border-blue-500/40",
+  pending:
+    "bg-amber-500/5 border-amber-500/40 hover:border-amber-500/60",
+};
+
+const TONE_ICON: Record<MetricTone, string> = {
+  default: "bg-neutral-800 border-neutral-700 text-neutral-300",
+  highlighted: "bg-blue-500/10 border-blue-500/20 text-blue-400",
+  pending: "bg-amber-500/10 border-amber-500/30 text-amber-400",
+};
 
 export function DashboardMetricCard({
   title,
@@ -23,50 +42,64 @@ export function DashboardMetricCard({
   trendUp,
   href,
   className,
-}: DashboardMetricCardProps) {
+  highlighted = false,
+  tone,
+  subtitle,
+}: Readonly<DashboardMetricCardProps>) {
+  const resolvedTone: MetricTone =
+    tone ?? (highlighted ? "highlighted" : "default");
+
   const content = (
-    <div className={cn(
-      "relative p-6 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-all duration-200",
-      href && "hover:border-blue-500/30 hover:shadow-md",
-      className
-    )}>
-      <div className="flex justify-between">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">
-            {title}
-          </p>
-          <div className="flex items-baseline gap-2">
-            <p className="mt-2 text-2xl font-semibold">
+    <div
+      className={cn(
+        "relative p-5 sm:p-6 overflow-hidden rounded-xl border transition-all duration-200",
+        TONE_SURFACE[resolvedTone],
+        href && "cursor-pointer",
+        className,
+      )}
+    >
+      <div className="flex justify-between items-start gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-neutral-400">{title}</p>
+          <div className="flex items-baseline gap-2 mt-2">
+            <p className="text-2xl sm:text-3xl font-semibold text-white tabular-nums">
               {value}
             </p>
-            {trend && (
-              <span className={cn(
-                "text-xs font-medium",
-                trendUp ? "text-green-500" : "text-red-500"
-              )}>
-                {trendUp ? <ArrowUpIcon className="inline h-3 w-3" /> : <ArrowDownIcon className="inline h-3 w-3" />}
+            {trend != null && (
+              <span
+                className={cn(
+                  "text-xs font-medium inline-flex items-center gap-0.5",
+                  trendUp ? "text-emerald-400" : "text-red-400",
+                )}
+              >
+                {trendUp ? (
+                  <ArrowUpIcon className="h-3 w-3" aria-hidden />
+                ) : (
+                  <ArrowDownIcon className="h-3 w-3" aria-hidden />
+                )}
                 {trend}
               </span>
             )}
           </div>
+          {subtitle ? (
+            <p className="text-xs text-neutral-500 mt-1.5">{subtitle}</p>
+          ) : null}
         </div>
-        <div className={cn(
-          "p-2 rounded-full",
-          trend ? (trendUp ? "bg-green-500/10" : "bg-red-500/10") : "bg-blue-500/10"
-        )}>
+        <div
+          className={cn(
+            "w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border",
+            TONE_ICON[resolvedTone],
+          )}
+        >
           {icon}
         </div>
       </div>
     </div>
-  )
+  );
 
   if (href) {
-    return (
-      <Link href={href}>
-        {content}
-      </Link>
-    )
+    return <Link href={href}>{content}</Link>;
   }
 
-  return <Card>{content}</Card>
+  return content;
 }

@@ -23,44 +23,11 @@ import {
   vehicleSummaryLabel,
   type DriverWithVehicle,
 } from "@/lib/drivers/adminDrivers";
-import { useToast } from "@/hooks/useToast";
+import { CopyableRef } from "@/components/admin/CopyableRef";
 
 type DriverListCardProps = Readonly<{
   driver: DriverWithVehicle;
 }>;
-
-function CopyableDriverRef({ id }: Readonly<{ id: string }>) {
-  const { toast } = useToast();
-  const short = id.slice(0, 8);
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(id);
-      toast({ title: "Référence copiée", description: id });
-    } catch {
-      toast({
-        title: "Copie impossible",
-        description: id,
-        variant: "destructive",
-      });
-    }
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={copy}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        void copy();
-      }}
-      className="font-mono text-[10px] text-neutral-600 hover:text-neutral-400 transition-colors"
-      title={id}
-    >
-      #{short}
-    </button>
-  );
-}
 
 function InfoRow({
   icon: Icon,
@@ -163,7 +130,17 @@ export function DriverListCard({ driver }: DriverListCardProps) {
               Dossier & documents
             </Link>
           </Button>
-          <CopyableDriverRef id={driver.id} />
+          <div className="flex items-center gap-2 shrink-0">
+            {driver.current_vehicle?.license_plate ? (
+              <CopyableRef
+                value={driver.current_vehicle.license_plate}
+                label={driver.current_vehicle.license_plate}
+                toastTitle="Plaque copiée"
+                className="text-emerald-500/80 hover:text-emerald-400"
+              />
+            ) : null}
+            <CopyableRef value={driver.id} toastTitle="ID chauffeur copié" />
+          </div>
         </div>
       </CardContent>
     </Card>

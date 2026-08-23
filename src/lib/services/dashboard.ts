@@ -3,7 +3,9 @@ import { supabase } from "@/lib/database/client";
 export interface DashboardMetrics {
   todayRides: number;
   pendingRides: number;
+  inProgressRides: number;
   activeDrivers: number;
+  onlineDrivers: number;
   remainingRides: number;
   availableVehicles: number;
   todayRidesTrend: {
@@ -13,7 +15,7 @@ export interface DashboardMetrics {
 }
 
 /**
- * Récupère les métriques pour le tableau de bord administrateur
+ * Fetches metrics for the admin dashboard.
  */
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   const today = new Date();
@@ -27,46 +29,52 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = yesterday.toISOString();
 
-  // Utiliser le client navigateur Supabase singleton
   const [
     todayRidesResult,
     pendingRidesResult,
+    inProgressRidesResult,
     activeDriversResult,
+    onlineDriversResult,
     remainingRidesResult,
     availableVehiclesResult,
     yesterdayRidesResult,
   ] = await Promise.all([
-    // Courses d'aujourd'hui - filtre sur pickup_time
     supabase
       .from("rides")
-      .select("*", { count: "exact" })
+      .select("id", { count: "exact", head: true })
       .gte("pickup_time", todayStr)
       .lt("pickup_time", tomorrowStr),
 
     supabase
       .from("rides")
-      .select("*", { count: "exact" })
+      .select("id", { count: "exact", head: true })
       .eq("status", "pending"),
 
-    // Chauffeurs actifs - utilise table drivers
+    supabase
+      .from("rides")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "in-progress"),
+
     supabase
       .from("drivers")
-      .select("*", { count: "exact" })
+      .select("id", { count: "exact", head: true })
       .eq("status", "active"),
 
-    // Courses futures (après aujourd'hui)
+    supabase
+      .from("driver_locations")
+      .select("driver_id", { count: "exact", head: true })
+      .eq("is_online", true),
+
     supabase
       .from("rides")
-      .select("*", { count: "exact" })
+      .select("id", { count: "exact", head: true })
       .gte("pickup_time", tomorrowStr),
 
-    // Véhicules (tous) - table vehicles n'a pas de colonne status
-    supabase.from("vehicles").select("*", { count: "exact" }),
+    supabase.from("vehicles").select("id", { count: "exact", head: true }),
 
-    // Courses d'hier
     supabase
       .from("rides")
-      .select("*", { count: "exact" })
+      .select("id", { count: "exact", head: true })
       .gte("pickup_time", yesterdayStr)
       .lt("pickup_time", todayStr),
   ]);
@@ -74,7 +82,6 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   const todayRidesCount = todayRidesResult.count || 0;
   const yesterdayRidesCount = yesterdayRidesResult.count || 0;
 
-  // Calculer la tendance
   const trendPercentage = yesterdayRidesCount
     ? ((todayRidesCount - yesterdayRidesCount) / yesterdayRidesCount) * 100
     : 0;
@@ -82,7 +89,9 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   return {
     todayRides: todayRidesCount,
     pendingRides: pendingRidesResult.count || 0,
+    inProgressRides: inProgressRidesResult.count || 0,
     activeDrivers: activeDriversResult.count || 0,
+    onlineDrivers: onlineDriversResult.count || 0,
     remainingRides: remainingRidesResult.count || 0,
     availableVehicles: availableVehiclesResult.count || 0,
     todayRidesTrend: {

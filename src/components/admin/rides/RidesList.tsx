@@ -12,14 +12,51 @@ import { AdminRideListCard } from "./AdminRideListCard";
 import { RideDetailDialog } from "./RideDetailDialog";
 import { formatPersonName } from "@/lib/rides/rideCancelLabels";
 
-const LOADING_SKELETON_IDS = [
-  "ride-skel-1",
-  "ride-skel-2",
-  "ride-skel-3",
-  "ride-skel-4",
-  "ride-skel-5",
-  "ride-skel-6",
-] as const;
+const LOADING_SKELETON_IDS = ["ride-skel-1", "ride-skel-2", "ride-skel-3"] as const;
+
+const RIDES_GRID_CLASS =
+  "grid w-full gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3";
+
+function RideListCardSkeleton() {
+  return (
+    <Card className="overflow-hidden border-neutral-800 bg-neutral-900/50 animate-pulse w-full">
+      <div className="p-4 sm:p-5 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-2 flex-1">
+            <div className="h-4 bg-neutral-800 rounded w-2/3" />
+            <div className="h-7 bg-neutral-800 rounded w-1/3" />
+          </div>
+          <div className="h-6 w-16 bg-neutral-800 rounded-full shrink-0" />
+        </div>
+        <div className="flex gap-3">
+          <div className="w-4 flex flex-col items-center gap-1 shrink-0">
+            <div className="h-4 w-4 bg-neutral-800 rounded-full" />
+            <div className="w-px flex-1 min-h-6 bg-neutral-800" />
+            <div className="h-4 w-4 bg-neutral-800 rounded-full" />
+          </div>
+          <div className="flex-1 space-y-4">
+            <div className="space-y-1.5">
+              <div className="h-2.5 bg-neutral-800 rounded w-12" />
+              <div className="h-4 bg-neutral-800 rounded w-full" />
+            </div>
+            <div className="space-y-1.5">
+              <div className="h-2.5 bg-neutral-800 rounded w-12" />
+              <div className="h-4 bg-neutral-800 rounded w-5/6" />
+            </div>
+          </div>
+        </div>
+        <div className="pt-3 border-t border-neutral-800/80 flex justify-between">
+          <div className="h-3 bg-neutral-800 rounded w-1/3" />
+          <div className="h-3 bg-neutral-800 rounded w-14" />
+        </div>
+        <div className="flex gap-2">
+          <div className="h-8 bg-neutral-800 rounded w-20" />
+          <div className="h-8 bg-neutral-800 rounded w-16 ml-auto" />
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 function resolveDriverLabel(
   ride: RideWithRelations,
@@ -77,21 +114,9 @@ export function RidesList() {
 
   if (loading) {
     return (
-      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className={RIDES_GRID_CLASS}>
         {LOADING_SKELETON_IDS.map((id) => (
-          <Card
-            key={id}
-            className="elegant-backdrop animate-pulse border-neutral-800 bg-neutral-900/50"
-          >
-            <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
-              <div className="h-5 sm:h-6 bg-neutral-800 rounded w-3/4" />
-              <div className="space-y-2">
-                <div className="h-3 sm:h-4 bg-neutral-800 rounded w-full" />
-                <div className="h-3 sm:h-4 bg-neutral-800 rounded w-5/6" />
-                <div className="h-3 sm:h-4 bg-neutral-800 rounded w-4/5" />
-              </div>
-            </div>
-          </Card>
+          <RideListCardSkeleton key={id} />
         ))}
       </div>
     );
@@ -99,7 +124,7 @@ export function RidesList() {
 
   if (filteredRides.length === 0) {
     return (
-      <Card className="elegant-backdrop p-6 sm:p-8 text-center border-neutral-800 bg-neutral-900/50">
+      <Card className="elegant-backdrop p-6 sm:p-8 text-center border-neutral-800 bg-neutral-900/50 w-full">
         <p className="text-neutral-400 text-sm sm:text-base">
           Aucune course trouvée
         </p>
@@ -109,7 +134,7 @@ export function RidesList() {
 
   return (
     <>
-      <div className="flex flex-col items-center gap-4 w-full">
+      <div className={RIDES_GRID_CLASS}>
         {filteredRides.map((ride) => (
           <AdminRideListCard
             key={ride.id}
