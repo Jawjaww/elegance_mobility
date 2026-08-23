@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Edit } from "lucide-react";
 import type { Rate } from "@/lib/services/pricingService";
 
 const VEHICLE_TYPES = ["STANDARD", "PREMIUM", "VAN", "ELECTRIC"] as const;
@@ -26,14 +27,25 @@ interface RateFormProps {
   onSubmit: (rate: Rate) => Promise<void>;
   initialData?: Rate;
   mode?: "create" | "edit";
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function RateForm({
   onSubmit,
   initialData,
   mode = "create",
+  open: controlledOpen,
+  onOpenChange,
 }: Readonly<RateFormProps>) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setInternalOpen(next);
+    onOpenChange?.(next);
+  };
   const [formData, setFormData] = useState<Partial<Rate>>(
     initialData || {
       vehicleType: "STANDARD",
@@ -96,11 +108,22 @@ export function RateForm({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button variant={mode === "create" ? "default" : "outline"}>
-          {mode === "create" ? "Ajouter un tarif" : "Modifier"}
-        </Button>
-      </DialogTrigger>
+      {mode === "create" ? (
+        <DialogTrigger asChild>
+          <Button size="sm">Ajouter un tarif</Button>
+        </DialogTrigger>
+      ) : (
+        <DialogTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full border-neutral-700 hover:bg-neutral-800"
+          >
+            <Edit className="w-3.5 h-3.5 mr-2" aria-hidden />
+            Modifier
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[425px] bg-neutral-900 text-neutral-100 border-neutral-700">
         <DialogHeader>
           <DialogTitle>

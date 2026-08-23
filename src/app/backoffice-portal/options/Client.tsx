@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,8 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
-import OptionsGrid from "@/components/options/options-grid";
+import { OptionFilters } from "@/components/admin/options/OptionFilters";
+import { OptionList } from "@/components/admin/options/OptionList";
+import { filterOptions } from "@/lib/options/adminOptions";
 import {
   createOption,
   deleteOption,
@@ -39,13 +42,14 @@ export default function AdminOptionsPage() {
   const { toast } = useToast();
   const [options, setOptions] = useState<OptionRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<OptionRow | null>(null);
   const [form, setForm] = useState<OptionFormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const data = await listOptions();
       setOptions(data);
@@ -60,12 +64,23 @@ export default function AdminOptionsPage() {
       });
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [toast]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    void load();
+  };
+
+  const filteredOptions = useMemo(
+    () => filterOptions(options, search),
+    [options, search],
+  );
 
   const openCreate = () => {
     setEditing(null);
@@ -73,15 +88,8 @@ export default function AdminOptionsPage() {
     setDialogOpen(true);
   };
 
-  const openEdit = (option: {
-    id: string;
-    name: string;
-    description: string;
-    price: number;
-    available: boolean;
-  }) => {
-    const row = options.find((o) => o.id === option.id) ?? null;
-    setEditing(row);
+  const openEdit = (option: OptionRow) => {
+    setEditing(option);
     setForm({
       name: option.name,
       description: option.description,
@@ -133,7 +141,7 @@ export default function AdminOptionsPage() {
     }
   };
 
-  const handleDelete = async (option: { id: string; name: string }) => {
+  const handleDelete = async (option: OptionRow) => {
     if (!globalThis.confirm(`Supprimer l'option « ${option.name} » ?`)) {
       return;
     }
@@ -153,7 +161,7 @@ export default function AdminOptionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-neutral-100">
             Options et services additionnels
@@ -162,20 +170,38 @@ export default function AdminOptionsPage() {
             Configurer le prix et la disponibilité des options
           </p>
         </div>
-        <Button onClick={openCreate}>Ajouter une option</Button>
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={loading || refreshing}
+            className="border-neutral-700 text-neutral-300 hover:bg-neutral-800"
+          >
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
+              aria-hidden
+            />
+            Actualiser
+          </Button>
+          <Button size="sm" onClick={openCreate}>
+            Ajouter une option
+          </Button>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="min-h-[160px] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent" />
-        </div>
-      ) : (
-        <OptionsGrid
-          options={options}
-          onEdit={openEdit}
-          onDelete={handleDelete}
-        />
-      )}
+      <OptionFilters search={search} onSearchChange={setSearch} />
+
+      <OptionList
+        options={filteredOptions}
+        loading={loading}
+        hasOptions={options.length > 0}
+        hasFilteredResults={filteredOptions.length > 0}
+        onEdit={openEdit}
+        onDelete={handleDelete}
+        onCreate={openCreate}
+      />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[480px] bg-neutral-900 text-neutral-100 border-neutral-700">
@@ -214,7 +240,10 @@ export default function AdminOptionsPage() {
                 min="0"
                 value={form.price}
                 onChange={(e) =>
-                  setForm({ ...form, price: Number.parseFloat(e.target.value) || 0 })
+                  setForm({
+                    ...form,
+                    price: Number.parseFloat(e.target.value) || 0,
+                  })
                 }
                 className="bg-neutral-800 border-neutral-700"
               />
