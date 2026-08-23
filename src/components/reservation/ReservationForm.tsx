@@ -225,20 +225,6 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
               />
             </div>
 
-            <div className="mt-4">
-              <Label htmlFor="pickup-datetime">
-                Date et heure de prise en charge
-              </Label>
-              <div className="mt-2">
-                <DateTimePicker
-                  value={store.pickupDateTime || new Date()}
-                  onChange={handleDateChange}
-                  label="Date et heure de prise en charge"
-                  minDate={new Date()}
-                />
-              </div>
-            </div>
-
             <div className="mt-6">
               <Label className="mb-4 block">Type de véhicule</Label>
               <RadioGroup
@@ -342,6 +328,20 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
             </Suspense>
           ) : null;
         })()}
+
+        <Card className="p-6">
+          <Label htmlFor="pickup-datetime">
+            Date et heure de prise en charge
+          </Label>
+          <div className="mt-2">
+            <DateTimePicker
+              value={store.pickupDateTime || new Date()}
+              onChange={handleDateChange}
+              label="Date et heure de prise en charge"
+              minDate={new Date()}
+            />
+          </div>
+        </Card>
 
         <div className="flex gap-4">
           <Button variant="outline" onClick={handleReset} className="flex-1">

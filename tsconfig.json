@@ -41,6 +41,11 @@
     "docs/",
     "out/",
     "src/app/_unused_api_routes/",
-    "supabase/functions/"
+    "supabase/functions/",
+    "**/__tests__/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
   ]
 }

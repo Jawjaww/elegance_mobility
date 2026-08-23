@@ -29,12 +29,11 @@ describe('validateDriverDossier helper', () => {
       null,
     )
 
-    expect(mockRpc).toHaveBeenCalledWith('validate_driver_dossier', {
-      p_driver_id: 'driver-1',
-      p_admin_user_id: 'admin-1',
+    expect(mockRpc).toHaveBeenCalledWith("validate_driver_dossier", {
+      p_driver_id: "driver-1",
+      p_admin_user_id: "admin-1",
       p_approved: true,
-      p_rejection_reason: null,
-    })
-    expect(result).toMatchObject({ success: true, new_status: 'active' })
-  })
-})
+    });
+    expect(result).toMatchObject({ success: true, new_status: "active" });
+  });
+});

@@ -248,23 +248,10 @@ export function LocationStep({
           </div>
         </div>
       </Card>
-      <div className="space -y-4">
-        <Card className="p-4 bg-neutral-900">
-          <div className="mt-6">
-            <Label className="mb-2 block">
-              Date et heure de prise en charge
-            </Label>
-            <DateTimeStep
-              pickupDateTime={pickupDateTime || null}
-              onDateTimeSelect={(date) => onDateTimeChange?.(date)}
-            />
-          </div>
-        </Card>
-      </div>
 
-      {/* Modifié: Afficher la carte avec une clé stable et un état de contrôle */}
+      {/* Map directly under addresses so mobile users see route context first */}
       {showMap && (
-        <Card className="p-0 h-[400px] overflow-hidden">
+        <Card className="p-0 h-[min(42vh,280px)] sm:h-[400px] overflow-hidden">
           <UnifiedMap
             mode="REQUEST"
             key={mapKey}
@@ -300,6 +287,14 @@ export function LocationStep({
             </div>
           </Card>
         )}
+
+      <Card className="p-4 bg-neutral-900">
+        <Label className="mb-2 block">Date et heure de prise en charge</Label>
+        <DateTimeStep
+          pickupDateTime={pickupDateTime || null}
+          onDateTimeSelect={(date) => onDateTimeChange?.(date)}
+        />
+      </Card>
 
       <div className="flex justify-end">
         <Button

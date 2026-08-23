@@ -12,7 +12,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Layout, Users, Car, LogOut, CreditCard, PackageOpen, Truck } from "lucide-react";
+import {
+  Layout,
+  Users,
+  Car,
+  LogOut,
+  CreditCard,
+  PackageOpen,
+  Truck,
+} from "lucide-react";
 import { supabase } from "@/lib/database/client";
 
 const NAV_ITEMS = [
@@ -55,44 +63,28 @@ export function AdminHeader() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Récupérer la session et écouter les changements
     const initUser = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (user) {
-        setUserEmail(user.email || null);
-      } else {
-        setUserEmail(null);
-      }
+      setUserEmail(user?.email ?? null);
       setIsLoading(false);
     };
 
     initUser();
 
-    // Écouter les changements d'authentification
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event: string, session: any) => {
-      if (session?.user) {
-        setUserEmail(session.user.email || null);
-      } else {
-        setUserEmail(null);
-      }
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user?.email ?? null);
     });
-
-    console.debug(
-      "[AdminHeader] mounted. headers in DOM:",
-      document.querySelectorAll("[data-header]").length,
-    );
 
     return () => {
       try {
         subscription.unsubscribe();
-      } catch (e) {
-        console.debug("[AdminHeader] unsubscribe error:", e);
+      } catch {
+        // ignore unsubscribe errors
       }
-      console.debug("[AdminHeader] unmounted");
     };
   }, []);
 
@@ -118,33 +110,52 @@ export function AdminHeader() {
   const isActive = (path: string) =>
     pathname === path || pathname.startsWith(`${path}/`);
 
-  // Ne pas afficher le menu utilisateur si pas connecté
-  if (!userEmail && !isLoading) {
-    return (
-      <header
-        data-header="admin"
-        className="sticky top-0 z-50 w-full border-b border-neutral-700/30"
-      >
-        <div className="bg-gradient-to-r from-neutral-950/95 to-neutral-900/90 backdrop-blur-sm">
-          <div className="container flex h-16 max-w-screen-2xl items-center">
-            <div className="mr-8 hidden md:flex">
-              <Link
-                href="/backoffice-portal/dashboard"
-                className="mr-8 flex items-center space-x-2"
-              >
-                <span className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent font-bold text-xl">
-                  Vector Elegans
-                </span>
-                <span className="text-neutral-400 font-medium">
-                  Administration
-                </span>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
-    );
-  }
+  const brand = (
+    <Link
+      href="/backoffice-portal/dashboard"
+      className="flex shrink-0 items-baseline gap-2"
+    >
+      <span className="bg-gradient-to-r from-blue-500 to-blue-700 bg-clip-text text-xl font-bold text-transparent">
+        Vector Elegans
+      </span>
+      <span className="hidden text-sm font-medium text-neutral-400 lg:inline">
+        Administration
+      </span>
+    </Link>
+  );
+
+  const desktopNav = (
+    <nav
+      className="hidden min-w-0 flex-1 items-center gap-1 md:flex"
+      aria-label="Navigation principale"
+    >
+      {NAV_ITEMS.map((item) => {
+        const active = isActive(item.href);
+        const Icon = item.icon;
+        return (
+          <Link
+            key={item.name}
+            href={item.href}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              active
+                ? "bg-blue-500/15 text-blue-400"
+                : "text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-100",
+            )}
+          >
+            <Icon
+              className={cn(
+                "h-4 w-4 shrink-0",
+                active ? "text-blue-400" : "text-neutral-500",
+              )}
+              aria-hidden
+            />
+            <span className="truncate">{item.name}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
 
   return (
     <header
@@ -152,59 +163,19 @@ export function AdminHeader() {
       className="sticky top-0 z-50 w-full border-b border-neutral-700/30"
     >
       <div className="bg-gradient-to-r from-neutral-950/95 to-neutral-900/90 backdrop-blur-sm">
-        <div className="container flex h-16 max-w-screen-2xl items-center">
-          <div className="mr-8 hidden md:flex">
-            <Link
-              href="/backoffice-portal/dashboard"
-              className="mr-8 flex items-center space-x-2"
-            >
-              <span className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent font-bold text-xl">
-                Vector Elegans
-              </span>
-              <span className="text-neutral-400 font-medium">
-                Administration
-              </span>
-            </Link>
-            <nav className="flex items-center space-x-8 text-sm font-medium">
-              {NAV_ITEMS.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center space-x-2 transition-all duration-200 hover:text-blue-400",
-                    isActive(item.href) ? "text-blue-400" : "text-neutral-400",
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "p-1.5 rounded-full transition-all duration-200",
-                      isActive(item.href)
-                        ? "bg-blue-500/15 shadow-[0_0_8px_-2px_rgba(96,165,250,0.2)]"
-                        : "group-hover:bg-neutral-800/30",
-                    )}
-                  >
-                    <item.icon
-                      className={cn(
-                        "h-4 w-4",
-                        isActive(item.href)
-                          ? "text-blue-400"
-                          : "text-neutral-400",
-                      )}
-                    />
-                  </div>
-                  <span>{item.name}</span>
-                </Link>
-              ))}
-            </nav>
-          </div>
+        <div className="mx-auto flex h-16 max-w-screen-2xl items-center gap-4 px-4 sm:px-6 lg:px-8">
+          {brand}
 
-          <div className="flex flex-1 items-center justify-end space-x-4">
-            <nav className="flex items-center">
+          {!userEmail && !isLoading ? null : desktopNav}
+
+          <div className="ml-auto flex shrink-0 items-center">
+            {(userEmail || isLoading) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
                     className="relative h-9 w-9 rounded-full"
+                    aria-label="Menu compte"
                   >
                     <Avatar className="h-9 w-9">
                       <AvatarImage
@@ -230,7 +201,7 @@ export function AdminHeader() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </nav>
+            )}
           </div>
         </div>
       </div>

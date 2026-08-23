@@ -3,10 +3,11 @@
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Car, Edit, Trash2 } from "lucide-react";
+import { Car, Edit, Trash2, User } from "lucide-react";
+import { formatPersonName } from "@/lib/rides/rideCancelLabels";
+import type { VehicleWithDriver } from "@/lib/vehicle";
 import type { Database } from "@/lib/types/database.types";
 
-type Vehicle = Database["public"]["Tables"]["vehicles"]["Row"];
 type VehicleType = Database["public"]["Enums"]["vehicle_type_enum"];
 
 const vehicleTypeLabels: Record<VehicleType, string> = {
@@ -23,25 +24,38 @@ const vehicleTypeColors: Record<VehicleType, string> = {
   ELECTRIC: "bg-green-500/20 text-green-400 border-green-500/30",
 };
 
-interface VehicleListProps {
-  vehicles: Vehicle[];
-  loading: boolean;
-  onEdit: (vehicle: Vehicle) => void;
-  onDelete: (vehicle: Vehicle) => void;
+function driverLabel(vehicle: VehicleWithDriver): string {
+  if (!vehicle.driver) return "Non assigné";
+  const name = formatPersonName(
+    vehicle.driver.first_name,
+    vehicle.driver.last_name,
+  );
+  const phone = vehicle.driver.phone?.trim();
+  if (phone && name !== "—") return `${name} · ${phone}`;
+  return name;
 }
+
+interface VehicleListProps {
+  vehicles: VehicleWithDriver[];
+  loading: boolean;
+  onEdit: (vehicle: VehicleWithDriver) => void;
+  onDelete: (vehicle: VehicleWithDriver) => void;
+}
+
+const SKELETON_KEYS = ["sk-1", "sk-2", "sk-3"] as const;
 
 export function VehicleList({
   vehicles,
   loading,
   onEdit,
   onDelete,
-}: VehicleListProps) {
+}: Readonly<VehicleListProps>) {
   if (loading) {
     return (
       <div className="flex flex-col items-center gap-4 w-full">
-        {[...Array(3)].map((_, i) => (
+        {SKELETON_KEYS.map((key) => (
           <Card
-            key={i}
+            key={key}
             className="animate-pulse border-neutral-800 bg-neutral-900/50 mx-auto"
             style={{ width: "80vw", maxWidth: "80vw", minWidth: 320 }}
           >
@@ -71,77 +85,102 @@ export function VehicleList({
 
   return (
     <div className="flex flex-col items-center gap-4 w-full">
-      {vehicles.map((vehicle) => (
-        <Card
-          key={vehicle.id}
-          className="overflow-hidden border-neutral-800 bg-neutral-900 hover:border-neutral-700 transition-all mx-auto"
-          style={{ width: "80vw", maxWidth: "80vw", minWidth: 320 }}
-        >
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4 min-w-0 flex-1">
-                <div
-                  className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0"
-                  style={{
-                    background: "rgba(59, 130, 246, 0.1)",
-                    border: "1px solid rgba(59, 130, 246, 0.2)",
-                  }}
+      {vehicles.map((vehicle) => {
+        const isCurrentVehicle =
+          vehicle.driver?.current_vehicle_id === vehicle.id;
+
+        return (
+          <Card
+            key={vehicle.id}
+            className="overflow-hidden border-neutral-800 bg-neutral-900 hover:border-neutral-700 transition-all mx-auto"
+            style={{ width: "80vw", maxWidth: "80vw", minWidth: 320 }}
+          >
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-4 min-w-0 flex-1">
+                  <div
+                    className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "rgba(59, 130, 246, 0.1)",
+                      border: "1px solid rgba(59, 130, 246, 0.2)",
+                    }}
+                  >
+                    <Car className="w-6 h-6 text-blue-400" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-base sm:text-lg text-white truncate">
+                      {`${vehicle.make ?? ""} ${vehicle.model ?? ""}`.trim() ||
+                        "—"}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-neutral-400 font-mono">
+                      {vehicle.license_plate}
+                    </p>
+                    <div className="mt-1.5 flex items-center gap-1.5 text-xs sm:text-sm text-neutral-300">
+                      <User className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
+                      <span className="truncate">{driverLabel(vehicle)}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                  {vehicle.vehicle_type ? (
+                    <Badge
+                      className={`${vehicleTypeColors[vehicle.vehicle_type]} text-xs sm:text-sm px-2 py-1`}
+                      variant="outline"
+                    >
+                      {vehicleTypeLabels[vehicle.vehicle_type]}
+                    </Badge>
+                  ) : (
+                    <Badge
+                      className="text-xs sm:text-sm px-2 py-1"
+                      variant="outline"
+                    >
+                      —
+                    </Badge>
+                  )}
+                  {vehicle.is_primary && (
+                    <Badge
+                      variant="outline"
+                      className="text-xs bg-amber-500/10 text-amber-400 border-amber-500/30"
+                    >
+                      Principal
+                    </Badge>
+                  )}
+                  {isCurrentVehicle && (
+                    <Badge
+                      variant="outline"
+                      className="text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                    >
+                      Actuel
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 border-neutral-700 hover:bg-neutral-800"
+                  onClick={() => onEdit(vehicle)}
                 >
-                  <Car className="w-6 h-6 text-blue-400" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold text-base sm:text-lg text-white truncate">
-                    {`${vehicle.make ?? ""} ${vehicle.model ?? ""}`.trim() ||
-                      "—"}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-neutral-400 font-mono">
-                    {vehicle.license_plate}
-                  </p>
-                </div>
+                  <Edit className="w-3.5 h-3.5 mr-2" />
+                  Modifier
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 border-red-900/50 text-red-400 hover:bg-red-950/50 hover:border-red-800"
+                  onClick={() => onDelete(vehicle)}
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-2" />
+                  Supprimer
+                </Button>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {vehicle.vehicle_type ? (
-                  <Badge
-                    className={`${vehicleTypeColors[vehicle.vehicle_type]} text-xs sm:text-sm px-2 py-1`}
-                    variant="outline"
-                  >
-                    {vehicleTypeLabels[vehicle.vehicle_type]}
-                  </Badge>
-                ) : (
-                  <Badge
-                    className="text-xs sm:text-sm px-2 py-1"
-                    variant="outline"
-                  >
-                    —
-                  </Badge>
-                )}
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 border-neutral-700 hover:bg-neutral-800"
-                onClick={() => onEdit(vehicle)}
-              >
-                <Edit className="w-3.5 h-3.5 mr-2" />
-                Modifier
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 border-red-900/50 text-red-400 hover:bg-red-950/50 hover:border-red-800"
-                onClick={() => onDelete(vehicle)}
-              >
-                <Trash2 className="w-3.5 h-3.5 mr-2" />
-                Supprimer
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }

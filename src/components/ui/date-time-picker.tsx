@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { Input } from "./input";
 import { Label } from "./label";
@@ -12,23 +14,19 @@ interface DateTimePickerProps {
 }
 
 const formatDateForInput = (date: Date | string | number | null | undefined) => {
-  // Vérifier si la date est valide et la convertir si nécessaire
   let validDate: Date;
-  
+
   if (date instanceof Date) {
     validDate = date;
-  } else if (date && typeof date === 'string') {
+  } else if (date && typeof date === "string") {
     validDate = new Date(date);
-  } else if (date && typeof date === 'number') {
+  } else if (date && typeof date === "number") {
     validDate = new Date(date);
   } else {
     validDate = new Date();
-    console.warn("DateTimePicker: Invalid date provided, using current date instead", date);
   }
-  
-  // Vérifier si la conversion a réussi
-  if (isNaN(validDate.getTime())) {
-    console.warn("DateTimePicker: Date conversion failed, using current date instead", date);
+
+  if (Number.isNaN(validDate.getTime())) {
     validDate = new Date();
   }
 
@@ -37,74 +35,89 @@ const formatDateForInput = (date: Date | string | number | null | undefined) => 
   const day = String(validDate.getDate()).padStart(2, "0");
   const hours = String(validDate.getHours()).padStart(2, "0");
   const minutes = String(validDate.getMinutes()).padStart(2, "0");
-  
+
   return {
     date: `${year}-${month}-${day}`,
     time: `${hours}:${minutes}`,
   };
 };
 
+/**
+ * Native browser datetime picker (`datetime-local` + showPicker).
+ * Uses the OS/browser calendar UI — no custom calendar overlay.
+ */
 export function DateTimePicker({
   id,
   value,
   onChange,
   label,
   minDate = new Date(),
-}: DateTimePickerProps) {
+}: Readonly<DateTimePickerProps>) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const inputId = id || React.useId();
 
-  // S'assurer que la date est valide
-  const ensureValidDate = (dateInput: Date | string | number | null | undefined): Date => {
-    if (dateInput instanceof Date && !isNaN(dateInput.getTime())) {
-      return new Date(dateInput.getTime()); // Créer une nouvelle instance
+  const ensureValidDate = (
+    dateInput: Date | string | number | null | undefined,
+  ): Date => {
+    if (dateInput instanceof Date && !Number.isNaN(dateInput.getTime())) {
+      return new Date(dateInput);
     }
-    
-    if (dateInput && (typeof dateInput === 'string' || typeof dateInput === 'number')) {
+
+    if (
+      dateInput &&
+      (typeof dateInput === "string" || typeof dateInput === "number")
+    ) {
       const parsedDate = new Date(dateInput);
-      if (!isNaN(parsedDate.getTime())) {
+      if (!Number.isNaN(parsedDate.getTime())) {
         return parsedDate;
       }
     }
-    
-    return new Date(); // Date par défaut si invalide
+
+    return new Date();
   };
 
-  // État local pour la date
   const currentDate = ensureValidDate(value);
   const { date: dateValue, time: timeValue } = formatDateForInput(currentDate);
 
   const handleDateTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    try {
-      const newDateTime = new Date(e.target.value);
-      
-      // Vérifier si la date est valide
-      if (!isNaN(newDateTime.getTime())) {
-        // Copier la date pour éviter les modifications par référence
-        const safeDate = new Date(newDateTime.getTime());
-        onChange(safeDate);
-      } else {
-        console.warn("Invalid date input:", e.target.value);
-      }
-    } catch (error) {
-      console.error("Error parsing date:", error);
+    const raw = e.target.value;
+    if (!raw) {
+      onChange(null);
+      return;
+    }
+    const newDateTime = new Date(raw);
+    if (!Number.isNaN(newDateTime.getTime())) {
+      onChange(new Date(newDateTime));
     }
   };
 
-  // Formater la date minimum
-  const minDateString = React.useMemo(() => {
+  const openNativePicker = () => {
+    const el = inputRef.current;
+    if (!el) return;
     try {
-      const { date, time } = formatDateForInput(minDate);
-      return `${date}T${time}`;
-    } catch (error) {
-      console.error("Error formatting minDate:", error);
-      return formatDateForInput(new Date()).date;
+      if (typeof el.showPicker === "function") {
+        el.showPicker();
+      } else {
+        el.focus();
+        el.click();
+      }
+    } catch {
+      el.focus();
     }
+  };
+
+  const minDateString = React.useMemo(() => {
+    const { date, time } = formatDateForInput(minDate);
+    return `${date}T${time}`;
   }, [minDate]);
 
   return (
-    <div className="space-y-2 relative">
-      {label && <Label htmlFor={inputId} className="text-white">{label}</Label>}
+    <div className="space-y-2 relative" style={{ colorScheme: "dark" }}>
+      {label ? (
+        <Label htmlFor={inputId} className="text-white">
+          {label}
+        </Label>
+      ) : null}
       <div className="relative">
         <Input
           id={inputId}
@@ -112,13 +125,15 @@ export function DateTimePicker({
           type="datetime-local"
           value={`${dateValue}T${timeValue}`}
           onChange={handleDateTimeChange}
+          onClick={openNativePicker}
+          onFocus={openNativePicker}
           min={minDateString}
-          className="w-full pr-10 bg-neutral-900 border-neutral-700 text-white focus:border-neutral-500 focus:ring-neutral-500"
+          className="w-full pr-10 bg-neutral-900 border-neutral-700 text-white focus:border-neutral-500 focus:ring-neutral-500 [color-scheme:dark]"
         />
         <button
           type="button"
-          onClick={() => inputRef.current?.showPicker()}
-          className="absolute right-3 top-1/2 -trangray-y-1/2 text-neutral-400 hover:text-white"
+          onClick={openNativePicker}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white"
           aria-label="Ouvrir le calendrier"
         >
           <CalendarDays className="h-5 w-5" />

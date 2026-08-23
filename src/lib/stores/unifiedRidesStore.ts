@@ -2,25 +2,36 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { createBrowserClient } from "@supabase/ssr";
 import type { Database } from "@/lib/types/database.types";
+import {
+  adminCancelRide,
+  adminReassignRide,
+  isAdminRpcFailure,
+} from "@/services/adminRideService";
 
 type DatabaseRide = Database["public"]["Tables"]["rides"]["Row"];
 type DatabaseDriver = Database["public"]["Tables"]["drivers"]["Row"];
+type DatabaseUser = Database["public"]["Tables"]["users"]["Row"];
 type RideStatus = Database["public"]["Enums"]["ride_status"];
 
-type RideWithDriver = DatabaseRide & {
+export type RideWithRelations = DatabaseRide & {
   driver: DatabaseDriver | null;
+  customer: Pick<
+    DatabaseUser,
+    "id" | "first_name" | "last_name" | "phone"
+  > | null;
 };
 
 type FilterStatus = RideStatus | "all";
 
 interface RidesState {
   // État
-  rides: RideWithDriver[];
-  filteredRides: RideWithDriver[];
+  rides: RideWithRelations[];
+  filteredRides: RideWithRelations[];
   selectedDate: Date;
   selectedStatus: FilterStatus;
   driverFilter: string | null;
   clientFilter: string | null;
+  searchQuery: string;
   viewMode: "day" | "month";
   loading: boolean;
   error: string | null;
@@ -31,6 +42,7 @@ interface RidesState {
   setSelectedStatus: (status: FilterStatus) => void;
   setDriverFilter: (driverId: string | null) => void;
   setClientFilter: (clientId: string | null) => void;
+  setSearchQuery: (query: string) => void;
   setViewMode: (mode: "day" | "month") => void;
   updateRideStatus: (rideId: string, status: RideStatus) => Promise<void>;
   assignDriver: (rideId: string, driverId: string) => Promise<void>;
@@ -44,19 +56,46 @@ const createClient = () => {
   );
 };
 
+type RideFilterParams = {
+  selectedDate: Date;
+  selectedStatus: FilterStatus;
+  driverFilter: string | null;
+  viewMode: "day" | "month";
+  clientFilter: string | null;
+  searchQuery: string;
+};
+
+function rideSearchHaystack(ride: RideWithRelations): string {
+  const parts = [
+    ride.id,
+    ride.pickup_address,
+    ride.dropoff_address,
+    ride.pickup_notes,
+    ride.cancellation_reason,
+    ride.customer?.first_name,
+    ride.customer?.last_name,
+    ride.customer?.phone,
+    ride.driver?.first_name,
+    ride.driver?.last_name,
+    ride.driver?.phone,
+    ride.user_id,
+    ride.driver_id,
+    ride.status,
+    ride.vehicle_type,
+  ];
+  return parts.filter(Boolean).join(" ").toLowerCase();
+}
+
 const applyFilters = (
-  rides: RideWithDriver[],
-  selectedDate: Date,
-  selectedStatus: FilterStatus,
-  driverFilter: string | null,
-  viewMode: "day" | "month",
-  clientFilter: string | null,
-): RideWithDriver[] => {
-  let start: Date, end: Date;
-  if (viewMode === "month") {
+  rides: RideWithRelations[],
+  f: RideFilterParams,
+): RideWithRelations[] => {
+  let start: Date;
+  let end: Date;
+  if (f.viewMode === "month") {
     start = new Date(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth(),
+      f.selectedDate.getFullYear(),
+      f.selectedDate.getMonth(),
       1,
       0,
       0,
@@ -64,8 +103,8 @@ const applyFilters = (
       0,
     );
     end = new Date(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth() + 1,
+      f.selectedDate.getFullYear(),
+      f.selectedDate.getMonth() + 1,
       0,
       23,
       59,
@@ -73,27 +112,54 @@ const applyFilters = (
       999,
     );
   } else {
-    start = new Date(selectedDate);
+    start = new Date(f.selectedDate);
     start.setHours(0, 0, 0, 0);
-    end = new Date(selectedDate);
+    end = new Date(f.selectedDate);
     end.setHours(23, 59, 59, 999);
   }
+
+  const q = f.searchQuery.trim().toLowerCase();
 
   return rides.filter((ride) => {
     const rideDate = new Date(ride.pickup_time);
     const matchesDate = rideDate >= start && rideDate <= end;
 
     let matchesStatus = true;
-    if (selectedStatus !== "all") {
-      matchesStatus = ride.status === selectedStatus;
+    if (f.selectedStatus !== "all") {
+      matchesStatus = ride.status === f.selectedStatus;
     }
 
-    const matchesDriver = !driverFilter || ride.driver_id === driverFilter;
-    const matchesClient = !clientFilter || ride.user_id === clientFilter;
+    const matchesDriver = !f.driverFilter || ride.driver_id === f.driverFilter;
+    const matchesClient = !f.clientFilter || ride.user_id === f.clientFilter;
+    const matchesSearch = !q || rideSearchHaystack(ride).includes(q);
 
-    return matchesDate && matchesStatus && matchesDriver && matchesClient;
+    return (
+      matchesDate &&
+      matchesStatus &&
+      matchesDriver &&
+      matchesClient &&
+      matchesSearch
+    );
   });
 };
+
+function filterParamsFromState(state: {
+  selectedDate: Date;
+  selectedStatus: FilterStatus;
+  driverFilter: string | null;
+  viewMode: "day" | "month";
+  clientFilter: string | null;
+  searchQuery: string;
+}): RideFilterParams {
+  return {
+    selectedDate: state.selectedDate,
+    selectedStatus: state.selectedStatus,
+    driverFilter: state.driverFilter,
+    viewMode: state.viewMode,
+    clientFilter: state.clientFilter,
+    searchQuery: state.searchQuery,
+  };
+}
 
 export const useUnifiedRidesStore = create<RidesState>()(
   devtools(
@@ -104,6 +170,7 @@ export const useUnifiedRidesStore = create<RidesState>()(
       selectedStatus: "all",
       driverFilter: null,
       clientFilter: null,
+      searchQuery: "",
       viewMode: "month",
       loading: false,
       error: null,
@@ -117,32 +184,42 @@ export const useUnifiedRidesStore = create<RidesState>()(
             .select(
               `
               *,
-              driver:drivers(*)
+              driver:drivers(*),
+              customer:users!rides_user_id_fkey(id, first_name, last_name, phone)
             `,
             )
             .order("pickup_time", { ascending: true });
 
           if (error) throw error;
 
-          const rides = (data as any[]).map((ride: any) => ({
-            ...(ride as any),
-            driver: (ride as any).driver as DatabaseDriver | null,
-          }));
+          const rides: RideWithRelations[] = (data ?? []).map((ride) => {
+            const row = ride as DatabaseRide & {
+              driver?: DatabaseDriver | DatabaseDriver[] | null;
+              customer?:
+                | Pick<DatabaseUser, "id" | "first_name" | "last_name" | "phone">
+                | Pick<
+                    DatabaseUser,
+                    "id" | "first_name" | "last_name" | "phone"
+                  >[]
+                | null;
+            };
+            const driver = Array.isArray(row.driver)
+              ? (row.driver[0] ?? null)
+              : (row.driver ?? null);
+            const customer = Array.isArray(row.customer)
+              ? (row.customer[0] ?? null)
+              : (row.customer ?? null);
+            const { driver: _d, customer: _c, ...rest } = row;
+            return {
+              ...(rest as DatabaseRide),
+              driver,
+              customer,
+            };
+          });
 
-          const {
-            selectedDate,
-            selectedStatus,
-            driverFilter,
-            viewMode,
-            clientFilter,
-          } = get();
           const filteredRides = applyFilters(
             rides,
-            selectedDate,
-            selectedStatus,
-            driverFilter,
-            viewMode,
-            clientFilter,
+            filterParamsFromState(get()),
           );
 
           set({
@@ -161,92 +238,65 @@ export const useUnifiedRidesStore = create<RidesState>()(
       },
 
       setSelectedDate: (date) => {
-        const { rides, selectedStatus, driverFilter, viewMode, clientFilter } =
-          get();
-        const filteredRides = applyFilters(
-          rides,
-          date,
-          selectedStatus,
-          driverFilter,
-          viewMode,
-          clientFilter,
-        );
+        const state = get();
+        const filteredRides = applyFilters(state.rides, {
+          ...filterParamsFromState(state),
+          selectedDate: date,
+        });
         set({ selectedDate: date, filteredRides });
       },
 
       setSelectedStatus: (status) => {
-        const { rides, selectedDate, driverFilter, viewMode, clientFilter } =
-          get();
-        const filteredRides = applyFilters(
-          rides,
-          selectedDate,
-          status,
-          driverFilter,
-          viewMode,
-          clientFilter,
-        );
+        const state = get();
+        const filteredRides = applyFilters(state.rides, {
+          ...filterParamsFromState(state),
+          selectedStatus: status,
+        });
         set({ selectedStatus: status, filteredRides });
       },
 
       setDriverFilter: (driverId) => {
-        const { rides, selectedDate, selectedStatus, viewMode, clientFilter } =
-          get();
-        const filteredRides = applyFilters(
-          rides,
-          selectedDate,
-          selectedStatus,
-          driverId,
-          viewMode,
-          clientFilter,
-        );
+        const state = get();
+        const filteredRides = applyFilters(state.rides, {
+          ...filterParamsFromState(state),
+          driverFilter: driverId,
+        });
         set({ driverFilter: driverId, filteredRides });
       },
 
       setClientFilter: (clientId) => {
-        const { rides, selectedDate, selectedStatus, driverFilter, viewMode } =
-          get();
-        const filteredRides = applyFilters(
-          rides,
-          selectedDate,
-          selectedStatus,
-          driverFilter,
-          viewMode,
-          clientId,
-        );
+        const state = get();
+        const filteredRides = applyFilters(state.rides, {
+          ...filterParamsFromState(state),
+          clientFilter: clientId,
+        });
         set({ clientFilter: clientId, filteredRides });
       },
 
+      setSearchQuery: (query) => {
+        const state = get();
+        const filteredRides = applyFilters(state.rides, {
+          ...filterParamsFromState(state),
+          searchQuery: query,
+        });
+        set({ searchQuery: query, filteredRides });
+      },
+
       setViewMode: (mode) => {
-        const {
-          rides,
-          selectedDate,
-          selectedStatus,
-          driverFilter,
-          clientFilter,
-        } = get();
-        const filteredRides = applyFilters(
-          rides,
-          selectedDate,
-          selectedStatus,
-          driverFilter,
-          mode,
-          clientFilter,
-        );
+        const state = get();
+        const filteredRides = applyFilters(state.rides, {
+          ...filterParamsFromState(state),
+          viewMode: mode,
+        });
         set({ viewMode: mode, filteredRides });
       },
 
       updateRideStatus: async (rideId, status) => {
         try {
-          const supabase = createClient();
-
           if (status === "admin-canceled") {
-            const { data, error } = await supabase.rpc("admin_cancel_ride", {
-              p_ride_id: rideId,
-            });
-            if (error) throw error;
-            const row = Array.isArray(data) ? data[0] : data;
-            if ((row as any)?.success === false) {
-              throw new Error((row as any).error || "Annulation refusée");
+            const row = await adminCancelRide(rideId);
+            if (isAdminRpcFailure(row)) {
+              throw new Error(row.error || "Annulation refusée");
             }
           } else {
             throw new Error(
@@ -254,7 +304,7 @@ export const useUnifiedRidesStore = create<RidesState>()(
             );
           }
 
-          const updateRide = (rides: RideWithDriver[]): RideWithDriver[] =>
+          const updateRide = (rides: RideWithRelations[]): RideWithRelations[] =>
             rides.map((ride) =>
               ride.id === rideId
                 ? { ...ride, status, updated_at: new Date().toISOString() }
@@ -262,20 +312,9 @@ export const useUnifiedRidesStore = create<RidesState>()(
             );
 
           const updatedRides = updateRide(get().rides);
-          const {
-            selectedDate,
-            selectedStatus,
-            driverFilter,
-            viewMode,
-            clientFilter,
-          } = get();
           const filteredRides = applyFilters(
             updatedRides,
-            selectedDate,
-            selectedStatus,
-            driverFilter,
-            viewMode,
-            clientFilter,
+            filterParamsFromState(get()),
           );
 
           set({
@@ -295,14 +334,9 @@ export const useUnifiedRidesStore = create<RidesState>()(
           const supabase = createClient();
           const newStatus: RideStatus = "scheduled";
 
-          const { data, error } = await supabase.rpc("admin_reassign_ride", {
-            p_ride_id: rideId,
-            p_driver_id: driverId,
-          });
-          if (error) throw error;
-          const row = Array.isArray(data) ? data[0] : data;
-          if ((row as any)?.success === false) {
-            throw new Error((row as any).error || "Réaffectation refusée");
+          const row = await adminReassignRide(rideId, driverId);
+          if (isAdminRpcFailure(row)) {
+            throw new Error(row.error || "Réaffectation refusée");
           }
 
           const { data: driver, error: driverError } = await supabase
@@ -313,7 +347,7 @@ export const useUnifiedRidesStore = create<RidesState>()(
 
           if (driverError) throw driverError;
 
-          const updateRide = (rides: RideWithDriver[]): RideWithDriver[] =>
+          const updateRide = (rides: RideWithRelations[]): RideWithRelations[] =>
             rides.map((ride) =>
               ride.id === rideId
                 ? {
@@ -327,20 +361,9 @@ export const useUnifiedRidesStore = create<RidesState>()(
             );
 
           const updatedRides = updateRide(get().rides);
-          const {
-            selectedDate,
-            selectedStatus,
-            driverFilter,
-            viewMode,
-            clientFilter,
-          } = get();
           const filteredRides = applyFilters(
             updatedRides,
-            selectedDate,
-            selectedStatus,
-            driverFilter,
-            viewMode,
-            clientFilter,
+            filterParamsFromState(get()),
           );
 
           set({
@@ -366,20 +389,9 @@ export const useUnifiedRidesStore = create<RidesState>()(
           if (error) throw error;
 
           const updatedRides = get().rides.filter((ride) => ride.id !== rideId);
-          const {
-            selectedDate,
-            selectedStatus,
-            driverFilter,
-            viewMode,
-            clientFilter,
-          } = get();
           const filteredRides = applyFilters(
             updatedRides,
-            selectedDate,
-            selectedStatus,
-            driverFilter,
-            viewMode,
-            clientFilter,
+            filterParamsFromState(get()),
           );
 
           set({

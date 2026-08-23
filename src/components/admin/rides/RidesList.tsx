@@ -1,29 +1,16 @@
 "use client";
 
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
+import { useState } from "react";
 import { useUnifiedRidesStore } from "@/lib/stores/unifiedRidesStore";
+import type { RideWithRelations } from "@/lib/stores/unifiedRidesStore";
 import { useDriversStore } from "@/lib/stores/driversStore";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/reservation/StatusBadge";
-import { MapPin, User } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { Database } from "@/lib/types/database.types";
 import { useToast } from "@/hooks/useToast";
-import {
-  adminCancelRide,
-} from "@/services/adminRideService";
-
-type Ride = Database["public"]["Tables"]["rides"]["Row"];
-
-const CANCELABLE = new Set([
-  "pending",
-  "scheduled",
-  "in-progress",
-  "delayed",
-  "no-show",
-]);
+import { adminCancelRide, isAdminRpcFailure } from "@/services/adminRideService";
+import { AdminRideListCard } from "./AdminRideListCard";
+import { RideDetailDialog } from "./RideDetailDialog";
+import { formatPersonName } from "@/lib/rides/rideCancelLabels";
 
 const LOADING_SKELETON_IDS = [
   "ride-skel-1",
@@ -34,30 +21,55 @@ const LOADING_SKELETON_IDS = [
   "ride-skel-6",
 ] as const;
 
+function resolveDriverLabel(
+  ride: RideWithRelations,
+  drivers: Array<{ id: string; first_name: string | null; last_name: string | null }>,
+): string {
+  if (ride.driver) {
+    return formatPersonName(ride.driver.first_name, ride.driver.last_name);
+  }
+  if (!ride.driver_id) return "Non assigné";
+  const fromStore = drivers.find((d) => d.id === ride.driver_id);
+  if (fromStore) {
+    return formatPersonName(fromStore.first_name, fromStore.last_name);
+  }
+  return "Chauffeur introuvable";
+}
+
 export function RidesList() {
   const { filteredRides, loading, fetchRides } = useUnifiedRidesStore();
   const { drivers } = useDriversStore();
   const router = useRouter();
   const { toast } = useToast();
+  const [selectedRide, setSelectedRide] = useState<RideWithRelations | null>(
+    null,
+  );
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  const openDetails = (ride: RideWithRelations) => {
+    setSelectedRide(ride);
+    setDetailOpen(true);
+  };
 
   const handleCancel = async (rideId: string) => {
     const reason = window.prompt("Motif d'annulation admin (optionnel) :") ?? "";
     try {
-      const result: any = await adminCancelRide(rideId, reason || undefined);
-      if (result?.success === false) {
+      const result = await adminCancelRide(rideId, reason || undefined);
+      if (isAdminRpcFailure(result)) {
         toast({
           title: "Annulation impossible",
-          description: result.error || "Erreur",
+          description:
+            typeof result.error === "string" ? result.error : "Erreur",
           variant: "destructive",
         });
         return;
       }
       toast({ title: "Course annulée" });
       await fetchRides?.();
-    } catch (e: any) {
+    } catch (e: unknown) {
       toast({
         title: "Erreur",
-        description: e?.message || String(e),
+        description: e instanceof Error ? e.message : String(e),
         variant: "destructive",
       });
     }
@@ -96,92 +108,32 @@ export function RidesList() {
   }
 
   return (
-    <div className="flex flex-col items-center gap-4 w-full">
-      {filteredRides.map((ride: Ride) => (
-          <Card
+    <>
+      <div className="flex flex-col items-center gap-4 w-full">
+        {filteredRides.map((ride) => (
+          <AdminRideListCard
             key={ride.id}
-            className="overflow-hidden border-neutral-800 bg-neutral-900 mx-auto"
-            style={{ width: "80vw", maxWidth: "80vw", minWidth: 320 }}
-          >
-            <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold text-base sm:text-lg truncate">
-                    Course #{ride.id.slice(0, 8)}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-neutral-400 truncate">
-                    {format(new Date(ride.pickup_time), "d MMMM yyyy à HH:mm", {
-                      locale: fr,
-                    })}
-                  </p>
-                </div>
-                <div className="shrink-0">
-                  <StatusBadge
-                    status={ride.status}
-                    showDetailed={true}
-                    className="flex items-center gap-1.5 text-xs sm:text-sm"
-                  />
-                </div>
-              </div>
+            ride={ride}
+            driverLabel={resolveDriverLabel(ride, drivers)}
+            onOpenDetails={() => openDetails(ride)}
+            onAssign={() =>
+              router.push(`/backoffice-portal/rides/assign?id=${ride.id}`)
+            }
+            onCancel={() => {
+              void handleCancel(ride.id);
+            }}
+          />
+        ))}
+      </div>
 
-              <div className="space-y-2 sm:space-y-3">
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-500 shrink-0" />
-                  <span className="text-xs sm:text-sm text-neutral-300 truncate">
-                    {ride.pickup_address}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-500 shrink-0" />
-                  <span className="text-xs sm:text-sm text-neutral-300 truncate">
-                    {ride.dropoff_address}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500 shrink-0" />
-                  <span className="text-xs sm:text-sm text-neutral-300 truncate">
-                    {ride.driver_id
-                      ? (() => {
-                          const driver = drivers.find(
-                            (d) => d.id === ride.driver_id,
-                          );
-                          return driver
-                            ? `${driver.first_name} ${driver.last_name}`
-                            : "Chauffeur introuvable";
-                        })()
-                      : "Non assigné"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2 mt-3 sm:mt-4">
-                {(ride.status === "pending" || ride.status === "scheduled") && (
-                  <Button
-                    variant="outline"
-                    className="flex-1 btn-secondary h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm"
-                    onClick={() =>
-                      router.push(
-                        `/backoffice-portal/rides/assign?id=${ride.id}`,
-                      )
-                    }
-                  >
-                    <User className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                    {ride.driver_id ? "Réassigner" : "Assigner"}
-                  </Button>
-                )}
-                {CANCELABLE.has(ride.status) && (
-                  <Button
-                    variant="outline"
-                    className="flex-1 h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm border-red-800 text-red-300 hover:bg-red-950"
-                    onClick={() => handleCancel(ride.id)}
-                  >
-                    Annuler
-                  </Button>
-                )}
-              </div>
-            </div>
-          </Card>
-      ))}
-    </div>
+      <RideDetailDialog
+        ride={selectedRide}
+        open={detailOpen}
+        onOpenChange={(open) => {
+          setDetailOpen(open);
+          if (!open) setSelectedRide(null);
+        }}
+      />
+    </>
   );
 }

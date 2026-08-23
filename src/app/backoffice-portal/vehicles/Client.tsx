@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -20,11 +21,14 @@ import {
 import { useToast } from "@/hooks/useToast";
 import { VehicleList } from "@/components/admin/vehicles/VehicleList";
 import { VehicleFilters } from "@/components/admin/vehicles/VehicleFilters";
+import { useDriversStore } from "@/lib/stores/driversStore";
+import { formatPersonName } from "@/lib/rides/rideCancelLabels";
 import {
   getAllVehicles,
   updateVehicle,
   deleteVehicle,
-  type Vehicle,
+  syncVehicleDriverAssignment,
+  type VehicleWithDriver,
   type VehicleType,
 } from "@/lib/vehicle";
 
@@ -35,13 +39,27 @@ const VEHICLE_TYPES: VehicleType[] = [
   "ELECTRIC",
 ];
 
+const UNASSIGNED_DRIVER = "__none__";
+
+function driverOptionLabel(
+  firstName: string | null | undefined,
+  lastName: string | null | undefined,
+  phone: string | null | undefined,
+): string {
+  const name = formatPersonName(firstName, lastName);
+  const trimmedPhone = phone?.trim();
+  if (trimmedPhone && name !== "—") return `${name} · ${trimmedPhone}`;
+  return name;
+}
+
 export default function VehiclesPage() {
   const { toast } = useToast();
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const { drivers, fetchDrivers } = useDriversStore();
+  const [vehicles, setVehicles] = useState<VehicleWithDriver[]>([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<VehicleType | "all">("all");
   const [search, setSearch] = useState("");
-  const [editing, setEditing] = useState<Vehicle | null>(null);
+  const [editing, setEditing] = useState<VehicleWithDriver | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     make: "",
@@ -51,6 +69,8 @@ export default function VehiclesPage() {
     color: "",
     seats: 4,
     validation_status: "pending",
+    driver_id: UNASSIGNED_DRIVER,
+    is_primary: false,
   });
 
   const load = useCallback(async () => {
@@ -74,23 +94,43 @@ export default function VehiclesPage() {
 
   useEffect(() => {
     load();
-  }, [load]);
+    fetchDrivers();
+  }, [load, fetchDrivers]);
+
+  const sortedDrivers = useMemo(
+    () =>
+      [...drivers].sort((a, b) =>
+        driverOptionLabel(a.first_name, a.last_name, a.phone).localeCompare(
+          driverOptionLabel(b.first_name, b.last_name, b.phone),
+          "fr",
+        ),
+      ),
+    [drivers],
+  );
 
   const filtered = useMemo(() => {
     return vehicles.filter((v) => {
       const matchesType =
         typeFilter === "all" || v.vehicle_type === typeFilter;
       const q = search.trim().toLowerCase();
+      const driverName = v.driver
+        ? driverOptionLabel(
+            v.driver.first_name,
+            v.driver.last_name,
+            v.driver.phone,
+          ).toLowerCase()
+        : "";
       const matchesSearch =
         !q ||
         v.license_plate?.toLowerCase().includes(q) ||
         v.make?.toLowerCase().includes(q) ||
-        v.model?.toLowerCase().includes(q);
+        v.model?.toLowerCase().includes(q) ||
+        driverName.includes(q);
       return matchesType && matchesSearch;
     });
   }, [vehicles, typeFilter, search]);
 
-  const openEdit = (vehicle: Vehicle) => {
+  const openEdit = (vehicle: VehicleWithDriver) => {
     setEditing(vehicle);
     setForm({
       make: vehicle.make ?? "",
@@ -100,11 +140,26 @@ export default function VehiclesPage() {
       color: vehicle.color ?? "",
       seats: vehicle.seats ?? 4,
       validation_status: vehicle.validation_status ?? "pending",
+      driver_id: vehicle.driver_id ?? UNASSIGNED_DRIVER,
+      is_primary: Boolean(vehicle.is_primary),
     });
   };
 
   const handleSave = async () => {
     if (!editing) return;
+    const driverId =
+      form.driver_id === UNASSIGNED_DRIVER ? null : form.driver_id;
+
+    if (form.is_primary && !driverId) {
+      toast({
+        variant: "destructive",
+        title: "Chauffeur requis",
+        description:
+          "Assignez un chauffeur pour définir ce véhicule comme principal.",
+      });
+      return;
+    }
+
     setSaving(true);
     try {
       await updateVehicle(editing.id, {
@@ -115,8 +170,17 @@ export default function VehiclesPage() {
         color: form.color || null,
         seats: form.seats,
         validation_status: form.validation_status,
+        driver_id: driverId,
+        is_primary: driverId ? form.is_primary : false,
         updated_at: new Date().toISOString(),
       });
+
+      await syncVehicleDriverAssignment(
+        editing.id,
+        driverId,
+        Boolean(driverId && form.is_primary),
+      );
+
       toast({ title: "Véhicule mis à jour" });
       setEditing(null);
       await load();
@@ -132,7 +196,7 @@ export default function VehiclesPage() {
     }
   };
 
-  const handleDelete = async (vehicle: Vehicle) => {
+  const handleDelete = async (vehicle: VehicleWithDriver) => {
     if (
       !globalThis.confirm(
         `Supprimer le véhicule ${vehicle.make} ${vehicle.model} (${vehicle.license_plate}) ?`,
@@ -183,6 +247,58 @@ export default function VehiclesPage() {
             <DialogTitle>Modifier le véhicule</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-2">
+            <div className="space-y-2">
+              <Label>Chauffeur assigné</Label>
+              <Select
+                value={form.driver_id}
+                onValueChange={(v) =>
+                  setForm({
+                    ...form,
+                    driver_id: v,
+                    is_primary: v === UNASSIGNED_DRIVER ? false : form.is_primary,
+                  })
+                }
+              >
+                <SelectTrigger className="bg-neutral-800 border-neutral-700">
+                  <SelectValue placeholder="Sélectionner un chauffeur" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UNASSIGNED_DRIVER}>
+                    Non assigné
+                  </SelectItem>
+                  {sortedDrivers.map((driver) => (
+                    <SelectItem key={driver.id} value={driver.id}>
+                      {driverOptionLabel(
+                        driver.first_name,
+                        driver.last_name,
+                        driver.phone,
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center justify-between rounded-md border border-neutral-700 bg-neutral-800/50 px-3 py-2.5">
+              <div className="space-y-0.5">
+                <Label htmlFor="is-primary" className="text-sm">
+                  Véhicule principal du chauffeur
+                </Label>
+                <p className="text-xs text-neutral-400">
+                  Définit aussi le véhicule actuellement utilisé par le
+                  chauffeur.
+                </p>
+              </div>
+              <Switch
+                id="is-primary"
+                checked={form.is_primary}
+                disabled={form.driver_id === UNASSIGNED_DRIVER}
+                onCheckedChange={(checked) =>
+                  setForm({ ...form, is_primary: checked })
+                }
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="make">Marque</Label>

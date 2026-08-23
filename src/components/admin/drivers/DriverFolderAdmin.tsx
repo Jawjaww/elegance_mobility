@@ -39,6 +39,7 @@ import {
 
 type DriverRow = Database["public"]["Tables"]["drivers"]["Row"];
 type DriverDocRow = Database["public"]["Tables"]["driver_documents"]["Row"];
+type DriverStatus = Database["public"]["Enums"]["driver_status"];
 const DRIVER_DOCS_BUCKET = "driver-documents";
 
 /** Resolve a storage object path from a DB file_url (path or legacy public/signed URL). */
@@ -74,40 +75,37 @@ function isImageFileRef(fileRef: string | null | undefined): boolean {
   return /\.(jpg|jpeg|png|webp|gif)$/i.test(pathOnly);
 }
 
-async function resolveSignedUrlForPath(
+async function tryAdminDocumentProxy(
   path: string,
-  accessToken: string | undefined,
+  accessToken: string,
 ): Promise<string | null> {
-  // Prefer same-origin admin proxy (service role on local URL) — reliable for private bucket.
-  if (accessToken) {
-    try {
-      const res = await fetch(
-        `/api/admin/driver-documents?path=${encodeURIComponent(path)}`,
-        { headers: { Authorization: `Bearer ${accessToken}` } },
-      );
-      if (res.ok) {
-        const blob = await res.blob();
-        if (blob.size > 0) {
-          return URL.createObjectURL(blob);
-        }
-      } else {
-        const body = await res.text();
-        console.warn(
-          "[DriverFolderAdmin] admin document proxy failed for",
-          path,
-          res.status,
-          body.slice(0, 200),
-        );
-      }
-    } catch (e) {
-      console.warn(
-        "[DriverFolderAdmin] admin document proxy error for",
-        path,
-        e,
-      );
+  try {
+    const res = await fetch(
+      `/api/admin/driver-documents?path=${encodeURIComponent(path)}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    if (res.ok) {
+      const blob = await res.blob();
+      return blob.size > 0 ? URL.createObjectURL(blob) : null;
     }
+    const body = await res.text();
+    console.warn(
+      "[DriverFolderAdmin] admin document proxy failed for",
+      path,
+      res.status,
+      body.slice(0, 200),
+    );
+  } catch (e) {
+    console.warn(
+      "[DriverFolderAdmin] admin document proxy error for",
+      path,
+      e,
+    );
   }
+  return null;
+}
 
+async function tryStorageSignedUrl(path: string): Promise<string | null> {
   try {
     const { data: urlData, error } = await supabase.storage
       .from(DRIVER_DOCS_BUCKET)
@@ -123,8 +121,13 @@ async function resolveSignedUrlForPath(
   } catch (e) {
     console.warn("Failed to create signed URL for", path, e);
   }
+  return null;
+}
 
-  if (!accessToken) return null;
+async function tryUploadSignedApi(
+  path: string,
+  accessToken: string,
+): Promise<string | null> {
   try {
     const res = await fetch(
       `/api/upload?op=signed&path=${encodeURIComponent(path)}`,
@@ -149,6 +152,23 @@ async function resolveSignedUrlForPath(
     );
   }
   return null;
+}
+
+async function resolveSignedUrlForPath(
+  path: string,
+  accessToken: string | undefined,
+): Promise<string | null> {
+  // Prefer same-origin admin proxy (service role on local URL) — reliable for private bucket.
+  if (accessToken) {
+    const proxyUrl = await tryAdminDocumentProxy(path, accessToken);
+    if (proxyUrl) return proxyUrl;
+  }
+
+  const storageUrl = await tryStorageSignedUrl(path);
+  if (storageUrl) return storageUrl;
+
+  if (!accessToken) return null;
+  return tryUploadSignedApi(path, accessToken);
 }
 
 function errorMessage(e: unknown): string {
@@ -468,7 +488,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
       });
       if (error) throw error;
       const payload = data as { success?: boolean; error?: string } | null;
-      if (payload && payload.success === false) {
+      if (payload?.success === false) {
         throw new Error(payload.error || "Validation refusée");
       }
       toast({ title: approve ? "Document approuvé" : "Document rejeté" });
@@ -494,7 +514,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
       });
       if (error) throw error;
       const payload = data as { success?: boolean; error?: string } | null;
-      if (payload && payload.success === false) {
+      if (payload?.success === false) {
         throw new Error(payload.error || "Mise à jour refusée");
       }
       toast({ title: "Date de validité mise à jour" });
@@ -588,6 +608,66 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
       loadData();
     } catch (e: unknown) {
       console.warn("DriverFolderAdmin.approveOrRejectDossier error:", e);
+      toast({
+        title: "Erreur",
+        description: errorMessage(e),
+        variant: "destructive",
+      });
+    }
+  }
+
+  async function cancelPendingReview() {
+    try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+      if (authError || !user) throw new Error("Admin non authentifié");
+
+      const reason =
+        globalThis
+          .prompt(
+            "Motif du renvoi pour correction (optionnel) :",
+          )
+          ?.trim() || null;
+
+      const confirmed = globalThis.confirm(
+        "Renvoyer le dossier en brouillon pour que le chauffeur puisse corriger ?",
+      );
+      if (!confirmed) return;
+
+      const { data, error } = await supabase.rpc(
+        "cancel_driver_dossier_review",
+        {
+          p_driver_id: driverId,
+          p_actor_user_id: user.id,
+          p_reason: reason,
+        },
+      );
+      if (error) throw error;
+
+      const row = Array.isArray(data) ? data[0] : data;
+      if (
+        row &&
+        typeof row === "object" &&
+        "success" in row &&
+        (row as { success?: boolean }).success === false
+      ) {
+        throw new Error(
+          (row as { message?: string }).message || "Annulation refusée",
+        );
+      }
+
+      toast({
+        title: "Demande annulée",
+        description:
+          row && typeof row === "object" && "message" in row
+            ? String((row as { message?: string }).message ?? "")
+            : "Le chauffeur peut à nouveau modifier son dossier.",
+      });
+      loadData();
+    } catch (e: unknown) {
+      console.warn("DriverFolderAdmin.cancelPendingReview error:", e);
       toast({
         title: "Erreur",
         description: errorMessage(e),
@@ -860,6 +940,8 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
           <p className="text-xs text-neutral-500 mt-2">
             Approuver / rejeter uniquement via les actions dossier (RPC
             validate_driver_dossier) quand le statut est pending_review.
+            « Renvoyer pour correction » annule la demande (draft) via
+            cancel_driver_dossier_review sans rejeter formellement.
           </p>
         </div>
       </div>
@@ -936,10 +1018,14 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                           : "-"}
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <label className="text-xs text-neutral-400 shrink-0">
+                        <label
+                          htmlFor={`doc-expiry-${latest.id}`}
+                          className="text-xs text-neutral-400 shrink-0"
+                        >
                           Date de fin (pré-saisie chauffeur)
                         </label>
                         <Input
+                          id={`doc-expiry-${latest.id}`}
                           type="date"
                           defaultValue={latest.expiry_date ?? ""}
                           key={`${latest.id}-${latest.expiry_date ?? "none"}`}
@@ -1033,7 +1119,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                 {isComplete ? "Dossier complet" : "Dossier incomplet"}
               </div>
               <div className="text-sm text-neutral-400">
-                Vérification automatique Supabase — {completionPct}% complété
+                Vérification automatique distante — {completionPct}% complété
               </div>
             </div>
           </div>
@@ -1103,6 +1189,14 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                   className="bg-red-600 hover:bg-red-700"
                 >
                   ✗ Rejeter le dossier
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void cancelPendingReview()}
+                  className="border-amber-600 text-amber-300 hover:bg-amber-900/30"
+                >
+                  ↩ Renvoyer pour correction
                 </Button>
               </>
             )}

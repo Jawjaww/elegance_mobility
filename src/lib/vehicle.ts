@@ -7,6 +7,15 @@ export type NewVehicle = Database["public"]["Tables"]["vehicles"]["Insert"];
 export type UpdateVehicle = Database["public"]["Tables"]["vehicles"]["Update"];
 export type VehicleType = Database["public"]["Enums"]["vehicle_type_enum"];
 
+type VehicleDriver = Pick<
+  Database["public"]["Tables"]["drivers"]["Row"],
+  "id" | "first_name" | "last_name" | "phone" | "current_vehicle_id"
+>;
+
+export type VehicleWithDriver = Vehicle & {
+  driver: VehicleDriver | null;
+};
+
 // Constantes runtime pour les types de véhicules (alignées sur database.types)
 export const VEHICLE_TYPE_STANDARD: VehicleType = "STANDARD";
 export const VEHICLE_TYPE_PREMIUM: VehicleType = "PREMIUM";
@@ -50,17 +59,28 @@ export function selectedFromVehicleOptions(options: VehicleOptions): string[] {
 /**
  * Fetches all vehicles from the database
  */
-export async function getAllVehicles() {
+export async function getAllVehicles(): Promise<VehicleWithDriver[]> {
   const { data, error } = await supabase
     .from("vehicles")
-    .select("*")
+    .select(
+      `
+      *,
+      driver:drivers!driver_id(
+        id,
+        first_name,
+        last_name,
+        phone,
+        current_vehicle_id
+      )
+    `,
+    )
     .order("created_at", { ascending: false });
 
   if (error) {
     throw new Error(`Error fetching vehicles: ${error.message}`);
   }
 
-  return data;
+  return (data ?? []) as VehicleWithDriver[];
 }
 
 /**
@@ -113,6 +133,45 @@ export async function updateVehicle(id: string, updates: UpdateVehicle) {
   }
 
   return data;
+}
+
+/**
+ * Syncs primary vehicle flags and the driver's current_vehicle_id after admin edit.
+ */
+export async function syncVehicleDriverAssignment(
+  vehicleId: string,
+  driverId: string | null,
+  isPrimary: boolean,
+) {
+  if (!driverId) return;
+
+  if (isPrimary) {
+    const { error: clearError } = await supabase
+      .from("vehicles")
+      .update({ is_primary: false, updated_at: new Date().toISOString() })
+      .eq("driver_id", driverId)
+      .neq("id", vehicleId);
+
+    if (clearError) {
+      throw new Error(
+        `Error clearing primary vehicles: ${clearError.message}`,
+      );
+    }
+
+    const { error: driverError } = await supabase
+      .from("drivers")
+      .update({
+        current_vehicle_id: vehicleId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", driverId);
+
+    if (driverError) {
+      throw new Error(
+        `Error updating driver current vehicle: ${driverError.message}`,
+      );
+    }
+  }
 }
 
 /**

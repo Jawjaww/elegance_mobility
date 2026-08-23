@@ -25,7 +25,7 @@ export function normalizeSelectedOptions(selected: string[] | null | undefined):
     const name = normalizeOptionName(raw);
     if (name) seen.add(name);
   }
-  return [...seen];
+  return Array.from(seen);
 }
 
 export async function listAvailableOptions(): Promise<CatalogOption[]> {

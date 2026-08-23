@@ -46,7 +46,11 @@ export default async function handler(
       console.warn("[api/auth/login] signInWithPassword error", error);
       return res.status(401).json({
         error: error.message || "Authentication failed",
-        detail: error,
+        detail: {
+          message: error.message,
+          status: error.status,
+          name: error.name,
+        },
       });
     }
 

@@ -21,7 +21,7 @@ type Props = {
   }) => void;
 };
 
-export function VehicleFilters({ onFilterChange }: Props) {
+export function VehicleFilters({ onFilterChange }: Readonly<Props>) {
   const [selectedType, setSelectedType] = useState<VehicleType | "all">("all");
 
   function handleTypeChange(type: string) {
@@ -42,7 +42,7 @@ export function VehicleFilters({ onFilterChange }: Props) {
       <div className="flex-1 relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
         <Input
-          placeholder="Rechercher par plaque ou modèle..."
+          placeholder="Rechercher par plaque, modèle ou chauffeur..."
           onChange={(e) => handleSearchChange(e.target.value)}
           className="pl-10"
         />

@@ -11,7 +11,7 @@ import { useReservationStore } from "@/lib/stores/reservationStore";
 import EditReservationMap from "@/components/map/EditReservationMap";
 import { PriceSummary } from "@/components/reservation/PriceSummary";
 import { Database } from "@/lib/types/database.types";
-import { validateVehicleType, normalizeVehicleType } from "@/lib/utils/vehicle";
+import { validateVehicleType } from "@/lib/utils/vehicle";
 
 interface EditReservationFormProps {
   initialData: Database["public"]["Tables"]["rides"]["Row"];
@@ -95,8 +95,7 @@ const EditReservationForm: React.FC<EditReservationFormProps> = ({
     store.toggleOption(option);
   };
 
-  // Soumission
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     const formData = {
       pickup_address: store.departure?.display_name,
       pickup_lat: store.departure?.lat,
@@ -109,9 +108,9 @@ const EditReservationForm: React.FC<EditReservationFormProps> = ({
       options: store.selectedOptions,
       distance: store.distance,
       duration: store.duration,
-      // Le prix estimé sera recalculé côté serveur à la validation finale
+      // Estimated price is recalculated server-side on final validation
     };
-    await onSubmit(formData);
+    onSubmit(formData);
   };
 
   return (
@@ -134,17 +133,6 @@ const EditReservationForm: React.FC<EditReservationFormProps> = ({
             value={store.destination?.display_name || ""}
             onSelect={handleDestinationSelect}
             placeholder="Adresse d'arrivée"
-          />
-        </div>
-        <div>
-          <Label htmlFor="pickup-datetime">
-            Date et heure de prise en charge
-          </Label>
-          <DateTimePicker
-            value={store.pickupDateTime || new Date()}
-            onChange={handleDateChange}
-            label="Date et heure de prise en charge"
-            minDate={new Date()}
           />
         </div>
         <div>
@@ -187,6 +175,17 @@ const EditReservationForm: React.FC<EditReservationFormProps> = ({
         </div>
         <EditReservationMap />
         <PriceSummary />
+        <div>
+          <Label htmlFor="pickup-datetime">
+            Date et heure de prise en charge
+          </Label>
+          <DateTimePicker
+            value={store.pickupDateTime || new Date()}
+            onChange={handleDateChange}
+            label="Date et heure de prise en charge"
+            minDate={new Date()}
+          />
+        </div>
         <div className="flex gap-4 pt-4">
           <Button variant="outline" onClick={onCancel} className="flex-1">
             Annuler

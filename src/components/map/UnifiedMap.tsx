@@ -40,7 +40,7 @@ interface UnifiedMapProps {
   readonly height?: string;
 }
 
-function isValidCoord(c: { lat: number; lng: number } | undefined): c is Coord {
+function isValidCoord(c: Coord | null | undefined): c is Coord {
   return (
     !!c &&
     Number.isFinite(c.lat) &&
