@@ -49,11 +49,11 @@ export default function ReservationCard({
   };
 
   return (
-    <Card className="overflow-hidden border-neutral-800 bg-neutral-900">
-      <CardHeader className="border-b border-neutral-800 bg-neutral-950/50 py-3">
+    <Card className="overflow-hidden border-blue-500/15 bg-neutral-900/80 transition-colors duration-200 hover:border-blue-500/30">
+      <CardHeader className="border-b border-blue-500/10 bg-neutral-950/40 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Car className="h-5 w-5 text-blue-500" />
+            <Car className="h-5 w-5 text-blue-400" />
             <h3 className="font-semibold text-neutral-100">
               {getVehicleTypeDisplay()}
             </h3>
@@ -74,10 +74,9 @@ export default function ReservationCard({
         <div className="space-y-3">
           <div className="flex">
             <div className="mr-2 flex flex-col items-center">
-              {/* Remplacer les points colorés par des icônes */}
-              <MapPin className="h-4 w-4 text-green-500" />
-              <div className="h-10 w-0.5 bg-neutral-800"></div>
-              <MapPin className="h-4 w-4 text-red-500" />
+              <MapPin className="h-4 w-4 text-blue-400" />
+              <div className="h-10 w-0.5 bg-neutral-700"></div>
+              <MapPin className="h-4 w-4 text-sky-400" />
             </div>
             <div className="space-y-3">
               <div className="space-y-1">
@@ -107,13 +106,13 @@ export default function ReservationCard({
           </div>
         </div>
       </CardContent>
-      <CardFooter className="border-t border-neutral-800 bg-neutral-950/50 px-4 py-2">
+      <CardFooter className="border-t border-blue-500/10 bg-neutral-950/40 px-4 py-2">
         <div className="flex w-full justify-end gap-2">
           {onDetails && (
             <Button
-              variant="outline" // Changé de "ghost" à "outline" pour avoir un contour
+              variant="outline"
               size="sm"
-              className="h-8 px-3 text-xs bg-neutral-800 border-neutral-700 hover:bg-neutral-700 hover:text-neutral-100"
+              className="h-8 px-3 text-xs border-blue-500/25 bg-blue-500/5 text-neutral-200 hover:bg-blue-500/15 hover:text-white"
               onClick={() => onDetails(ride.id)}
             >
               Détails
@@ -123,7 +122,7 @@ export default function ReservationCard({
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-3 text-xs bg-blue-900/30 border-blue-600/50 text-blue-400 hover:bg-blue-900/50 hover:border-blue-500 hover:text-blue-300"
+              className="h-8 px-3 text-xs border-blue-500/40 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 hover:text-blue-200"
               onClick={() => onEdit(ride.id)}
             >
               Modifier
@@ -133,7 +132,7 @@ export default function ReservationCard({
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-3 text-xs bg-red-700/10 border-red-700/70 text-red-400 hover:bg-red-700/30 hover:border-red-500 hover:text-red-300"
+              className="h-8 px-3 text-xs border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20 hover:text-red-200"
               onClick={() => onCancel(ride.id)}
             >
               Annuler

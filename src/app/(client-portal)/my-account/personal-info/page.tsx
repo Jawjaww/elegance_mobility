@@ -11,19 +11,26 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { type FieldValues, type ControllerRenderProps } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { updateProfile } from "@/lib/services/profileService";
 import { useToast } from "@/hooks/useToast";
-import { ChevronLeft } from "lucide-react";
-import Link from "next/link";
+import { AccountPageHeader } from "@/components/account/AccountPageHeader";
+import {
+  ACCOUNT_CARD,
+  ACCOUNT_CTA,
+  ACCOUNT_INPUT,
+  ACCOUNT_PAGE,
+} from "@/components/account/accountUi";
+import { cn } from "@/lib/utils";
 
 const personalInfoSchema = z.object({
   name: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
-  phone: z.string().min(10, "Le numéro de téléphone doit contenir au moins 10 caractères"),
+  phone: z
+    .string()
+    .min(10, "Le numéro de téléphone doit contenir au moins 10 caractères"),
 });
 
 type PersonalInfoForm = z.infer<typeof personalInfoSchema>;
@@ -31,7 +38,7 @@ type PersonalInfoForm = z.infer<typeof personalInfoSchema>;
 export default function PersonalInfoPage() {
   const router = useRouter();
   const { toast } = useToast();
-  
+
   const form = useForm<PersonalInfoForm>({
     resolver: zodResolver(personalInfoSchema),
     defaultValues: {
@@ -60,39 +67,41 @@ export default function PersonalInfoPage() {
         title: "Succès",
         description: "Vos informations personnelles ont été mises à jour",
       });
-      
+
       router.push("/my-account");
-    } catch (error) {
+    } catch {
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue lors de la mise à jour de vos informations",
+        description:
+          "Une erreur est survenue lors de la mise à jour de vos informations",
         variant: "destructive",
       });
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-6">
-      <div className="flex items-center space-x-4">
-        <Link href="/my-account">
-          <Button variant="ghost" size="icon">
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <h1 className="text-2xl font-bold">Informations personnelles</h1>
-      </div>
+    <div className={ACCOUNT_PAGE}>
+      <AccountPageHeader
+        title="Informations personnelles"
+        description="Nom, téléphone"
+        backHref="/my-account"
+      />
 
-      <Card className="p-6">
+      <Card className={cn(ACCOUNT_CARD, "p-5 sm:p-6")}>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
               render={({ field, fieldState }) => (
                 <FormItem>
-                  <FormLabel>Nom complet</FormLabel>
+                  <FormLabel className="text-neutral-300">Nom complet</FormLabel>
                   <FormControl>
-                    <Input placeholder="John Doe" {...field} />
+                    <Input
+                      placeholder="Jean Dupont"
+                      className={ACCOUNT_INPUT}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage>{fieldState.error?.message}</FormMessage>
                 </FormItem>
@@ -104,17 +113,23 @@ export default function PersonalInfoPage() {
               name="phone"
               render={({ field, fieldState }) => (
                 <FormItem>
-                  <FormLabel>Numéro de téléphone</FormLabel>
+                  <FormLabel className="text-neutral-300">
+                    Numéro de téléphone
+                  </FormLabel>
                   <FormControl>
-                    <Input placeholder="+33 6 12 34 56 78" {...field} />
+                    <Input
+                      placeholder="+33 6 12 34 56 78"
+                      className={ACCOUNT_INPUT}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage>{fieldState.error?.message}</FormMessage>
                 </FormItem>
               )}
             />
 
-            <div className="flex justify-end">
-              <Button type="submit">
+            <div className="flex justify-end pt-1">
+              <Button type="submit" className={ACCOUNT_CTA}>
                 Enregistrer les modifications
               </Button>
             </div>

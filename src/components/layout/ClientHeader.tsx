@@ -82,11 +82,11 @@ export function ClientHeader() {
       className="sticky top-0 z-50 w-full border-b border-neutral-700/30"
     >
       <div className="bg-gradient-to-r from-neutral-950/85 to-neutral-900/90 backdrop-blur-sm">
-        <div className="container flex h-16 max-w-screen-2xl items-center justify-between">
+        <div className="container flex h-16 max-w-screen-2xl items-center justify-between px-4 sm:px-6 lg:px-8">
           {/* Logo à gauche */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2">
-              <span className="btn-gradient bg-clip-text text-transparent font-bold text-xl">
+              <span className="bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent font-bold text-xl">
                 Vector Elegans
               </span>
             </Link>

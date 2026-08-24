@@ -17,8 +17,14 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { updateProfile } from "@/lib/services/profileService";
 import { useToast } from "@/hooks/useToast";
-import { ChevronLeft } from "lucide-react";
-import Link from "next/link";
+import { AccountPageHeader } from "@/components/account/AccountPageHeader";
+import {
+  ACCOUNT_CARD,
+  ACCOUNT_CTA,
+  ACCOUNT_INPUT,
+  ACCOUNT_PAGE,
+} from "@/components/account/accountUi";
+import { cn } from "@/lib/utils";
 
 const emailSchema = z.object({
   email: z.string().email("Adresse email invalide"),
@@ -62,40 +68,41 @@ export default function EmailPage() {
       });
 
       router.push("/my-account");
-    } catch (error) {
+    } catch {
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue lors de la mise à jour de votre email",
+        description:
+          "Une erreur est survenue lors de la mise à jour de votre email",
         variant: "destructive",
       });
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-6">
-      <div className="flex items-center space-x-4">
-        <Link href="/my-account">
-          <Button variant="ghost" size="icon">
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <h1 className="text-2xl font-bold">Modifier l&apos;adresse email</h1>
-      </div>
+    <div className={ACCOUNT_PAGE}>
+      <AccountPageHeader
+        title="Adresse email"
+        description="Modifier votre email"
+        backHref="/my-account"
+      />
 
-      <Card className="p-6">
+      <Card className={cn(ACCOUNT_CARD, "p-5 sm:p-6")}>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nouvelle adresse email</FormLabel>
+                  <FormLabel className="text-neutral-300">
+                    Nouvelle adresse email
+                  </FormLabel>
                   <FormControl>
-                    <Input 
-                      type="email" 
-                      placeholder="nouvelle@email.com" 
-                      {...field} 
+                    <Input
+                      type="email"
+                      placeholder="nouvelle@email.com"
+                      className={ACCOUNT_INPUT}
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -108,12 +115,15 @@ export default function EmailPage() {
               name="currentPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Mot de passe actuel</FormLabel>
+                  <FormLabel className="text-neutral-300">
+                    Mot de passe actuel
+                  </FormLabel>
                   <FormControl>
-                    <Input 
-                      type="password" 
-                      placeholder="Entrez votre mot de passe actuel" 
-                      {...field} 
+                    <Input
+                      type="password"
+                      placeholder="Entrez votre mot de passe actuel"
+                      className={ACCOUNT_INPUT}
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -121,8 +131,8 @@ export default function EmailPage() {
               )}
             />
 
-            <div className="flex justify-end">
-              <Button type="submit">
+            <div className="flex justify-end pt-1">
+              <Button type="submit" className={ACCOUNT_CTA}>
                 Mettre à jour l&apos;email
               </Button>
             </div>

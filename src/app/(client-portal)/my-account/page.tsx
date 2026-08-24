@@ -1,10 +1,7 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/database/client";
 import { useRouter } from "next/navigation";
 import {
   User as UserIcon,
@@ -15,7 +12,58 @@ import {
   Settings,
   ChevronRight,
 } from "lucide-react";
-import type { AppUser as User } from "@/lib/types/common.types";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  StaggerContainer,
+  StaggerItem,
+} from "@/components/motion/StaggerContainer";
+import {
+  ACCOUNT_CARD,
+  ACCOUNT_ICON_WRAP,
+  ACCOUNT_PAGE,
+  ACCOUNT_ROW,
+} from "@/components/account/accountUi";
+import { supabase } from "@/lib/database/client";
+import { cn } from "@/lib/utils";
+
+const MENU_ITEMS = [
+  {
+    href: "/my-account/reservations",
+    icon: CalendarClock,
+    title: "Mes réservations",
+    description: "Consultez l'historique et le statut de vos courses",
+  },
+  {
+    href: "/my-account/personal-info",
+    icon: UserIcon,
+    title: "Informations personnelles",
+    description: "Nom, téléphone",
+  },
+  {
+    href: "/my-account/email",
+    icon: Mail,
+    title: "Adresse email",
+    description: "Modifier votre email",
+  },
+  {
+    href: "/my-account/password",
+    icon: Lock,
+    title: "Mot de passe",
+    description: "Changer votre mot de passe",
+  },
+  {
+    href: "/my-account/notifications",
+    icon: Bell,
+    title: "Notifications",
+    description: "Gérer vos préférences de notification",
+  },
+  {
+    href: "/my-account/settings",
+    icon: Settings,
+    title: "Paramètres",
+    description: "Préférences générales",
+  },
+] as const;
 
 export default function MyAccount() {
   const router = useRouter();
@@ -45,13 +93,12 @@ export default function MyAccount() {
 
   if (isChecking || !user) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+      <div className="min-h-[50vh] flex items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
       </div>
     );
   }
 
-  // Accès aux propriétés avec le type User personnalisé
   const firstName = user?.user_metadata?.first_name || user?.first_name || "";
   const lastName = user?.user_metadata?.last_name || user?.last_name || "";
   const displayName =
@@ -66,97 +113,46 @@ export default function MyAccount() {
     return user.email ? user.email.split("@")[0][0].toUpperCase() : "?";
   };
 
-  // Soit directement user.user_metadata si c'est là que les données sont actuellement
   const userAvatar = user.avatar_url || user.user_metadata?.avatar_url || null;
 
-  const menuItems = [
-    {
-      href: "/my-account/reservations",
-      icon: CalendarClock,
-      bgColor: "bg-blue-100",
-      iconColor: "text-blue-600",
-      title: "Mes réservations",
-      description: "Consultez l'historique et le statut de vos courses",
-    },
-    {
-      href: "/my-account/personal-info",
-      icon: UserIcon,
-      bgColor: "bg-emerald-100",
-      iconColor: "text-emerald-600",
-      title: "Informations personnelles",
-      description: "Nom, téléphone",
-    },
-    {
-      href: "/my-account/email",
-      icon: Mail,
-      bgColor: "bg-green-100",
-      iconColor: "text-green-600",
-      title: "Adresse email",
-      description: "Modifier votre email",
-    },
-    {
-      href: "/my-account/password",
-      icon: Lock,
-      bgColor: "bg-amber-100",
-      iconColor: "text-amber-600",
-      title: "Mot de passe",
-      description: "Changer votre mot de passe",
-    },
-    {
-      href: "/my-account/notifications",
-      icon: Bell,
-      bgColor: "bg-purple-100",
-      iconColor: "text-purple-600",
-      title: "Notifications",
-      description: "Gérer vos préférences de notification",
-    },
-    {
-      href: "/my-account/settings",
-      icon: Settings,
-      bgColor: "bg-pink-100",
-      iconColor: "text-pink-600",
-      title: "Paramètres",
-      description: "Préférences générales",
-    },
-  ];
-
   return (
-    <div className="space-y-8">
-      <Card className="p-6">
-        <div className="text-center">
-          <Avatar className="h-24 w-24 mx-auto border-4 border-neutral-800 bg-neutral-900 mb-4">
-            {userAvatar ? <AvatarImage src={userAvatar} /> : null}
-            <AvatarFallback className="bg-neutral-900 text-3xl text-neutral-200">
+    <div className={cn(ACCOUNT_PAGE, "space-y-3")}>
+      <div className={cn(ACCOUNT_CARD, "p-4")}>
+        <div className="flex items-center gap-3">
+          <Avatar className="h-12 w-12 border border-blue-500/30 bg-neutral-900">
+            {userAvatar ? <AvatarImage src={userAvatar} alt="" /> : null}
+            <AvatarFallback className="bg-blue-500/15 text-lg font-semibold text-blue-200">
               {getInitials()}
             </AvatarFallback>
           </Avatar>
-          <h1 className="text-2xl font-bold">{displayName}</h1>
-          <p className="text-neutral-400">{user.email}</p>
+          <div className="min-w-0">
+            <h1 className="truncate text-base font-semibold text-neutral-100">
+              {displayName}
+            </h1>
+            <p className="truncate text-sm text-neutral-400">{user.email}</p>
+          </div>
         </div>
-      </Card>
-
-      <div className="grid gap-4">
-        {menuItems.map((item) => (
-          <Link key={item.href} href={item.href}>
-            <Card className="p-4 hover:bg-neutral-800 transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className={`p-2 rounded-full ${item.bgColor}`}>
-                    <item.icon className={`h-5 w-5 ${item.iconColor}`} />
-                  </div>
-                  <div>
-                    <h3 className="font-medium">{item.title}</h3>
-                    <p className="text-sm text-neutral-400">
-                      {item.description}
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="h-5 w-5 text-neutral-400" />
-              </div>
-            </Card>
-          </Link>
-        ))}
       </div>
+
+      <StaggerContainer className="grid gap-2">
+        {MENU_ITEMS.map((item) => (
+          <StaggerItem key={item.href}>
+            <Link href={item.href} className={cn(ACCOUNT_ROW, "py-3")}>
+              <div className={ACCOUNT_ICON_WRAP}>
+                <item.icon className="h-5 w-5" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="font-medium text-neutral-100">{item.title}</h2>
+                <p className="text-sm text-neutral-400">{item.description}</p>
+              </div>
+              <ChevronRight
+                className="h-5 w-5 shrink-0 text-neutral-500"
+                aria-hidden
+              />
+            </Link>
+          </StaggerItem>
+        ))}
+      </StaggerContainer>
     </div>
   );
 }

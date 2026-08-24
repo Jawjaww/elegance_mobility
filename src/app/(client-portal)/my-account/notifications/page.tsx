@@ -1,8 +1,20 @@
+import { AccountPageHeader } from "@/components/account/AccountPageHeader";
+import { ACCOUNT_CARD, ACCOUNT_PAGE } from "@/components/account/accountUi";
+import { cn } from "@/lib/utils";
+
 export default function NotificationsPage() {
   return (
-    <div className="max-w-2xl mx-auto p-4">
-      <h1 className="text-2xl font-bold">Préférences de notification</h1>
-      <p className="text-gray-600 mt-4">Fonctionnalité à venir prochainement.</p>
+    <div className={ACCOUNT_PAGE}>
+      <AccountPageHeader
+        title="Notifications"
+        description="Gérer vos préférences de notification"
+        backHref="/my-account"
+      />
+      <div className={cn(ACCOUNT_CARD, "p-5 sm:p-6")}>
+        <p className="text-sm text-neutral-400">
+          Fonctionnalité à venir prochainement.
+        </p>
+      </div>
     </div>
   );
 }

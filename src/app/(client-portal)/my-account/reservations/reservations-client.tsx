@@ -28,6 +28,8 @@ import { Button } from "@/components/ui/button";
 import { ReservationFilters } from "@/components/reservation/ReservationFilters";
 import { useToast } from "@/hooks/useToast";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { AccountPageHeader } from "@/components/account/AccountPageHeader";
+import { ACCOUNT_CTA } from "@/components/account/accountUi";
 
 const columnHelper = createColumnHelper<Reservation>();
 
@@ -259,11 +261,24 @@ export default function ReservationsClient({ user }: ReservationsClientProps) {
     getActiveFilters();
 
   return (
-    <div className="container max-w-4xl py-2 pt-0.5 px-4 sm:px-2">
-      <div className="flex flex-col w-full gap-4 mb-2 sticky top-[55px] z-40 pt-2 pb-2 bg-neutral-950/20 shadow-md">
+    <div className="mx-auto w-full max-w-4xl space-y-4">
+      <AccountPageHeader
+        title="Mes réservations"
+        description="Consultez l'historique et le statut de vos courses"
+        backHref="/my-account"
+        action={
+          <Button
+            className={ACCOUNT_CTA}
+            onClick={() => router.push("/reservation")}
+          >
+            Nouvelle réservation
+          </Button>
+        }
+      />
+
+      <div className="sticky top-[55px] z-40 -mx-1 rounded-xl border border-blue-500/15 bg-neutral-950/90 px-2 py-2 shadow-lg shadow-black/20 backdrop-blur-xl sm:mx-0">
         <ReservationFilters
           onFilterChange={({ status, startDate, endDate }) => {
-            // Mettre à jour les filtres avec TanStack Table
             const newFilters = [
               ...columnFilters.filter(
                 (f) => f.id !== "status" && f.id !== "pickup_time",
@@ -287,7 +302,7 @@ export default function ReservationsClient({ user }: ReservationsClientProps) {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center my-12">
+        <div className="flex justify-center my-10">
           <LoadingSpinner size="lg" />
         </div>
       ) : error ? (
@@ -297,23 +312,34 @@ export default function ReservationsClient({ user }: ReservationsClientProps) {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : filteredReservations.length === 0 ? (
-        <div className="text-center py-12">
+        <div className="rounded-2xl border border-blue-500/15 bg-neutral-900/80 px-6 py-12 text-center">
           <h3 className="text-lg font-semibold text-white mb-2">
             Aucune réservation trouvée
           </h3>
-          <p className="text-neutral-400 mb-6">
+          <p className="text-neutral-400 mb-6 max-w-md mx-auto">
             {activeDateFilter || activeStatusFilter
               ? "Aucune réservation ne correspond aux filtres sélectionnés"
               : "Vous n'avez pas encore de réservation"}
           </p>
-          <Button onClick={() => router.push("/reservation")}>
-            Faire une réservation
-          </Button>
+          {activeDateFilter || activeStatusFilter ? (
+            <Button
+              variant="outline"
+              className="border-blue-500/30 text-neutral-200 hover:bg-blue-500/10"
+              onClick={() => setColumnFilters([])}
+            >
+              Effacer les filtres
+            </Button>
+          ) : (
+            <Button
+              className={ACCOUNT_CTA}
+              onClick={() => router.push("/reservation")}
+            >
+              Faire une réservation
+            </Button>
+          )}
         </div>
       ) : (
-        <div className="space-y-4 pt-4 pb-8 relative">
-          {/* Effet de transparence sur le bas */}
-          <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-neutral-950 to-transparent pointer-events-none"></div>
+        <div className="space-y-3 pb-6">
           {filteredReservations.map((ride: Reservation) => (
             <ReservationCard
               key={ride.id}
@@ -331,31 +357,13 @@ export default function ReservationsClient({ user }: ReservationsClientProps) {
               onDetails={() => handleDetails(ride.id)}
             />
           ))}
-
-          {/* Si pas de résultats après filtrage mais des réservations existent */}
-          {filteredReservations.length === 0 && reservations.length > 0 && (
-            <div className="bg-neutral-800/40 p-4 rounded-lg text-center">
-              <p className="text-neutral-300 mb-2">
-                Aucune réservation ne correspond aux filtres sélectionnés.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setColumnFilters([]);
-                }}
-              >
-                Afficher toutes les réservations
-              </Button>
-            </div>
-          )}
         </div>
       )}
-      {/* Afficher un indicateur de filtrage actif pour une meilleure UX */}
-      {(activeDateFilter || activeStatusFilter) && (
-        <div className="flex items-center justify-between p-3 pb-12 rounded-md">
-          <div className="flex items-center text-sm">
-            <span className="text-neutral-300">
+
+      {(activeDateFilter || activeStatusFilter) &&
+        filteredReservations.length > 0 && (
+          <div className="flex items-center justify-between rounded-xl border border-blue-500/10 bg-neutral-900/50 px-3 py-2">
+            <span className="text-sm text-neutral-300">
               {filteredReservations.length} réservation
               {filteredReservations.length !== 1 ? "s" : ""}
               {activeDateFilter &&
@@ -370,18 +378,16 @@ export default function ReservationsClient({ user }: ReservationsClientProps) {
                 ? ` avec statut "${activeStatusFilter.value}"`
                 : ""}
             </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-blue-300 hover:text-blue-200 hover:bg-blue-500/10"
+              onClick={() => setColumnFilters([])}
+            >
+              Effacer
+            </Button>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setColumnFilters([]);
-            }}
-          >
-            Effacer les filtres
-          </Button>
-        </div>
-      )}
+        )}
 
       <DetailModal
         ride={selectedRide}

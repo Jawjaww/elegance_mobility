@@ -6,9 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/useToast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Database } from "@/lib/types/database.types";
 import { updateProfile } from "@/lib/services/profileService";
 import { User } from "@supabase/supabase-js";
+import {
+  ACCOUNT_CARD,
+  ACCOUNT_CTA,
+  ACCOUNT_INPUT,
+} from "@/components/account/accountUi";
+import { cn } from "@/lib/utils";
 
 interface SettingsFormProps {
   user: User;
@@ -122,78 +127,78 @@ export default function SettingsForm({ user, initialData }: SettingsFormProps) {
   };
 
   return (
-    <div className="space-y-8">
-      <Card className="bg-neutral-900 border-neutral-800">
-        <CardHeader>
-          <CardTitle>Informations personnelles</CardTitle>
+    <div className="space-y-4">
+      <Card className={cn(ACCOUNT_CARD, "border-blue-500/15")}>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg text-neutral-100">
+            Informations personnelles
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleProfileUpdate} className="space-y-6">
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label
-                    htmlFor="firstName"
-                    className="text-sm font-medium text-neutral-200"
-                  >
-                    Prénom
-                  </label>
-                  <Input
-                    id="firstName"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    className="mt-1 bg-neutral-800 border-neutral-700"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="lastName"
-                    className="text-sm font-medium text-neutral-200"
-                  >
-                    Nom
-                  </label>
-                  <Input
-                    id="lastName"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    className="mt-1 bg-neutral-800 border-neutral-700"
-                  />
-                </div>
-              </div>
-
+          <form onSubmit={handleProfileUpdate} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label
-                  htmlFor="email"
-                  className="text-sm font-medium text-neutral-200"
+                  htmlFor="firstName"
+                  className="text-sm font-medium text-neutral-300"
                 >
-                  Email
+                  Prénom
                 </label>
                 <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1 bg-neutral-800 border-neutral-700"
+                  id="firstName"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className={ACCOUNT_INPUT}
                 />
               </div>
-
               <div>
                 <label
-                  htmlFor="phone"
-                  className="text-sm font-medium text-neutral-200"
+                  htmlFor="lastName"
+                  className="text-sm font-medium text-neutral-300"
                 >
-                  Téléphone
+                  Nom
                 </label>
                 <Input
-                  id="phone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="mt-1 bg-neutral-800 border-neutral-700"
+                  id="lastName"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className={ACCOUNT_INPUT}
                 />
               </div>
             </div>
 
-            <Button type="submit" disabled={isLoading}>
+            <div>
+              <label
+                htmlFor="email"
+                className="text-sm font-medium text-neutral-300"
+              >
+                Email
+              </label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={ACCOUNT_INPUT}
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="phone"
+                className="text-sm font-medium text-neutral-300"
+              >
+                Téléphone
+              </label>
+              <Input
+                id="phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className={ACCOUNT_INPUT}
+              />
+            </div>
+
+            <Button type="submit" disabled={isLoading} className={ACCOUNT_CTA}>
               {isLoading
                 ? "Enregistrement..."
                 : "Enregistrer les modifications"}
@@ -202,66 +207,71 @@ export default function SettingsForm({ user, initialData }: SettingsFormProps) {
         </CardContent>
       </Card>
 
-      <Card className="bg-neutral-900 border-neutral-800">
-        <CardHeader>
-          <CardTitle>Changer de mot de passe</CardTitle>
+      <Card className={cn(ACCOUNT_CARD, "border-blue-500/15")}>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg text-neutral-100">
+            Mot de passe
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handlePasswordChange} className="space-y-6">
-            <div className="space-y-4">
-              <div>
-                <label
-                  htmlFor="currentPassword"
-                  className="text-sm font-medium text-neutral-200"
-                >
-                  Mot de passe actuel
-                </label>
-                <Input
-                  id="currentPassword"
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="mt-1 bg-neutral-800 border-neutral-700"
-                  required
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="newPassword"
-                  className="text-sm font-medium text-neutral-200"
-                >
-                  Nouveau mot de passe
-                </label>
-                <Input
-                  id="newPassword"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="mt-1 bg-neutral-800 border-neutral-700"
-                  required
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="confirmPassword"
-                  className="text-sm font-medium text-neutral-200"
-                >
-                  Confirmer le nouveau mot de passe
-                </label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="mt-1 bg-neutral-800 border-neutral-700"
-                  required
-                />
-              </div>
+          <form onSubmit={handlePasswordChange} className="space-y-4">
+            <div>
+              <label
+                htmlFor="currentPassword"
+                className="text-sm font-medium text-neutral-300"
+              >
+                Mot de passe actuel
+              </label>
+              <Input
+                id="currentPassword"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className={ACCOUNT_INPUT}
+                required
+              />
             </div>
 
-            <Button type="submit" variant="outline" disabled={isLoading}>
+            <div>
+              <label
+                htmlFor="newPassword"
+                className="text-sm font-medium text-neutral-300"
+              >
+                Nouveau mot de passe
+              </label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className={ACCOUNT_INPUT}
+                required
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="confirmPassword"
+                className="text-sm font-medium text-neutral-300"
+              >
+                Confirmer le nouveau mot de passe
+              </label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className={ACCOUNT_INPUT}
+                required
+              />
+            </div>
+
+            <Button
+              type="submit"
+              variant="outline"
+              disabled={isLoading}
+              className="border-blue-500/30 text-neutral-100 hover:bg-blue-500/10"
+            >
               {isLoading ? "Modification..." : "Modifier le mot de passe"}
             </Button>
           </form>
