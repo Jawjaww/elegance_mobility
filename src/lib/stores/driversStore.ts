@@ -304,7 +304,7 @@ export const useDriversStore = create<DriversState>((set, get) => ({
           totalDistance: acc.totalDistance + (ride.distance || 0),
           remainingRides:
             acc.remainingRides +
-            (["assigned", "accepted", "in_progress"].includes(ride.status)
+            (["scheduled", "in-progress", "delayed"].includes(ride.status)
               ? 1
               : 0),
         }),

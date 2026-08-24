@@ -9,7 +9,7 @@ interface DailyStatsProps {
   rides: Ride[];
 }
 
-export function DailyStats({ rides }: DailyStatsProps) {
+export function DailyStats({ rides }: Readonly<DailyStatsProps>) {
   // Calculer les statistiques
   const stats = rides.reduce(
     (acc, ride) => {
@@ -28,7 +28,7 @@ export function DailyStats({ rides }: DailyStatsProps) {
   );
 
   const remainingRides = rides.filter((ride) =>
-    ["assigned", "accepted", "in_progress"].includes(ride.status),
+    ["scheduled", "in-progress", "delayed"].includes(ride.status),
   ).length;
 
   const statItems = [

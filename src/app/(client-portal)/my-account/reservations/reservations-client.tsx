@@ -13,9 +13,12 @@ import {
   getSortedRowModel,
   createColumnHelper,
 } from "@tanstack/react-table";
-import { supabase } from "@/lib/database/client";
 import type { AppUser as User } from "@/lib/types/common.types";
 import { reservationService } from "@/lib/services/reservationService";
+import {
+  clientCancelRide,
+  isClientCancelFailure,
+} from "@/services/clientRideService";
 
 import type { Database } from "@/lib/types/database.types";
 type Reservation = Database["public"]["Tables"]["rides"]["Row"];
@@ -112,12 +115,10 @@ export default function ReservationsClient({ user }: ReservationsClientProps) {
 
   const handleCancel = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from("rides")
-        .update({ status: "client-canceled" })
-        .eq("id", id);
-
-      if (error) throw error;
+      const result = await clientCancelRide(id);
+      if (isClientCancelFailure(result)) {
+        throw new Error(result.error || "Impossible d'annuler la réservation");
+      }
 
       toast({
         title: "Réservation annulée",
