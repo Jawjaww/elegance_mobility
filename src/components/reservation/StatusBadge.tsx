@@ -1,104 +1,108 @@
 import { Badge } from "@/components/ui/badge";
 import { STATUS_LABELS, type UiStatus } from "@/lib/services/statusService";
+import type { Database } from "@/lib/types/database.types";
+
+type DbRideStatus = Database["public"]["Enums"]["ride_status"];
 
 interface StatusBadgeProps {
-  status: UiStatus | string;
+  status: UiStatus | DbRideStatus;
   className?: string;
   size?: "default" | "sm" | "lg";
-  showDetailed?: boolean; // Option pour afficher les labels détaillés (pour les sélecteurs)
+  showDetailed?: boolean;
+  driverArrivedAt?: string | null;
 }
 
-export function StatusBadge({ 
-  status, 
-  className = "", 
-  size = "default",
-  showDetailed = false 
-}: StatusBadgeProps) {
-  // Normaliser le statut pour correspondre aux types UiStatus
-  let normalizedStatus: UiStatus;
-  
-  // Conversion des statuts de base de données vers UI
+function normalizeStatus(status: UiStatus | DbRideStatus): UiStatus {
   switch (status) {
-    case 'client-canceled':
-      normalizedStatus = 'clientCanceled';
-      break;
-    case 'driver-canceled':
-      normalizedStatus = 'driverCanceled';
-      break;
-    case 'admin-canceled':
-      normalizedStatus = 'adminCanceled';
-      break;
-    case 'no-show':
-      normalizedStatus = 'noShow';
-      break;
-    case 'in-progress':
-      normalizedStatus = 'inProgress';
-      break;
-    case 'scheduled':
-      normalizedStatus = 'accepted';
-      break;
+    case "client-canceled":
+      return "clientCanceled";
+    case "driver-canceled":
+      return "driverCanceled";
+    case "admin-canceled":
+      return "adminCanceled";
+    case "no-show":
+      return "noShow";
+    case "in-progress":
+      return "inProgress";
+    case "scheduled":
+      return "accepted";
     default:
-      normalizedStatus = status as UiStatus;
+      return status;
   }
-  
-  // Mapper à une variante de badge
-  let variant: string;
-  
+}
+
+function badgeVariantForStatus(normalizedStatus: UiStatus): string {
   switch (normalizedStatus) {
-    case 'pending':
-      variant = "pending";
-      break;
-    case 'accepted':
-      variant = "accepted";
-      break;
-    case 'inProgress':
-      variant = "inProgress";
-      break;
-    case 'completed':
-      variant = "completed";
-      break;
-    case 'noShow':
-      variant = "noShow"; // noShow a maintenant sa propre variante violette
-      break;
-    case 'delayed':
-      variant = "delayed"; // delayed a maintenant sa propre variante amber
-      break;
-    case 'clientCanceled':
-    case 'driverCanceled':
-    case 'adminCanceled':
-      variant = "canceled";
-      break;
+    case "pending":
+      return "pending";
+    case "accepted":
+      return "accepted";
+    case "inProgress":
+      return "inProgress";
+    case "completed":
+      return "completed";
+    case "noShow":
+      return "noShow";
+    case "delayed":
+      return "delayed";
+    case "clientCanceled":
+    case "driverCanceled":
+    case "adminCanceled":
+      return "canceled";
     default:
-      variant = "default";
+      return "default";
+  }
+}
+
+function displayLabelForStatus(
+  normalizedStatus: UiStatus,
+  rawStatus: UiStatus | DbRideStatus,
+  showDetailed: boolean,
+  driverArrivedAt: string | null,
+): string {
+  if (
+    ["clientCanceled", "driverCanceled", "adminCanceled"].includes(
+      normalizedStatus,
+    )
+  ) {
+    if (showDetailed) {
+      return STATUS_LABELS[normalizedStatus] || "Annulée";
+    }
+    return "Annulée";
   }
 
-  // Gérer l'affichage du label
-  let displayLabel;
-  
-  if (['clientCanceled', 'driverCanceled', 'adminCanceled'].includes(normalizedStatus)) {
-    // Pour les annulations, utiliser showDetailed pour décider du niveau de détail
-    if (showDetailed) {
-      displayLabel = STATUS_LABELS[normalizedStatus] || "Annulée";
-    } else {
-      displayLabel = "Annulée";
-    }
-  } else {
-    // Pour les autres statuts, toujours afficher le label complet
-    displayLabel = STATUS_LABELS[normalizedStatus] || 
-                  (status?.charAt(0).toUpperCase() + status?.slice(1).toLowerCase());
+  if (normalizedStatus === "accepted" && driverArrivedAt) {
+    return "Chauffeur sur place";
   }
-  
+
   return (
-    <Badge 
-      variant={variant as any}
-      size={size}
-      className={className}
-    >
+    STATUS_LABELS[normalizedStatus] ||
+    String(rawStatus).charAt(0).toUpperCase() + String(rawStatus).slice(1)
+  );
+}
+
+export function StatusBadge({
+  status,
+  className = "",
+  size = "default",
+  showDetailed = false,
+  driverArrivedAt = null,
+}: Readonly<StatusBadgeProps>) {
+  const normalizedStatus = normalizeStatus(status);
+  const variant = badgeVariantForStatus(normalizedStatus);
+  const displayLabel = displayLabelForStatus(
+    normalizedStatus,
+    status,
+    showDetailed,
+    driverArrivedAt,
+  );
+
+  return (
+    <Badge variant={variant as "default"} size={size} className={className}>
       {displayLabel}
     </Badge>
   );
 }
 
-// Pour compatibilité avec le code existant
 export const SimpleStatusBadge = StatusBadge;
 export const ReservationStatusBadge = StatusBadge;

@@ -1,17 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useToast } from "@/hooks/useToast";
 import LocationStep from "../../../components/reservation/LocationStep";
 import VehicleStep from "../../../components/reservation/VehicleStep";
 import { useReservation } from "../../../hooks/useReservation";
-import { useReservationStore } from "@/lib/stores/reservationStore";
 
 export default function ReservationPage() {
-  const router = useRouter();
-  const { toast } = useToast();
-  const reservationStore = useReservationStore();
-
   const {
     step,
     originAddress,
@@ -26,7 +19,6 @@ export default function ReservationPage() {
     handleReservation,
     handleOriginSelect,
     handleDestinationSelect,
-    handleLocationDetected,
     handleRouteCalculated,
     setPickupDateTime,
     setOriginAddress,
@@ -34,28 +26,6 @@ export default function ReservationPage() {
     setVehicleType,
     setOptions,
   } = useReservation();
-
-  // Gestion de la modification d'une réservation existante
-  const handleCompleteReservation = async () => {
-    if (false) {
-      const reservationId = localStorage.getItem("currentEditingReservationId");
-
-      if (!reservationId) {
-        toast({
-          title: "Erreur",
-          description: "ID de réservation manquant pour la modification.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Au lieu de mettre à jour directement dans la BD, utiliser handleReservation pour passer par la page confirmation
-      handleReservation();
-    } else {
-      // Pour une nouvelle réservation, continuer avec le comportement existant
-      handleReservation();
-    }
-  };
 
   return (
     <section className="relative grid min-h-screen bg-neutral-950 overflow-hidden">
@@ -72,7 +42,6 @@ export default function ReservationPage() {
             <LocationStep
               onNextStep={handleNextStep}
               isEditing={false}
-              onLocationDetected={handleLocationDetected}
               onOriginChange={setOriginAddress}
               onDestinationChange={setDestinationAddress}
               onOriginSelect={handleOriginSelect}

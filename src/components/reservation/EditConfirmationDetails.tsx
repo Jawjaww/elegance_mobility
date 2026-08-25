@@ -20,11 +20,13 @@ type EditConfirmationDetailsProps = {
   reservationId: string;
 };
 
-const SimpleSeparator = ({ className }: { className?: string }) => (
+const SimpleSeparator = ({ className }: Readonly<{ className?: string }>) => (
   <div className={`h-[1px] w-full bg-neutral-800 my-2 ${className || ''}`} />
 );
 
-export function EditConfirmationDetails({ reservationId }: EditConfirmationDetailsProps) {
+export function EditConfirmationDetails({
+  reservationId,
+}: Readonly<EditConfirmationDetailsProps>) {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -54,6 +56,7 @@ export function EditConfirmationDetails({ reservationId }: EditConfirmationDetai
         setFormattedDate(format(dateObj, "EEEE d MMMM yyyy", { locale: fr }));
         setFormattedTime(format(dateObj, "HH:mm", { locale: fr }));
       } catch (error) {
+        console.error("[EditConfirmationDetails] invalid pickupDateTime", error);
         setFormattedDate("Date non valide");
         setFormattedTime("");
       }
@@ -309,6 +312,7 @@ export function EditConfirmationDetails({ reservationId }: EditConfirmationDetai
                 departure={departure}
                 destination={destination}
                 onRouteCalculated={() => {}}
+                className="h-full"
               />
             </div>
           </Card>

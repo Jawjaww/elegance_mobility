@@ -10,21 +10,67 @@ import { Switch } from "@/components/ui/switch";
 import RideRequestMap from "@/components/map/RideRequestMap";
 import { AutocompleteInput } from "../AutocompleteInput";
 import { LoadingSpinner } from "../ui/loading-spinner";
-import { Suspense, useEffect, useRef, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import React from "react";
-import { MapMarker, Location } from "@/lib/types/map-types";
 import { validateVehicleType } from "@/lib/utils/vehicle";
 import { Database } from "@/lib/types/database.types";
 import { supabase } from "@/lib/database/client";
 
-// Ajout d'une interface pour les props du composant
 export interface ReservationFormProps {
   editMode?: boolean;
   reservationId?: string | null;
   initialData?: Database["public"]["Tables"]["rides"]["Row"];
   onSuccess?: () => void;
   onCancel?: () => void;
+}
+
+type LocLike = {
+  lat: number;
+  lon: number;
+  display_name: string;
+  address: { formatted: string };
+} | null;
+
+function isValidLoc(loc: {
+  lat?: number | null;
+  lon?: number | null;
+} | null): boolean {
+  return (
+    loc != null &&
+    typeof loc.lat === "number" &&
+    typeof loc.lon === "number" &&
+    Number.isFinite(loc.lat) &&
+    Number.isFinite(loc.lon)
+  );
+}
+
+function resolveEndpoint(
+  storeLoc: {
+    lat?: number | null;
+    lon?: number | null;
+    display_name?: string;
+  } | null,
+  initialLat: number | null | undefined,
+  initialLon: number | null | undefined,
+  initialAddress: string | undefined,
+): LocLike {
+  if (isValidLoc(storeLoc)) {
+    return {
+      lat: storeLoc!.lat!,
+      lon: storeLoc!.lon!,
+      display_name: storeLoc!.display_name || "",
+      address: { formatted: storeLoc!.display_name || "" },
+    };
+  }
+  if (typeof initialLat === "number" && typeof initialLon === "number") {
+    return {
+      lat: initialLat,
+      lon: initialLon,
+      display_name: initialAddress || "",
+      address: { formatted: initialAddress || "" },
+    };
+  }
+  return null;
 }
 
 export const ReservationForm: React.FC<ReservationFormProps> = ({
@@ -36,13 +82,9 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
 }) => {
   const router = useRouter();
   const store = useReservationStore();
-  const [mapReady, setMapReady] = useState(false);
   const [mapKey, setMapKey] = useState(`map-${Date.now()}`);
   const renderedRef = useRef(false);
-  // Ajouter l'état des marqueurs qui manquait
-  const [markers, setMarkers] = useState<MapMarker[]>([]);
 
-  // Effet pour initialiser le store avec les données existantes en mode édition
   useEffect(() => {
     if (initialData && !renderedRef.current) {
       store.setDeparture({
@@ -60,13 +102,10 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
       });
 
       store.setPickupDateTime(new Date(initialData.pickup_time));
-      // Validate vehicle type from initial data
-      // Validate vehicle type (UI boundary): use validate so invalid values don't crash
       const vt = initialData.vehicle_type as unknown;
       const validated = validateVehicleType(vt);
       store.setSelectedVehicle(validated as any);
 
-      // Initialiser les options une par une
       if (initialData.options) {
         initialData.options.forEach((option) => {
           if (!store.selectedOptions.includes(option)) {
@@ -77,73 +116,40 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
 
       renderedRef.current = true;
       setMapKey(`map-edit-${Date.now()}`);
-      setMapReady(true);
     }
   }, [initialData, store]);
 
-  // Effet pour mettre à jour les marqueurs quand les coordonnées changent
-  useEffect(() => {
-    const newMarkers: MapMarker[] = [];
+  const handleCreateNext = () => {
+    router.push("/reservation/confirmation");
+  };
 
-    if (
-      store.departure &&
-      typeof store.departure.lat === "number" &&
-      typeof store.departure.lon === "number"
-    ) {
-      newMarkers.push({
-        position: [store.departure.lon, store.departure.lat],
-        address: store.departure.display_name,
-        color: "green",
-      });
-    }
+  const handleEditSave = async () => {
+    if (!reservationId) return;
+    try {
+      const updateData = {
+        pickup_address: store.departure?.display_name,
+        pickup_lat: store.departure?.lat,
+        pickup_lon: store.departure?.lon,
+        dropoff_address: store.destination?.display_name,
+        dropoff_lat: store.destination?.lat,
+        dropoff_lon: store.destination?.lon,
+        pickup_time: store.pickupDateTime?.toISOString(),
+        vehicle_type: store.selectedVehicle,
+        options: store.selectedOptions,
+        distance: store.distance,
+        duration: store.duration,
+        updated_at: new Date().toISOString(),
+      };
 
-    if (
-      store.destination &&
-      typeof store.destination.lat === "number" &&
-      typeof store.destination.lon === "number"
-    ) {
-      newMarkers.push({
-        position: [store.destination.lon, store.destination.lat],
-        address: store.destination.display_name,
-        color: "red",
-      });
-    }
+      const { error } = await supabase
+        .from("rides")
+        .update(updateData)
+        .eq("id", reservationId);
 
-    setMarkers(newMarkers);
-  }, [store.departure, store.destination]);
-
-  const handleNextStep = async () => {
-    if (editMode && reservationId) {
-      try {
-        // Utiliser le client Supabase singleton
-        const updateData = {
-          pickup_address: store.departure?.display_name,
-          pickup_lat: store.departure?.lat,
-          pickup_lon: store.departure?.lon,
-          dropoff_address: store.destination?.display_name,
-          dropoff_lat: store.destination?.lat,
-          dropoff_lon: store.destination?.lon,
-          pickup_time: store.pickupDateTime?.toISOString(),
-          vehicle_type: store.selectedVehicle,
-          options: store.selectedOptions,
-          distance: store.distance,
-          duration: store.duration,
-          updated_at: new Date().toISOString(),
-        };
-
-        const { error } = await supabase
-          .from("rides")
-          .update(updateData)
-          .eq("id", reservationId);
-
-        if (error) throw error;
-        onSuccess?.();
-      } catch (error) {
-        console.error("Erreur lors de la mise à jour:", error);
-        // Ici vous pourriez ajouter une notification d'erreur
-      }
-    } else {
-      router.push("/reservation/confirmation");
+      if (error) throw error;
+      onSuccess?.();
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour:", error);
     }
   };
 
@@ -152,23 +158,19 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
     onCancel?.();
   };
 
-  // Fonction de gestion du changement de date pour éviter les problèmes de type
   const handleDateChange = (date: Date | null) => {
     if (date) {
       store.setPickupDateTime(date);
     }
   };
 
-  // Adaptateurs pour les fonctions onSelect des inputs d'adresse
   const handleOriginSelect = (lat: number, lon: number, address: string) => {
-    // Créer un objet Location complet au lieu de passer 3 paramètres séparés
-    const locationData = {
+    store.setDeparture({
       lat,
       lon,
       display_name: address,
       address: { formatted: address },
-    };
-    store.setDeparture(locationData);
+    });
   };
 
   const handleDestinationSelect = (
@@ -176,27 +178,36 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
     lon: number,
     address: string,
   ) => {
-    // Créer un objet Location complet au lieu de passer 3 paramètres séparés
-    const locationData = {
+    store.setDestination({
       lat,
       lon,
       display_name: address,
       address: { formatted: address },
-    };
-    store.setDestination(locationData);
+    });
   };
 
-  // Handler pour les calculs de route
   const handleRouteCalculated = (distance: number, duration: number) => {
-    // Éviter les recalculs non nécessaires qui peuvent causer des boucles de rendu
     if (
       store.distance !== Math.round(distance / 1000) ||
       store.duration !== Math.round(duration / 60)
     ) {
-      store.setDistance(Math.round(distance / 1000)); // Convertir en km
-      store.setDuration(Math.round(duration / 60)); // Convertir en minutes
+      store.setDistance(Math.round(distance / 1000));
+      store.setDuration(Math.round(duration / 60));
     }
   };
+
+  const effectiveDeparture = resolveEndpoint(
+    store.departure,
+    initialData?.pickup_lat,
+    initialData?.pickup_lon,
+    initialData?.pickup_address,
+  );
+  const effectiveDestination = resolveEndpoint(
+    store.destination,
+    initialData?.dropoff_lat,
+    initialData?.dropoff_lon,
+    initialData?.dropoff_address,
+  );
 
   return (
     <div className="container mx-auto py-8">
@@ -230,7 +241,6 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
               <RadioGroup
                 value={store.selectedVehicle || ""}
                 onValueChange={(value) => {
-                  // UI-level change: validate; if invalid selection, clear value so submit is blocked
                   store.setSelectedVehicle(validateVehicleType(value) as any);
                 }}
                 className="flex gap-4"
@@ -274,60 +284,24 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
           </div>
         </Card>
 
-        {/* Determine effective endpoints: prefer store values if they contain valid numeric coords,
-            otherwise fall back to initialData payload (edit mode) which may include coords. */}
-        {(() => {
-          const isValid = (loc: any) =>
-            loc &&
-            typeof loc.lat === "number" &&
-            !isNaN(loc.lat) &&
-            typeof loc.lon === "number" &&
-            !isNaN(loc.lon);
-          const effectiveDeparture = isValid(store.departure)
-            ? store.departure
-            : initialData &&
-                typeof initialData.pickup_lat === "number" &&
-                typeof initialData.pickup_lon === "number"
-              ? {
-                  lat: initialData.pickup_lat,
-                  lon: initialData.pickup_lon,
-                  display_name: initialData.pickup_address,
-                  address: { formatted: initialData.pickup_address },
-                }
-              : null;
-
-          const effectiveDestination = isValid(store.destination)
-            ? store.destination
-            : initialData &&
-                typeof initialData.dropoff_lat === "number" &&
-                typeof initialData.dropoff_lon === "number"
-              ? {
-                  lat: initialData.dropoff_lat,
-                  lon: initialData.dropoff_lon,
-                  display_name: initialData.dropoff_address,
-                  address: { formatted: initialData.dropoff_address },
-                }
-              : null;
-
-          return effectiveDeparture && effectiveDestination ? (
-            <Suspense
-              fallback={
-                <Card className="p-6">
-                  <LoadingSpinner />
-                </Card>
-              }
-            >
-              <Card className="p-0 overflow-hidden">
-                <RideRequestMap
-                  key={mapKey}
-                  departure={effectiveDeparture}
-                  destination={effectiveDestination}
-                  onRouteCalculated={handleRouteCalculated}
-                />
+        {effectiveDeparture && effectiveDestination ? (
+          <Suspense
+            fallback={
+              <Card className="p-6">
+                <LoadingSpinner />
               </Card>
-            </Suspense>
-          ) : null;
-        })()}
+            }
+          >
+            <Card className="p-0 overflow-hidden">
+              <RideRequestMap
+                key={mapKey}
+                departure={effectiveDeparture}
+                destination={effectiveDestination}
+                onRouteCalculated={handleRouteCalculated}
+              />
+            </Card>
+          </Suspense>
+        ) : null}
 
         <Card className="p-6">
           <Label htmlFor="pickup-datetime">
@@ -348,7 +322,7 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
             {editMode ? "Retour" : "Annuler"}
           </Button>
           <Button
-            onClick={handleNextStep}
+            onClick={editMode ? handleEditSave : handleCreateNext}
             className="flex-1 btn-gradient"
             disabled={
               !store.departure ||

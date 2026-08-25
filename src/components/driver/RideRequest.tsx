@@ -118,8 +118,15 @@ export function RideRequest() {
       <div className="grid grid-cols-3 gap-3 mb-6">
         <StatBox 
           icon={DollarSign}
-          value={formatPrice(availableRide.estimatedPrice || 0)}
-          label="Estimé"
+          value={formatPrice(
+            (availableRide.estimatedPrice || 0) +
+              (availableRide.clientIncentive || 0),
+          )}
+          label={
+            (availableRide.clientIncentive || 0) > 0
+              ? `Estimé (+${availableRide.clientIncentive}€)`
+              : "Estimé"
+          }
         />
         <StatBox 
           icon={Clock}

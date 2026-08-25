@@ -4,6 +4,13 @@ import maplibregl from 'maplibre-gl';
 export const MAX_ACTIVE_MAPS = 1;
 export const FORCE_CLEANUP_TIMEOUT = 500; // ms
 
+function removeRouteLayersAndSource(map: maplibregl.Map): void {
+  if (!map.getSource('route')) return;
+  if (map.getLayer('route-line')) map.removeLayer('route-line');
+  if (map.getLayer('route-line-glow')) map.removeLayer('route-line-glow');
+  map.removeSource('route');
+}
+
 class MapRegistry {
   private static instance: MapRegistry;
   private readonly registry = new Map<string, { map: maplibregl.Map; timestamp: number }>();
@@ -43,12 +50,7 @@ class MapRegistry {
           markers.forEach((m) => m.remove());
 
           try {
-            if (entry.map.getSource('route')) {
-              if (entry.map.getLayer('route-line')) {
-                entry.map.removeLayer('route-line');
-              }
-              entry.map.removeSource('route');
-            }
+            removeRouteLayersAndSource(entry.map);
           } catch (e) {
             console.warn(`[MapRegistry] Error cleaning sources for ${id}:`, e);
           }
@@ -91,10 +93,7 @@ class MapRegistry {
             markers.forEach((m) => m.remove());
 
             try {
-              if (entry.map.getSource('route')) {
-                if (entry.map.getLayer('route-line')) entry.map.removeLayer('route-line');
-                entry.map.removeSource('route');
-              }
+              removeRouteLayersAndSource(entry.map);
             } catch (e) {
               console.warn(`[MapRegistry] Error cleaning sources for ${id}:`, e);
             }
@@ -112,7 +111,7 @@ class MapRegistry {
 
 const mapRegistry = MapRegistry.getInstance();
 
-if (typeof globalThis.window !== 'undefined') {
+if (globalThis.window !== undefined) {
   globalThis.window.addEventListener('beforeunload', () => {
     mapRegistry.cleanup();
   });

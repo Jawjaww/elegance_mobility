@@ -25,9 +25,136 @@ import ReservationMap from "@/components/map/ReservationMap";
 import { AuthModal } from "../../app/auth/login/AuthModal";
 import { pricingService } from "@/lib/services/pricingService";
 import { resolveRideFinalPrice } from "@/lib/services/resolveRideFinalPrice";
+import { normalizePickupDateTime } from "@/lib/utils/normalizePickupDateTime";
+import type { VehicleType } from "@/lib/vehicle";
 
 // Type de la table rides de Supabase
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
+
+type PriceDetails = {
+  basePrice: number;
+  optionsPrice: number;
+  totalPrice: number;
+};
+
+type RideEndpoint = { display_name: string; lat: number; lon: number };
+
+function toPickupDate(pickupDateTime: Date | string): Date {
+  return pickupDateTime instanceof Date
+    ? pickupDateTime
+    : new Date(pickupDateTime);
+}
+
+function toNullableNumber(value: number | null | undefined): number | null {
+  return value ?? null;
+}
+
+function vehicleLabel(vehicle: VehicleType): string {
+  if (vehicle === "STANDARD") return "Berline Premium";
+  if (vehicle === "VAN") return "Van de Luxe";
+  return vehicle;
+}
+
+function buildPendingRidePayload(input: {
+  userId: string;
+  departure: RideEndpoint;
+  destination: RideEndpoint;
+  pickupDateTime: Date | string;
+  selectedVehicle: VehicleType;
+  selectedOptions: string[];
+  distance: number | null | undefined;
+  duration: number | null | undefined;
+  estimatedPrice: number | null | undefined;
+}): Partial<Ride> {
+  const dateObj = toPickupDate(input.pickupDateTime);
+  return {
+    user_id: input.userId,
+    pickup_address: input.departure.display_name,
+    pickup_lat: input.departure.lat,
+    pickup_lon: input.departure.lon,
+    dropoff_address: input.destination.display_name,
+    dropoff_lat: input.destination.lat,
+    dropoff_lon: input.destination.lon,
+    pickup_time: dateObj.toISOString(),
+    vehicle_type: input.selectedVehicle,
+    options: input.selectedOptions,
+    distance: toNullableNumber(input.distance),
+    duration: toNullableNumber(input.duration),
+    status: "pending",
+    estimated_price: toNullableNumber(input.estimatedPrice),
+    final_price: null,
+  };
+}
+
+function confirmationDescription(
+  departure: RideEndpoint,
+  destination: RideEndpoint,
+  formattedDate: string,
+  formattedTime: string,
+  finalPrice: number | null,
+): string {
+  const from = departure.display_name.split(",")[0];
+  const to = destination.display_name.split(",")[0];
+  const base = `Votre trajet de ${from} à ${to} a été enregistré pour le ${formattedDate} à ${formattedTime}.`;
+  if (finalPrice != null) {
+    return `${base} Prix final : ${finalPrice}€.`;
+  }
+  return `${base} Un e-mail de confirmation vous a été envoyé.`;
+}
+
+async function finalizeConfirmedRide(args: {
+  rideId: string;
+  selectedVehicle: VehicleType;
+  departure: RideEndpoint;
+  destination: RideEndpoint;
+  selectedOptions: string[];
+  distance: number | null | undefined;
+  duration: number | null | undefined;
+  fallbackPrice: number | null | undefined;
+  estimatedPrice: number | null | undefined;
+  formattedDate: string;
+  formattedTime: string;
+  setPickupDateTime: (date: Date) => void;
+  toast: ReturnType<typeof useToast>["toast"];
+  router: ReturnType<typeof useRouter>;
+}) {
+  const finalPrice = await resolveRideFinalPrice({
+    rideId: args.rideId,
+    vehicleType: args.selectedVehicle,
+    pickupLat: args.departure.lat,
+    pickupLon: args.departure.lon,
+    dropoffLat: args.destination.lat,
+    dropoffLon: args.destination.lon,
+    options: args.selectedOptions,
+    distance: toNullableNumber(args.distance),
+    duration: toNullableNumber(args.duration),
+    fallbackPrice: toNullableNumber(
+      args.fallbackPrice ?? args.estimatedPrice,
+    ),
+  });
+
+  sessionStorage.setItem("last_confirmed_reservation", args.rideId);
+  args.setPickupDateTime(normalizePickupDateTime(new Date()));
+  args.toast({
+    title: "✨ Réservation confirmée",
+    description: confirmationDescription(
+      args.departure,
+      args.destination,
+      args.formattedDate,
+      args.formattedTime,
+      finalPrice,
+    ),
+    variant: "success",
+  });
+  setTimeout(() => {
+    args.router.push("/my-account/reservations/reservation-success");
+  }, 2000);
+}
+
+function reservationErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return "Une erreur est survenue lors de la création de la réservation. Veuillez réessayer.";
+}
 
 const SimpleSeparator = ({ className }: { className?: string }) => (
   <div className={`h-[1px] w-full bg-neutral-800 my-2 ${className || ""}`} />
@@ -37,11 +164,7 @@ export function ConfirmationDetails() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [priceDetails, setPriceDetails] = useState<{
-    basePrice: number;
-    optionsPrice: number;
-    totalPrice: number;
-  } | null>(null);
+  const [priceDetails, setPriceDetails] = useState<PriceDetails | null>(null);
 
   const reservationStore = useReservationStore();
   const {
@@ -92,63 +215,27 @@ export function ConfirmationDetails() {
     setIsLoading(true);
 
     try {
-      // Récupération et vérification de l'utilisateur
-      const userResult = await supabase.auth.getUser();
-      const currentUser = userResult.data.user;
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
 
       if (!currentUser) {
-        console.log(
-          "[DEBUG] Utilisateur non connecté, affichage du modal d'authentification",
-        );
         setIsLoading(false);
         setShowAuthModal(true);
         return;
       }
 
-      // Diagnostic détaillé de l'authentification
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      console.log("[DEBUG] Session et rôle:", {
-        id: currentUser?.id,
-        email: currentUser?.email,
-        role: currentUser?.app_metadata?.role,
-        jwt_claims: session?.access_token
-          ? JSON.parse(atob(session.access_token.split(".")[1]))
-          : null,
-        authenticated: !!currentUser,
+      const newRide = buildPendingRidePayload({
+        userId: currentUser.id,
+        departure,
+        destination,
+        pickupDateTime,
+        selectedVehicle,
+        selectedOptions,
+        distance,
+        duration,
+        estimatedPrice: priceDetails?.totalPrice,
       });
-
-      const dateObj =
-        pickupDateTime instanceof Date
-          ? pickupDateTime
-          : new Date(pickupDateTime);
-
-      // Création directe de la réservation avec les données validées
-
-      // Préparation des données conformes au type Ride
-      // Inclure le prix estimé calculé côté client
-      const newRide: Partial<Ride> = {
-        user_id: currentUser.id,
-        pickup_address: departure.display_name,
-        pickup_lat: departure.lat,
-        pickup_lon: departure.lon,
-        dropoff_address: destination.display_name,
-        dropoff_lat: destination.lat,
-        dropoff_lon: destination.lon,
-        pickup_time: dateObj.toISOString(),
-        vehicle_type: selectedVehicle,
-        options: selectedOptions,
-        distance: distance || null,
-        duration: duration || null,
-        status: "pending",
-        estimated_price: priceDetails?.totalPrice || null,
-        final_price: null, // Sera calculé par l'edge function
-      };
-
-      console.log("[DEBUG] Création reservation avec prix estimé:", newRide);
-
-      // Création de la réservation
 
       const { data, error } = await supabase
         .from("rides")
@@ -156,60 +243,30 @@ export function ConfirmationDetails() {
         .select()
         .single();
 
-      if (error) {
-        console.error("[DEBUG] Erreur Supabase:", error);
-        throw error;
-      }
+      if (error) throw error;
+      if (!data?.id) return;
 
-      if (data) {
-        console.log("[DEBUG] Réservation créée avec succès:", {
-          id: data.id,
-          estimatedPrice: data.estimated_price,
-          finalPrice: data.final_price,
-        });
-
-        if (data && data.id) {
-          const finalPrice = await resolveRideFinalPrice({
-            rideId: data.id,
-            vehicleType: selectedVehicle,
-            pickupLat: departure.lat,
-            pickupLon: departure.lon,
-            dropoffLat: destination.lat,
-            dropoffLon: destination.lon,
-            options: Array.isArray(selectedOptions) ? selectedOptions : [],
-            distance: distance ?? null,
-            duration: duration ?? null,
-            fallbackPrice: priceDetails?.totalPrice ?? data.estimated_price,
-          });
-
-          sessionStorage.setItem("last_confirmed_reservation", data.id);
-          // Afficher le toast de confirmation avec le prix final si disponible
-          toast({
-            title: "✨ Réservation confirmée",
-            description:
-              `Votre trajet de ${departure.display_name.split(",")[0]} à ${destination.display_name.split(",")[0]} a été enregistré pour le ${formattedDate} à ${formattedTime}.` +
-              (finalPrice
-                ? ` Prix final : ${finalPrice}€.`
-                : " Un e-mail de confirmation vous a été envoyé."),
-            variant: "success",
-          });
-          // Attendre que le toast soit visible avant la redirection
-          setTimeout(() => {
-            router.push("/my-account/reservations/reservation-success");
-          }, 2000);
-        }
-      }
-    } catch (error: any) {
-      console.error(
-        "[DEBUG] Erreur détaillée lors de la création de la réservation:",
-        error,
-      );
-
+      await finalizeConfirmedRide({
+        rideId: data.id,
+        selectedVehicle,
+        departure,
+        destination,
+        selectedOptions,
+        distance,
+        duration,
+        fallbackPrice: priceDetails?.totalPrice,
+        estimatedPrice: data.estimated_price,
+        formattedDate,
+        formattedTime,
+        setPickupDateTime: reservationStore.setPickupDateTime,
+        toast,
+        router,
+      });
+    } catch (error: unknown) {
+      console.error("Erreur lors de la création de la réservation:", error);
       toast({
         title: "Erreur lors de la création de la réservation",
-        description:
-          error.message ||
-          "Une erreur est survenue lors de la création de la réservation. Veuillez réessayer.",
+        description: reservationErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -244,15 +301,17 @@ export function ConfirmationDetails() {
           const result = await pricingService.calculatePrice(
             distance,
             selectedVehicle,
-            selectedOptions || [],
+            selectedOptions,
           );
           setPriceDetails(result);
-        } catch (error: any) {
-          // Afficher un message utilisateur et logguer en debug pour les devs
+        } catch (error: unknown) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Impossible d'estimer le prix pour le moment.";
           toast({
             title: "Erreur de tarification",
-            description:
-              error?.message || "Impossible d'estimer le prix pour le moment.",
+            description: message,
             variant: "destructive",
           });
           console.debug("Erreur lors du calcul du prix (détail):", error);
@@ -277,12 +336,7 @@ export function ConfirmationDetails() {
   }
 
   const handleAuthSuccess = async () => {
-    console.log(
-      "[DEBUG] Authentification réussie, reprise du processus de réservation",
-    );
-    // Fermer la modal et relancer la confirmation
     setShowAuthModal(false);
-    // Petit délai pour laisser la modal se fermer et la session se propager
     setTimeout(() => {
       handleConfirm();
     }, 300);
@@ -363,14 +417,12 @@ export function ConfirmationDetails() {
                   Type de véhicule
                 </p>
                 <p className="text-neutral-100">
-                  {selectedVehicle === "STANDARD"
-                    ? "Berline Premium"
-                    : "Van de Luxe"}
+                  {vehicleLabel(selectedVehicle)}
                 </p>
               </div>
             </div>
 
-            {selectedOptions?.length > 0 && (
+            {selectedOptions.length > 0 && (
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
                   <PackageCheck className="h-4 w-4 text-blue-500" />
@@ -378,7 +430,7 @@ export function ConfirmationDetails() {
                 <div>
                   <p className="text-sm text-neutral-400 mb-1">Options</p>
                   <ul className="space-y-1">
-                    {selectedOptions?.map((option) => (
+                    {selectedOptions.map((option) => (
                       <li key={option} className="text-neutral-100">
                         {option}
                       </li>

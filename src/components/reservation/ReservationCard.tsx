@@ -2,8 +2,11 @@ import { formatCurrency } from "@/lib/utils";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "../ui/card";
 import { formatDateTime } from "@/lib/utils/date-format";
-import { Car, MapPin } from "lucide-react";
+import { Car, MapPin, Bell } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
+import { getRideStatusLabelForRide } from "@/lib/services/statusService";
+import { RideIncentivePanel } from "./RideIncentivePanel";
+import { formatLiveNavHint } from "@/lib/utils/liveNavHint";
 
 import type { Database } from "@/lib/types/database.types";
 
@@ -12,6 +15,7 @@ interface ReservationCardProps {
   onEdit?: (id: string) => void;
   onCancel?: (id: string) => void;
   onDetails?: (id: string) => void;
+  onRefresh?: () => void;
 }
 
 export default function ReservationCard({
@@ -19,7 +23,8 @@ export default function ReservationCard({
   onEdit,
   onCancel,
   onDetails,
-}: ReservationCardProps) {
+  onRefresh,
+}: Readonly<ReservationCardProps>) {
   // S'assurer que l'ID de la réservation est défini
   if (!ride.id) {
     console.error("Réservation sans ID détectée", ride);
@@ -48,6 +53,15 @@ export default function ReservationCard({
     return `Trajet ${capitalize(vehicleType)}`;
   };
 
+  const driverWaiting =
+    ride.status === "scheduled" && Boolean(ride.driver_arrived_at);
+  const statusLabel = getRideStatusLabelForRide(
+    ride.status,
+    ride.pickup_time,
+    ride.driver_arrived_at,
+  );
+  const liveNavHint = formatLiveNavHint(ride);
+
   return (
     <Card className="overflow-hidden border-blue-500/15 bg-neutral-900/80 transition-colors duration-200 hover:border-blue-500/30">
       <CardHeader className="border-b border-blue-500/10 bg-neutral-950/40 py-3">
@@ -60,6 +74,7 @@ export default function ReservationCard({
           </div>
           <StatusBadge
             status={ride.status}
+            driverArrivedAt={ride.driver_arrived_at}
             className="shadow-sm"
             showDetailed={true}
           />
@@ -67,6 +82,17 @@ export default function ReservationCard({
       </CardHeader>
 
       <CardContent className="space-y-4 pt-4">
+        {driverWaiting ? (
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+            <Bell className="h-4 w-4 shrink-0" />
+            <span>{statusLabel} — votre chauffeur vous attend.</span>
+          </div>
+        ) : null}
+        {liveNavHint ? (
+          <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-100">
+            Estimation · {liveNavHint}
+          </div>
+        ) : null}
         <div className="text-sm">
           <p className="font-medium text-neutral-100">{formattedDateTime}</p>
         </div>
@@ -100,11 +126,27 @@ export default function ReservationCard({
         {/* Prix affiché directement sans le type de véhicule en doublon */}
         <div className="flex justify-end pt-2">
           <div className="text-lg font-semibold text-neutral-100">
-            {ride.estimated_price
-              ? formatCurrency(ride.estimated_price)
+            {ride.estimated_price != null
+              ? formatCurrency(
+                  Number(ride.estimated_price) +
+                    Number(ride.client_incentive ?? 0),
+                )
               : "Prix non défini"}
           </div>
         </div>
+
+        {(ride.status === "pending" || ride.status === "delayed") && (
+          <div className="pt-3">
+            <RideIncentivePanel
+              rideId={ride.id}
+              status={ride.status}
+              clientIncentive={Number(ride.client_incentive ?? 0)}
+              matchingPausedAt={ride.matching_paused_at}
+              matchingDeadlineAt={ride.matching_deadline_at}
+              onUpdated={onRefresh}
+            />
+          </div>
+        )}
       </CardContent>
       <CardFooter className="border-t border-blue-500/10 bg-neutral-950/40 px-4 py-2">
         <div className="flex w-full justify-end gap-2">
@@ -118,7 +160,8 @@ export default function ReservationCard({
               Détails
             </Button>
           )}
-          {onEdit && ride.status === "pending" && (
+          {onEdit &&
+            (ride.status === "pending" || ride.status === "delayed") && (
             <Button
               variant="outline"
               size="sm"
@@ -128,7 +171,8 @@ export default function ReservationCard({
               Modifier
             </Button>
           )}
-          {onCancel && ride.status === "pending" && (
+          {onCancel &&
+            (ride.status === "pending" || ride.status === "delayed") && (
             <Button
               variant="outline"
               size="sm"

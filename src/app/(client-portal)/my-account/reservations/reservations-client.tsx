@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useRouter } from "next/navigation";
@@ -12,9 +12,12 @@ import {
   getFilteredRowModel,
   getSortedRowModel,
   createColumnHelper,
+  type ColumnFiltersState,
+  type SortingState,
 } from "@tanstack/react-table";
 import type { AppUser as User } from "@/lib/types/common.types";
 import { reservationService } from "@/lib/services/reservationService";
+import { supabase } from "@/lib/database/client";
 import {
   clientCancelRide,
   isClientCancelFailure,
@@ -23,7 +26,6 @@ import {
 import type { Database } from "@/lib/types/database.types";
 type Reservation = Database["public"]["Tables"]["rides"]["Row"];
 
-// Components
 import ReservationCard from "@/components/reservation/ReservationCard";
 import DetailModal from "@/components/reservation/DetailModal";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -40,7 +42,201 @@ interface ReservationsClientProps {
   user: User;
 }
 
-export default function ReservationsClient({ user }: ReservationsClientProps) {
+type DateFilterValue = { startDate?: Date; endDate?: Date };
+
+function parseReservationLoadError(err: unknown): string {
+  if (err && typeof err === "object") {
+    if ("message" in err && typeof err.message === "string") {
+      return err.message;
+    }
+    if ("code" in err && typeof err.code === "string") {
+      return `Erreur Supabase [${err.code}]`;
+    }
+    return JSON.stringify(err);
+  }
+  if (typeof err === "string") return err;
+  return "Erreur lors de la récupération des réservations";
+}
+
+function formatDateFilterSummary(filter: { value: unknown } | undefined): string {
+  const value = filter?.value as DateFilterValue | undefined;
+  const startDate = value?.startDate;
+  const endDate = value?.endDate;
+  if (!startDate) return "";
+
+  const sameDay = endDate?.getDate() === startDate.getDate();
+  if (sameDay) {
+    return ` pour le ${format(startDate, "d MMMM yyyy", { locale: fr })}`;
+  }
+  if (endDate) {
+    return ` du ${format(startDate, "d MMMM", { locale: fr })} au ${format(endDate, "d MMMM yyyy", { locale: fr })}`;
+  }
+  return "";
+}
+
+function formatStatusFilterSummary(
+  filter: { value: unknown } | undefined,
+): string {
+  if (typeof filter?.value !== "string" || !filter.value) return "";
+  return ` avec statut "${filter.value}"`;
+}
+
+function dateFilter(
+  row: { getValue: (id: string) => unknown },
+  columnId: string,
+  value: DateFilterValue,
+) {
+  if (!value.startDate || !value.endDate) return true;
+
+  const rideDate = new Date(row.getValue(columnId) as string);
+  const isSpecificDayFilter =
+    value.startDate.getDate() === value.endDate.getDate() ||
+    value.endDate.getTime() - value.startDate.getTime() < 24 * 60 * 60 * 1000;
+
+  if (isSpecificDayFilter) {
+    const rideDay = new Date(
+      rideDate.getFullYear(),
+      rideDate.getMonth(),
+      rideDate.getDate(),
+    );
+    const filterDay = new Date(
+      value.startDate.getFullYear(),
+      value.startDate.getMonth(),
+      value.startDate.getDate(),
+    );
+    return rideDay.getTime() === filterDay.getTime();
+  }
+
+  return rideDate >= value.startDate && rideDate <= value.endDate;
+}
+
+function statusFilter(
+  row: { getValue: (id: string) => unknown },
+  columnId: string,
+  value: string,
+) {
+  if (!value || value === "all") return true;
+
+  const rowStatus = row.getValue(columnId) as string;
+  if (value === "canceled") {
+    return (
+      rowStatus === "client-canceled" ||
+      rowStatus === "driver-canceled" ||
+      rowStatus === "admin-canceled"
+    );
+  }
+
+  const statusMapping: Record<string, string> = {
+    pending: "pending",
+    accepted: "scheduled",
+    inProgress: "in-progress",
+    completed: "completed",
+    clientCanceled: "client-canceled",
+    driverCanceled: "driver-canceled",
+    adminCanceled: "admin-canceled",
+    noShow: "no-show",
+    delayed: "delayed",
+  };
+
+  return rowStatus === (statusMapping[value] ?? value);
+}
+
+function ReservationsListBody({
+  isLoading,
+  error,
+  filteredReservations,
+  hasActiveFilters,
+  onClearFilters,
+  onEdit,
+  onCancel,
+  onDetails,
+  onBook,
+  onRefresh,
+}: Readonly<{
+  isLoading: boolean;
+  error: string | null;
+  filteredReservations: Reservation[];
+  hasActiveFilters: boolean;
+  onClearFilters: () => void;
+  onEdit: (id: string) => void;
+  onCancel: (id: string) => void;
+  onDetails: (id: string) => void;
+  onBook: () => void;
+  onRefresh?: () => void;
+}>) {
+  if (isLoading) {
+    return (
+      <div className="flex justify-center my-10">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Erreur</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (filteredReservations.length === 0) {
+    const emptyMessage = hasActiveFilters
+      ? "Aucune réservation ne correspond aux filtres sélectionnés"
+      : "Vous n'avez pas encore de réservation";
+
+    return (
+      <div className="rounded-2xl border border-blue-500/15 bg-neutral-900/80 px-6 py-12 text-center">
+        <h3 className="text-lg font-semibold text-white mb-2">
+          Aucune réservation trouvée
+        </h3>
+        <p className="text-neutral-400 mb-6 max-w-md mx-auto">{emptyMessage}</p>
+        {hasActiveFilters ? (
+          <Button
+            variant="outline"
+            className="border-blue-500/30 text-neutral-200 hover:bg-blue-500/10"
+            onClick={onClearFilters}
+          >
+            Effacer les filtres
+          </Button>
+        ) : (
+          <Button className={ACCOUNT_CTA} onClick={onBook}>
+            Faire une réservation
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 pb-6">
+      {filteredReservations.map((ride) => (
+        <ReservationCard
+          key={ride.id}
+          ride={ride}
+          onEdit={
+            ride.status === "pending" || ride.status === "delayed"
+              ? () => onEdit(ride.id)
+              : undefined
+          }
+          onCancel={
+            ride.status === "pending" || ride.status === "delayed"
+              ? () => onCancel(ride.id)
+              : undefined
+          }
+          onDetails={() => onDetails(ride.id)}
+          onRefresh={onRefresh}
+        />
+      ))}
+    </div>
+  );
+}
+
+export default function ReservationsClient({
+  user,
+}: Readonly<ReservationsClientProps>) {
   const router = useRouter();
   const { toast } = useToast();
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -48,20 +244,12 @@ export default function ReservationsClient({ user }: ReservationsClientProps) {
   const [error, setError] = useState<string | null>(null);
   const [selectedRide, setSelectedRide] = useState<Reservation | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-
-  // TanStack Table states
-  const [columnFilters, setColumnFilters] = useState<any[]>([]);
-  const [sorting, setSorting] = useState<{ id: string; desc: boolean }[]>([
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [sorting, setSorting] = useState<SortingState>([
     { id: "pickup_time", desc: true },
   ]);
 
-  // Charger les réservations une seule fois au démarrage
-  useEffect(() => {
-    if (!user?.id) return;
-    loadReservations();
-  }, [user]);
-
-  const loadReservations = async () => {
+  const loadReservations = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -70,44 +258,54 @@ export default function ReservationsClient({ user }: ReservationsClientProps) {
         setError("Utilisateur non connecté");
         return;
       }
-      console.debug(
-        "[ReservationsClient] Chargement réservations pour userId:",
-        user.id,
-      );
 
       const result = await reservationService.getUserReservations(user.id);
-      console.debug(
-        "[ReservationsClient] reservationService.getUserReservations result:",
-        result,
-      );
-
       if (!result.success) {
-        const err = result.error;
-        console.error("[ReservationsClient] Erreur getUserReservations:", err);
-        let errorMessage = "Erreur lors de la récupération des réservations";
-        if (err && typeof err === "object") {
-          if ("message" in err && typeof err.message === "string") {
-            errorMessage = err.message;
-          } else if ("code" in err && typeof err.code === "string") {
-            errorMessage = `Erreur Supabase [${err.code}]`;
-          } else {
-            errorMessage = JSON.stringify(err);
-          }
-        } else if (typeof err === "string") {
-          errorMessage = err;
-        }
-        setError(errorMessage);
+        setError(parseReservationLoadError(result.error));
         return;
       }
 
-      // Pas de filtrage ici - TanStack Table s'en charge
-      setReservations(result.data || []);
-    } catch (err: any) {
-      setError(err.message || "Impossible de charger les réservations");
+      setReservations(result.data ?? []);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Impossible de charger les réservations";
+      setError(message);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    void loadReservations();
+  }, [user?.id, loadReservations]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel(`client-reservations-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "rides",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as Reservation;
+          setReservations((prev) =>
+            prev.map((ride) => (ride.id === updated.id ? updated : ride)),
+          );
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 
   const handleEdit = (id: string) => {
     router.push(`/my-account/reservations/edit?id=${id}`);
@@ -125,11 +323,13 @@ export default function ReservationsClient({ user }: ReservationsClientProps) {
         description: "Votre réservation a été annulée avec succès",
       });
 
-      loadReservations();
-    } catch (err: any) {
+      void loadReservations();
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Impossible d'annuler la réservation";
       toast({
         title: "Erreur",
-        description: err.message || "Impossible d'annuler la réservation",
+        description: message,
         variant: "destructive",
       });
     }
@@ -143,75 +343,7 @@ export default function ReservationsClient({ user }: ReservationsClientProps) {
     }
   };
 
-  // Fonctions de filtrage personnalisées pour TanStack Table
-  const dateFilter = (
-    row: any,
-    columnId: string,
-    value: { startDate?: Date; endDate?: Date },
-  ) => {
-    if (!value.startDate || !value.endDate) return true;
-
-    const rideDate = new Date(row.getValue(columnId));
-
-    // Vérifier si c'est un filtre pour un jour spécifique ou un mois entier
-    const isSpecificDayFilter =
-      value.startDate.getDate() === value.endDate.getDate() ||
-      value.endDate.getTime() - value.startDate.getTime() < 24 * 60 * 60 * 1000;
-
-    if (isSpecificDayFilter) {
-      // Filtrer par jour précis (ignorer l'heure)
-      const rideDay = new Date(
-        rideDate.getFullYear(),
-        rideDate.getMonth(),
-        rideDate.getDate(),
-      );
-
-      const filterDay = new Date(
-        value.startDate.getFullYear(),
-        value.startDate.getMonth(),
-        value.startDate.getDate(),
-      );
-
-      return rideDay.getTime() === filterDay.getTime();
-    } else {
-      // Filtrer par plage de dates (mois entier)
-      return rideDate >= value.startDate && rideDate <= value.endDate;
-    }
-  };
-
-  const statusFilter = (row: any, columnId: string, value: string) => {
-    if (!value || value === "all") return true;
-
-    const rowStatus = row.getValue(columnId);
-
-    // Si la valeur est "canceled", on filtre tous les types d'annulation
-    if (value === "canceled") {
-      return (
-        rowStatus === "client-canceled" ||
-        rowStatus === "driver-canceled" ||
-        rowStatus === "admin-canceled"
-      );
-    }
-
-    // Mapping des statuts UI vers DB pour la comparaison
-    const statusMapping: Record<string, string> = {
-      pending: "pending",
-      accepted: "scheduled",
-      inProgress: "in-progress",
-      completed: "completed",
-      clientCanceled: "client-canceled",
-      driverCanceled: "driver-canceled",
-      adminCanceled: "admin-canceled",
-      noShow: "no-show",
-      delayed: "delayed",
-    };
-
-    const mappedValue = statusMapping[value] || value;
-    return rowStatus === mappedValue;
-  };
-
-  // Configuration des colonnes TanStack Table
-  const columns = React.useMemo(
+  const columns = useMemo(
     () => [
       columnHelper.accessor("pickup_time", {
         id: "pickup_time",
@@ -227,39 +359,31 @@ export default function ReservationsClient({ user }: ReservationsClientProps) {
     [],
   );
 
-  // Configuration de la table TanStack
   const table = useReactTable({
     data: reservations,
     columns,
-    state: {
-      sorting,
-      columnFilters,
-    },
+    state: { sorting, columnFilters },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    filterFns: {
-      dateFilter,
-      statusFilter,
-    },
+    filterFns: { dateFilter, statusFilter },
   });
 
-  // Récupérer les données filtrées et triées de TanStack Table
   const filteredReservations = table
     .getRowModel()
     .rows.map((row) => row.original);
 
-  // Utilitaires pour l'affichage des filtres actifs
-  const getActiveFilters = () => {
-    const dateFilter = columnFilters.find((f) => f.id === "pickup_time");
-    const statusFilter = columnFilters.find((f) => f.id === "status");
-    return { dateFilter, statusFilter };
-  };
+  const activeDateFilter = columnFilters.find((f) => f.id === "pickup_time");
+  const activeStatusFilter = columnFilters.find((f) => f.id === "status");
+  const hasActiveFilters = Boolean(activeDateFilter || activeStatusFilter);
 
-  const { dateFilter: activeDateFilter, statusFilter: activeStatusFilter } =
-    getActiveFilters();
+  const filterSummaryParts = [
+    `${filteredReservations.length} réservation${filteredReservations.length === 1 ? "" : "s"}`,
+    formatDateFilterSummary(activeDateFilter),
+    formatStatusFilterSummary(activeStatusFilter),
+  ].join("");
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-4">
@@ -280,11 +404,9 @@ export default function ReservationsClient({ user }: ReservationsClientProps) {
       <div className="sticky top-[55px] z-40 -mx-1 rounded-xl border border-blue-500/15 bg-neutral-950/90 px-2 py-2 shadow-lg shadow-black/20 backdrop-blur-xl sm:mx-0">
         <ReservationFilters
           onFilterChange={({ status, startDate, endDate }) => {
-            const newFilters = [
-              ...columnFilters.filter(
-                (f) => f.id !== "status" && f.id !== "pickup_time",
-              ),
-            ];
+            const newFilters = columnFilters.filter(
+              (f) => f.id !== "status" && f.id !== "pickup_time",
+            );
 
             if (status && status !== "all") {
               newFilters.push({ id: "status", value: status });
@@ -302,98 +424,38 @@ export default function ReservationsClient({ user }: ReservationsClientProps) {
         />
       </div>
 
-      {isLoading ? (
-        <div className="flex justify-center my-10">
-          <LoadingSpinner size="lg" />
-        </div>
-      ) : error ? (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erreur</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      ) : filteredReservations.length === 0 ? (
-        <div className="rounded-2xl border border-blue-500/15 bg-neutral-900/80 px-6 py-12 text-center">
-          <h3 className="text-lg font-semibold text-white mb-2">
-            Aucune réservation trouvée
-          </h3>
-          <p className="text-neutral-400 mb-6 max-w-md mx-auto">
-            {activeDateFilter || activeStatusFilter
-              ? "Aucune réservation ne correspond aux filtres sélectionnés"
-              : "Vous n'avez pas encore de réservation"}
-          </p>
-          {activeDateFilter || activeStatusFilter ? (
-            <Button
-              variant="outline"
-              className="border-blue-500/30 text-neutral-200 hover:bg-blue-500/10"
-              onClick={() => setColumnFilters([])}
-            >
-              Effacer les filtres
-            </Button>
-          ) : (
-            <Button
-              className={ACCOUNT_CTA}
-              onClick={() => router.push("/reservation")}
-            >
-              Faire une réservation
-            </Button>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-3 pb-6">
-          {filteredReservations.map((ride: Reservation) => (
-            <ReservationCard
-              key={ride.id}
-              ride={ride}
-              onEdit={
-                ride.status === "pending"
-                  ? () => handleEdit(ride.id)
-                  : undefined
-              }
-              onCancel={
-                ride.status === "pending"
-                  ? () => handleCancel(ride.id)
-                  : undefined
-              }
-              onDetails={() => handleDetails(ride.id)}
-            />
-          ))}
+      <ReservationsListBody
+        isLoading={isLoading}
+        error={error}
+        filteredReservations={filteredReservations}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={() => setColumnFilters([])}
+        onEdit={handleEdit}
+        onCancel={handleCancel}
+        onDetails={handleDetails}
+        onBook={() => router.push("/reservation")}
+        onRefresh={() => void loadReservations()}
+      />
+
+      {hasActiveFilters && filteredReservations.length > 0 && (
+        <div className="flex items-center justify-between rounded-xl border border-blue-500/10 bg-neutral-900/50 px-3 py-2">
+          <span className="text-sm text-neutral-300">{filterSummaryParts}</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-blue-300 hover:text-blue-200 hover:bg-blue-500/10"
+            onClick={() => setColumnFilters([])}
+          >
+            Effacer
+          </Button>
         </div>
       )}
-
-      {(activeDateFilter || activeStatusFilter) &&
-        filteredReservations.length > 0 && (
-          <div className="flex items-center justify-between rounded-xl border border-blue-500/10 bg-neutral-900/50 px-3 py-2">
-            <span className="text-sm text-neutral-300">
-              {filteredReservations.length} réservation
-              {filteredReservations.length !== 1 ? "s" : ""}
-              {activeDateFilter &&
-              activeDateFilter.value.startDate &&
-              activeDateFilter.value.startDate.getDate() ===
-                activeDateFilter.value.endDate?.getDate()
-                ? ` pour le ${format(activeDateFilter.value.startDate, "d MMMM yyyy", { locale: fr })}`
-                : activeDateFilter && activeDateFilter.value.startDate
-                  ? ` du ${format(activeDateFilter.value.startDate, "d MMMM", { locale: fr })} au ${format(activeDateFilter.value.endDate!, "d MMMM yyyy", { locale: fr })}`
-                  : ""}
-              {activeStatusFilter
-                ? ` avec statut "${activeStatusFilter.value}"`
-                : ""}
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-blue-300 hover:text-blue-200 hover:bg-blue-500/10"
-              onClick={() => setColumnFilters([])}
-            >
-              Effacer
-            </Button>
-          </div>
-        )}
 
       <DetailModal
         ride={selectedRide}
         open={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
+        onRefresh={() => void loadReservations()}
       />
     </div>
   );

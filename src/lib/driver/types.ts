@@ -22,6 +22,7 @@ export interface Ride {
   dropoffLng: number;
   estimatedPrice: number | null;
   finalPrice: number | null;
+  clientIncentive?: number;
   estimatedDistance: number | null;
   estimatedDuration: number | null;
   status: Database["public"]["Enums"]["ride_status"];
@@ -30,6 +31,7 @@ export interface Ride {
   createdAt: string;
   vehicleType: string;
   options?: string[];
+  driverArrivedAt?: string | null;
 }
 
 export interface DriverStats {

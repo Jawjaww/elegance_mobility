@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/useToast";
 import { useRouter } from "next/navigation";
 import { Coordinates } from "../lib/types/map-types";
@@ -12,6 +12,7 @@ import {
 } from "../lib/vehicle";
 import { normalizeSelectedOptions } from "../lib/services/optionsCatalogService";
 import { useReservationStore } from "../lib/stores/reservationStore";
+import { normalizePickupDateTime } from "../lib/utils/normalizePickupDateTime";
 
 interface LocationState {
   raw: string;
@@ -56,8 +57,26 @@ export function useReservation() {
     reservationStore.destination?.display_name || "",
   );
   const [pickupDateTime, setPickupDateTime] = useState(() => {
-    return reservationStore.pickupDateTime || new Date();
+    return normalizePickupDateTime(
+      reservationStore.pickupDateTime || new Date(),
+    );
   });
+  const didNormalizePickupRef = useRef(false);
+
+  // Create mode only: bump stale draft datetime to now+1h (keep addresses).
+  useEffect(() => {
+    if (didNormalizePickupRef.current) return;
+    if (typeof window === "undefined") return;
+    if (localStorage.getItem("currentEditingReservationId")) return;
+    didNormalizePickupRef.current = true;
+    const normalized = normalizePickupDateTime(
+      reservationStore.pickupDateTime || pickupDateTime,
+    );
+    setPickupDateTime(normalized);
+    reservationStore.setPickupDateTime(normalized);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once on mount for create flow
+  }, []);
+
   const [distance, setDistance] = useState(reservationStore.distance || 0);
   const [duration, setDuration] = useState(reservationStore.duration || 0);
   const [vehicleType, setVehicleType] = useState<VehicleType>(
@@ -72,18 +91,43 @@ export function useReservation() {
   );
 
   const handleNextStep = useCallback(() => {
-    // Supporter les cas où le store contient déjà les adresses (préremplies)
     const storeOrigin = reservationStore.departure;
     const storeDestination = reservationStore.destination;
 
-    const hasOrigin = Boolean(origin || storeOrigin);
-    const hasDestination = Boolean(destination || storeDestination);
+    const isFiniteCoords = (
+      loc: { lat?: number | null; lon?: number | null } | null | undefined,
+    ) =>
+      loc != null &&
+      typeof loc.lat === "number" &&
+      typeof loc.lon === "number" &&
+      Number.isFinite(loc.lat) &&
+      Number.isFinite(loc.lon);
+
+    let resolvedOrigin = isFiniteCoords(origin) ? origin : undefined;
+    if (!resolvedOrigin && isFiniteCoords(storeOrigin)) {
+      resolvedOrigin = { lat: storeOrigin!.lat, lon: storeOrigin!.lon };
+    }
+
+    let resolvedDestination = isFiniteCoords(destination)
+      ? destination
+      : undefined;
+    if (!resolvedDestination && isFiniteCoords(storeDestination)) {
+      resolvedDestination = {
+        lat: storeDestination!.lat,
+        lon: storeDestination!.lon,
+      };
+    }
 
     const originLabel = originAddress || storeOrigin?.display_name || "";
     const destinationLabel =
       destinationAddress || storeDestination?.display_name || "";
 
-    if (!hasOrigin || !hasDestination || !originLabel || !destinationLabel) {
+    if (
+      !resolvedOrigin ||
+      !resolvedDestination ||
+      !originLabel ||
+      !destinationLabel
+    ) {
       toast({
         title: "Adresse manquante",
         description:
@@ -93,27 +137,14 @@ export function useReservation() {
       return;
     }
 
-    if (
-      typeof originLabel !== "string" ||
-      typeof destinationLabel !== "string"
-    ) {
-      toast({
-        title: "Adresse invalide",
-        description: "Les adresses doivent être du texte. Vérifiez l'entrée.",
-        variant: "destructive",
-      });
-      return;
+    if (!origin) {
+      setOrigin(resolvedOrigin);
+      setOriginAddress(storeOrigin?.display_name || originLabel);
     }
 
-    // Si les coordonnées locales manquent mais que le store contient des coordonnées, les initialiser pour la suite
-    if (!origin && storeOrigin) {
-      setOrigin({ lat: storeOrigin.lat, lon: storeOrigin.lon });
-      setOriginAddress(storeOrigin.display_name || originLabel);
-    }
-
-    if (!destination && storeDestination) {
-      setDestination({ lat: storeDestination.lat, lon: storeDestination.lon });
-      setDestinationAddress(storeDestination.display_name || destinationLabel);
+    if (!destination) {
+      setDestination(resolvedDestination);
+      setDestinationAddress(storeDestination?.display_name || destinationLabel);
     }
 
     setStep((prev) => Math.min(prev + 1, 2));
@@ -197,15 +228,6 @@ export function useReservation() {
 
   const handlePrevStep = useCallback(() => {
     setStep((prev) => Math.max(prev - 1, 1));
-  }, []);
-
-  const handleLocationDetected = useCallback((coords: Coordinates) => {
-    setOrigin(coords);
-    setOriginAddress("My current location");
-    setPickup({
-      raw: "My current location",
-      validated: { location: coords },
-    });
   }, []);
 
   // Mise à jour des gestionnaires pour utiliser lon et gérer les valeurs nulles
@@ -319,7 +341,6 @@ export function useReservation() {
     handleReservation,
     handleOriginSelect,
     handleDestinationSelect,
-    handleLocationDetected,
     handleRouteCalculated,
     setPickupDateTime,
     setOriginAddress,

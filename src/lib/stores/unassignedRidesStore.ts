@@ -1,23 +1,23 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/database/client';
-import {
-  isRidePickupStillOfferable,
-  ridePickupExpiryCutoffIso,
-} from '@/lib/utils/ridePickup';
+import { isRideStillOfferable } from '@/lib/utils/ridePickup';
 
 interface UnassignedRide {
   id: string;
   pickup_lat: number;
-  pickup_lon: number; // Standardisé sur lon uniquement
+  pickup_lon: number;
   dropoff_lat: number;
-  dropoff_lon: number; // Standardisé sur lon uniquement
+  dropoff_lon: number;
   pickup_address: string;
   dropoff_address: string;
   pickup_time: string;
   vehicle_type: string;
   distance_km: number;
   price: number;
-  status: 'pending';
+  status: string;
+  matching_deadline_at?: string | null;
+  matching_paused_at?: string | null;
+  client_incentive?: number | null;
 }
 
 interface UnassignedRidesState {
@@ -39,16 +39,15 @@ export const useUnassignedRidesStore = create<UnassignedRidesState>((set, get) =
       const { data, error } = await supabase
         .from('rides')
         .select('*')
-        .eq('status', 'pending')
+        .in('status', ['pending', 'delayed'])
         .is('driver_id', null)
-        .gt('pickup_time', ridePickupExpiryCutoffIso());
+        .is('matching_paused_at', null)
+        .gt('matching_deadline_at', new Date().toISOString());
 
       if (error) throw error;
 
       set({
-        rides: (data as UnassignedRide[]).filter((r) =>
-          isRidePickupStillOfferable(r.pickup_time),
-        ),
+        rides: (data as UnassignedRide[]).filter((r) => isRideStillOfferable(r)),
       });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Une erreur est survenue' });
@@ -72,17 +71,16 @@ export const useUnassignedRidesStore = create<UnassignedRidesState>((set, get) =
         );
       }
 
-      const rides = get().rides.filter(ride => ride.id !== rideId);
+      const rides = get().rides.filter((ride) => ride.id !== rideId);
       set({ rides });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Une erreur est survenue' });
     } finally {
       set({ loading: false });
     }
-  }
+  },
 }));
 
-// Écouter les changements en temps réel - CORRIGÉ
 const unassignedChannel = supabase
   .channel('unassigned-rides')
   .on(
@@ -91,27 +89,22 @@ const unassignedChannel = supabase
       event: 'INSERT',
       schema: 'public',
       table: 'rides',
-      filter: 'status=eq.pending'
     },
     (payload) => {
-      // Vérifier que driver_id est null
-      if (!payload.new.driver_id) {
-        const pickupTime = (payload.new as { pickup_time?: string }).pickup_time;
-        if (isRidePickupStillOfferable(pickupTime)) {
-          useUnassignedRidesStore.getState().fetchRides();
-        }
+      if (!payload.new.driver_id && isRideStillOfferable(payload.new as UnassignedRide)) {
+        useUnassignedRidesStore.getState().fetchRides();
       }
-    }
+    },
   )
   .on(
     'postgres_changes',
     {
       event: 'UPDATE',
       schema: 'public',
-      table: 'rides'
+      table: 'rides',
     },
     () => {
       useUnassignedRidesStore.getState().fetchRides();
-    }
+    },
   )
   .subscribe();

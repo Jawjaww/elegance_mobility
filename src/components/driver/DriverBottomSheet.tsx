@@ -22,6 +22,15 @@ import {
   formatDuration,
 } from "@/lib/driver/utils";
 import type { Ride } from "@/lib/driver/types";
+import { driverRideService } from "@/lib/driver/rideService";
+import {
+  openExternalNavigation,
+  changePreferredNavApp,
+} from "@/lib/driver/externalNavigation";
+import {
+  getPreferredNavApp,
+  NAV_APP_LABELS,
+} from "@/lib/driver/navAppPreference";
 
 type Tab = "available" | "scheduled" | "active";
 
@@ -488,6 +497,17 @@ function ScheduledTab({ rides }: { rides: Ride[] }) {
 }
 
 function ActiveTab({ ride }: { ride: Ride | null }) {
+  const { setActiveRide } = useDriverStore();
+  const [navAppLabel, setNavAppLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    setNavAppLabel(
+      getPreferredNavApp()
+        ? NAV_APP_LABELS[getPreferredNavApp()!]
+        : null,
+    );
+  }, []);
+
   if (!ride) {
     return (
       <motion.div
@@ -501,6 +521,67 @@ function ActiveTab({ ride }: { ride: Ride | null }) {
       </motion.div>
     );
   }
+
+  const hasArrived = Boolean(ride.driverArrivedAt);
+  const isScheduled = ride.status === "scheduled";
+  const isInProgress = ride.status === "in-progress";
+
+  const navigatePickup = () => {
+    void openExternalNavigation({
+      lat: ride.pickupLat,
+      lng: ride.pickupLng,
+      address: ride.pickupLocation,
+      label: "Prise en charge",
+    });
+    const app = getPreferredNavApp();
+    setNavAppLabel(app ? NAV_APP_LABELS[app] : null);
+  };
+
+  const navigateDropoff = () => {
+    void openExternalNavigation({
+      lat: ride.dropoffLat,
+      lng: ride.dropoffLng,
+      address: ride.dropoffLocation,
+      label: "Destination",
+    });
+  };
+
+  const handleArrived = async () => {
+    const result = await driverRideService.markDriverArrived(ride.id);
+    if (!result.success) {
+      window.alert(result.error || "Impossible de signaler l'arrivée");
+      return;
+    }
+    setActiveRide({
+      ...ride,
+      driverArrivedAt: result.driverArrivedAt ?? new Date().toISOString(),
+    });
+  };
+
+  const handleStart = async () => {
+    const result = await driverRideService.updateRideProgress(
+      ride.id,
+      "in-progress",
+    );
+    if (!result.success) {
+      window.alert(result.error || "Impossible de démarrer");
+      return;
+    }
+    setActiveRide({ ...ride, status: "in-progress" });
+    navigateDropoff();
+  };
+
+  const handleComplete = async () => {
+    const result = await driverRideService.updateRideProgress(
+      ride.id,
+      "completed",
+    );
+    if (!result.success) {
+      window.alert(result.error || "Impossible de terminer");
+      return;
+    }
+    setActiveRide(null);
+  };
 
   return (
     <motion.div
@@ -529,17 +610,69 @@ function ActiveTab({ ride }: { ride: Ride | null }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            variant="outline"
-            className="border-amber-500/50 text-amber-400 hover:bg-amber-500/20"
+        {navAppLabel ? (
+          <button
+            type="button"
+            className="w-full text-center text-xs text-neutral-500 mb-3 hover:text-neutral-300"
+            onClick={() => {
+              void changePreferredNavApp().then((app) => {
+                setNavAppLabel(app ? NAV_APP_LABELS[app] : navAppLabel);
+              });
+            }}
           >
-            Arrivé
+            GPS : {navAppLabel} · Changer
+          </button>
+        ) : null}
+
+        {isScheduled && !hasArrived && (
+          <div className="space-y-2">
+            <Button
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={navigatePickup}
+            >
+              Naviguer vers prise en charge
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full border-amber-500/50 text-amber-400 hover:bg-amber-500/20"
+              onClick={() => {
+                void handleArrived();
+              }}
+            >
+              Je suis arrivé
+            </Button>
+          </div>
+        )}
+
+        {isScheduled && hasArrived && (
+          <Button
+            className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+            onClick={() => {
+              void handleStart();
+            }}
+          >
+            Démarrer la course
           </Button>
-          <Button className="bg-amber-500 hover:bg-amber-600 text-white">
-            Démarrer
-          </Button>
-        </div>
+        )}
+
+        {isInProgress && (
+          <div className="space-y-2">
+            <Button
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={navigateDropoff}
+            >
+              Naviguer vers destination
+            </Button>
+            <Button
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => {
+                void handleComplete();
+              }}
+            >
+              Terminer la course
+            </Button>
+          </div>
+        )}
       </div>
     </motion.div>
   );

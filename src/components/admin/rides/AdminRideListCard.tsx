@@ -7,13 +7,16 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/reservation/StatusBadge";
 import { MapPin, User, XCircle } from "lucide-react";
 import type { RideWithRelations } from "@/lib/stores/unifiedRidesStore";
+import type { Database } from "@/lib/types/database.types";
 import {
   cancelBadgeLabel,
   formatPersonName,
 } from "@/lib/rides/rideCancelLabels";
 import { CopyableRef } from "@/components/admin/CopyableRef";
 
-const CANCELABLE = new Set([
+type DbRideStatus = Database["public"]["Enums"]["ride_status"];
+
+const CANCELABLE = new Set<DbRideStatus>([
   "pending",
   "scheduled",
   "in-progress",
@@ -25,7 +28,7 @@ function RideStatusCorner({
   status,
   canceledBy,
 }: Readonly<{
-  status: string;
+  status: DbRideStatus;
   canceledBy: string | null;
 }>) {
   const isCanceled = status.includes("canceled");

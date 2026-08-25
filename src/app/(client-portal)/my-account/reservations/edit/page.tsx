@@ -231,7 +231,6 @@ function EditReservationContent() {
         <LocationStep
           onNextStep={handleNextStep}
           isEditing={true}
-          onLocationDetected={() => {}}
           onOriginChange={() => {}}
           onDestinationChange={() => {}}
           onOriginSelect={() => {}}

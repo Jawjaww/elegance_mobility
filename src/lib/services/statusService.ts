@@ -149,7 +149,11 @@ export function isValidUiStatus(status: string): status is UiStatus {
 export function getRideStatusLabelForRide(
   dbStatus: DbStatus,
   pickupTime?: string | null,
+  driverArrivedAt?: string | null,
 ): string {
+  if (dbStatus === "scheduled" && driverArrivedAt) {
+    return "Chauffeur sur place";
+  }
   if (dbStatus === "pending") {
     return getPendingRideDisplayLabel(pickupTime);
   }

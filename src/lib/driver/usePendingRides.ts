@@ -3,6 +3,7 @@
 import { useEffect, useCallback } from "react";
 import { driverRideService, AcceptRideResult } from "./rideService";
 import { useDriverStore } from "./store";
+import { openExternalNavigation } from "./externalNavigation";
 
 /**
  * Hook pour gérer les courses en attente dans le dashboard chauffeur
@@ -62,9 +63,25 @@ export function usePendingRides() {
     const result = await driverRideService.acceptRide(availableRide.id);
 
     if (result.success) {
-      // Déplacer de availableRide à activeRide
-      setActiveRide(availableRide);
+      const acceptedRide = {
+        ...availableRide,
+        status: "scheduled" as const,
+        driverArrivedAt: null,
+      };
+      setActiveRide(acceptedRide);
       setAvailableRide(null);
+
+      if (
+        typeof window !== "undefined" &&
+        window.confirm("Course acceptée. Ouvrir la navigation vers le point de prise en charge ?")
+      ) {
+        void openExternalNavigation({
+          lat: availableRide.pickupLat,
+          lng: availableRide.pickupLng,
+          address: availableRide.pickupLocation,
+          label: "Prise en charge",
+        });
+      }
     }
 
     return result;

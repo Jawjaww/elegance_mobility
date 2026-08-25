@@ -4,7 +4,8 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "@/styles/map.css";
-import mapRegistry, { MAX_ACTIVE_MAPS } from "./mapRegistry";
+import mapRegistry from "./mapRegistry";
+import mapStyle from "./mapStyle";
 import { Location } from "@/lib/types/map-types";
 import { getDirections } from "@/lib/services/directionsService";
 
@@ -16,256 +17,272 @@ interface RideRequestMapProps {
   className?: string;
 }
 
+function isValidCoord(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isValidLocation(
+  loc: Location | null | undefined,
+): loc is Location {
+  return !!loc && isValidCoord(loc.lat) && isValidCoord(loc.lon);
+}
+
+function resolveInitialCenter(
+  departure: Location | null,
+  destination: Location | null,
+): [number, number] {
+  if (isValidLocation(departure)) return [departure.lon, departure.lat];
+  if (isValidLocation(destination)) return [destination.lon, destination.lat];
+  return [2.3488, 48.8534];
+}
+
+function removeRouteLayersAndSource(map: maplibregl.Map): void {
+  if (!map.getSource("route")) return;
+  if (map.getLayer("route-line")) map.removeLayer("route-line");
+  if (map.getLayer("route-line-glow")) map.removeLayer("route-line-glow");
+  map.removeSource("route");
+}
+
+function ensureRouteLayers(map: maplibregl.Map): void {
+  if (!map.getSource("route")) {
+    map.addSource("route", {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] },
+    });
+  }
+  if (!map.getLayer("route-line-glow")) {
+    map.addLayer({
+      id: "route-line-glow",
+      type: "line",
+      source: "route",
+      paint: {
+        "line-color": "#b3d4ff",
+        "line-width": 12,
+        "line-opacity": 0.6,
+      },
+    });
+  }
+  if (!map.getLayer("route-line")) {
+    map.addLayer({
+      id: "route-line",
+      type: "line",
+      source: "route",
+      paint: {
+        "line-color": "#0078d4",
+        "line-width": 6,
+        "line-opacity": 1,
+      },
+      layout: {
+        "line-cap": "round",
+        "line-join": "round",
+      },
+    });
+  }
+}
+
+let rideMapIdCounter = 0;
+
+function createRideMapId(): string {
+  const cryptoApi = globalThis.crypto;
+  if (cryptoApi !== undefined && "randomUUID" in cryptoApi) {
+    return `ride-map-${cryptoApi.randomUUID()}`;
+  }
+  rideMapIdCounter += 1;
+  return `ride-map-${Date.now()}-${rideMapIdCounter}`;
+}
+
 export default function RideRequestMap({
   departure,
   destination,
   onRouteCalculated,
   enableRouting = true,
-  className = "h-96",
-}: RideRequestMapProps) {
+  className = "h-full",
+}: Readonly<RideRequestMapProps>) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const mapIdRef = useRef<string>(
-    `ride-map-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-  );
+  const mapIdRef = useRef(createRideMapId());
+  const onRouteCalculatedRef = useRef(onRouteCalculated);
   const [styleLoaded, setStyleLoaded] = useState(false);
   const routeTracedRef = useRef<string | null>(null);
+  const markersRef = useRef<{
+    departure?: maplibregl.Marker;
+    destination?: maplibregl.Marker;
+  }>({});
 
-  const cleanupMap = useCallback(() => {
-    if (mapRef.current) {
-      try {
-        mapRegistry.unregister(mapIdRef.current);
-        // remove markers
-        mapRef.current
-          .getContainer()
-          .querySelectorAll(".maplibregl-marker")
-          .forEach((m) => m.remove());
-        try {
-          if (mapRef.current.getSource("route")) {
-            if (mapRef.current.getLayer("route-line"))
-              mapRef.current.removeLayer("route-line");
-            mapRef.current.removeSource("route");
-          }
-        } catch (e) {}
-        mapRef.current.remove();
-      } catch (e) {
-        console.warn("Error cleaning map:", e);
-      } finally {
-        mapRef.current = null;
-      }
-    }
-  }, []);
+  onRouteCalculatedRef.current = onRouteCalculated;
 
+  // Create the map once — do not remount when departure/destination object identity changes.
   useEffect(() => {
-    mapRegistry.forceCleanupOldest();
-
     if (!containerRef.current || mapRef.current) return;
-    if (!departure && !destination) return;
 
-    // Determine sensible initial center: prefer departure/destination coords only if valid numbers.
-    const isValidCoord = (v: any) =>
-      typeof v === "number" && !isNaN(v) && isFinite(v);
-    const centerFrom =
-      departure && isValidCoord(departure.lon) && isValidCoord(departure.lat)
-        ? [departure.lon, departure.lat]
-        : destination &&
-            isValidCoord(destination.lon) &&
-            isValidCoord(destination.lat)
-          ? [destination.lon, destination.lat]
-          : [2.3488, 48.8534];
-    const initialCenter: [number, number] = centerFrom as [number, number];
+    mapRegistry.forceCleanupOldest();
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: {
-        version: 8,
-        sources: {
-          stadia: {
-            type: "vector",
-            url: "https://tiles.stadiamaps.com/data/openmaptiles.json",
-          },
-        },
-        layers: [],
-      } as any,
-      center: initialCenter,
+      style: mapStyle,
+      center: resolveInitialCenter(departure, destination),
       zoom: 12,
       attributionControl: false,
       maxZoom: 18,
+      dragRotate: false,
+      pitchWithRotate: false,
     });
 
+    mapRef.current = map;
+
     map.on("load", () => {
-      mapRef.current = map;
-      setStyleLoaded(true);
       try {
-        map.addSource("route", {
-          type: "geojson",
-          data: { type: "FeatureCollection", features: [] },
-        });
-        // Add a glow/background line first (wider, softer) then the main line on top to ensure visibility
-        map.addLayer({
-          id: "route-line-glow",
-          type: "line",
-          source: "route",
-          paint: {
-            "line-color": "#b3d4ff",
-            "line-width": 12,
-            "line-opacity": 0.6,
-          },
-        });
-        map.addLayer({
-          id: "route-line",
-          type: "line",
-          source: "route",
-          paint: {
-            "line-color": "#0078d4",
-            "line-width": 6,
-            "line-opacity": 1,
-          },
-          layout: {
-            "line-cap": "round",
-            "line-join": "round",
-          } as any,
-        });
-      } catch (e) {
-        console.warn("Error adding route source/layer", e);
+        ensureRouteLayers(map);
+      } catch (error) {
+        console.warn("[RideRequestMap] Error adding route layers", error);
       }
-
-      // Ensure our route layers stay above remote style layers which may load later.
-      // Move route layers to top once the style is idle to reduce occlusion risk.
-      map.on("idle", () => {
-        try {
-          if (map.getLayer("route-line")) {
-            map.moveLayer("route-line");
-          }
-          if (map.getLayer("route-line-glow")) {
-            map.moveLayer("route-line-glow");
-          }
-        } catch (e) {
-          // ignore
-        }
-      });
-
+      setStyleLoaded(true);
       mapRegistry.register(mapIdRef.current, map);
       mapRegistry.ensureSingleInstance(mapIdRef.current);
     });
 
-    return () => cleanupMap();
-  }, [containerRef, departure, destination, cleanupMap]);
+    return () => {
+      markersRef.current.departure?.remove();
+      markersRef.current.destination?.remove();
+      markersRef.current = {};
+      try {
+        mapRegistry.unregister(mapIdRef.current);
+        removeRouteLayersAndSource(map);
+        map.remove();
+      } catch (error) {
+        console.warn("[RideRequestMap] Error cleaning map:", error);
+      } finally {
+        mapRef.current = null;
+        setStyleLoaded(false);
+        routeTracedRef.current = null;
+      }
+    };
+    // Initial center only; route/marker sync is handled below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const syncMarker = useCallback(
+    (key: "departure" | "destination", loc: Location | null, color: string) => {
+      const map = mapRef.current;
+      if (!map || !styleLoaded) return;
+
+      markersRef.current[key]?.remove();
+      delete markersRef.current[key];
+
+      if (!isValidLocation(loc)) return;
+
+      markersRef.current[key] = new maplibregl.Marker({ color })
+        .setLngLat([loc.lon, loc.lat])
+        .addTo(map);
+    },
+    [styleLoaded],
+  );
 
   const fetchAndDisplayRoute = useCallback(
     async (dep: Location, dest: Location) => {
-      if (!mapRef.current || !styleLoaded || !enableRouting) return;
+      const map = mapRef.current;
+      if (!map || !styleLoaded || !enableRouting) return;
+
       const routeKey = `${dep.lat},${dep.lon}-${dest.lat},${dest.lon}`;
       if (routeTracedRef.current === routeKey) return;
 
       try {
+        ensureRouteLayers(map);
         const data = await getDirections({
           start: { lng: dep.lon, lat: dep.lat },
           end: { lng: dest.lon, lat: dest.lat },
         });
-        if (data.features && data.features.length > 0) {
-          const route = data.features[0];
-          const coords = route.geometry.coordinates;
-          const distance = route.properties.summary.distance;
-          const duration = route.properties.summary.duration;
+        if (!data.features?.length) return;
 
-          const source = mapRef.current.getSource(
-            "route",
-          ) as maplibregl.GeoJSONSource;
-          if (source) {
-            source.setData({
-              type: "Feature",
-              properties: {},
-              geometry: { type: "LineString", coordinates: coords },
+        const route = data.features[0];
+        const coords = route.geometry.coordinates as [number, number][];
+        const distance = route.properties.summary.distance;
+        const duration = route.properties.summary.duration;
+
+        const source = map.getSource("route") as maplibregl.GeoJSONSource | undefined;
+        if (!source) return;
+
+        source.setData({
+          type: "Feature",
+          properties: {},
+          geometry: { type: "LineString", coordinates: coords },
+        });
+
+        if (coords.length > 1) {
+          const bounds = new maplibregl.LngLatBounds();
+          coords.forEach(([lon, lat]) => {
+            bounds.extend([lon, lat]);
+          });
+          map.resize();
+          requestAnimationFrame(() => {
+            mapRef.current?.fitBounds(bounds, {
+              padding: { top: 80, bottom: 80, left: 120, right: 120 },
+              maxZoom: 16,
+              duration: 300,
             });
-            if (coords && coords.length > 1) {
-              const bounds = new maplibregl.LngLatBounds();
-              coords.forEach((c) => {
-                const [lon, lat] = c as [number, number];
-                bounds.extend([lon, lat]);
-              });
-              // Ensure the map layout is up-to-date before fitting bounds
-              try {
-                mapRef.current.resize();
-              } catch (e) {}
-              // Give browser one frame to apply layout changes
-              requestAnimationFrame(() => {
-                try {
-                  mapRef.current?.fitBounds(bounds, {
-                    padding: { top: 80, bottom: 80, left: 120, right: 120 },
-                    maxZoom: 16,
-                    duration: 300,
-                  });
-                } catch (e) {}
-              });
-              routeTracedRef.current = routeKey;
-            }
-
-            let finalDistance = distance;
-            let finalDuration = duration;
-            const straightDist =
-              Math.hypot(dep.lat - dest.lat, dep.lon - dest.lon) * 111000; // rough
-            if (straightDist > 5000 && distance < straightDist * 0.6) {
-              finalDistance = Math.round(straightDist);
-              finalDuration = Math.round(finalDistance / (80 / 3.6));
-            }
-
-            onRouteCalculated?.(finalDistance, finalDuration);
-          }
+          });
+          routeTracedRef.current = routeKey;
         }
-      } catch (e) {
-        console.error("Error fetching route", e);
+
+        let finalDistance = distance;
+        let finalDuration = duration;
+        const straightDist =
+          Math.hypot(dep.lat - dest.lat, dep.lon - dest.lon) * 111000;
+        if (straightDist > 5000 && distance < straightDist * 0.6) {
+          finalDistance = Math.round(straightDist);
+          finalDuration = Math.round(finalDistance / (80 / 3.6));
+        }
+
+        onRouteCalculatedRef.current?.(finalDistance, finalDuration);
+      } catch (error) {
+        console.error("[RideRequestMap] Error fetching route", error);
       }
     },
-    [styleLoaded, enableRouting, onRouteCalculated],
+    [styleLoaded, enableRouting],
   );
 
+  // Sync markers + route without remounting the map.
   useEffect(() => {
-    if (
-      mapRef.current &&
-      styleLoaded &&
-      departure &&
-      destination &&
-      enableRouting
-    ) {
-      // Ensure coordinates are valid numbers. If not, avoid fetching a route and wait until
-      // the user selects a suggestion that provides coordinates from the geocoding API.
-      const valid = (loc: any) =>
-        typeof loc?.lat === "number" &&
-        !isNaN(loc.lat) &&
-        typeof loc?.lon === "number" &&
-        !isNaN(loc.lon);
-      if (valid(departure) && valid(destination)) {
-        fetchAndDisplayRoute(departure, destination);
-      } else {
-        // If either endpoint lacks valid coordinates, reset route source so no haversine/straight-line
-        // trace is shown.
-        try {
-          const source = mapRef.current.getSource("route") as any;
-          source?.setData({ type: "FeatureCollection", features: [] });
-        } catch (e) {}
-      }
+    if (!mapRef.current || !styleLoaded) return;
+
+    syncMarker("departure", departure, "#22c55e");
+    syncMarker("destination", destination, "#ef4444");
+
+    if (enableRouting && isValidLocation(departure) && isValidLocation(destination)) {
+      void fetchAndDisplayRoute(departure, destination);
+      return;
+    }
+
+    try {
+      const source = mapRef.current.getSource("route") as
+        | maplibregl.GeoJSONSource
+        | undefined;
+      source?.setData({ type: "FeatureCollection", features: [] });
+      routeTracedRef.current = null;
+    } catch (error) {
+      console.warn("[RideRequestMap] Could not clear route source", error);
     }
   }, [
     departure,
     destination,
     styleLoaded,
-    fetchAndDisplayRoute,
     enableRouting,
+    syncMarker,
+    fetchAndDisplayRoute,
   ]);
 
-  // Resize handling
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !styleLoaded || !containerRef.current) return;
     const ro = new ResizeObserver(() => mapRef.current?.resize());
-    if (containerRef.current) ro.observe(containerRef.current);
+    ro.observe(containerRef.current);
+    mapRef.current.resize();
     return () => ro.disconnect();
   }, [styleLoaded]);
 
   return (
     <div
       ref={containerRef}
-      className={`w-full ${className} map-container map-instance-${mapIdRef.current}`}
+      className={`w-full h-full min-h-[12rem] ${className} map-container map-instance-${mapIdRef.current}`}
       data-testid="ride-request-map"
     />
   );

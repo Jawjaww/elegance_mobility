@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { formatDuration } from "@/lib/utils";
+import { formatDuration, formatCurrency } from "@/lib/utils";
 import { 
   Card, 
   CardContent, 
@@ -29,10 +29,13 @@ import {
   DialogTitle 
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { formatCurrency } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import Link from 'next/link';
+import type { Database } from '@/lib/types/database.types';
+import type { UiStatus } from '@/lib/services/statusService';
+
+type RideStatus = Database['public']['Enums']['ride_status'];
 
 // Type pour les données de réservation
 interface Reservation {
@@ -41,7 +44,7 @@ interface Reservation {
   dropoff_address: string;
   pickup_time: string;
   vehicle_type: string;
-  status: string;
+  status: RideStatus | UiStatus;
   estimated_price: number;
   distance: number;
   duration: number;
@@ -70,7 +73,12 @@ const translateStatus = (status: string) => {
   return statusMap[status] || { label: status, color: 'bg-neutral-500/20 text-neutral-400' };
 };
 
-export function ReservationCard({ reservation, onCancel, onEdit, isPast = false }: ReservationCardProps) {
+export function ReservationCard({
+  reservation,
+  onCancel,
+  onEdit,
+  isPast = false,
+}: Readonly<ReservationCardProps>) {
   const [showDetails, setShowDetails] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   
@@ -97,7 +105,7 @@ export function ReservationCard({ reservation, onCancel, onEdit, isPast = false 
               </p>
             </div>
             <StatusBadge 
-              status={reservation.status} 
+              status={reservation.status as RideStatus | UiStatus} 
               className="px-2 py-1 rounded-md text-xs font-medium"
             />
           </div>
@@ -262,8 +270,8 @@ export function ReservationCard({ reservation, onCancel, onEdit, isPast = false 
                 <div>
                   <p className="text-sm text-neutral-400 mb-2">Options</p>
                   <div className="flex flex-wrap gap-2">
-                    {reservation.options.map((option, index) => (
-                      <Badge key={index} className="bg-blue-900/20 text-blue-400 rounded-md">
+                    {reservation.options.map((option) => (
+                      <Badge key={option} className="bg-blue-900/20 text-blue-400 rounded-md">
                         {option}
                       </Badge>
                     ))}
