@@ -390,7 +390,7 @@ export function FullscreenRideModal() {
 
               {/* Bouton large type capture : pill + knob draggable (extrait) */}
               <div className="w-full flex flex-col items-center mt-3">
-                <div className="w-[92%] relative">
+                <div className="w-full relative">
                   <NeonSwipeButton onConfirm={handleAccept} />
                 </div>
 

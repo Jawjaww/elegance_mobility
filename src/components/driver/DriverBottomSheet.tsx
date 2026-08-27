@@ -16,6 +16,7 @@ import { useDriverStore } from "@/lib/driver/store";
 import { supabase } from "@/lib/database/client";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { NeonSwipeButton } from "@/components/ui/NeonSwipeButton";
 import {
   formatPrice,
   formatDistance,
@@ -632,27 +633,26 @@ function ActiveTab({ ride }: { ride: Ride | null }) {
             >
               Naviguer vers prise en charge
             </Button>
-            <Button
-              variant="outline"
-              className="w-full border-amber-500/50 text-amber-400 hover:bg-amber-500/20"
-              onClick={() => {
+            <NeonSwipeButton
+              resetKey={`arrived-${ride.id}`}
+              label="Je suis arrivé"
+              variant="amber"
+              onConfirm={() => {
                 void handleArrived();
               }}
-            >
-              Je suis arrivé
-            </Button>
+            />
           </div>
         )}
 
         {isScheduled && hasArrived && (
-          <Button
-            className="w-full bg-amber-500 hover:bg-amber-600 text-white"
-            onClick={() => {
+          <NeonSwipeButton
+            resetKey={`start-${ride.id}`}
+            label="Démarrer"
+            variant="indigo"
+            onConfirm={() => {
               void handleStart();
             }}
-          >
-            Démarrer la course
-          </Button>
+          />
         )}
 
         {isInProgress && (
@@ -663,14 +663,14 @@ function ActiveTab({ ride }: { ride: Ride | null }) {
             >
               Naviguer vers destination
             </Button>
-            <Button
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-              onClick={() => {
+            <NeonSwipeButton
+              resetKey={`complete-${ride.id}`}
+              label="Terminer"
+              variant="emerald"
+              onConfirm={() => {
                 void handleComplete();
               }}
-            >
-              Terminer la course
-            </Button>
+            />
           </div>
         )}
       </div>
