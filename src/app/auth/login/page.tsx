@@ -66,21 +66,17 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
-        <Card>
-          <CardHeader>
-            <CardTitle>Connexion</CardTitle>
-            <CardDescription>
-              Entrez vos identifiants pour accéder à votre compte
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AuthModal open={true} onClose={handleClose} embedded={true} />
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle>Connexion</CardTitle>
+        <CardDescription>
+          Entrez vos identifiants pour accéder à votre compte
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <AuthModal open={true} onClose={handleClose} embedded={true} />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -88,21 +84,17 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center px-4 py-12">
-          <div className="w-full max-w-md">
-            <Card>
-              <CardHeader>
-                <CardTitle>Connexion</CardTitle>
-                <CardDescription>Chargement...</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-center p-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Connexion</CardTitle>
+            <CardDescription>Chargement...</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-center p-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+            </div>
+          </CardContent>
+        </Card>
       }
     >
       <LoginContent />

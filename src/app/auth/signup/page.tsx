@@ -45,32 +45,28 @@ function SignupContent() {
     };
 
     checkSession();
-  }, []);
+  }, [router]);
 
   if (isChecking) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
-        <Card>
-          <CardHeader>
-            <CardTitle>Créer un compte</CardTitle>
-            <CardDescription>
-              Inscrivez-vous pour accéder à nos services
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <CustomerSignup />
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle>Créer un compte</CardTitle>
+        <CardDescription>
+          Rejoignez Élégance Mobilité pour réserver vos courses
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <CustomerSignup />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -78,21 +74,17 @@ export default function SignupPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center px-4 py-12">
-          <div className="w-full max-w-md">
-            <Card>
-              <CardHeader>
-                <CardTitle>Créer un compte</CardTitle>
-                <CardDescription>Chargement...</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-center p-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Créer un compte</CardTitle>
+            <CardDescription>Chargement...</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-center p-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+            </div>
+          </CardContent>
+        </Card>
       }
     >
       <SignupContent />
