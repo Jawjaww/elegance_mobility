@@ -1,5 +1,9 @@
 import type { StyleSpecification } from "maplibre-gl";
 import { colors } from "@/styles/design-tokens";
+import {
+  OPENFREEMAP_GLYPHS,
+  OPENFREEMAP_VECTOR_URL,
+} from "./openFreeMapConfig";
 
 const { map: m } = colors;
 
@@ -64,11 +68,11 @@ const franceLandmarks = {
  */
 const mapStyle: StyleSpecification = {
   version: 8,
-  glyphs: "https://tiles.stadiamaps.com/fonts/{fontstack}/{range}.pbf",
+  glyphs: OPENFREEMAP_GLYPHS,
   sources: {
-    stadia: {
+    openmaptiles: {
       type: "vector",
-      url: "https://tiles.stadiamaps.com/data/openmaptiles.json",
+      url: OPENFREEMAP_VECTOR_URL,
     },
     terrain: {
       type: "raster-dem",
@@ -116,7 +120,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "landcover-wood",
       type: "fill",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "landcover",
       minzoom: 3,
       filter: ["in", "class", "wood", "forest"],
@@ -138,7 +142,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "landcover-grass",
       type: "fill",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "landcover",
       minzoom: 5,
       filter: ["in", "class", "grass", "scrub"],
@@ -160,7 +164,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "landuse-farmland",
       type: "fill",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "landuse",
       minzoom: 5,
       filter: ["in", "class", "farmland", "orchard", "vineyard"],
@@ -182,7 +186,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "landuse-residential",
       type: "fill",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "landuse",
       minzoom: 9,
       filter: ["==", "class", "residential"],
@@ -194,7 +198,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "landcover-park",
       type: "fill",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "landcover",
       minzoom: 8,
       filter: ["==", "class", "park"],
@@ -206,7 +210,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "landuse-park",
       type: "fill",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "landuse",
       minzoom: 8,
       filter: ["in", "class", "park", "cemetery", "pitch"],
@@ -218,7 +222,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "landcover-sand",
       type: "fill",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "landcover",
       filter: ["in", "class", "sand", "rock"],
       paint: {
@@ -229,7 +233,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "water",
       type: "fill",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "water",
       paint: {
         "fill-color": m.water,
@@ -239,7 +243,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "waterway",
       type: "line",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "waterway",
       minzoom: 8,
       paint: {
@@ -261,7 +265,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "boundary-country",
       type: "line",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "boundary",
       filter: ["==", "admin_level", 2],
       minzoom: 3,
@@ -277,7 +281,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "road-motorway-casing",
       type: "line",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "transportation",
       minzoom: 3,
       filter: ["==", "class", "motorway"],
@@ -304,7 +308,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "road-trunk-casing",
       type: "line",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "transportation",
       minzoom: 3,
       filter: ["==", "class", "trunk"],
@@ -331,7 +335,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "road-primary-casing",
       type: "line",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "transportation",
       minzoom: 4,
       filter: ["==", "class", "primary"],
@@ -358,7 +362,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "road-secondary-casing",
       type: "line",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "transportation",
       minzoom: 7,
       filter: ["in", "class", "secondary", "tertiary"],
@@ -392,7 +396,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "road-minor-casing",
       type: "line",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "transportation",
       minzoom: 9,
       filter: ["in", "class", "minor", "unclassified"],
@@ -428,7 +432,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "road-residential-casing",
       type: "line",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "transportation",
       minzoom: 11,
       filter: ["in", "class", "residential", "service"],
@@ -464,7 +468,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "road-motorway",
       type: "line",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "transportation",
       minzoom: 3,
       filter: ["==", "class", "motorway"],
@@ -491,7 +495,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "road-trunk",
       type: "line",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "transportation",
       minzoom: 3,
       filter: ["==", "class", "trunk"],
@@ -518,7 +522,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "road-primary",
       type: "line",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "transportation",
       minzoom: 4,
       filter: ["==", "class", "primary"],
@@ -545,7 +549,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "road-secondary-tertiary",
       type: "line",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "transportation",
       minzoom: 7,
       filter: ["in", "class", "secondary", "tertiary"],
@@ -579,7 +583,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "road-minor",
       type: "line",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "transportation",
       minzoom: 9,
       filter: ["in", "class", "minor", "unclassified"],
@@ -615,7 +619,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "road-residential",
       type: "line",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "transportation",
       minzoom: 11,
       filter: ["in", "class", "residential", "service"],
@@ -650,7 +654,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "road-labels",
       type: "symbol",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "transportation_name",
       minzoom: 12,
       layout: {
@@ -666,11 +670,11 @@ const mapStyle: StyleSpecification = {
       },
     },
 
-    // Tile place hierarchy (font Regular — Bold often missing in Stadia glyphs)
+    // Tile place hierarchy (Noto Sans Regular — reliable on OpenFreeMap glyphs)
     {
       id: "label-country",
       type: "symbol",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "place",
       filter: ["==", "class", "country"],
       maxzoom: 7,
@@ -691,7 +695,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "label-city-tile",
       type: "symbol",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "place",
       minzoom: 5,
       filter: [
@@ -714,7 +718,7 @@ const mapStyle: StyleSpecification = {
     {
       id: "label-town-tile",
       type: "symbol",
-      source: "stadia",
+      source: "openmaptiles",
       "source-layer": "place",
       minzoom: 8,
       filter: ["==", "class", "town"],
