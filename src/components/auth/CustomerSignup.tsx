@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Mail, User, Lock, ArrowRight, CheckCircle } from "lucide-react";
 import { supabase } from "@/lib/database/client";
 import { useToast } from "@/hooks/useToast";
+import { supabaseAuthErrorMessage, getSupabasePublicConfigError } from "@/lib/utils/supabase-public-config";
 import { ButtonLoading } from "@/components/ui/loading";
 
 interface CustomerFormData {
@@ -30,6 +31,7 @@ export default function CustomerSignup() {
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const configError = getSupabasePublicConfigError();
 
   const router = useRouter();
   const { toast } = useToast();
@@ -113,13 +115,9 @@ export default function CustomerSignup() {
 
       if (data.user) setSuccess(true);
     } catch (error: unknown) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Une erreur est survenue lors de la création du compte";
       toast({
         title: "Erreur",
-        description: message,
+        description: supabaseAuthErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -161,6 +159,12 @@ export default function CustomerSignup() {
 
   return (
     <div className="space-y-6">
+      {configError ? (
+        <Alert variant="destructive">
+          <AlertDescription>{configError}</AlertDescription>
+        </Alert>
+      ) : null}
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -248,7 +252,7 @@ export default function CustomerSignup() {
           </div>
         </div>
 
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button type="submit" className="w-full" disabled={loading || !!configError}>
           {loading ? (
             <ButtonLoading />
           ) : (

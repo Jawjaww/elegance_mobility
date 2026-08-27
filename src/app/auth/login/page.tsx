@@ -10,8 +10,8 @@ import {
 } from "@/components/ui/card";
 import { AuthModal } from "./AuthModal";
 import { useRouter, useSearchParams } from "next/navigation";
-import { supabase } from "@/lib/database/client";
 import { getUserRole } from "@/lib/utils/auth-helpers";
+import { getOptionalAuthUser } from "@/lib/utils/auth-session-check";
 
 function LoginContent() {
   const router = useRouter();
@@ -25,9 +25,7 @@ function LoginContent() {
 
     const checkSession = async () => {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        const user = await getOptionalAuthUser();
 
         if (user && !hasRedirected.current) {
           hasRedirected.current = true;
