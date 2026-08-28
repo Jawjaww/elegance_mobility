@@ -3,6 +3,11 @@ import DriverPortalLayoutClient from "./DriverPortalLayoutClient";
 
 export const metadata: Metadata = {
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Vector Elegans Driver",
+  },
 };
 
 export default function DriverPortalLayout({

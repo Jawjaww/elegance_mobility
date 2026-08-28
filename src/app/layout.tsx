@@ -13,11 +13,6 @@ const plusJakarta = Plus_Jakarta_Sans({
 export const metadata = {
   title: "Vector Elegans",
   description: "Service de transport VTC de luxe",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "Vector Elegans",
-  },
 };
 
 export const viewport = {
