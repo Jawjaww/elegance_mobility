@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { supabase } from "@/lib/database/client"
 import { buildAuthRedirectPath } from "@/lib/auth/auth-redirect-origin"
+import { supabaseAuthErrorMessage } from "@/lib/utils/supabase-public-config"
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
@@ -46,7 +47,7 @@ function ForgotPasswordForm() {
       })
 
       if (error) {
-        setError(error.message)
+        setError(supabaseAuthErrorMessage(error))
       } else {
         setMessage("Un email de réinitialisation a été envoyé à votre adresse.")
       }

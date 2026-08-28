@@ -4,6 +4,7 @@ import { ThemeProvider } from "./ThemeProvider";
 import { ReactNode, useEffect, useRef } from "react";
 import { ToastProvider, useToast } from "@/hooks/useToast";
 import { supabase } from "@/lib/database/client";
+import { AuthLinkHandler } from "@/components/auth/AuthLinkHandler";
 
 interface ClientProvidersProps {
   children: ReactNode;
@@ -75,7 +76,12 @@ function ClientProvidersInner({ children }: Readonly<ClientProvidersProps>) {
     };
   }, []);
 
-  return <>{children}</>;
+  return (
+    <>
+      <AuthLinkHandler />
+      {children}
+    </>
+  );
 }
 
 export function ClientProviders({ children }: Readonly<ClientProvidersProps>) {

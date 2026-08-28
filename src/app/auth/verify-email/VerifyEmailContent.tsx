@@ -20,6 +20,7 @@ import {
   verifyAuthLinkToken,
   watchAuthSession,
 } from "@/lib/auth/auth-link-verification";
+import { resolvePostAuthRedirect } from "@/lib/auth/auth-link-handler";
 
 type VerifyState = "loading" | "success" | "error" | "pending";
 
@@ -71,7 +72,8 @@ export default function VerifyEmailContent() {
 
     const run = async () => {
       const typeParam = searchParams?.get("type") ?? null;
-      const nextPath = searchParams?.get("next") ?? "/auth/login";
+      const nextParam = searchParams?.get("next") ?? null;
+      const redirectPath = resolvePostAuthRedirect(typeParam, nextParam);
       const token =
         searchParams?.get("token_hash") ?? searchParams?.get("token") ?? null;
       const code = searchParams?.get("code") ?? null;
@@ -90,7 +92,7 @@ export default function VerifyEmailContent() {
 
       if (outcome === "session") {
         finish("success");
-        router.replace(nextPath);
+        router.replace(redirectPath);
         return;
       }
       if (outcome === "error") {
@@ -100,7 +102,7 @@ export default function VerifyEmailContent() {
 
       unsubscribe = watchAuthSession(() => {
         finish("success");
-        router.replace(nextPath);
+        router.replace(redirectPath);
       });
 
       if (!token && !code) {

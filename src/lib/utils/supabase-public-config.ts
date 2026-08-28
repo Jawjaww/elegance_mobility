@@ -35,8 +35,26 @@ export function supabaseAuthErrorMessage(error: unknown): string {
     return "Accès Supabase refusé (401). Vérifiez NEXT_PUBLIC_SUPABASE_URL et NEXT_PUBLIC_SUPABASE_ANON_KEY sur Vercel.";
   }
 
-  if (error instanceof Error && error.message.trim()) {
-    return error.message;
+  if (status === 429) {
+    return "Trop d'emails envoyés récemment (limite Supabase). Réessayez dans environ 1 heure.";
+  }
+
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" &&
+          error !== null &&
+          "message" in error &&
+          typeof (error as { message: unknown }).message === "string"
+        ? (error as { message: string }).message
+        : "";
+
+  if (/rate limit/i.test(message)) {
+    return "Trop d'emails envoyés récemment (limite Supabase). Réessayez dans environ 1 heure.";
+  }
+
+  if (message.trim()) {
+    return message;
   }
 
   return "Une erreur est survenue lors de la création du compte.";
