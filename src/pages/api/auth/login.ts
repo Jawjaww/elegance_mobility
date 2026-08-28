@@ -1,5 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
+import {
+  inspectSupabasePublicEnv,
+  normalizeAnonKey,
+} from "@/lib/utils/supabase-env-check";
 
 // Proxy server-side pour login : échange email/password → tokens Supabase
 export default async function handler(
@@ -17,40 +21,64 @@ export default async function handler(
       return res.status(400).json({ error: "Missing credentials" });
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey =
-      process.env.SUPABASE_SERVICE_ROLE_KEY ||
-      process.env.SUPABASE_SERVICE_KEY ||
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
+    const anonKey = normalizeAnonKey(
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+    );
+    const envReport = inspectSupabasePublicEnv(supabaseUrl, anonKey);
 
-    if (!supabaseUrl || !serviceKey) {
-      console.warn("[api/auth/login] Missing SUPABASE config");
-      return res.status(500).json({ error: "Supabase not configured" });
+    if (!envReport.ok) {
+      console.warn("[api/auth/login] Invalid Supabase env", envReport);
+      return res.status(503).json({
+        error:
+          envReport.message ??
+          "Configuration Supabase invalide sur ce déploiement.",
+        supabaseEnv: {
+          urlHost: envReport.urlHost,
+          keyProjectRef: envReport.keyProjectRef,
+          refsMatch: envReport.refsMatch,
+          jwtSegmentCount: envReport.jwtSegmentCount,
+          anonKeyLength: envReport.anonKeyLength,
+        },
+      });
     }
 
-    // Use official client to perform sign-in with password on the server side
-    const supabaseAdmin = createClient(supabaseUrl, serviceKey, {
+    // Password sign-in uses the anon key (service role is not required here).
+    const supabaseAuth = createClient(supabaseUrl, anonKey, {
       auth: {
-        // disable cookie storage on server
         persistSession: false,
       },
     });
 
     console.debug("[api/auth/login] signInWithPassword for", email);
-    const { data, error } = await supabaseAdmin.auth.signInWithPassword({
+    const { data, error } = await supabaseAuth.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
       console.warn("[api/auth/login] signInWithPassword error", error);
-      return res.status(401).json({
-        error: error.message || "Authentication failed",
+      const invalidApiKey =
+        /invalid api key|invalid jwt/i.test(error.message ?? "") ||
+        error.status === 401;
+      return res.status(invalidApiKey ? 503 : 401).json({
+        error: invalidApiKey
+          ? (envReport.message ??
+            "Clé Supabase invalide sur ce déploiement (Vercel).")
+          : error.message || "Authentication failed",
         detail: {
           message: error.message,
           status: error.status,
           name: error.name,
         },
+        supabaseEnv: invalidApiKey
+          ? {
+              urlHost: envReport.urlHost,
+              keyProjectRef: envReport.keyProjectRef,
+              jwtSegmentCount: envReport.jwtSegmentCount,
+              anonKeyLength: envReport.anonKeyLength,
+            }
+          : undefined,
       });
     }
 

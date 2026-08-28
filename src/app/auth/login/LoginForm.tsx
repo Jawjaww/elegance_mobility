@@ -5,9 +5,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getUserRole as getAppRole } from "@/lib/utils/auth-helpers";
+import Link from "next/link";
 import { useToast } from "@/hooks/useToast";
-import { type AppRole } from "@/lib/utils/roles";
+import {
+  adminPortalRequiredError,
+  dispatchLoginSession,
+  getLoginUserRole,
+  postLoginRequest,
+  resolveLoginRedirectPath,
+} from "@/lib/auth/login-form-helpers";
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -15,8 +21,15 @@ interface LoginFormProps {
 
 function loginErrorMessage(
   status: number,
-  loginJson: { error?: string; detail?: unknown },
+  loginJson: {
+    error?: string;
+    detail?: unknown;
+    supabaseEnv?: { jwtSegmentCount?: number; anonKeyLength?: number };
+  },
 ): string {
+  if (status === 503 && typeof loginJson?.error === "string" && loginJson.error.trim()) {
+    return loginJson.error;
+  }
   const detail = loginJson?.detail;
   if (typeof detail === "string" && detail.trim()) return detail;
   if (detail && typeof detail === "object") {
@@ -56,61 +69,24 @@ export function LoginForm({ onSuccess }: Readonly<LoginFormProps> = {}) {
       const email = formData.get("email") as string;
       const password = formData.get("password") as string;
 
-      let loginResp: Response | null = null;
-      let loginJson: { error?: string; detail?: unknown; session?: unknown; user?: unknown } =
-        {};
-      try {
-        loginResp = await fetch("/api/auth/login", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        });
-      } catch {
-        setFormError(
-          "Impossible de joindre le service d'authentification. Vérifiez votre connexion.",
-        );
-        return;
-      }
-
-      try {
-        loginJson = await loginResp.json();
-      } catch {
-        loginJson = {};
-      }
-
-      if (!loginResp.ok) {
-        setFormError(loginErrorMessage(loginResp.status, loginJson));
-        return;
-      }
-
-      // Dispatch session to ClientProviders which centralise l'appel à setSession
-      const session = loginJson.session as
-        | { access_token?: string; refresh_token?: string }
-        | undefined;
-      if (session?.access_token && session?.refresh_token) {
-        try {
-          window.dispatchEvent(
-            new CustomEvent("elegance:setSession", {
-              detail: session,
-            }),
+      const result = await postLoginRequest(email, password);
+      if (!result.ok) {
+        if (result.networkError) {
+          setFormError(
+            "Impossible de joindre le service d'authentification. Vérifiez votre connexion.",
           );
-        } catch {
-          /* ignore dispatch errors */
+          return;
         }
+        setFormError(loginErrorMessage(result.status, result.json));
+        return;
       }
 
-      const freshUser = loginJson.user || null;
-      const userRole = getAppRole(freshUser as Parameters<typeof getAppRole>[0]) as AppRole;
+      dispatchLoginSession(result.json.session);
 
-      // Seuls les admins et super admins ne peuvent pas se connecter sur la page login normale
-      if (
-        (userRole === "app_admin" || userRole === "app_super_admin") &&
-        from !== "admin"
-      ) {
-        setFormError(
-          "Veuillez utiliser la page de connexion administrateur.",
-        );
+      const userRole = getLoginUserRole(result.json.user);
+      const adminError = adminPortalRequiredError(userRole, from);
+      if (adminError) {
+        setFormError(adminError);
         return;
       }
 
@@ -124,23 +100,13 @@ export function LoginForm({ onSuccess }: Readonly<LoginFormProps> = {}) {
         return;
       }
 
-      let redirectPath = redirectTo || "/my-account";
-
-      if (!redirectTo && from) {
-        const isDriverDenied = from === "driver" && userRole !== "app_driver";
-        const isAdminDenied =
-          from === "admin" &&
-          !["app_admin", "app_super_admin"].includes(userRole);
-        if (isDriverDenied || isAdminDenied) {
-          setFormError("Accès non autorisé pour ce portail.");
-          return;
-        }
-        if (from === "driver") redirectPath = "/driver-portal/dashboard";
-        else if (from === "admin") redirectPath = "/backoffice-portal";
-        else redirectPath = "/my-account";
+      const redirect = resolveLoginRedirectPath({ redirectTo, from, userRole });
+      if ("error" in redirect) {
+        setFormError(redirect.error);
+        return;
       }
 
-      router.push(redirectPath);
+      router.push(redirect.path);
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : "Une erreur est survenue";
@@ -202,6 +168,15 @@ export function LoginForm({ onSuccess }: Readonly<LoginFormProps> = {}) {
           {formError}
         </p>
       )}
+
+      <div className="text-right">
+        <Link
+          href="/auth/forgot-password"
+          className="text-sm text-muted-foreground hover:text-primary"
+        >
+          Mot de passe oublié ?
+        </Link>
+      </div>
 
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? "Connexion en cours..." : "Se connecter"}

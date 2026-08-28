@@ -31,6 +31,7 @@ export default function CustomerSignup() {
     lastName: "",
   });
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [success, setSuccess] = useState(false);
   const [deployConfigError, setDeployConfigError] = useState<string | null>(null);
   const configError = getSupabasePublicConfigError() ?? deployConfigError;
@@ -112,7 +113,7 @@ export default function CustomerSignup() {
             first_name: formData.firstName,
             last_name: formData.lastName,
           },
-          emailRedirectTo: `${window.location.origin}/auth/verify-email?type=email_confirmation&next=/client-portal/dashboard`,
+          emailRedirectTo: `${window.location.origin}/auth/verify-email?type=email_confirmation&next=/my-account`,
         },
       });
 
@@ -128,7 +129,13 @@ export default function CustomerSignup() {
         throw error;
       }
 
-      if (data.user) setSuccess(true);
+      if (data.user) {
+        if (data.session) {
+          router.push("/my-account");
+          return;
+        }
+        setSuccess(true);
+      }
     } catch (error: unknown) {
       toast({
         title: "Erreur",
@@ -137,6 +144,31 @@ export default function CustomerSignup() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    setResending(true);
+    try {
+      const redirectTo = `${window.location.origin}/auth/verify-email?type=email_confirmation&next=/my-account`;
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: formData.email,
+        options: { emailRedirectTo: redirectTo },
+      });
+      if (error) throw error;
+      toast({
+        title: "Email renvoyé",
+        description: "Vérifiez votre boîte de réception et les spams.",
+      });
+    } catch (error: unknown) {
+      toast({
+        title: "Impossible de renvoyer l'email",
+        description: supabaseAuthErrorMessage(error),
+        variant: "destructive",
+      });
+    } finally {
+      setResending(false);
     }
   };
 
@@ -157,9 +189,18 @@ export default function CustomerSignup() {
           <AlertDescription>
             Un email de confirmation a été envoyé à{" "}
             <strong>{formData.email}</strong>. Cliquez sur le lien pour activer
-            votre compte.
+            votre compte. Pensez à vérifier les spams (y compris Outlook/Hotmail).
           </AlertDescription>
         </Alert>
+
+        <Button
+          variant="secondary"
+          onClick={handleResendConfirmation}
+          disabled={resending}
+          className="w-full"
+        >
+          {resending ? <ButtonLoading /> : "Renvoyer l'email de confirmation"}
+        </Button>
 
         <Button
           variant="outline"

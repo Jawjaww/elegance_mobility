@@ -1,7 +1,9 @@
+import { normalizeAnonKey } from "@/lib/utils/supabase-env-check";
+
 /** Client-side guard for misconfigured public Supabase env (common on first Vercel deploy). */
 export function getSupabasePublicConfigError(): string | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  const anonKey = normalizeAnonKey(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "");
 
   if (!url || !anonKey) {
     return "Configuration Supabase incomplète (URL ou clé anon manquante).";

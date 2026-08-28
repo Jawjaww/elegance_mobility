@@ -1,6 +1,7 @@
 "use client";
 
 import { createBrowserClient } from "@supabase/ssr";
+import { normalizeAnonKey } from "@/lib/utils/supabase-env-check";
 
 // Re-export pour l'utilisation externe
 export { createBrowserClient };
@@ -36,7 +37,9 @@ async function handleAuthError() {
 }
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
+const supabaseAnonKey = normalizeAnonKey(
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+);
 
 // Client Supabase singleton pour le navigateur
 export const supabase = createBrowserClient(
@@ -62,8 +65,7 @@ export const supabase = createBrowserClient(
 
 // Écouter les changements d'état d'authentification pour détecter les déconnexions
 supabase.auth.onAuthStateChange((event, session) => {
-  if (typeof globalThis === "undefined") return; // Skip SSR
-  if (typeof globalThis.location === "undefined") return; // Skip SSR (location unavailable)
+  if (globalThis.location === undefined) return;
   if (event === "SIGNED_OUT" || (!session && !redirectingToLogin)) {
     // Vérifier si on est sur une page protégée
     const protectedPaths = [

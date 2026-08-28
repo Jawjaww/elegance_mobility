@@ -3,25 +3,68 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
 import { supabase } from "@/lib/database/client";
 import { useToast } from "@/hooks/useToast";
+import {
+  exchangeAuthLinkCode,
+  hasActiveSession,
+  verifyAuthLinkToken,
+  watchAuthSession,
+} from "@/lib/auth/auth-link-verification";
+
+type RecoveryState = "loading" | "ready" | "error";
+
+const INVALID_RECOVERY_MESSAGE =
+  "Le lien de réinitialisation est invalide ou a expiré. Demandez un nouveau lien.";
+const CODE_VERIFIER_MESSAGE =
+  "Ouvrez ce lien dans le même navigateur que celui utilisé pour la demande de réinitialisation.";
+
+async function resolveRecoverySession(input: {
+  token: string | null;
+  code: string | null;
+}): Promise<"session" | "error" | "continue"> {
+  const { token, code } = input;
+
+  if (token) {
+    const result = await verifyAuthLinkToken(
+      token,
+      "recovery",
+      INVALID_RECOVERY_MESSAGE,
+    );
+    if (result.status === "session") return "session";
+    if (result.status === "error") return "error";
+  }
+
+  if (code) {
+    const result = await exchangeAuthLinkCode(
+      code,
+      INVALID_RECOVERY_MESSAGE,
+      CODE_VERIFIER_MESSAGE,
+    );
+    if (result.status === "session") return "session";
+    if (result.status === "error") return "error";
+  }
+
+  if (await hasActiveSession()) return "session";
+  return "continue";
+}
 
 export default function UpdatePasswordContent() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isValidSession, setIsValidSession] = useState(false);
+  const [recoveryState, setRecoveryState] = useState<RecoveryState>("loading");
   const [error, setError] = useState("");
 
   const router = useRouter();
@@ -29,112 +72,58 @@ export default function UpdatePasswordContent() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const checkRecovery = async () => {
-      if (!searchParams) return;
+    let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
 
-      console.log("🔍 Vérification update-password (recovery)");
-      console.log("🔍 URL complète:", window.location.href);
+    const fail = (message: string) => {
+      if (cancelled) return;
+      setRecoveryState("error");
+      setError(message);
+    };
 
-      const token = searchParams.get("token");
-      const code = searchParams.get("code");
-      const type = searchParams.get("type");
+    const ready = () => {
+      if (cancelled) return;
+      setRecoveryState("ready");
+      setError("");
+    };
 
-      console.log("🔍 Params:", { token: !!token, code: !!code, type });
+    const run = async () => {
+      const token =
+        searchParams?.get("token_hash") ?? searchParams?.get("token");
+      const code = searchParams?.get("code");
+      const type = searchParams?.get("type");
 
-      if (type !== "recovery") {
-        setError(
-          "Lien de réinitialisation invalide. Veuillez redemander un lien.",
-        );
+      const outcome = await resolveRecoverySession({ token, code });
+      if (outcome === "session") {
+        ready();
+        return;
+      }
+      if (outcome === "error") {
+        fail(INVALID_RECOVERY_MESSAGE);
         return;
       }
 
-      // Prefer token (verifyOtp) when available
-      if (token) {
-        try {
-          console.log("🔍 Tentative verifyOtp avec token...");
-          const { data, error } = await supabase.auth.verifyOtp({
-            token_hash: token,
-            type: "recovery",
-          });
+      unsubscribe = watchAuthSession(ready, true);
 
-          if (error) {
-            console.error("❌ Erreur verifyOtp:", error);
-            setError(
-              "Le lien de réinitialisation est invalide ou a expiré. Veuillez redemander un lien.",
-            );
-            return;
-          }
-
-          if (data?.session) {
-            console.log("✅ Session créée via verifyOtp:", !!data.session);
-            setIsValidSession(true);
-            return;
-          }
-        } catch (err) {
-          console.error("💥 Erreur lors de la vérification OTP:", err);
-          setError(
-            "Une erreur est survenue lors de la vérification du lien. Veuillez réessayer.",
-          );
-          return;
-        }
+      if (!token && !code && type !== "recovery") {
+        fail(
+          "Utilisez le lien reçu par email, ou demandez une réinitialisation ci-dessous.",
+        );
       }
-
-      // Fallback: try code (PKCE) flow but show helpful message when code_verifier is missing
-      if (code) {
-        try {
-          console.log("🔍 Tentative exchangeCodeForSession avec code...");
-          const { data, error } =
-            await supabase.auth.exchangeCodeForSession(code);
-
-          if (error) {
-            const msg = error?.message || "";
-            console.error("❌ Erreur exchangeCodeForSession:", error);
-            if (
-              msg.includes("code verifier") ||
-              msg.includes("code_verifier")
-            ) {
-              setError(
-                "Ce lien doit être ouvert dans le même navigateur que celui utilisé pour demander la réinitialisation. Veuillez redemander un lien si besoin.",
-              );
-            } else {
-              setError(
-                "Le lien de réinitialisation est invalide ou a expiré. Veuillez redemander un lien.",
-              );
-            }
-            return;
-          }
-
-          if (data?.session) {
-            console.log(
-              "✅ Session créée via exchangeCodeForSession:",
-              !!data.session,
-            );
-            setIsValidSession(true);
-            return;
-          }
-        } catch (err) {
-          console.error("💥 Erreur lors de l'échange du code:", err);
-          setError(
-            "Une erreur est survenue lors de la vérification du lien. Veuillez réessayer.",
-          );
-          return;
-        }
-      }
-
-      console.log("❌ Aucun token/code de réinitialisation valide trouvé");
-      setError(
-        "Lien de réinitialisation invalide ou expiré. Veuillez redemander un lien de réinitialisation.",
-      );
     };
 
-    checkRecovery();
+    void run();
+
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
   }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    // Basic validation
     if (password !== confirmPassword) {
       setError("Les mots de passe ne correspondent pas.");
       return;
@@ -145,9 +134,9 @@ export default function UpdatePasswordContent() {
       return;
     }
 
-    if (!isValidSession) {
+    if (recoveryState !== "ready") {
       setError(
-        "Session invalide. Veuillez cliquer à nouveau sur le lien de réinitialisation.",
+        "Session invalide. Cliquez à nouveau sur le lien reçu par email.",
       );
       return;
     }
@@ -155,33 +144,45 @@ export default function UpdatePasswordContent() {
     setIsLoading(true);
 
     try {
-      console.log(
-        "🔍 Tentative de mise à jour du mot de passe pour la session actuelle...",
-      );
-      const { data, error } = await supabase.auth.updateUser({ password });
+      const { error: updateError } = await supabase.auth.updateUser({
+        password,
+      });
 
-      if (error) {
-        console.error("❌ Erreur updateUser:", error);
+      if (updateError) {
         setError(
-          error.message || "Impossible de mettre à jour le mot de passe.",
+          updateError.message || "Impossible de mettre à jour le mot de passe.",
         );
-      } else {
-        toast({
-          title: "Mot de passe mis à jour",
-          description: "Votre mot de passe a été modifié avec succès.",
-        });
-
-        setTimeout(() => {
-          router.push("/auth/login");
-        }, 1200);
+        return;
       }
-    } catch (err) {
+
+      toast({
+        title: "Mot de passe mis à jour",
+        description: "Votre mot de passe a été modifié avec succès.",
+      });
+
+      setTimeout(() => {
+        router.push("/auth/login");
+      }, 1200);
+    } catch {
       setError("Une erreur est survenue. Veuillez réessayer.");
-      console.error(err);
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (recoveryState === "loading") {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Nouveau mot de passe</CardTitle>
+          <CardDescription>Vérification du lien en cours…</CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -193,79 +194,64 @@ export default function UpdatePasswordContent() {
       </CardHeader>
 
       <CardContent>
-        {!isValidSession && error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-800 rounded text-sm">
+        {recoveryState === "error" && error ? (
+          <div className="mb-4 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
             {error}
             <div className="mt-2">
               <Link
                 href="/auth/forgot-password"
                 className="font-medium text-primary hover:underline"
               >
-                Redemander un lien de réinitialisation
+                Demander un lien de réinitialisation
               </Link>
             </div>
           </div>
-        )}
+        ) : null}
 
-        {isValidSession && (
-          <>
-            {error && (
-              <div className="mb-4 p-3 bg-red-100 text-red-800 rounded text-sm">
+        {recoveryState === "ready" ? (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error ? (
+              <div className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
                 {error}
               </div>
-            )}
+            ) : null}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="password">Nouveau mot de passe</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Au moins 6 caractères"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  disabled={isLoading}
-                  autoComplete="new-password"
-                  suppressHydrationWarning
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">
-                  Confirmer le mot de passe
-                </Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="Répétez votre mot de passe"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  disabled={isLoading}
-                  autoComplete="new-password"
-                  suppressHydrationWarning
-                />
-              </div>
-
-              <Button
-                className="btn-gradient text-white w-full"
-                type="submit"
+            <div className="space-y-2">
+              <Label htmlFor="password">Nouveau mot de passe</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Au moins 6 caractères"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
                 disabled={isLoading}
-              >
-                {isLoading
-                  ? "Mise à jour en cours..."
-                  : "Mettre à jour le mot de passe"}
-              </Button>
-            </form>
-          </>
-        )}
+                autoComplete="new-password"
+              />
+            </div>
 
-        <div className="mt-6 text-center space-y-2">
-          <Link
-            href="/auth/login"
-            className="text-sm text-muted-foreground hover:text-primary block"
-          >
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="Répétez votre mot de passe"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                disabled={isLoading}
+                autoComplete="new-password"
+              />
+            </div>
+
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Mise à jour en cours…" : "Mettre à jour le mot de passe"}
+            </Button>
+          </form>
+        ) : null}
+
+        <div className="mt-6 space-y-2 text-center text-sm text-muted-foreground">
+          <Link href="/auth/login" className="block hover:text-primary">
             Retour à la connexion
           </Link>
         </div>

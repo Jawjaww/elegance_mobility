@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -166,6 +167,15 @@ export function AdminLoginForm() {
             {showPassword ? "🙈" : "👁️"}
           </button>
         </div>
+      </div>
+
+      <div className="text-right">
+        <Link
+          href="/auth/forgot-password"
+          className="text-sm text-muted-foreground hover:text-primary"
+        >
+          Mot de passe oublié ?
+        </Link>
       </div>
 
       <Button type="submit" className="w-full" disabled={isLoading}>
