@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,8 +8,7 @@ import { Label } from "@/components/ui/label"
 import { supabase } from "@/lib/database/client"
 import { buildAuthRedirectPath } from "@/lib/auth/auth-redirect-origin"
 import { supabaseAuthErrorMessage } from "@/lib/utils/supabase-public-config"
-import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 
 // Composant qui utilise useSearchParams - doit être dans Suspense
@@ -18,7 +17,6 @@ function ForgotPasswordForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState("")
   const [error, setError] = useState("")
-  const router = useRouter()
   const searchParams = useSearchParams()
 
   // Lire le paramètre d'erreur de l'URL
@@ -42,12 +40,12 @@ function ForgotPasswordForm() {
     setMessage("")
 
     try {
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: buildAuthRedirectPath("/auth/update-password?type=recovery"),
       })
 
-      if (error) {
-        setError(supabaseAuthErrorMessage(error))
+      if (resetError) {
+        setError(supabaseAuthErrorMessage(resetError))
       } else {
         setMessage("Un email de réinitialisation a été envoyé à votre adresse.")
       }

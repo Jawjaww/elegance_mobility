@@ -20,6 +20,23 @@ export function getSupabasePublicConfigError(): string | null {
   return null;
 }
 
+function extractAuthErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as { message: unknown }).message === "string"
+  ) {
+    return (error as { message: string }).message;
+  }
+
+  return "";
+}
+
 export function supabaseAuthErrorMessage(error: unknown): string {
   const status =
     error &&
@@ -39,15 +56,7 @@ export function supabaseAuthErrorMessage(error: unknown): string {
     return "Trop d'emails envoyés récemment (limite Supabase). Réessayez dans environ 1 heure.";
   }
 
-  const message =
-    error instanceof Error
-      ? error.message
-      : typeof error === "object" &&
-          error !== null &&
-          "message" in error &&
-          typeof (error as { message: unknown }).message === "string"
-        ? (error as { message: string }).message
-        : "";
+  const message = extractAuthErrorMessage(error);
 
   if (/rate limit/i.test(message)) {
     return "Trop d'emails envoyés récemment (limite Supabase). Réessayez dans environ 1 heure.";
