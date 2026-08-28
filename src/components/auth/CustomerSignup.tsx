@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Mail, User, Lock, ArrowRight, CheckCircle } from "lucide-react";
 import { supabase } from "@/lib/database/client";
 import { useToast } from "@/hooks/useToast";
 import { supabaseAuthErrorMessage, getSupabasePublicConfigError } from "@/lib/utils/supabase-public-config";
+import type { SupabaseEnvReport } from "@/lib/utils/supabase-env-check";
 import { ButtonLoading } from "@/components/ui/loading";
 
 interface CustomerFormData {
@@ -31,10 +32,24 @@ export default function CustomerSignup() {
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const configError = getSupabasePublicConfigError();
+  const [deployConfigError, setDeployConfigError] = useState<string | null>(null);
+  const configError = getSupabasePublicConfigError() ?? deployConfigError;
 
   const router = useRouter();
   const { toast } = useToast();
+
+  useEffect(() => {
+    void fetch("/api/health/supabase")
+      .then((res) => res.json() as Promise<SupabaseEnvReport>)
+      .then((report) => {
+        if (!report.ok && report.message) {
+          setDeployConfigError(report.message);
+        }
+      })
+      .catch(() => {
+        /* ignore — build-time check still applies */
+      });
+  }, []);
 
   const handleInputChange = (field: keyof CustomerFormData, value: string) => {
     setFormData((prev) => ({
