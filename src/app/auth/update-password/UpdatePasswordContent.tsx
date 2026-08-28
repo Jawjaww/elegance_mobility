@@ -89,9 +89,9 @@ export default function UpdatePasswordContent() {
 
     const run = async () => {
       const token =
-        searchParams?.get("token_hash") ?? searchParams?.get("token");
-      const code = searchParams?.get("code");
-      const type = searchParams?.get("type");
+        searchParams?.get("token_hash") ?? searchParams?.get("token") ?? null;
+      const code = searchParams?.get("code") ?? null;
+      const type = searchParams?.get("type") ?? null;
 
       const outcome = await resolveRecoverySession({ token, code });
       if (outcome === "session") {

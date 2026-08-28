@@ -56,8 +56,8 @@ export function LoginForm({ onSuccess }: Readonly<LoginFormProps> = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const from = searchParams?.get("from");
-  const redirectTo = searchParams?.get("redirectTo");
+  const from = searchParams?.get("from") ?? null;
+  const redirectTo = searchParams?.get("redirectTo") ?? null;
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

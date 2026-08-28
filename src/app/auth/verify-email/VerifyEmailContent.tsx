@@ -73,8 +73,8 @@ export default function VerifyEmailContent() {
       const typeParam = searchParams?.get("type") ?? null;
       const nextPath = searchParams?.get("next") ?? "/auth/login";
       const token =
-        searchParams?.get("token_hash") ?? searchParams?.get("token");
-      const code = searchParams?.get("code");
+        searchParams?.get("token_hash") ?? searchParams?.get("token") ?? null;
+      const code = searchParams?.get("code") ?? null;
 
       if (typeParam === "recovery") {
         const qs = searchParams?.toString() ?? "type=recovery";

@@ -1,5 +1,11 @@
 import { supabase } from "@/lib/database/client";
-import type { AuthOtpType } from "@supabase/supabase-js";
+
+type AuthOtpType =
+  | "signup"
+  | "email"
+  | "recovery"
+  | "magiclink"
+  | "invite";
 
 export type AuthLinkResult =
   | { status: "session" }
