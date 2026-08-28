@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation"
 import { z } from "zod"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { supabase } from "@/lib/database/client"
+import { buildAuthRedirectPath } from "@/lib/auth/auth-redirect-origin"
 import { useToast } from "@/hooks/useToast"
 import { Mail, User, ArrowRight, Lock, Car } from "lucide-react"
 
@@ -94,7 +95,9 @@ export default function ModernDriverSignup() {
             first_name: formData.first_name,
             last_name: formData.last_name,
           },
-          emailRedirectTo: `${window.location.origin}/auth/verify-email?type=email_confirmation&next=/driver-portal/profile/setup`
+          emailRedirectTo: buildAuthRedirectPath(
+            "/auth/verify-email?type=email_confirmation&next=/driver-portal/profile/setup",
+          ),
         }
       })
 

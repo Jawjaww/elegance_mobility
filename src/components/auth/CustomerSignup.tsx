@@ -11,6 +11,7 @@ import { Mail, User, Lock, ArrowRight, CheckCircle } from "lucide-react";
 import { supabase } from "@/lib/database/client";
 import { useToast } from "@/hooks/useToast";
 import { supabaseAuthErrorMessage, getSupabasePublicConfigError } from "@/lib/utils/supabase-public-config";
+import { buildAuthRedirectPath } from "@/lib/auth/auth-redirect-origin";
 import type { SupabaseEnvReport } from "@/lib/utils/supabase-env-check";
 import { ButtonLoading } from "@/components/ui/loading";
 
@@ -113,7 +114,9 @@ export default function CustomerSignup() {
             first_name: formData.firstName,
             last_name: formData.lastName,
           },
-          emailRedirectTo: `${window.location.origin}/auth/verify-email?type=email_confirmation&next=/my-account`,
+          emailRedirectTo: buildAuthRedirectPath(
+            "/auth/verify-email?type=email_confirmation&next=/my-account",
+          ),
         },
       });
 
@@ -150,7 +153,9 @@ export default function CustomerSignup() {
   const handleResendConfirmation = async () => {
     setResending(true);
     try {
-      const redirectTo = `${window.location.origin}/auth/verify-email?type=email_confirmation&next=/my-account`;
+      const redirectTo = buildAuthRedirectPath(
+        "/auth/verify-email?type=email_confirmation&next=/my-account",
+      );
       const { error } = await supabase.auth.resend({
         type: "signup",
         email: formData.email,

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { supabase } from "@/lib/database/client"
+import { buildAuthRedirectPath } from "@/lib/auth/auth-redirect-origin"
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
@@ -41,7 +42,7 @@ function ForgotPasswordForm() {
 
     try {
       const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/update-password?type=recovery`,
+        redirectTo: buildAuthRedirectPath("/auth/update-password?type=recovery"),
       })
 
       if (error) {
