@@ -38,6 +38,9 @@ export async function exchangeAuthLinkCode(
   try {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
+      // detectSessionInUrl may already have consumed the one-time code.
+      if (await hasActiveSession()) return { status: "session" };
+
       const msg = error.message ?? "";
       const isCodeVerifier =
         msg.includes("code verifier") || msg.includes("code_verifier");
@@ -49,6 +52,7 @@ export async function exchangeAuthLinkCode(
     if (data.session) return { status: "session" };
     return { status: "pending" };
   } catch {
+    if (await hasActiveSession()) return { status: "session" };
     return { status: "error", message: "Impossible de valider le lien." };
   }
 }
@@ -58,6 +62,18 @@ export async function hasActiveSession(): Promise<boolean> {
     data: { session },
   } = await supabase.auth.getSession();
   return !!session;
+}
+
+/** Wait briefly for detectSessionInUrl / onAuthStateChange to settle. */
+export async function waitForActiveSession(
+  attempts = 6,
+  delayMs = 150,
+): Promise<boolean> {
+  for (let i = 0; i < attempts; i += 1) {
+    if (await hasActiveSession()) return true;
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+  return false;
 }
 
 export function watchAuthSession(onSession: () => void, includeRecovery = false): () => void {

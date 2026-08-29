@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { supabase } from "@/lib/database/client"
-import { buildAuthRedirectPath } from "@/lib/auth/auth-redirect-origin"
+import { buildPkceSafeAuthRedirectPath } from "@/lib/auth/auth-redirect-origin"
 import { supabaseAuthErrorMessage } from "@/lib/utils/supabase-public-config"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
@@ -40,14 +40,26 @@ function ForgotPasswordForm() {
     setMessage("")
 
     try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: buildAuthRedirectPath("/auth/update-password?type=recovery"),
-      })
+      // PKCE stores code_verifier on this origin — redirect must match or the email link fails.
+      const redirect = buildPkceSafeAuthRedirectPath(
+        "/auth/update-password?type=recovery",
+      )
+      if (redirect.error || !redirect.url) {
+        setError(redirect.error ?? "URL de redirection invalide.")
+        return
+      }
+
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        email,
+        { redirectTo: redirect.url },
+      )
 
       if (resetError) {
         setError(supabaseAuthErrorMessage(resetError))
       } else {
-        setMessage("Un email de réinitialisation a été envoyé à votre adresse.")
+        setMessage(
+          "Un email de réinitialisation a été envoyé. Ouvrez le lien dans ce même navigateur (évitez l'aperçu Outlook/Gmail).",
+        )
       }
     } catch (err) {
       setError("Une erreur est survenue. Veuillez réessayer.")

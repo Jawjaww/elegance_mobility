@@ -16,7 +16,7 @@ export type AuthLinkCompletion = {
 const INVALID_LINK =
   "Le lien de connexion est invalide ou a expiré. Demandez un nouveau lien.";
 const CODE_VERIFIER_HINT =
-  "Ouvrez ce lien dans le même navigateur que celui utilisé pour la demande.";
+  "Lien PKCE invalide : redemandez depuis https://elegance-mobility.vercel.app et ouvrez l'email dans ce navigateur (pas l'aperçu mail).";
 
 function parseHashTokens(): {
   access_token: string;

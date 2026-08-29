@@ -18,8 +18,8 @@ import { supabase } from "@/lib/database/client";
 import { useToast } from "@/hooks/useToast";
 import {
   exchangeAuthLinkCode,
-  hasActiveSession,
   verifyAuthLinkToken,
+  waitForActiveSession,
   watchAuthSession,
 } from "@/lib/auth/auth-link-verification";
 
@@ -27,13 +27,40 @@ type RecoveryState = "loading" | "ready" | "error";
 
 const INVALID_RECOVERY_MESSAGE =
   "Le lien de réinitialisation est invalide ou a expiré. Demandez un nouveau lien.";
-const CODE_VERIFIER_MESSAGE =
-  "Ouvrez ce lien dans le même navigateur que celui utilisé pour la demande de réinitialisation.";
 
-async function resolveRecoverySession(input: {
+const CODE_VERIFIER_MESSAGE =
+  "Le lien PKCE n'a pas pu être validé (code_verifier manquant). Demandez un nouveau lien depuis https://elegance-mobility.vercel.app/auth/forgot-password, puis ouvrez l'email dans ce même navigateur (pas l'aperçu Outlook / Gmail).";
+
+function parseHashTokens(): {
+  access_token: string;
+  refresh_token: string;
+} | null {
+  if (typeof window === "undefined" || !window.location.hash.includes("access_token")) {
+    return null;
+  }
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const access_token = hash.get("access_token");
+  const refresh_token = hash.get("refresh_token");
+  if (!access_token || !refresh_token) return null;
+  return { access_token, refresh_token };
+}
+
+type RecoveryOutcome =
+  | { status: "session" }
+  | { status: "error"; message: string }
+  | { status: "continue" };
+
+async function tryHashSession(): Promise<boolean> {
+  const hashTokens = parseHashTokens();
+  if (!hashTokens) return false;
+  const { error } = await supabase.auth.setSession(hashTokens);
+  return !error;
+}
+
+async function tryTokenOrCode(input: {
   token: string | null;
   code: string | null;
-}): Promise<"session" | "error" | "continue"> {
+}): Promise<RecoveryOutcome> {
   const { token, code } = input;
 
   if (token) {
@@ -42,22 +69,41 @@ async function resolveRecoverySession(input: {
       "recovery",
       INVALID_RECOVERY_MESSAGE,
     );
-    if (result.status === "session") return "session";
-    if (result.status === "error") return "error";
+    if (result.status === "session") return { status: "session" };
+    if (result.status === "error") {
+      return { status: "error", message: result.message };
+    }
   }
 
-  if (code) {
-    const result = await exchangeAuthLinkCode(
-      code,
-      INVALID_RECOVERY_MESSAGE,
-      CODE_VERIFIER_MESSAGE,
-    );
-    if (result.status === "session") return "session";
-    if (result.status === "error") return "error";
-  }
+  if (!code) return { status: "continue" };
 
-  if (await hasActiveSession()) return "session";
-  return "continue";
+  const result = await exchangeAuthLinkCode(
+    code,
+    INVALID_RECOVERY_MESSAGE,
+    CODE_VERIFIER_MESSAGE,
+  );
+  if (result.status === "session") return { status: "session" };
+  if (result.status === "error") {
+    if (await waitForActiveSession(4, 150)) return { status: "session" };
+    return { status: "error", message: result.message };
+  }
+  return { status: "continue" };
+}
+
+async function resolveRecoverySession(input: {
+  token: string | null;
+  code: string | null;
+}): Promise<RecoveryOutcome> {
+  if (await tryHashSession()) return { status: "session" };
+
+  // detectSessionInUrl may already have exchanged the code on client init.
+  if (await waitForActiveSession(4, 100)) return { status: "session" };
+
+  const fromLink = await tryTokenOrCode(input);
+  if (fromLink.status !== "continue") return fromLink;
+
+  if (await waitForActiveSession(2, 100)) return { status: "session" };
+  return { status: "continue" };
 }
 
 export default function UpdatePasswordContent() {
@@ -94,18 +140,18 @@ export default function UpdatePasswordContent() {
       const type = searchParams?.get("type") ?? null;
 
       const outcome = await resolveRecoverySession({ token, code });
-      if (outcome === "session") {
+      if (outcome.status === "session") {
         ready();
         return;
       }
-      if (outcome === "error") {
-        fail(INVALID_RECOVERY_MESSAGE);
+      if (outcome.status === "error") {
+        fail(outcome.message);
         return;
       }
 
       unsubscribe = watchAuthSession(ready, true);
 
-      if (!token && !code && type !== "recovery") {
+      if (!token && !code && type !== "recovery" && !window.location.hash.includes("access_token")) {
         fail(
           "Utilisez le lien reçu par email, ou demandez une réinitialisation ci-dessous.",
         );
