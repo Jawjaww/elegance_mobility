@@ -1,12 +1,12 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
 import { useReservationStore } from "@/lib/stores/reservationStore";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { MapPin, Flag } from "lucide-react";
 import RideRequestMap from "@/components/map/RideRequestMap";
 import { AutocompleteInput } from "../AutocompleteInput";
 import { LoadingSpinner } from "../ui/loading-spinner";
@@ -210,14 +210,20 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
   );
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="grid gap-8 max-w-4xl mx-auto">
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">Détails du trajet</h2>
+    <div className="mx-auto w-full max-w-4xl px-3 py-4 sm:container sm:px-4 sm:py-8">
+      <div className="mx-auto grid max-w-4xl gap-6 sm:gap-8">
+        <section className="space-y-5 sm:space-y-6 md:rounded-lg md:border md:border-neutral-800 md:bg-neutral-900/60 md:p-6">
+          <h2 className="text-xl font-semibold">Détails du trajet</h2>
 
-          <div className="space-y-6">
+          <div className="space-y-5 sm:space-y-6">
             <div>
-              <Label>Point de départ</Label>
+              <Label
+                htmlFor="pickup-location"
+                className="mb-2 flex items-center gap-1.5"
+              >
+                Départ
+                <MapPin className="h-4 w-4 text-emerald-400" aria-hidden />
+              </Label>
               <AutocompleteInput
                 id="pickup-location"
                 value={store.departure?.display_name || ""}
@@ -227,7 +233,13 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
             </div>
 
             <div>
-              <Label>Destination</Label>
+              <Label
+                htmlFor="dropoff-location"
+                className="mb-2 flex items-center gap-1.5"
+              >
+                <Flag className="h-4 w-4 text-sky-400" aria-hidden />
+                Destination
+              </Label>
               <AutocompleteInput
                 id="dropoff-location"
                 value={store.destination?.display_name || ""}
@@ -243,7 +255,7 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
                 onValueChange={(value) => {
                   store.setSelectedVehicle(validateVehicleType(value) as any);
                 }}
-                className="flex gap-4"
+                className="flex flex-wrap gap-4"
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="STANDARD" id="standard" />
@@ -282,28 +294,28 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
               </div>
             </div>
           </div>
-        </Card>
+        </section>
 
         {effectiveDeparture && effectiveDestination ? (
           <Suspense
             fallback={
-              <Card className="p-6">
+              <div className="flex justify-center p-6">
                 <LoadingSpinner />
-              </Card>
+              </div>
             }
           >
-            <Card className="p-0 overflow-hidden">
+            <section className="overflow-hidden rounded-lg border border-neutral-800">
               <RideRequestMap
                 key={mapKey}
                 departure={effectiveDeparture}
                 destination={effectiveDestination}
                 onRouteCalculated={handleRouteCalculated}
               />
-            </Card>
+            </section>
           </Suspense>
         ) : null}
 
-        <Card className="p-6">
+        <section className="space-y-2 md:rounded-lg md:border md:border-neutral-800 md:bg-neutral-900/60 md:p-6">
           <Label htmlFor="pickup-datetime">
             Date et heure de prise en charge
           </Label>
@@ -315,9 +327,9 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
               minDate={new Date()}
             />
           </div>
-        </Card>
+        </section>
 
-        <div className="flex gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
           <Button variant="outline" onClick={handleReset} className="flex-1">
             {editMode ? "Retour" : "Annuler"}
           </Button>

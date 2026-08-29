@@ -2,17 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { useReservationStore } from "@/lib/stores/reservationStore";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { MapPin, ArrowRight } from "lucide-react";
+import { MapPin, Flag } from "lucide-react";
 import { AutocompleteInput } from "@/components/AutocompleteInput";
 import { Coordinates } from "@/lib/types/map-types";
 import DateTimeStep from "@/components/reservation/DateTimeStep";
-import { formatDuration } from "@/lib/utils";
-
-// Use the unified map component (single map entrypoint)
+import { formatDuration, cn } from "@/lib/utils";
 import UnifiedMap from "@/components/map/UnifiedMap";
+
+/** Card chrome only on sm+ — mobile stays edge-to-edge for address fields. */
+const sectionClass =
+  "md:rounded-lg md:border md:border-neutral-800 md:bg-neutral-900/60 md:p-6";
 
 export interface LocationStepProps {
   onNextStep: () => void;
@@ -149,53 +150,58 @@ export function LocationStep({
   };
 
   return (
-    <div className="space-y-8">
-      <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-4">
+    <div className="space-y-6 sm:space-y-8">
+      <section className={sectionClass}>
+        <h2 className="mb-4 text-xl font-semibold">
           Sélectionner votre trajet
         </h2>
 
-        <div className="space-y-6">
+        <div className="space-y-5 sm:space-y-6">
           <div>
-            <Label className="mb-2 block">Point de départ</Label>
-            <div className="relative">
-              <div className="absolute left-3 top-3 text-neutral-500">
-                <MapPin className="h-5 w-5" />
-              </div>
-              <AutocompleteInput
-                id="departure-input"
-                value={originAddress || store.departure?.display_name || ""}
-                onChange={onOriginChange}
-                onSelect={handleDepartureSelect}
-                placeholder="Entrez une adresse de départ"
-                className="pl-10"
-              />
-            </div>
+            <Label
+              htmlFor="departure-input"
+              className="mb-2 flex items-center gap-1.5 text-neutral-200"
+            >
+              Départ
+              <MapPin className="h-4 w-4 text-emerald-400" aria-hidden />
+            </Label>
+            <AutocompleteInput
+              id="departure-input"
+              value={originAddress || store.departure?.display_name || ""}
+              onChange={onOriginChange}
+              onSelect={handleDepartureSelect}
+              placeholder="Entrez une adresse de départ"
+            />
           </div>
 
           <div>
-            <Label className="mb-2 block">Destination</Label>
-            <div className="relative">
-              <div className="absolute left-3 top-3 text-neutral-500">
-                <ArrowRight className="h-5 w-5" />
-              </div>
-              <AutocompleteInput
-                id="destination-input"
-                value={
-                  destinationAddress || store.destination?.display_name || ""
-                }
-                onChange={onDestinationChange}
-                onSelect={handleDestinationSelect}
-                placeholder="Entrez une adresse de destination"
-                className="pl-10"
-              />
-            </div>
+            <Label
+              htmlFor="destination-input"
+              className="mb-2 flex items-center gap-1.5 text-neutral-200"
+            >
+              <Flag className="h-4 w-4 text-sky-400" aria-hidden />
+              Destination
+            </Label>
+            <AutocompleteInput
+              id="destination-input"
+              value={
+                destinationAddress || store.destination?.display_name || ""
+              }
+              onChange={onDestinationChange}
+              onSelect={handleDestinationSelect}
+              placeholder="Entrez une adresse de destination"
+            />
           </div>
         </div>
-      </Card>
+      </section>
 
       {showMap && (
-        <Card className="p-0 h-[min(42vh,280px)] sm:h-[400px] overflow-hidden">
+        <section
+          className={cn(
+            "h-[min(42vh,280px)] overflow-hidden sm:h-[400px]",
+            "rounded-lg border border-neutral-800 md:rounded-lg",
+          )}
+        >
           <UnifiedMap
             mode="REQUEST"
             key={mapKey}
@@ -204,7 +210,7 @@ export function LocationStep({
             onRouteCalculated={handleRouteCalculated}
             height="100%"
           />
-        </Card>
+        </section>
       )}
 
       {store.distance !== null &&
@@ -213,8 +219,8 @@ export function LocationStep({
         store.duration > 0 &&
         hasFiniteCoords(store.departure) &&
         hasFiniteCoords(store.destination) && (
-          <Card className="p-4 bg-neutral-900">
-            <div className="flex justify-between items-center">
+          <section className={cn(sectionClass, "py-3 md:py-4")}>
+            <div className="flex justify-between items-center gap-4">
               <div>
                 <p className="text-sm text-neutral-400">Distance estimée</p>
                 <p className="font-medium text-white">{store.distance} km</p>
@@ -228,22 +234,22 @@ export function LocationStep({
                 </p>
               </div>
             </div>
-          </Card>
+          </section>
         )}
 
-      <Card className="p-4 bg-neutral-900">
+      <section className={sectionClass}>
         <Label className="mb-2 block">Date et heure de prise en charge</Label>
         <DateTimeStep
           pickupDateTime={pickupDateTime || null}
           onDateTimeSelect={(date) => onDateTimeChange?.(date)}
         />
-      </Card>
+      </section>
 
-      <div className="flex justify-end">
+      <div className="flex justify-stretch sm:justify-end">
         <Button
           onClick={onNextStep}
           disabled={!formValid}
-          className="px-8 btn-gradient text-white"
+          className="w-full px-8 btn-gradient text-white sm:w-auto"
         >
           {isEditing ? "Mettre à jour" : "Continuer"}
         </Button>

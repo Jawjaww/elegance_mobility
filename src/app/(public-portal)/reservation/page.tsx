@@ -36,8 +36,9 @@ export default function ReservationPage() {
         </div>
       </div>
 
-      <div className="relative z-10 place-self-center w-full max-w-2xl mx-auto px-4 py-8">
-        <div className="bg-neutral-900/50 backdrop-blur-lg rounded-lg border border-neutral-800 p-8">
+      <div className="relative z-10 place-self-center w-full max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        {/* Full-bleed on mobile; card chrome only from sm+ to keep address fields usable */}
+        <div className="p-0 sm:bg-neutral-900/50 sm:backdrop-blur-lg sm:rounded-lg sm:border sm:border-neutral-800 sm:p-8">
           {step === 1 ? (
             <LocationStep
               onNextStep={handleNextStep}

@@ -4,6 +4,7 @@ import React from "react";
 import { Input } from "./input";
 import { Label } from "./label";
 import { CalendarDays } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface DateTimePickerProps {
   id?: string;
@@ -11,6 +12,7 @@ interface DateTimePickerProps {
   onChange: (date: Date | null) => void;
   label?: string;
   minDate?: Date;
+  className?: string;
 }
 
 const formatDateForInput = (date: Date | string | number | null | undefined) => {
@@ -44,7 +46,7 @@ const formatDateForInput = (date: Date | string | number | null | undefined) => 
 
 /**
  * Native browser datetime picker (`datetime-local` + showPicker).
- * Uses the OS/browser calendar UI — no custom calendar overlay.
+ * Hides the built-in calendar glyph so only one control opens the picker.
  */
 export function DateTimePicker({
   id,
@@ -52,6 +54,7 @@ export function DateTimePicker({
   onChange,
   label,
   minDate = new Date(),
+  className,
 }: Readonly<DateTimePickerProps>) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const inputId = id || React.useId();
@@ -112,13 +115,17 @@ export function DateTimePicker({
   }, [minDate]);
 
   return (
-    <div className="space-y-2 relative" style={{ colorScheme: "dark" }}>
+    <div
+      className={cn("space-y-2 relative", className)}
+      style={{ colorScheme: "dark" }}
+    >
       {label ? (
         <Label htmlFor={inputId} className="text-white">
           {label}
         </Label>
       ) : null}
-      <div className="relative">
+      {/* Compact row: avoids a full-bleed field with a floating mid-calendar affordance */}
+      <div className="flex w-full max-w-sm items-center gap-2">
         <Input
           id={inputId}
           ref={inputRef}
@@ -126,14 +133,18 @@ export function DateTimePicker({
           value={`${dateValue}T${timeValue}`}
           onChange={handleDateTimeChange}
           onClick={openNativePicker}
-          onFocus={openNativePicker}
           min={minDateString}
-          className="w-full pr-10 bg-neutral-900 border-neutral-700 text-white focus:border-neutral-500 focus:ring-neutral-500 [color-scheme:dark]"
+          className={cn(
+            "min-w-0 flex-1 bg-neutral-900 border-neutral-700 text-white",
+            "focus:border-neutral-500 focus:ring-neutral-500 [color-scheme:dark]",
+            // Hide native calendar glyph so only the Lucide button is visible
+            "[&::-webkit-calendar-picker-indicator]:hidden",
+          )}
         />
         <button
           type="button"
           onClick={openNativePicker}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white"
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-neutral-700 bg-neutral-900 text-neutral-300 hover:border-neutral-500 hover:text-white"
           aria-label="Ouvrir le calendrier"
         >
           <CalendarDays className="h-5 w-5" />

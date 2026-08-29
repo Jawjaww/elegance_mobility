@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { useDebounce } from "../hooks/useDebounce";
 import { useToast } from "../hooks/useToast";
+import { cn } from "@/lib/utils";
 import styles from "./AutocompleteInput.module.css";
 
 // Définir le type Coordinates localement en utilisant lon
@@ -161,15 +161,55 @@ export function AutocompleteInput({
   className,
   defaultValue,
 }: Readonly<AutocompleteInputProps>) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [query, setQuery] = useState<string>(value || defaultValue || "");
   const debouncedQuery = useDebounce<string>(query, 300);
   const [suggestions, setSuggestions] = useState<AddressFeature[]>([]);
   const [isLocating, setIsLocating] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showLocationHint, setShowLocationHint] = useState(false);
+  const locationHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressSuggestionsRef = useRef(false);
   const skipNextValueSync = useRef(false);
   const { toast } = useToast();
+
+  // Two-line expand is mobile-only — desktop has enough horizontal room.
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const sync = () => setIsMobile(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  const shouldExpand =
+    isMobile &&
+    (isFocused || query.trim().length > 28 || query.includes("\n"));
+
+  const clearLocationHintTimer = () => {
+    if (locationHintTimer.current) {
+      clearTimeout(locationHintTimer.current);
+      locationHintTimer.current = null;
+    }
+  };
+
+  const handleLocationButtonEnter = () => {
+    clearLocationHintTimer();
+    locationHintTimer.current = setTimeout(() => {
+      setShowLocationHint(true);
+    }, 2000);
+  };
+
+  const handleLocationButtonLeave = () => {
+    clearLocationHintTimer();
+    setShowLocationHint(false);
+  };
+
+  useEffect(() => {
+    return () => clearLocationHintTimer();
+  }, []);
 
   useEffect(() => {
     if (suppressSuggestionsRef.current || !hasUserInteracted) {
@@ -280,8 +320,8 @@ export function AutocompleteInput({
     }
   }, [defaultValue]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value.replaceAll("\n", " ");
     suppressSuggestionsRef.current = false;
     setHasUserInteracted(true);
     setQuery(newValue);
@@ -295,26 +335,74 @@ export function AutocompleteInput({
   return (
     <div className={styles.container}>
       <div className={styles.inputWrapper}>
-        <Input
+        <textarea
           id={id}
           value={query}
           onChange={handleInputChange}
           placeholder={placeholder}
           ref={inputRef}
-          className={className}
+          rows={shouldExpand ? 2 : 1}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          className={cn(
+            "flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+            styles.addressField,
+            shouldExpand
+              ? styles.addressFieldExpanded
+              : styles.addressFieldCollapsed,
+            className,
+          )}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && suggestions.length > 0) {
-              const feature = suggestions[0];
-              const lat = feature.geometry.coordinates[1];
-              const lon = feature.geometry.coordinates[0];
-              onSelect?.(lat, lon, feature.properties.label);
-              suppressSuggestionsRef.current = true;
-              setQuery(feature.properties.label);
-              setSuggestions([]);
+            if (e.key === "Enter") {
               e.preventDefault();
+              if (suggestions.length > 0) {
+                const feature = suggestions[0];
+                const lat = feature.geometry.coordinates[1];
+                const lon = feature.geometry.coordinates[0];
+                onSelect?.(lat, lon, feature.properties.label);
+                suppressSuggestionsRef.current = true;
+                setQuery(feature.properties.label);
+                setSuggestions([]);
+              }
             }
           }}
         />
+        <Button
+          type="button"
+          size="icon"
+          variant="outline"
+          onClick={handleGeolocation}
+          onMouseEnter={handleLocationButtonEnter}
+          onMouseLeave={handleLocationButtonLeave}
+          onFocus={handleLocationButtonEnter}
+          onBlur={handleLocationButtonLeave}
+          className={cn(styles.locationButton, "rounded-full")}
+          disabled={isLocating}
+          aria-label="Utiliser ma position actuelle"
+        >
+          {isLocating ? (
+            "⌛"
+          ) : (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              className={styles.locationIcon}
+              aria-hidden
+            >
+              <path
+                fillRule="evenodd"
+                d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z"
+                clipRule="evenodd"
+              />
+            </svg>
+          )}
+        </Button>
+        {showLocationHint ? (
+          <span className={styles.locationTooltip} role="tooltip">
+            Ma position actuelle
+          </span>
+        ) : null}
         {suggestions.length > 0 && (
           <ul className={styles.suggestions} role="listbox">
             {suggestions.map((feature) => {
@@ -344,30 +432,6 @@ export function AutocompleteInput({
           </ul>
         )}
       </div>
-      <Button
-        type="button"
-        onClick={handleGeolocation}
-        className={styles.locationButton}
-        disabled={isLocating}
-        title="Utiliser ma position actuelle"
-      >
-        {isLocating ? (
-          "⌛"
-        ) : (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className={styles.locationIcon}
-          >
-            <path
-              fillRule="evenodd"
-              d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z"
-              clipRule="evenodd"
-            />
-          </svg>
-        )}
-      </Button>
     </div>
   );
 }

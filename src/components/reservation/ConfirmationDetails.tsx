@@ -86,22 +86,6 @@ function buildPendingRidePayload(input: {
   };
 }
 
-function confirmationDescription(
-  departure: RideEndpoint,
-  destination: RideEndpoint,
-  formattedDate: string,
-  formattedTime: string,
-  finalPrice: number | null,
-): string {
-  const from = departure.display_name.split(",")[0];
-  const to = destination.display_name.split(",")[0];
-  const base = `Votre trajet de ${from} à ${to} a été enregistré pour le ${formattedDate} à ${formattedTime}.`;
-  if (finalPrice != null) {
-    return `${base} Prix final : ${finalPrice}€.`;
-  }
-  return `${base} Un e-mail de confirmation vous a été envoyé.`;
-}
-
 async function finalizeConfirmedRide(args: {
   rideId: string;
   selectedVehicle: VehicleType;
@@ -112,13 +96,10 @@ async function finalizeConfirmedRide(args: {
   duration: number | null | undefined;
   fallbackPrice: number | null | undefined;
   estimatedPrice: number | null | undefined;
-  formattedDate: string;
-  formattedTime: string;
   setPickupDateTime: (date: Date) => void;
-  toast: ReturnType<typeof useToast>["toast"];
   router: ReturnType<typeof useRouter>;
 }) {
-  const finalPrice = await resolveRideFinalPrice({
+  await resolveRideFinalPrice({
     rideId: args.rideId,
     vehicleType: args.selectedVehicle,
     pickupLat: args.departure.lat,
@@ -135,20 +116,7 @@ async function finalizeConfirmedRide(args: {
 
   sessionStorage.setItem("last_confirmed_reservation", args.rideId);
   args.setPickupDateTime(normalizePickupDateTime(new Date()));
-  args.toast({
-    title: "✨ Réservation confirmée",
-    description: confirmationDescription(
-      args.departure,
-      args.destination,
-      args.formattedDate,
-      args.formattedTime,
-      finalPrice,
-    ),
-    variant: "success",
-  });
-  setTimeout(() => {
-    args.router.push("/my-account/reservations/reservation-success");
-  }, 2000);
+  args.router.push("/my-account/reservations/reservation-success");
 }
 
 function reservationErrorMessage(error: unknown): string {
@@ -256,10 +224,7 @@ export function ConfirmationDetails() {
         duration,
         fallbackPrice: priceDetails?.totalPrice,
         estimatedPrice: data.estimated_price,
-        formattedDate,
-        formattedTime,
         setPickupDateTime: reservationStore.setPickupDateTime,
-        toast,
         router,
       });
     } catch (error: unknown) {

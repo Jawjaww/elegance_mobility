@@ -7,6 +7,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { AutocompleteInput } from "@/components/AutocompleteInput";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
+import { MapPin, Flag } from "lucide-react";
 import { useReservationStore } from "@/lib/stores/reservationStore";
 import EditReservationMap from "@/components/map/EditReservationMap";
 import { PriceSummary } from "@/components/reservation/PriceSummary";
@@ -118,7 +119,13 @@ const EditReservationForm: React.FC<EditReservationFormProps> = ({
       <h2 className="text-xl font-semibold mb-4">Modifier la réservation</h2>
       <div className="space-y-6">
         <div>
-          <Label>Adresse de départ</Label>
+          <Label
+            htmlFor="pickup-location"
+            className="mb-2 flex items-center gap-1.5"
+          >
+            Départ
+            <MapPin className="h-4 w-4 text-emerald-400" aria-hidden />
+          </Label>
           <AutocompleteInput
             id="pickup-location"
             value={store.departure?.display_name || ""}
@@ -127,7 +134,13 @@ const EditReservationForm: React.FC<EditReservationFormProps> = ({
           />
         </div>
         <div>
-          <Label>Adresse d'arrivée</Label>
+          <Label
+            htmlFor="dropoff-location"
+            className="mb-2 flex items-center gap-1.5"
+          >
+            <Flag className="h-4 w-4 text-sky-400" aria-hidden />
+            Destination
+          </Label>
           <AutocompleteInput
             id="dropoff-location"
             value={store.destination?.display_name || ""}
