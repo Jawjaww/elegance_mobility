@@ -34,3 +34,10 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## CI & Vercel
+
+- **CI** : [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — `npm run build` + Jest on push/PR to `main` (same gate as Vercel).
+- **Deploy** : Vercel Git integration on merge to `main` (env `NEXT_PUBLIC_*` in Vercel dashboard).
+- **Branch protection** (GitHub repo settings): require status checks `Build & typecheck` and `Unit tests` before merge.
+- **Types Supabase** : do not edit `src/lib/types/database.types.ts` by hand — sync from `infra-supabase` (`deploy-db.yml` bot or `./scripts/sync-consumer-types.sh` in infra).
