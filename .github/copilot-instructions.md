@@ -33,7 +33,8 @@
 
 ## GitOps & Database Workflow
 
-- **GitOps Mode**: We use Supabase CLI for all database changes.
-- **Migrations**: Database changes MUST be suggested as new SQL files in `supabase/migrations/`.
-- **CI/CD Integration**: We have a GitHub Action for automated migrations using `supabase db push`. Ensure all SQL is compatible with non-interactive execution.
-- **No Dashboard**: Never suggest manual changes via the Supabase Dashboard.
+- **Schema source of truth:** [`infra-supabase`](https://github.com/Jawjaww/infra-supabase) (`supabase/migrations/`). Do **not** add migrations in this repo.
+- **Local prep:** `cd ../infra-supabase && ./scripts/prepare-db-change.sh`
+- **Types:** synced copies in `src/lib/types/database.types.ts` — regenerate via `infra-supabase/scripts/gen-types.sh`
+- **Cloud deploy:** merge migration on `infra-supabase` `main` → GitHub Action `deploy-db.yml` (no manual `db push` here)
+- **No Dashboard:** never suggest manual schema changes via the Supabase Dashboard

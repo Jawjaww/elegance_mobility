@@ -1,13 +1,16 @@
-# Deprecated — do not edit
+# Migrations — not in this repo
 
-Schema migrations live in **`Jawjaww/infra-supabase`** (`supabase/migrations/`).
+**Source of truth:** [`Jawjaww/infra-supabase`](https://github.com/Jawjaww/infra-supabase) → `supabase/migrations/`
 
-This folder is a stale copy kept for historical reference only. Changes here are **not** deployed.
+Do not add SQL migration files here. Cloud deploy is GitOps on `infra-supabase` (`deploy-db.yml`).
 
-**Workflow:**
-1. Add migration in `infra-supabase`
-2. Run `./scripts/prepare-db-change.sh` locally
-3. Open PR → CI pgTAP + types-check
-4. Merge `main` → `infra-supabase` GitHub Action runs `supabase db push` on cloud
+## Local schema + types
 
-See [infra-supabase README](https://github.com/Jawjaww/infra-supabase).
+From the workspace sibling folder:
+
+```bash
+cd ../infra-supabase
+./scripts/prepare-db-change.sh   # db reset + gen-types + pgTAP
+```
+
+Types are synced into this app at `src/lib/types/database.types.ts` (and legacy `supabase/src/types/supabase.ts`).
