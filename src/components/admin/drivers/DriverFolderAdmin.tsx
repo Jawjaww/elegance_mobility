@@ -1097,6 +1097,9 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
     const isComplete = completeness?.is_complete ?? false;
     const completionPct = completeness?.completion_percentage ?? 0;
     const missingFields = completeness?.missing_fields ?? [];
+    const missingForSubmit = completeness?.missing_for_submit ?? [];
+    const submitSet = new Set(missingForSubmit);
+    const adminOnlyMissing = missingFields.filter((f) => !submitSet.has(f));
 
     return (
       <div>
@@ -1124,15 +1127,33 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
             </div>
           </div>
 
-          {missingFields.length > 0 && (
-            <div>
-              <div className="text-sm font-medium text-yellow-300 mb-2">
-                Champs manquants :
+          {missingForSubmit.length > 0 && (
+            <div className="mb-4">
+              <div className="text-sm font-medium text-amber-300 mb-2">
+                À faire par le chauffeur
               </div>
               <ul className="space-y-1">
-                {missingFields.map((f) => (
+                {missingForSubmit.map((f) => (
                   <li
-                    key={f}
+                    key={`submit-${f}`}
+                    className="text-sm text-amber-200 flex items-center gap-2"
+                  >
+                    <span>•</span> {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {adminOnlyMissing.length > 0 && (
+            <div>
+              <div className="text-sm font-medium text-yellow-300 mb-2">
+                Revue admin / ops
+              </div>
+              <ul className="space-y-1">
+                {adminOnlyMissing.map((f) => (
+                  <li
+                    key={`ops-${f}`}
                     className="text-sm text-red-400 flex items-center gap-2"
                   >
                     <span>•</span> {f}

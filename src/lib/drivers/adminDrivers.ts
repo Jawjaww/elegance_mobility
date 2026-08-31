@@ -43,7 +43,8 @@ async function fetchVehicleSummariesById(
     .in("id", vehicleIds);
 
   if (error) {
-    throw new Error(error.message);
+    console.warn("[adminDrivers] vehicles fetch failed:", error.message);
+    return new Map();
   }
 
   const map = new Map<string, VehicleSummary>();
