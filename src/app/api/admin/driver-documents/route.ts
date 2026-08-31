@@ -1,28 +1,13 @@
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@supabase/supabase-js'
+import {
+  getAdminSupabase,
+  getServiceRoleKey,
+  getSupabaseUrl,
+} from '@/lib/database/admin-client'
 
 const BUCKET = 'driver-documents'
-
-/** Prefer local Next public URL so local docs are not resolved against remote SUPABASE_PUBLIC_URL. */
-const SUPABASE_URL = (
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  process.env.SUPABASE_URL ||
-  process.env.SUPABASE_PUBLIC_URL ||
-  process.env.NEXT_PUBLIC_SUPABASE_STORAGE_URL ||
-  ''
-).replace(/\/+$/, '')
-
-const SERVICE_ROLE_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_SERVICE_KEY ||
-  process.env.SERVICE_ROLE_KEY ||
-  ''
-
-const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-  auth: { persistSession: false },
-})
 
 function isAdminCaller(caller: Record<string, unknown>): boolean {
   const meta = caller.app_metadata
@@ -46,6 +31,8 @@ function sanitizeStoragePath(raw: string): string | null {
 }
 
 async function requireAdmin(request: Request) {
+  const SUPABASE_URL = getSupabaseUrl()
+  const SERVICE_ROLE_KEY = getServiceRoleKey()
   if (!SERVICE_ROLE_KEY || !SUPABASE_URL) {
     return {
       error: new Response(
@@ -94,6 +81,14 @@ export async function GET(request: Request) {
   try {
     const auth = await requireAdmin(request)
     if (auth.error) return auth.error
+
+    const admin = getAdminSupabase()
+    if (!admin) {
+      return new Response(
+        JSON.stringify({ ok: false, error: 'Storage admin not configured' }),
+        { status: 500 },
+      )
+    }
 
     const url = new URL(request.url)
     const path = sanitizeStoragePath(url.searchParams.get('path') || '')

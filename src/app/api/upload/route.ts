@@ -1,29 +1,13 @@
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@supabase/supabase-js'
+import {
+  getAdminSupabase,
+  getServiceRoleKey,
+  getSupabaseUrl,
+} from '@/lib/database/admin-client'
 
 const BUCKET = 'driver-documents'
-
-/** Prefer local Next public URL — SUPABASE_PUBLIC_URL may point at remote cloud. */
-const SUPABASE_URL = (
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  process.env.SUPABASE_URL ||
-  process.env.SUPABASE_PUBLIC_URL ||
-  process.env.NEXT_PUBLIC_SUPABASE_STORAGE_URL ||
-  ''
-)
-const SERVICE_ROLE_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_SERVICE_KEY ||
-  process.env.SERVICE_ROLE_KEY ||
-  ''
-
-const base = SUPABASE_URL.replace(/\/+$/, '')
-
-const admin = createClient(base, SERVICE_ROLE_KEY, {
-  auth: { persistSession: false },
-})
 
 function callerRole(caller: Record<string, unknown>): string {
   const appMeta = caller.app_metadata
@@ -49,7 +33,10 @@ function errorMessage(err: unknown): string {
 
 export async function POST(request: Request) {
   try {
-    if (!SERVICE_ROLE_KEY) {
+    const SERVICE_ROLE_KEY = getServiceRoleKey()
+    const base = getSupabaseUrl()
+    const admin = getAdminSupabase()
+    if (!SERVICE_ROLE_KEY || !base || !admin) {
       return new Response(
         JSON.stringify({ ok: false, error: 'Service role key not configured' }),
         { status: 500 },
@@ -262,6 +249,16 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
+    const SERVICE_ROLE_KEY = getServiceRoleKey()
+    const base = getSupabaseUrl()
+    const admin = getAdminSupabase()
+    if (!SERVICE_ROLE_KEY || !base || !admin) {
+      return new Response(
+        JSON.stringify({ ok: false, error: 'Service role key not configured' }),
+        { status: 500 },
+      )
+    }
+
     const url = new URL(request.url)
     const op = url.searchParams.get('op')
     if (op !== 'signed') {
