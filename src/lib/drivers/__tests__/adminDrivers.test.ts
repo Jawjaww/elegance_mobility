@@ -4,8 +4,10 @@ jest.mock("@/lib/database/client", () => ({
   },
 }));
 
+import { supabase } from "@/lib/database/client";
 import {
   driverDisplayName,
+  fetchDriversWithVehicles,
   filterDrivers,
   vehicleSummaryLabel,
   type DriverWithVehicle,
@@ -111,5 +113,47 @@ describe("adminDrivers helpers", () => {
     expect(filterDrivers(drivers, "zz999", "all")[0]?.id).toBe("d2");
     expect(filterDrivers(drivers, "bmw", "all")[0]?.id).toBe("d1");
     expect(filterDrivers(drivers, "inconnu", "all")).toHaveLength(0);
+  });
+});
+
+describe("fetchDriversWithVehicles", () => {
+  const mockFrom = supabase.from as jest.Mock;
+
+  beforeEach(() => {
+    mockFrom.mockReset();
+  });
+
+  it("keeps driver rows when vehicles query fails", async () => {
+    const driverRow = makeDriver({
+      current_vehicle_id: "v1",
+      current_vehicle: null,
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "drivers") {
+        return {
+          select: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({
+            data: [driverRow],
+            error: null,
+          }),
+        };
+      }
+      if (table === "vehicles") {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockResolvedValue({
+            data: null,
+            error: { message: "permission denied for table vehicles" },
+          }),
+        };
+      }
+      throw new Error(`unexpected table ${table}`);
+    });
+
+    const rows = await fetchDriversWithVehicles();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.id).toBe("driver-1");
+    expect(rows[0]?.current_vehicle).toBeNull();
   });
 });

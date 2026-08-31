@@ -79,6 +79,13 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
       .lt("pickup_time", todayStr),
   ]);
 
+  if (availableVehiclesResult.error) {
+    console.warn(
+      "[dashboard] vehicles count failed:",
+      availableVehiclesResult.error.message,
+    );
+  }
+
   const todayRidesCount = todayRidesResult.count || 0;
   const yesterdayRidesCount = yesterdayRidesResult.count || 0;
 
@@ -93,7 +100,9 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     activeDrivers: activeDriversResult.count || 0,
     onlineDrivers: onlineDriversResult.count || 0,
     remainingRides: remainingRidesResult.count || 0,
-    availableVehicles: availableVehiclesResult.count || 0,
+    availableVehicles: availableVehiclesResult.error
+      ? 0
+      : availableVehiclesResult.count || 0,
     todayRidesTrend: {
       percentage: Math.abs(trendPercentage),
       isUp: trendPercentage >= 0,
