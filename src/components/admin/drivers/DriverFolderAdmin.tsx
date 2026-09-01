@@ -244,9 +244,6 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
     can_submit: boolean;
     missing_for_submit: string[];
   } | null>(null);
-  const [debugDetails, setDebugDetails] = useState<
-    Array<Record<string, unknown>>
-  >([]);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [uploadingType, setUploadingType] = useState<string | null>(null);
 
@@ -303,30 +300,28 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
           driver_user_id: userId,
         })
         .single();
-      if (!compErr && compData) {
-        const d = compData as {
-          is_complete?: boolean;
-          completion_percentage?: number;
-          missing_fields?: string[];
-          can_submit?: boolean;
-          missing_for_submit?: string[];
-        };
-        setCompleteness({
-          is_complete: Boolean(d.is_complete),
-          completion_percentage: Number(d.completion_percentage ?? 0),
-          missing_fields: d.missing_fields ?? [],
-          can_submit: Boolean(d.can_submit),
-          missing_for_submit: d.missing_for_submit ?? [],
-        });
+      if (compErr) {
+        console.warn(
+          "[DriverFolderAdmin] completeness RPC failed:",
+          compErr.message,
+        );
+        return;
       }
-
-      const { data: debugData } = await supabase.rpc(
-        "debug_driver_completeness",
-        { driver_user_id: userId },
-      );
-      if (Array.isArray(debugData)) {
-        setDebugDetails(debugData as Array<Record<string, unknown>>);
-      }
+      if (!compData) return;
+      const d = compData as {
+        is_complete?: boolean;
+        completion_percentage?: number;
+        missing_fields?: string[];
+        can_submit?: boolean;
+        missing_for_submit?: string[];
+      };
+      setCompleteness({
+        is_complete: Boolean(d.is_complete),
+        completion_percentage: Number(d.completion_percentage ?? 0),
+        missing_fields: d.missing_fields ?? [],
+        can_submit: Boolean(d.can_submit),
+        missing_for_submit: d.missing_for_submit ?? [],
+      });
     } catch (e) {
       console.warn("DriverFolderAdmin.completeness check error:", e);
     }
@@ -376,11 +371,10 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
       );
 
       if (docsErr) {
-        toast({
-          title: "Documents",
-          description: docsErr.message,
-          variant: "destructive",
-        });
+        console.warn(
+          "[DriverFolderAdmin] Documents fetch failed:",
+          docsErr.message,
+        );
         setDocs([]);
       } else {
         setDocs(docsData ?? []);
@@ -1180,30 +1174,6 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
             </div>
           )}
         </div>
-
-        {/* Détails debug */}
-        {debugDetails.length > 0 && (
-          <details className="mb-6">
-            <summary className="text-sm text-neutral-400 cursor-pointer hover:text-white">
-              Détails de la vérification ({debugDetails.length} contrôles)
-            </summary>
-            <div className="mt-3 space-y-1 max-h-64 overflow-y-auto">
-              {debugDetails.map((d: any) => (
-                <div key={d.check_name ?? d.field_category} className="flex items-center gap-2 text-sm">
-                  <span
-                    className={d.is_valid ? "text-green-400" : "text-red-400"}
-                  >
-                    {d.is_valid ? "✓" : "✗"}
-                  </span>
-                  <span className="text-neutral-300 flex-1">{d.check_name}</span>
-                  <span className="text-xs text-neutral-500">
-                    {d.field_category}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </details>
-        )}
 
         {/* Actions sur le dossier */}
         <div className="pt-4 border-t border-neutral-700">
