@@ -7,6 +7,7 @@ import { createServerClient as createSupabaseServerClient, type CookieOptions } 
 import { cookies } from 'next/headers'
 import { AppRole } from '@/lib/utils/roles'
 import { getEffectiveRole, ROLES } from './roles'
+import { ELEGANCE_AUTH_STORAGE_KEY } from '@/lib/database/auth-storage'
 
 /**
  * Crée un client Supabase pour le serveur
@@ -18,6 +19,7 @@ export async function createServerSupabaseClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      cookieOptions: { name: ELEGANCE_AUTH_STORAGE_KEY },
       cookies: {
         getAll() {
           return cookieStore.getAll()

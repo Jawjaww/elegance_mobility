@@ -2,6 +2,7 @@
 
 import { createBrowserClient } from "@supabase/ssr";
 import { normalizeAnonKey } from "@/lib/utils/supabase-env-check";
+import { ELEGANCE_AUTH_STORAGE_KEY } from "@/lib/database/auth-storage";
 
 // Re-export pour l'utilisation externe
 export { createBrowserClient };
@@ -18,7 +19,7 @@ async function handleAuthError() {
 
   // Nettoyer la session locale
   try {
-    globalThis.localStorage?.removeItem("elegance-auth");
+    globalThis.localStorage?.removeItem(ELEGANCE_AUTH_STORAGE_KEY);
   } catch (e) {
     console.debug("[client] localStorage cleanup error:", e);
   }
@@ -77,12 +78,13 @@ export function getBrowserSupabase(): BrowserSupabase {
   }
 
   browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+    cookieOptions: { name: ELEGANCE_AUTH_STORAGE_KEY },
     auth: {
       flowType: "pkce",
       autoRefreshToken: true,
       detectSessionInUrl: true,
       persistSession: true,
-      storageKey: "elegance-auth",
+      storageKey: ELEGANCE_AUTH_STORAGE_KEY,
     },
     global: {
       // Ne PAS définir de headers Content-Profile ou Accept-Profile ici !
