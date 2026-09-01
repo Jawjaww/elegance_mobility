@@ -3,6 +3,11 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/lib/database/client";
 import type { Database } from "@/lib/types/database.types";
+import { estimateDriverCompleteness } from "@/lib/drivers/estimateDriverCompleteness";
+import {
+  DRIVER_DOCS_BUCKET,
+  toStoragePath,
+} from "@/lib/storage/driverDocumentPath";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -40,34 +45,15 @@ import {
 type DriverRow = Database["public"]["Tables"]["drivers"]["Row"];
 type DriverDocRow = Database["public"]["Tables"]["driver_documents"]["Row"];
 type DriverStatus = Database["public"]["Enums"]["driver_status"];
-const DRIVER_DOCS_BUCKET = "driver-documents";
 
-/** Resolve a storage object path from a DB file_url (path or legacy public/signed URL). */
-function toStoragePath(fileUrl: string): string | null {
-  const trimmed = fileUrl.trim();
-  if (!trimmed) return null;
-  if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
-    return trimmed.replace(/^\/+/, "");
-  }
-  try {
-    const url = new URL(trimmed);
-    const markers = [
-      `/object/public/${DRIVER_DOCS_BUCKET}/`,
-      `/object/sign/${DRIVER_DOCS_BUCKET}/`,
-      `/object/authenticated/${DRIVER_DOCS_BUCKET}/`,
-    ];
-    for (const marker of markers) {
-      const idx = url.pathname.indexOf(marker);
-      if (idx !== -1) {
-        const raw = url.pathname.slice(idx + marker.length);
-        return decodeURIComponent(raw);
-      }
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
+type CompletenessView = {
+  is_complete: boolean;
+  completion_percentage: number;
+  missing_fields: string[];
+  can_submit: boolean;
+  missing_for_submit: string[];
+  source: "rpc" | "local";
+};
 
 function isImageFileRef(fileRef: string | null | undefined): boolean {
   if (!fileRef) return false;
@@ -237,13 +223,12 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<DriverRow>>({});
   const [saving, setSaving] = useState(false);
-  const [completeness, setCompleteness] = useState<{
-    is_complete: boolean;
-    completion_percentage: number;
-    missing_fields: string[];
-    can_submit: boolean;
-    missing_for_submit: string[];
-  } | null>(null);
+  const [completeness, setCompleteness] = useState<CompletenessView | null>(
+    null,
+  );
+  const [completenessError, setCompletenessError] = useState<string | null>(
+    null,
+  );
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [uploadingType, setUploadingType] = useState<string | null>(null);
 
@@ -263,6 +248,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
     });
 
     const urls: Record<string, string> = {};
+    await supabase.auth.getUser();
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -293,7 +279,23 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
     }
   }
 
-  async function fetchCompleteness(userId: string) {
+  function applyLocalCompleteness(
+    driverRow: DriverRow,
+    docsData: DriverDocRow[],
+    hasPlate: boolean | null,
+    rpcError?: string,
+  ) {
+    const local = estimateDriverCompleteness(driverRow, docsData, hasPlate);
+    setCompleteness({ ...local, source: "local" });
+    setCompletenessError(rpcError ?? null);
+  }
+
+  async function fetchCompleteness(
+    userId: string,
+    driverRow: DriverRow,
+    docsData: DriverDocRow[],
+    hasPlate: boolean | null,
+  ) {
     try {
       const { data: compData, error: compErr } = await supabase
         .rpc("check_driver_profile_completeness", {
@@ -303,11 +305,27 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
       if (compErr) {
         console.warn(
           "[DriverFolderAdmin] completeness RPC failed:",
+          compErr.code,
           compErr.message,
+          compErr.details,
+        );
+        applyLocalCompleteness(
+          driverRow,
+          docsData,
+          hasPlate,
+          compErr.message || "RPC completeness failed",
         );
         return;
       }
-      if (!compData) return;
+      if (!compData) {
+        applyLocalCompleteness(
+          driverRow,
+          docsData,
+          hasPlate,
+          "RPC completeness empty",
+        );
+        return;
+      }
       const d = compData as {
         is_complete?: boolean;
         completion_percentage?: number;
@@ -315,15 +333,28 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
         can_submit?: boolean;
         missing_for_submit?: string[];
       };
+      const missing = d.missing_fields ?? [];
+      if (missing.includes("not authorized")) {
+        applyLocalCompleteness(
+          driverRow,
+          docsData,
+          hasPlate,
+          "RPC completeness not authorized",
+        );
+        return;
+      }
+      setCompletenessError(null);
       setCompleteness({
         is_complete: Boolean(d.is_complete),
         completion_percentage: Number(d.completion_percentage ?? 0),
-        missing_fields: d.missing_fields ?? [],
+        missing_fields: missing,
         can_submit: Boolean(d.can_submit),
         missing_for_submit: d.missing_for_submit ?? [],
+        source: "rpc",
       });
     } catch (e) {
       console.warn("DriverFolderAdmin.completeness check error:", e);
+      applyLocalCompleteness(driverRow, docsData, hasPlate, errorMessage(e));
     }
   }
 
@@ -383,8 +414,28 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
         }
       }
 
+      const resolvedDocs = docsErr ? [] : (docsData ?? []);
+      let hasPlate: boolean | null = null;
+      const { data: vehicles, error: vehicleErr } = await supabase
+        .from("vehicles")
+        .select("license_plate")
+        .eq("driver_id", driverId);
+      if (!vehicleErr && vehicles) {
+        hasPlate = vehicles.some((v) => {
+          const plate = (v.license_plate ?? "").trim();
+          return plate !== "" && plate !== "À compléter";
+        });
+      }
+
       if (driverData.user_id) {
-        await fetchCompleteness(driverData.user_id);
+        await fetchCompleteness(
+          driverData.user_id,
+          driverData,
+          resolvedDocs,
+          hasPlate,
+        );
+      } else {
+        applyLocalCompleteness(driverData, resolvedDocs, hasPlate);
       }
     } catch (e: unknown) {
       console.warn("DriverFolderAdmin.loadData error:", e);
@@ -521,6 +572,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
   async function uploadAdminDocument(docType: string, file: File) {
     setUploadingType(docType);
     try {
+      await supabase.auth.getUser();
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -695,9 +747,15 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
     );
   }
 
-  const completion = completeness?.completion_percentage ?? 0;
+  const completion = completeness?.completion_percentage;
   const canSubmitReady = completeness?.can_submit ?? false;
   const isOpsComplete = completeness?.is_complete ?? false;
+  const completionLabel =
+    completeness?.source === "rpc"
+      ? "Complétion (RPC)"
+      : completeness?.source === "local"
+        ? "Complétion (estimation locale)"
+        : "Complétion";
 
   return (
     <div className="space-y-6">
@@ -772,33 +830,42 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
             <div className="flex justify-between items-end mb-2">
               <div>
                 <span className="text-sm font-medium text-neutral-300">
-                  Complétion (RPC)
+                  {completionLabel}
                 </span>
                 <p className="text-xs text-neutral-500 mt-0.5">
-                  {canSubmitReady ? "Prêt à soumettre" : "Soumission incomplète"}
-                  {" · "}
-                  {isOpsComplete
-                    ? "Opérationnel"
-                    : "Pas encore opérationnel (docs approuvés + valides)"}
+                  {completeness
+                    ? `${canSubmitReady ? "Prêt à soumettre" : "Soumission incomplète"} · ${
+                        isOpsComplete
+                          ? "Opérationnel"
+                          : "Pas encore opérationnel (docs approuvés + valides)"
+                      }`
+                    : completenessError
+                      ? "Vérification distante indisponible"
+                      : "Chargement de la complétion…"}
                 </p>
-                {completion < 100 && (
+                {completeness && completion !== undefined && completion < 100 && (
                   <p className="text-xs text-yellow-400/80 mt-0.5">
                     Le dossier nécessite votre attention
                   </p>
                 )}
+                {completenessError && completeness?.source === "local" && (
+                  <p className="text-xs text-amber-400/80 mt-0.5">
+                    RPC distante en échec — affichage local. {completenessError}
+                  </p>
+                )}
               </div>
               <span className="text-lg font-bold text-neutral-100">
-                {Math.round(completion)}%
+                {completion === undefined ? "—" : `${Math.round(completion)}%`}
               </span>
             </div>
             <div className="w-full bg-neutral-800 rounded-full h-2 border border-neutral-700/50 overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
-                  completion >= 100
+                  (completion ?? 0) >= 100
                     ? "bg-green-500"
                     : "bg-yellow-500"
                 }`}
-                style={{ width: `${Math.min(100, completion)}%` }}
+                style={{ width: `${Math.min(100, completion ?? 0)}%` }}
               />
             </div>
           </div>
@@ -1106,11 +1173,17 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
 
   function renderValidation() {
     const isComplete = completeness?.is_complete ?? false;
-    const completionPct = completeness?.completion_percentage ?? 0;
+    const completionPct = completeness?.completion_percentage;
     const missingFields = completeness?.missing_fields ?? [];
     const missingForSubmit = completeness?.missing_for_submit ?? [];
     const submitSet = new Set(missingForSubmit);
     const adminOnlyMissing = missingFields.filter((f) => !submitSet.has(f));
+    const remoteLabel =
+      completeness?.source === "rpc"
+        ? "Vérification automatique distante"
+        : completeness?.source === "local"
+          ? "Estimation locale (RPC distante indisponible)"
+          : "Vérification indisponible";
 
     return (
       <div>
@@ -1121,19 +1194,28 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
         {/* Résultat de la vérification automatique Supabase */}
         <div
           className={`p-4 rounded-lg mb-6 border ${
-            isComplete
+            completeness && isComplete
               ? "bg-green-900/20 border-green-700"
               : "bg-yellow-900/20 border-yellow-700"
           }`}
         >
           <div className="flex items-center gap-3 mb-3">
-            <span className="text-2xl">{isComplete ? "✅" : "⚠️"}</span>
+            <span className="text-2xl">
+              {completeness && isComplete ? "✅" : "⚠️"}
+            </span>
             <div>
               <div className="font-semibold text-white">
-                {isComplete ? "Dossier complet" : "Dossier incomplet"}
+                {!completeness
+                  ? "Complétion inconnue"
+                  : isComplete
+                    ? "Dossier complet"
+                    : "Dossier incomplet"}
               </div>
               <div className="text-sm text-neutral-400">
-                Vérification automatique distante — {completionPct}% complété
+                {remoteLabel}
+                {completionPct === undefined
+                  ? ""
+                  : ` — ${completionPct}% complété`}
               </div>
             </div>
           </div>
