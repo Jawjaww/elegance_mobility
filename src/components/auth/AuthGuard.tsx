@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/database/client";
 import { useRoleNavigation } from "@/lib/auth/navigation.client";
 import { usePathname } from "next/navigation";
-import { getUserRole as getAppRole } from "@/lib/utils/auth-helpers";
 
 /**
  * AuthGuard — Protection client-side des routes
@@ -12,7 +11,7 @@ import { getUserRole as getAppRole } from "@/lib/utils/auth-helpers";
  * Remplace le middleware serveur pour compatibilité Tauri.
  * Écoute les changements d'authentification et redirige selon le rôle.
  */
-export function AuthGuard({ children }: { children: React.ReactNode }) {
+export function AuthGuard({ children }: Readonly<{ children: React.ReactNode }>) {
   const { redirectToRoleHome } = useRoleNavigation();
   const pathname = usePathname();
   const [isChecking, setIsChecking] = useState(true);
@@ -30,13 +29,15 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
           "/auth/login",
           "/auth/signup",
           "/auth/signup/driver",
-          "/",
           "/reservation",
           "/contact",
         ];
+        // Do NOT include "/" here — pathname.startsWith("/") matches every route.
 
         const isPublicPath =
-          pathname && publicPaths.some((path) => pathname.startsWith(path));
+          pathname === "/" ||
+          (pathname &&
+            publicPaths.some((path) => pathname.startsWith(path)));
 
         // Si pas d'utilisateur ET route privée → redirect login
         if ((error || !user) && !isPublicPath) {
@@ -71,12 +72,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
           "/auth/login",
           "/auth/signup",
           "/auth/signup/driver",
-          "/",
           "/reservation",
           "/contact",
         ];
         const isPublicPath =
-          pathname && publicPaths.some((path) => pathname.startsWith(path));
+          pathname === "/" ||
+          (pathname &&
+            publicPaths.some((path) => pathname.startsWith(path)));
 
         if (!isPublicPath) {
           redirectToRoleHome(null);

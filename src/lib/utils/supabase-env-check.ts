@@ -129,6 +129,13 @@ function messageForJwtEnv(input: {
   return null;
 }
 
+function isLocalSupabaseStack(
+  isLocalhost: boolean,
+  jwtIssuer: string | null,
+): boolean {
+  return isLocalhost && jwtIssuer === "supabase-demo";
+}
+
 function resolveSupabaseEnvMessage(input: {
   hasUrl: boolean;
   hasAnonKey: boolean;
@@ -141,12 +148,18 @@ function resolveSupabaseEnvMessage(input: {
   keyProjectRef: string | null;
   refsMatch: boolean;
 }): string | null {
-  const { hasUrl, hasAnonKey, isLocalhost, anonKeyFormat } = input;
+  const { hasUrl, hasAnonKey, isLocalhost, anonKeyFormat, jwtIssuer } = input;
 
   if (!hasUrl || !hasAnonKey) {
     return "Variables Supabase manquantes sur ce déploiement. Redéployez après avoir défini NEXT_PUBLIC_SUPABASE_URL et NEXT_PUBLIC_SUPABASE_ANON_KEY (Preview + Production).";
   }
   if (isLocalhost) {
+    if (
+      isLocalSupabaseStack(isLocalhost, jwtIssuer) ||
+      process.env.NODE_ENV === "development"
+    ) {
+      return null;
+    }
     return "NEXT_PUBLIC_SUPABASE_URL pointe vers localhost — utilisez l'URL cloud du projet.";
   }
   if (anonKeyFormat === "unknown") {
@@ -190,12 +203,22 @@ export function inspectSupabasePublicEnv(
     refsMatch,
   });
 
-  const ok =
+  const localDevOk =
+    isLocalhost &&
     hasUrl &&
     hasAnonKey &&
-    !isLocalhost &&
-    anonKeyFormat !== "unknown" &&
-    (anonKeyFormat !== "jwt" || refsMatch);
+    anonKeyFormat === "jwt" &&
+    jwtSegmentCount === 3 &&
+    (isLocalSupabaseStack(isLocalhost, jwtIssuer) ||
+      process.env.NODE_ENV === "development");
+
+  const ok =
+    localDevOk ||
+    (hasUrl &&
+      hasAnonKey &&
+      !isLocalhost &&
+      anonKeyFormat !== "unknown" &&
+      (anonKeyFormat !== "jwt" || refsMatch));
 
   return {
     ok,

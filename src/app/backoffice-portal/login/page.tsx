@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense, useEffect, useRef, useState } from "react";
 import {
   Card,
   CardContent,
@@ -8,19 +9,19 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { AdminLoginForm } from "./AdminLoginForm";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/database/client";
-import { getUserRole } from "@/lib/utils/auth-helpers";
+import { isUserAdmin } from "@/lib/utils/auth-helpers";
+import { resolveBackofficePostLoginPath } from "@/lib/auth/backoffice-auth";
 
-export default function AdminLoginPage() {
+function AdminLoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isChecking, setIsChecking] = useState(true);
   const hasRedirected = useRef(false);
 
   useEffect(() => {
-    // Éviter les redirections multiples
     if (hasRedirected.current) return;
 
     const checkSession = async () => {
@@ -29,18 +30,11 @@ export default function AdminLoginPage() {
           data: { user },
         } = await supabase.auth.getUser();
 
-        if (user && !hasRedirected.current) {
+        if (user && !hasRedirected.current && isUserAdmin(user)) {
           hasRedirected.current = true;
-
-          // Vérifier si c'est un admin pour rediriger directement
-          const role = getUserRole(user);
-          if (role === "app_admin" || role === "app_super_admin") {
-            router.replace("/backoffice-portal/dashboard");
-          } else if (role === "app_driver") {
-            router.replace("/driver-portal/dashboard");
-          } else {
-            router.replace("/my-account");
-          }
+          router.replace(
+            resolveBackofficePostLoginPath(searchParams?.get("next") ?? null),
+          );
           return;
         }
       } catch (error) {
@@ -50,14 +44,13 @@ export default function AdminLoginPage() {
       }
     };
 
-    checkSession();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Pas de dépendances pour éviter les boucles
+    void checkSession();
+  }, [router, searchParams]);
 
   if (isChecking) {
     return (
       <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent" />
       </div>
     );
   }
@@ -81,11 +74,25 @@ export default function AdminLoginPage() {
               href="/"
               className="text-sm text-neutral-400 hover:text-white"
             >
-              Retour à l'accueil
+              Retour à l&apos;accueil
             </Link>
           </div>
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent" />
+        </div>
+      }
+    >
+      <AdminLoginPageContent />
+    </Suspense>
   );
 }

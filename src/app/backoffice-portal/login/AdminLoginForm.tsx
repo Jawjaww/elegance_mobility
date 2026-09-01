@@ -1,17 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/useToast";
+import { resolveBackofficePostLoginPath } from "@/lib/auth/backoffice-auth";
+import { supabase } from "@/lib/database/client";
 
 export function AdminLoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -78,7 +81,9 @@ export function AdminLoginForm() {
           variant: "destructive",
           title: loginJson?.error || "Échec d'authentification",
           description:
-            detailMsg || "Vérifiez vos identifiants ou réessayez plus tard.",
+            detailMsg ||
+            (typeof loginJson?.error === "string" ? loginJson.error : undefined) ||
+            "Vérifiez vos identifiants ou réessayez plus tard.",
         });
         setIsLoading(false);
         return;
@@ -93,13 +98,20 @@ export function AdminLoginForm() {
         loginJson?.session?.access_token &&
         loginJson?.session?.refresh_token
       ) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: loginJson.session.access_token,
+          refresh_token: loginJson.session.refresh_token,
+        });
+        if (sessionError) {
+          throw sessionError;
+        }
+
         try {
           globalThis.dispatchEvent(
             new CustomEvent("elegance:setSession", {
               detail: loginJson.session,
             }),
           );
-          console.debug("[AdminLogin] Dispatched elegance:setSession event");
         } catch (e) {
           console.warn("[AdminLogin] Failed to dispatch setSession event", e);
         }
@@ -116,8 +128,10 @@ export function AdminLoginForm() {
         description: "Vous êtes maintenant connecté",
       });
 
-      // Redirection vers le dashboard admin
-      router.push("/backoffice-portal/dashboard");
+      const destination = resolveBackofficePostLoginPath(
+        searchParams?.get("next") ?? null,
+      );
+      router.push(destination);
     } catch (error: any) {
       toast({
         variant: "destructive",
