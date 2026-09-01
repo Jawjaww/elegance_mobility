@@ -1,9 +1,21 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/database/client'
+import { isIncompleteDossierValidationError } from '@/lib/drivers/adminDrivers'
 import { useToast } from './useToast'
 
+export type DriverValidationResult = {
+  success: boolean
+  error?: string
+  /** True when approve was blocked because ops completeness is incomplete. */
+  incompleteDossier?: boolean
+}
+
 export interface UseDriverValidationReturn {
-  validateDriver: (driverId: string, approved: boolean, reason?: string) => Promise<{ success: boolean; error?: string }>
+  validateDriver: (
+    driverId: string,
+    approved: boolean,
+    reason?: string,
+  ) => Promise<DriverValidationResult>
   isLoading: boolean
 }
 
@@ -34,7 +46,19 @@ export function useDriverValidation(): UseDriverValidationReturn {
 
       const row = Array.isArray(data) ? data[0] : data
       if (row?.success === false) {
-        throw new Error(row.message || 'Validation refusée')
+        const message = row.message || 'Validation refusée'
+        const incompleteDossier =
+          approved && isIncompleteDossierValidationError(message)
+
+        toast({
+          title: incompleteDossier ? 'Dossier incomplet' : 'Validation impossible',
+          description: incompleteDossier
+            ? `${message} Complétez le dossier pour activer le chauffeur.`
+            : message,
+          variant: 'destructive',
+        })
+
+        return { success: false, error: message, incompleteDossier }
       }
 
       toast({

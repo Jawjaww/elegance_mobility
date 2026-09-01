@@ -40,6 +40,7 @@ import {
   Briefcase,
   FileText,
   ShieldCheck,
+  Pencil,
 } from "lucide-react";
 
 type DriverRow = Database["public"]["Tables"]["drivers"]["Row"];
@@ -750,12 +751,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
   const completion = completeness?.completion_percentage;
   const canSubmitReady = completeness?.can_submit ?? false;
   const isOpsComplete = completeness?.is_complete ?? false;
-  const completionLabel =
-    completeness?.source === "rpc"
-      ? "Complétion (RPC)"
-      : completeness?.source === "local"
-        ? "Complétion (estimation locale)"
-        : "Complétion";
+  const completionLabel = "Complétion du dossier";
 
   return (
     <div className="space-y-6">
@@ -820,6 +816,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                 </>
               ) : (
                 <Button onClick={() => setEditing(true)} size="sm">
+                  <Pencil className="h-4 w-4 mr-2" aria-hidden />
                   Modifier le profil
                 </Button>
               )}
@@ -850,7 +847,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                 )}
                 {completenessError && completeness?.source === "local" && (
                   <p className="text-xs text-amber-400/80 mt-0.5">
-                    RPC distante en échec — affichage local. {completenessError}
+                    Vérification serveur indisponible — estimation affichée.
                   </p>
                 )}
               </div>
@@ -1004,7 +1001,6 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
           ))}
         </div>
 
-        {/* Status (read-only chips — dossier transitions via RPC only) */}
         <div className="mt-6 pt-4 border-t border-neutral-700">
           <span className="text-sm text-neutral-400 mb-2 block">
             Statut actuel
@@ -1015,12 +1011,14 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
           >
             {driverStatusLabels[driver?.status ?? "draft"]}
           </Badge>
-          <p className="text-xs text-neutral-500 mt-2">
-            Approuver / rejeter uniquement via les actions dossier (RPC
-            validate_driver_dossier) quand le statut est pending_review.
-            « Renvoyer pour correction » annule la demande (draft) via
-            cancel_driver_dossier_review sans rejeter formellement.
-          </p>
+          {driver?.status === "pending_review" && (
+            <p className="text-xs text-neutral-500 mt-2">
+              Tant que le dossier est en attente, utilisez les actions en bas de
+              page pour activer, rejeter ou renvoyer le chauffeur en correction.
+              « Renvoyer pour correction » remet le dossier en brouillon sans
+              rejet formel.
+            </p>
+          )}
         </div>
       </div>
     );
@@ -1180,9 +1178,9 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
     const adminOnlyMissing = missingFields.filter((f) => !submitSet.has(f));
     const remoteLabel =
       completeness?.source === "rpc"
-        ? "Vérification automatique distante"
+        ? "Vérification automatique"
         : completeness?.source === "local"
-          ? "Estimation locale (RPC distante indisponible)"
+          ? "Estimation locale (serveur indisponible)"
           : "Vérification indisponible";
 
     return (
@@ -1191,7 +1189,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
           Validation du dossier
         </h3>
 
-        {/* Résultat de la vérification automatique Supabase */}
+        {/* Completeness summary for admin review */}
         <div
           className={`p-4 rounded-lg mb-6 border ${
             completeness && isComplete
@@ -1292,7 +1290,9 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
             )}
             {driver?.status !== "pending_review" && (
               <p className="text-xs text-neutral-500">
-                Validation RPC disponible uniquement en statut pending_review.
+                L&apos;activation ou le rejet du dossier est disponible
+                uniquement lorsque le statut est «{" "}
+                {driverStatusLabels.pending_review} ».
               </p>
             )}
           </div>

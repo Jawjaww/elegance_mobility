@@ -22,6 +22,22 @@ export function driverDisplayName(
   return formatPersonName(driver.first_name, driver.last_name);
 }
 
+export function driverDossierPath(driverId: string): string {
+  return `/backoffice-portal/drivers/${driverId}/documents`;
+}
+
+/** RPC validate_driver_dossier refusal when ops completeness is below 100%. */
+export function isIncompleteDossierValidationError(
+  message: string | undefined,
+): boolean {
+  if (!message?.trim()) return false;
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("dossier incomplet") ||
+    lower.includes("impossible d'activer")
+  );
+}
+
 export function vehicleSummaryLabel(
   vehicle: VehicleSummary | null | undefined,
 ): string | null {
@@ -81,6 +97,11 @@ export async function fetchDriversWithVehicles(): Promise<DriverWithVehicle[]> {
       ? (vehiclesById.get(driver.current_vehicle_id) ?? null)
       : null,
   }));
+}
+
+export async function fetchPendingReviewDrivers(): Promise<DriverWithVehicle[]> {
+  const drivers = await fetchDriversWithVehicles();
+  return drivers.filter((driver) => driver.status === "pending_review");
 }
 
 export function filterDrivers(

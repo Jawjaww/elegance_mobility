@@ -1,123 +1,118 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { useDriverValidation } from "@/hooks/useDriverSignup"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { supabase } from "@/lib/database/client"
+import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { ClipboardCheck } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useDriverValidation } from "@/hooks/useDriverSignup";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { supabase } from "@/lib/database/client";
+import {
+  driverDisplayName,
+  driverDossierPath,
+  fetchPendingReviewDrivers,
+  type DriverWithVehicle,
+} from "@/lib/drivers/adminDrivers";
+import { useToast } from "@/hooks/useToast";
 
-interface PendingDriver {
-  id: string
-  first_name: string
-  last_name: string
-  email: string
-  phone: string
-  vtc_card_number: string
-  driving_license_number: string
-  vtc_card_expiry_date: string
-  created_at: string
+function loadErrorMessage(error: unknown): string {
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  if (error instanceof Error) return error.message;
+  return "Erreur inconnue";
 }
 
 export default function PendingDriversPage() {
-  const { validateDriver, isLoading: isValidating } = useDriverValidation()
-  const [pendingDrivers, setPendingDrivers] = useState<PendingDriver[]>([])
-  const [loading, setLoading] = useState(true)
-  const [selectedDriver, setSelectedDriver] = useState<PendingDriver | null>(null)
-  const [rejectionReason, setRejectionReason] = useState("")
-  const [showRejectDialog, setShowRejectDialog] = useState(false)
+  const { validateDriver, isLoading: isValidating } = useDriverValidation();
+  const { toast } = useToast();
+  const [pendingDrivers, setPendingDrivers] = useState<DriverWithVehicle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedDriver, setSelectedDriver] = useState<DriverWithVehicle | null>(
+    null,
+  );
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
 
-  // Charger les chauffeurs en attente
-  const loadPendingDrivers = async () => {
+  const loadPendingDrivers = useCallback(async () => {
     try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from("drivers")
-        .select(`
-          id,
-          first_name,
-          last_name,
-          email,
-          phone,
-          vtc_card_number,
-          driving_license_number,
-          vtc_card_expiry_date,
-          created_at
-        `)
-        .eq("status", "pending_review")
-        .order("created_at", { ascending: false })
-
-      if (error) throw error
-
-      setPendingDrivers(data || [])
+      setLoading(true);
+      const data = await fetchPendingReviewDrivers();
+      setPendingDrivers(data);
     } catch (error) {
-      console.error("Erreur lors du chargement des chauffeurs:", error)
+      const message = loadErrorMessage(error);
+      console.error("Erreur lors du chargement des chauffeurs:", message, error);
+      toast({
+        title: "Erreur",
+        description: `Impossible de charger les chauffeurs : ${message}`,
+        variant: "destructive",
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  }, [toast]);
 
-  // Charger les données au montage et lors des changements
   useEffect(() => {
-    loadPendingDrivers()
+    void loadPendingDrivers();
 
-    // Configurer la subscription pour les mises à jour en temps réel
     const subscription = supabase
-      .channel('pending-drivers')
+      .channel("pending-drivers")
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'drivers',
-          filter: 'status=eq.pending_review'
+          event: "*",
+          schema: "public",
+          table: "drivers",
+          filter: "status=eq.pending_review",
         },
         () => {
-          loadPendingDrivers()
-        }
+          void loadPendingDrivers();
+        },
       )
-      .subscribe()
+      .subscribe();
 
     return () => {
-      subscription.unsubscribe()
-    }
-  }, [])
+      subscription.unsubscribe();
+    };
+  }, [loadPendingDrivers]);
 
-  // Gérer la validation
-  const handleValidate = async (driver: PendingDriver) => {
-    const result = await validateDriver(driver.id, true)
-    if (result.success) {
-      await loadPendingDrivers()
-    }
-  }
+  const handleReject = (driver: DriverWithVehicle) => {
+    setSelectedDriver(driver);
+    setShowRejectDialog(true);
+  };
 
-  // Gérer le rejet
-  const handleReject = async (driver: PendingDriver) => {
-    setSelectedDriver(driver)
-    setShowRejectDialog(true)
-  }
-
-  // Confirmer le rejet
   const confirmReject = async () => {
-    if (!selectedDriver) return
+    if (!selectedDriver) return;
 
-    const result = await validateDriver(selectedDriver.id, false, rejectionReason)
+    const result = await validateDriver(
+      selectedDriver.id,
+      false,
+      rejectionReason,
+    );
     if (result.success) {
-      setShowRejectDialog(false)
-      setRejectionReason("")
-      setSelectedDriver(null)
-      await loadPendingDrivers()
+      setShowRejectDialog(false);
+      setRejectionReason("");
+      setSelectedDriver(null);
+      await loadPendingDrivers();
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="min-h-[200px] flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent" />
       </div>
-    )
+    );
   }
 
   return (
@@ -127,10 +122,11 @@ export default function PendingDriversPage() {
           Chauffeurs en attente
         </h2>
         <p className="text-neutral-400 text-sm mt-1">
-          Dossiers soumis en attente de validation
+          Ouvrez chaque dossier pour vérifier les informations, approuver les
+          documents un par un, puis activer le chauffeur depuis la fiche dossier.
         </p>
       </div>
-      
+
       {pendingDrivers.length === 0 ? (
         <Card>
           <CardContent className="py-8">
@@ -141,22 +137,26 @@ export default function PendingDriversPage() {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {pendingDrivers.map(driver => (
+          {pendingDrivers.map((driver) => (
             <Card key={driver.id} className="bg-neutral-900 border-neutral-800">
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold">
-                    {driver.first_name} {driver.last_name}
+                    {driverDisplayName(driver)}
                   </h2>
-                  <p className="text-sm text-neutral-400">{driver.email}</p>
+                  <p className="text-sm text-neutral-400">
+                    {driver.phone ?? "Téléphone non renseigné"}
+                  </p>
                 </div>
-                <div className="space-x-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
-                    onClick={() => handleValidate(driver)}
-                    disabled={isValidating}
-                    className="bg-green-600 hover:bg-green-700"
+                    asChild
+                    className="bg-emerald-600 hover:bg-emerald-700"
                   >
-                    Valider
+                    <Link href={driverDossierPath(driver.id)}>
+                      <ClipboardCheck className="h-4 w-4 mr-2" aria-hidden />
+                      Réviser le dossier
+                    </Link>
                   </Button>
                   <Button
                     onClick={() => handleReject(driver)}
@@ -170,19 +170,25 @@ export default function PendingDriversPage() {
               <CardContent>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-neutral-400">Téléphone</p>
-                    <p>{driver.phone}</p>
-                  </div>
-                  <div>
                     <p className="text-neutral-400">Carte VTC</p>
-                    <p>{driver.vtc_card_number}</p>
+                    <p>{driver.vtc_card_number ?? "—"}</p>
                   </div>
                   <div>
                     <p className="text-neutral-400">Permis</p>
-                    <p>{driver.driving_license_number}</p>
+                    <p>{driver.driving_license_number ?? "—"}</p>
                   </div>
                   <div>
-                    <p className="text-neutral-400">Date d'inscription</p>
+                    <p className="text-neutral-400">Expiration carte VTC</p>
+                    <p>
+                      {driver.vtc_card_expiry_date
+                        ? new Date(
+                            driver.vtc_card_expiry_date,
+                          ).toLocaleDateString()
+                        : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-neutral-400">Date d&apos;inscription</p>
                     <p>{new Date(driver.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>
@@ -192,7 +198,6 @@ export default function PendingDriversPage() {
         </div>
       )}
 
-      {/* Dialog de rejet */}
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <DialogContent>
           <DialogHeader>
@@ -211,10 +216,7 @@ export default function PendingDriversPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setShowRejectDialog(false)}
-            >
+            <Button variant="ghost" onClick={() => setShowRejectDialog(false)}>
               Annuler
             </Button>
             <Button
@@ -228,5 +230,5 @@ export default function PendingDriversPage() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }
