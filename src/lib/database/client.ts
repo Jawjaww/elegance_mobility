@@ -6,8 +6,11 @@ import { normalizeAnonKey } from "@/lib/utils/supabase-env-check";
 // Re-export pour l'utilisation externe
 export { createBrowserClient };
 
+type BrowserSupabase = ReturnType<typeof createBrowserClient>;
+
 // Force login only after a real SIGNED_OUT. Failed RLS queries must not wipe the session.
 let redirectingToLogin = false;
+let browserClient: BrowserSupabase | null = null;
 
 async function handleAuthError() {
   if (redirectingToLogin) return;
@@ -36,16 +39,44 @@ async function handleAuthError() {
   }, 500);
 }
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
-const supabaseAnonKey = normalizeAnonKey(
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
-);
+function bindAuthListener(client: BrowserSupabase) {
+  // Only a real sign-out should force login. INITIAL_SESSION with a null
+  // session (or a failed table query) must not wipe a still-valid cookie session.
+  client.auth.onAuthStateChange((event) => {
+    if (globalThis.location === undefined) return;
+    if (event !== "SIGNED_OUT" || redirectingToLogin) return;
 
-// Client Supabase singleton pour le navigateur
-export const supabase = createBrowserClient(
-  supabaseUrl,
-  supabaseAnonKey,
-  {
+    const protectedPaths = ["/backoffice-portal/", "/driver-portal/"];
+    const isProtected = protectedPaths.some((p) =>
+      globalThis.location.pathname.startsWith(p),
+    );
+    const isLoginPage = globalThis.location.pathname.includes("/login");
+
+    if (isProtected && !isLoginPage) {
+      handleAuthError();
+    }
+  });
+}
+
+/**
+ * Lazy browser client. Do not construct at module load: `next build` prerenders
+ * `/_not-found` through the root layout (ClientProviders) and createBrowserClient
+ * throws if URL/anon key are missing in that environment.
+ */
+export function getBrowserSupabase(): BrowserSupabase {
+  if (browserClient) return browserClient;
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
+  const supabaseAnonKey = normalizeAnonKey(
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+  );
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are required to create a Supabase client",
+    );
+  }
+
+  browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       flowType: "pkce",
       autoRefreshToken: true,
@@ -60,24 +91,18 @@ export const supabase = createBrowserClient(
     db: {
       schema: "public",
     },
+  });
+  bindAuthListener(browserClient);
+  return browserClient;
+}
+
+/** Compatible singleton — constructs on first property access, not at import. */
+export const supabase: BrowserSupabase = new Proxy({} as BrowserSupabase, {
+  get(_target, prop, receiver) {
+    const client = getBrowserSupabase();
+    const value = Reflect.get(client, prop, receiver);
+    return typeof value === "function" ? value.bind(client) : value;
   },
-);
-
-// Only a real sign-out should force login. INITIAL_SESSION with a null
-// session (or a failed table query) must not wipe a still-valid cookie session.
-supabase.auth.onAuthStateChange((event) => {
-  if (globalThis.location === undefined) return;
-  if (event !== "SIGNED_OUT" || redirectingToLogin) return;
-
-  const protectedPaths = ["/backoffice-portal/", "/driver-portal/"];
-  const isProtected = protectedPaths.some((p) =>
-    globalThis.location.pathname.startsWith(p),
-  );
-  const isLoginPage = globalThis.location.pathname.includes("/login");
-
-  if (isProtected && !isLoginPage) {
-    handleAuthError();
-  }
 });
 
 /**
@@ -106,7 +131,7 @@ export function handleRoleError(error: any): boolean {
 // Helper pour la déconnexion
 export async function signOut() {
   try {
-    const { error } = await supabase.auth.signOut();
+    const { error } = await getBrowserSupabase().auth.signOut();
 
     if (error) {
       console.error("Erreur lors de la déconnexion:", error);
@@ -135,7 +160,8 @@ export async function signOut() {
  */
 export async function debugRlsProblem() {
   try {
-    const { data: userData, error: userError } = await supabase.auth.getUser();
+    const { data: userData, error: userError } =
+      await getBrowserSupabase().auth.getUser();
 
     if (userError) {
       console.error(
@@ -165,7 +191,10 @@ export async function debugRlsProblem() {
     console.log("[RLS DEBUG] Informations utilisateur complètes:", userDetails);
 
     // Tester explicitement la politique RLS
-    const testResult = await supabase.from("rides").select("count(*)").limit(1);
+    const testResult = await getBrowserSupabase()
+      .from("rides")
+      .select("count(*)")
+      .limit(1);
 
     console.log("[RLS DEBUG] Test de lecture:", testResult);
 
