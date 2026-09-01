@@ -6,7 +6,7 @@ import { normalizeAnonKey } from "@/lib/utils/supabase-env-check";
 // Re-export pour l'utilisation externe
 export { createBrowserClient };
 
-// Intercepteur d'erreurs 403 — redirige vers le login si la session est invalide
+// Force login only after a real SIGNED_OUT. Failed RLS queries must not wipe the session.
 let redirectingToLogin = false;
 
 async function handleAuthError() {
@@ -63,23 +63,20 @@ export const supabase = createBrowserClient(
   },
 );
 
-// Écouter les changements d'état d'authentification pour détecter les déconnexions
-supabase.auth.onAuthStateChange((event, session) => {
+// Only a real sign-out should force login. INITIAL_SESSION with a null
+// session (or a failed table query) must not wipe a still-valid cookie session.
+supabase.auth.onAuthStateChange((event) => {
   if (globalThis.location === undefined) return;
-  if (event === "SIGNED_OUT" || (!session && !redirectingToLogin)) {
-    // Vérifier si on est sur une page protégée
-    const protectedPaths = [
-      "/backoffice-portal/",
-      "/driver-portal/",
-    ];
-    const isProtected = protectedPaths.some((p) =>
-      globalThis.location.pathname.startsWith(p),
-    );
-    const isLoginPage = globalThis.location.pathname.includes("/login");
+  if (event !== "SIGNED_OUT" || redirectingToLogin) return;
 
-    if (isProtected && !isLoginPage) {
-      handleAuthError();
-    }
+  const protectedPaths = ["/backoffice-portal/", "/driver-portal/"];
+  const isProtected = protectedPaths.some((p) =>
+    globalThis.location.pathname.startsWith(p),
+  );
+  const isLoginPage = globalThis.location.pathname.includes("/login");
+
+  if (isProtected && !isLoginPage) {
+    handleAuthError();
   }
 });
 

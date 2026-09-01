@@ -232,7 +232,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [docs, setDocs] = useState<DriverDocRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dataLoaded, setDataLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState(0);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<DriverRow>>({});
@@ -255,25 +255,6 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
     loadData();
   }, [driverId]);
 
-  // Si le driver est null après chargement (session invalide), rediriger vers login
-  useEffect(() => {
-    if (dataLoaded && !driver) {
-      console.warn(
-        "[DriverFolderAdmin] No driver data after load — redirecting to login",
-      );
-      globalThis.dispatchEvent(
-        new CustomEvent("elegance:authError", {
-          detail: {
-            title: "Session expirée",
-            description: "Votre session a expirée — veuillez vous reconnecter.",
-          },
-        }),
-      );
-      setTimeout(() => {
-        globalThis.location.href = "/backoffice-portal/login";
-      }, 1000);
-    }
-  }, [dataLoaded, driver]);
 
   async function generateSignedUrls(docsData: DriverDocRow[]) {
     // Revoke previous blob: URLs to avoid leaks
@@ -353,20 +334,15 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
 
   async function loadData() {
     setLoading(true);
+    setLoadError(null);
     try {
       console.log("[DriverFolderAdmin] Loading data for driverId:", driverId);
 
-      const [
-        { data: driverData, error: driverErr },
-        { data: docsData, error: docsErr },
-      ] = await Promise.all([
-        supabase.from("drivers").select("*").eq("id", driverId).maybeSingle(),
-        supabase
-          .from("driver_documents")
-          .select("*")
-          .eq("driver_id", driverId)
-          .order("upload_date", { ascending: false }),
-      ]);
+      const { data: driverData, error: driverErr } = await supabase
+        .from("drivers")
+        .select("*")
+        .eq("id", driverId)
+        .maybeSingle();
 
       console.log(
         "[DriverFolderAdmin] Driver data:",
@@ -374,6 +350,22 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
         "error:",
         driverErr,
       );
+
+      if (driverErr) throw driverErr;
+      setDriver(driverData);
+      setForm(driverData ?? {});
+
+      if (!driverData) {
+        setDocs([]);
+        return;
+      }
+
+      const { data: docsData, error: docsErr } = await supabase
+        .from("driver_documents")
+        .select("*")
+        .eq("driver_id", driverId)
+        .order("upload_date", { ascending: false });
+
       console.log(
         "[DriverFolderAdmin] Docs data:",
         docsData,
@@ -383,21 +375,26 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
         docsErr,
       );
 
-      if (driverErr) throw driverErr;
-      if (docsErr) throw docsErr;
-      setDriver(driverData);
-      setForm(driverData ?? {});
-      setDocs(docsData ?? []);
-
-      if (docsData && docsData.length > 0) {
-        await generateSignedUrls(docsData);
+      if (docsErr) {
+        toast({
+          title: "Documents",
+          description: docsErr.message,
+          variant: "destructive",
+        });
+        setDocs([]);
+      } else {
+        setDocs(docsData ?? []);
+        if (docsData && docsData.length > 0) {
+          await generateSignedUrls(docsData);
+        }
       }
 
-      if (driverData?.user_id) {
+      if (driverData.user_id) {
         await fetchCompleteness(driverData.user_id);
       }
     } catch (e: unknown) {
       console.warn("DriverFolderAdmin.loadData error:", e);
+      setLoadError(errorMessage(e));
       toast({
         title: "Erreur",
         description: errorMessage(e),
@@ -405,7 +402,6 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
       });
     } finally {
       setLoading(false);
-      setDataLoaded(true);
     }
   }
 
@@ -680,6 +676,27 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
     return (
       <div className="min-h-[200px] flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!driver) {
+    return (
+      <div className="space-y-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-neutral-400 hover:text-neutral-100 -ml-2"
+          asChild
+        >
+          <Link href="/backoffice-portal/drivers">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Retour aux chauffeurs
+          </Link>
+        </Button>
+        <p className="text-sm text-neutral-300">
+          {loadError ?? "Chauffeur introuvable."}
+        </p>
       </div>
     );
   }
