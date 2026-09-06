@@ -6,9 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import type { Database } from "@/lib/types/database.types";
-import type { PostgrestError } from "@supabase/supabase-js";
-import { supabase, debugRlsProblem } from "@/lib/database/client";
-import { reservationService } from "@/lib/services/reservationService";
+import { supabase } from "@/lib/database/client";
 import LocationStep from "@/components/reservation/LocationStep";
 import VehicleStep from "@/components/reservation/VehicleStep";
 import {
@@ -17,7 +15,6 @@ import {
 } from "@/lib/vehicle";
 import { normalizeSelectedOptions } from "@/lib/services/optionsCatalogService";
 
-type RideUpdate = Database["public"]["Tables"]["rides"]["Update"];
 type Reservation = Database["public"]["Tables"]["rides"]["Row"];
 
 function EditReservationContent() {
@@ -103,95 +100,11 @@ function EditReservationContent() {
   const handleNextStep = () => setStep((s) => s + 1);
   const handlePrevStep = () => setStep((s) => s - 1);
 
-  const handleEditConfirm = async () => {
+  const handleContinueToConfirmation = () => {
     if (!reservationId) return;
-
-    try {
-      console.log("[DEBUG] Démarrage de la mise à jour de la réservation");
-
-      const rlsCheck = await debugRlsProblem();
-      console.log("[DEBUG] État de l'authentification:", rlsCheck);
-
-      if (!rlsCheck.success) {
-        console.error("[DEBUG] Problème d'authentification:", rlsCheck.error);
-        setError("Erreur d'authentification. Veuillez vous reconnecter.");
-        return;
-      }
-
-      const updateData: RideUpdate = {
-        pickup_address: reservationStore.departure?.display_name ?? undefined,
-        pickup_lat:
-          typeof reservationStore.departure?.lat === "number"
-            ? reservationStore.departure.lat
-            : undefined,
-        pickup_lon:
-          typeof reservationStore.departure?.lon === "number"
-            ? reservationStore.departure.lon
-            : undefined,
-        dropoff_address:
-          reservationStore.destination?.display_name ?? undefined,
-        dropoff_lat:
-          typeof reservationStore.destination?.lat === "number"
-            ? reservationStore.destination.lat
-            : undefined,
-        dropoff_lon:
-          typeof reservationStore.destination?.lon === "number"
-            ? reservationStore.destination.lon
-            : undefined,
-        pickup_time:
-          reservationStore.pickupDateTime?.toISOString() ?? undefined,
-        vehicle_type: reservationStore.selectedVehicle ?? undefined,
-        options: Array.isArray(reservationStore.selectedOptions)
-          ? reservationStore.selectedOptions
-          : undefined,
-        distance:
-          typeof reservationStore.distance === "number"
-            ? reservationStore.distance
-            : undefined,
-        duration:
-          typeof reservationStore.duration === "number"
-            ? reservationStore.duration
-            : undefined,
-        updated_at: new Date().toISOString(),
-      };
-
-      console.log("[DEBUG] Données à mettre à jour:", updateData);
-
-      const { data: testRead, error: testError } = await supabase
-        .from("rides")
-        .select("id")
-        .eq("id", reservationId)
-        .single();
-
-      console.log("[DEBUG] Test de lecture:", { testRead, testError });
-
-      if (testError) {
-        console.error("[DEBUG] Erreur lors du test de lecture:", testError);
-        setError(`Erreur d'accès à la réservation: ${testError.message}`);
-        return;
-      }
-
-      const { success, error } = await reservationService.updateReservation(
-        reservationId,
-        updateData,
-      );
-
-      if (!success) {
-        const postgrestError = error as PostgrestError;
-        console.error("[DEBUG] Échec de la mise à jour:", postgrestError);
-        setError(
-          `Erreur lors de la modification de la réservation: ${postgrestError?.message || "Erreur inconnue"}`,
-        );
-        return;
-      }
-
-      router.push(
-        `/my-account/reservations/edit-confirmation?id=${reservationId}`,
-      );
-    } catch (err) {
-      console.error("[DEBUG] Exception dans handleEditConfirm:", err);
-      setError("Erreur inattendue lors de la modification de la réservation");
-    }
+    router.push(
+      `/my-account/reservations/edit-confirmation?id=${reservationId}`,
+    );
   };
 
   if (!reservationId) {
@@ -260,7 +173,7 @@ function EditReservationContent() {
             )
           }
           onPrevious={handlePrevStep}
-          onConfirm={handleEditConfirm}
+          onConfirm={handleContinueToConfirmation}
           isEditing={true}
         />
       );
