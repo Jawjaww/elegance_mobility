@@ -56,6 +56,44 @@ type CompletenessView = {
   source: "rpc" | "local";
 };
 
+function formatCompletenessDetail(input: {
+  completeness: CompletenessView | null;
+  completenessError: string | null;
+  canSubmitReady: boolean;
+  isOpsComplete: boolean;
+}): string {
+  if (input.completeness) {
+    const submitLabel = input.canSubmitReady
+      ? "Prêt à soumettre"
+      : "Soumission incomplète";
+    const opsLabel = input.isOpsComplete
+      ? "Opérationnel"
+      : "Pas encore opérationnel (docs approuvés + valides)";
+    return `${submitLabel} · ${opsLabel}`;
+  }
+  if (input.completenessError) {
+    return "Vérification distante indisponible";
+  }
+  return "Chargement de la complétion…";
+}
+
+function completenessSourceLabel(
+  source: CompletenessView["source"] | undefined,
+): string {
+  if (source === "rpc") return "Vérification automatique";
+  if (source === "local") return "Estimation locale (serveur indisponible)";
+  return "Vérification indisponible";
+}
+
+function completenessStatusTitle(
+  hasCompleteness: boolean,
+  isComplete: boolean,
+): string {
+  if (!hasCompleteness) return "Complétion inconnue";
+  if (isComplete) return "Dossier complet";
+  return "Dossier incomplet";
+}
+
 function isImageFileRef(fileRef: string | null | undefined): boolean {
   if (!fileRef) return false;
   const pathOnly = fileRef.split("?")[0] ?? fileRef;
@@ -752,6 +790,12 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
   const canSubmitReady = completeness?.can_submit ?? false;
   const isOpsComplete = completeness?.is_complete ?? false;
   const completionLabel = "Complétion du dossier";
+  const completenessDetail = formatCompletenessDetail({
+    completeness,
+    completenessError,
+    canSubmitReady,
+    isOpsComplete,
+  });
 
   return (
     <div className="space-y-6">
@@ -830,15 +874,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                   {completionLabel}
                 </span>
                 <p className="text-xs text-neutral-500 mt-0.5">
-                  {completeness
-                    ? `${canSubmitReady ? "Prêt à soumettre" : "Soumission incomplète"} · ${
-                        isOpsComplete
-                          ? "Opérationnel"
-                          : "Pas encore opérationnel (docs approuvés + valides)"
-                      }`
-                    : completenessError
-                      ? "Vérification distante indisponible"
-                      : "Chargement de la complétion…"}
+                  {completenessDetail}
                 </p>
                 {completeness && completion !== undefined && completion < 100 && (
                   <p className="text-xs text-yellow-400/80 mt-0.5">
@@ -1176,12 +1212,11 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
     const missingForSubmit = completeness?.missing_for_submit ?? [];
     const submitSet = new Set(missingForSubmit);
     const adminOnlyMissing = missingFields.filter((f) => !submitSet.has(f));
-    const remoteLabel =
-      completeness?.source === "rpc"
-        ? "Vérification automatique"
-        : completeness?.source === "local"
-          ? "Estimation locale (serveur indisponible)"
-          : "Vérification indisponible";
+    const remoteLabel = completenessSourceLabel(completeness?.source);
+    const completenessStatus = completenessStatusTitle(
+      Boolean(completeness),
+      isComplete,
+    );
 
     return (
       <div>
@@ -1203,11 +1238,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
             </span>
             <div>
               <div className="font-semibold text-white">
-                {!completeness
-                  ? "Complétion inconnue"
-                  : isComplete
-                    ? "Dossier complet"
-                    : "Dossier incomplet"}
+                {completenessStatus}
               </div>
               <div className="text-sm text-neutral-400">
                 {remoteLabel}
