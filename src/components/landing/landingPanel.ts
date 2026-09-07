@@ -1,6 +1,10 @@
-/** Full-viewport landing page (snap child). */
+/**
+ * Full-viewport landing page (snap child).
+ * Use svh so panels fit with the mobile URL bar / PWA chrome visible —
+ * dvh/vh grow when chrome hides and clip the extra copy.
+ */
 export const LANDING_PANEL =
-  "h-dvh shrink-0 snap-start snap-always flex flex-col overflow-hidden";
+  "h-[100svh] shrink-0 snap-start snap-always flex flex-col overflow-hidden";
 
 export function getLandingScroller(): HTMLElement | null {
   if (typeof document === "undefined") return null;

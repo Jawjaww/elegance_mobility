@@ -12,7 +12,7 @@ export function LandingPage() {
   return (
     <div
       data-landing-scroll
-      className="h-dvh overflow-y-auto overflow-x-hidden snap-y snap-mandatory overscroll-y-contain motion-reduce:snap-none bg-neutral-950 text-white"
+      className="h-[100svh] overflow-y-auto overflow-x-hidden snap-y snap-mandatory overscroll-y-contain motion-reduce:snap-none bg-neutral-950 text-white"
     >
       <LandingNav />
       <main>

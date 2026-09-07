@@ -8,58 +8,66 @@ import {
 } from "@/components/motion/StaggerContainer";
 import { LANDING_ASSETS } from "@/components/landing/landingAssets";
 import { LANDING_PANEL } from "@/components/landing/landingPanel";
-import { VehicleExperienceVideo } from "@/components/landing/VehicleExperienceMedia";
+import { ExperienceMediaStage } from "@/components/landing/VehicleExperienceMedia";
 
 const SITUATIONS = [
   {
     icon: Plane,
-    title: "Aéroport, solo ou duo",
-    text: "Un départ silencieux, bagages chargés, horaire tenu jusqu’au terminal.",
+    title: "Aéroport",
+    text: "Solo ou duo, bagages chargés. Terminal à l’heure.",
   },
   {
     icon: Briefcase,
-    title: "Rendez-vous d’affaires",
-    text: "De l’hôtel au QG, vous arrivez net, sans chercher une place.",
+    title: "Business",
+    text: "De l’hôtel au QG, vous arrivez net.",
   },
   {
     icon: Moon,
     title: "Soirée",
-    text: "Restaurant, gala, club — la berline vous attend à la sortie.",
+    text: "Restaurant, gala : elle vous attend à la sortie.",
   },
   {
     icon: Building2,
-    title: "Grand hôtel & ville à ville",
-    text: "Un salon mobile entre deux adresses, rideaux tirés sur la route.",
+    title: "Ville à ville",
+    text: "Un salon mobile entre deux adresses.",
   },
 ] as const;
+
+function BerlineHeading() {
+  return (
+    <>
+      <p className="text-[11px] md:text-xs font-medium uppercase tracking-[0.2em] text-blue-400 mb-1 md:mb-3">
+        Executive
+      </p>
+      <h2 className="text-2xl md:text-5xl lg:text-6xl font-bold text-white leading-tight">
+        Berline premium
+      </h2>
+      <p className="mt-1.5 md:mt-4 text-sm md:text-lg lg:text-xl text-neutral-300 md:text-neutral-400 max-w-md leading-snug md:leading-relaxed">
+        Jusqu’à 4 passagers, 3 bagages. L’allure, et l’heure d’arrivée.
+      </p>
+    </>
+  );
+}
 
 export function BerlineExperienceSection() {
   return (
     <section id="berline" className={LANDING_PANEL}>
       <div className="flex min-h-0 flex-1 flex-col pt-16 md:grid md:grid-cols-2">
-        <div className="relative h-[32vh] shrink-0 md:h-full md:min-h-0 md:flex-none">
-          <VehicleExperienceVideo
-            video={LANDING_ASSETS.berlineVideo}
-            poster={LANDING_ASSETS.berlinePoster}
-            overlay="from-blue-950/85"
-          />
-        </div>
-        <div className="flex min-h-0 flex-1 flex-col justify-center px-5 py-5 sm:px-10 lg:px-14">
-          <FadeIn from="right" distance={40}>
-            <p className="text-xs font-medium uppercase tracking-[0.2em] text-blue-400 mb-3">
-              Executive
-            </p>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight">
-              Berline premium
-            </h2>
-            <p className="mt-3 text-neutral-400 max-w-md leading-relaxed">
-              Jusqu’à 4 passagers, 3 bagages. Pour les trajets où l’allure compte
-              autant que l’heure d’arrivée.
-            </p>
+        <ExperienceMediaStage
+          video={LANDING_ASSETS.berlineVideo}
+          poster={LANDING_ASSETS.berlinePoster}
+          overlay="from-blue-950/70"
+          pingPong
+        >
+          <BerlineHeading />
+        </ExperienceMediaStage>
+        <div className="shrink-0 px-4 py-3 md:flex md:min-h-0 md:flex-1 md:flex-col md:justify-center md:px-10 md:py-8 lg:px-14">
+          <FadeIn from="right" distance={40} className="hidden md:block">
+            <BerlineHeading />
           </FadeIn>
           <StaggerContainer
             stagger={0.08}
-            className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4"
+            className="grid grid-cols-2 gap-2.5 md:mt-8 md:gap-6 lg:gap-8"
           >
             {SITUATIONS.map((item, index) => (
               <StaggerItem
@@ -67,18 +75,19 @@ export function BerlineExperienceSection() {
                 from={index % 2 === 0 ? "left" : "right"}
                 distance={28}
               >
-                <div className="flex gap-3">
-                  <div className="mt-0.5 shrink-0 w-9 h-9 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center">
-                    <item.icon className="h-4 w-4 text-blue-400" aria-hidden />
+                <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2.5 md:gap-x-4 items-center">
+                  <div className="shrink-0 w-8 h-8 md:w-11 md:h-11 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center">
+                    <item.icon
+                      className="h-3.5 w-3.5 md:h-5 md:w-5 text-blue-400"
+                      aria-hidden
+                    />
                   </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-white">
-                      {item.title}
-                    </h3>
-                    <p className="mt-1 text-sm text-neutral-400 leading-snug">
-                      {item.text}
-                    </p>
-                  </div>
+                  <h3 className="text-sm md:text-lg font-semibold text-white">
+                    {item.title}
+                  </h3>
+                  <p className="col-start-2 mt-0.5 md:mt-1 text-xs md:text-base text-neutral-400 leading-snug md:leading-relaxed">
+                    {item.text}
+                  </p>
                 </div>
               </StaggerItem>
             ))}
