@@ -8,9 +8,9 @@ import { LANDING_CTA } from "@/components/landing/landingAssets";
 
 export function FinalCtaSection() {
   return (
-    <section className="py-12 sm:py-16 px-4 sm:px-6 lg:px-8">
-      <FadeIn className="max-w-5xl mx-auto">
-        <div className="relative overflow-hidden rounded-3xl border border-blue-500/25 bg-gradient-to-br from-blue-950/90 via-neutral-900 to-neutral-950 px-6 py-8 sm:px-12 sm:py-10 text-center">
+    <div className="flex min-h-0 flex-1 flex-col justify-center px-4 sm:px-6 lg:px-8 pt-16 pb-6">
+      <FadeIn from="left" distance={56} className="max-w-5xl mx-auto w-full">
+        <div className="relative overflow-hidden rounded-3xl border border-blue-500/25 bg-gradient-to-br from-blue-950/90 via-neutral-900 to-neutral-950 px-6 py-12 sm:px-12 sm:py-16 lg:py-20 text-center">
           <div
             className="absolute inset-0 opacity-40 pointer-events-none"
             aria-hidden
@@ -20,10 +20,10 @@ export function FinalCtaSection() {
             }}
           />
           <div className="relative">
-            <h2 className="text-2xl sm:text-4xl font-bold text-white mb-3">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
               Prêt à réserver votre prochain trajet ?
             </h2>
-            <p className="text-neutral-400 max-w-xl mx-auto mb-6">
+            <p className="text-neutral-400 text-base sm:text-lg max-w-xl mx-auto mb-8">
               Rejoignez des centaines de clients qui nous font confiance pour
               leurs déplacements premium.
             </p>
@@ -46,6 +46,6 @@ export function FinalCtaSection() {
           </div>
         </div>
       </FadeIn>
-    </section>
+    </div>
   );
 }

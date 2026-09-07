@@ -17,7 +17,7 @@ export function HeroSection() {
   const reducedMotion = usePrefersReducedMotion();
 
   return (
-    <section className="relative min-h-[100svh] flex items-end sm:items-center overflow-hidden">
+    <section className="relative flex min-h-0 flex-1 flex-col justify-center overflow-hidden pt-20 pb-4">
       <div className="absolute inset-0 -z-10">
         {reducedMotion ? (
           <Image
@@ -59,7 +59,7 @@ export function HeroSection() {
         />
       </div>
 
-      <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12 sm:py-20">
+      <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-0">
         <div className="max-w-3xl">
           <motion.div
             initial={reducedMotion ? false : { opacity: 0, y: 10 }}
@@ -75,9 +75,9 @@ export function HeroSection() {
             initial={reducedMotion ? false : { opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.06, ease }}
-            className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.08] tracking-tight"
+            className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.08] tracking-tight"
           >
-            Réservez votre VTC
+            <span className="block">Réservez votre VTC</span>
             <span className="block bg-gradient-to-r from-blue-300 via-blue-400 to-sky-300 bg-clip-text text-transparent">
               en quelques clics
             </span>
@@ -97,7 +97,7 @@ export function HeroSection() {
             initial={reducedMotion ? false : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.18, ease }}
-            className="mt-7 flex flex-col sm:flex-row gap-3"
+            className="mt-5 flex flex-col sm:flex-row gap-3"
           >
             <Button
               asChild

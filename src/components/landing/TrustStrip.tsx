@@ -31,10 +31,17 @@ const TRUST_ITEMS = [
 
 export function TrustStrip() {
   return (
-    <section className="relative -mt-8 sm:-mt-10 z-10 px-4 sm:px-6 lg:px-8">
-      <StaggerContainer className="max-w-5xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 rounded-2xl border border-blue-500/15 bg-neutral-900/85 backdrop-blur-xl p-4 sm:p-5 shadow-2xl shadow-blue-950/30">
-        {TRUST_ITEMS.map(({ icon: Icon, label, tone }) => (
-          <StaggerItem key={label}>
+    <section className="relative z-10 shrink-0 px-4 pb-5 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8">
+      <StaggerContainer
+        stagger={0.08}
+        className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 rounded-2xl border border-blue-500/15 bg-neutral-900/85 backdrop-blur-xl p-3 sm:p-5 shadow-2xl shadow-blue-950/30"
+      >
+        {TRUST_ITEMS.map(({ icon: Icon, label, tone }, index) => (
+          <StaggerItem
+            key={label}
+            from={index % 2 === 0 ? "left" : "right"}
+            distance={28}
+          >
             <div className="flex items-center gap-3 min-w-0">
               <div
                 className={`shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center ${tone}`}
