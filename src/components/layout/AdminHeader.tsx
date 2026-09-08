@@ -22,6 +22,7 @@ import {
   Truck,
 } from "lucide-react";
 import { supabase } from "@/lib/database/client";
+import { LANDING_BRAND } from "@/components/landing/landingAssets";
 
 const NAV_ITEMS = [
   {
@@ -115,9 +116,7 @@ export function AdminHeader() {
       href="/backoffice-portal/dashboard"
       className="flex shrink-0 items-baseline gap-2"
     >
-      <span className="bg-gradient-to-r from-blue-500 to-blue-700 bg-clip-text text-xl font-bold text-transparent">
-        Vector Elegans
-      </span>
+      <span className={LANDING_BRAND}>Vector&nbsp;Elegans</span>
       <span className="hidden text-sm font-medium text-neutral-400 lg:inline">
         Administration
       </span>

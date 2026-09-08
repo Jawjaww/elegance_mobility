@@ -93,12 +93,9 @@ export function LandingNav() {
         <Link
           href="/"
           onClick={goToTop}
-          className={cn(
-            "text-lg font-bold tracking-tight transition-opacity hover:opacity-90",
-            LANDING_BRAND,
-          )}
+          className={LANDING_BRAND}
         >
-          Vector Elegans
+          Vector&nbsp;Elegans
         </Link>
 
         <nav className="hidden sm:flex items-center gap-6 text-sm text-neutral-300">

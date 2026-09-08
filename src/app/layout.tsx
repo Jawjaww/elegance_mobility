@@ -1,13 +1,14 @@
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Outfit } from "next/font/google";
 import Script from "next/script";
 import { ClientProviders } from "@/components/ClientProviders";
 import { STRIP_EXTENSION_DOM_ATTRS_SCRIPT } from "@/lib/strip-extension-dom-attrs";
 import "./globals.css";
 
-const plusJakarta = Plus_Jakarta_Sans({
+const outfit = Outfit({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-plus-jakarta",
+  variable: "--font-outfit",
+  display: "swap",
 });
 
 export const metadata = {
@@ -36,7 +37,7 @@ export default function RootLayout({
   return (
     <html lang="fr" suppressHydrationWarning>
       <body
-        className={`${plusJakarta.variable} font-plus-jakarta min-h-screen`}
+        className={`${outfit.variable} font-outfit antialiased min-h-screen`}
         suppressHydrationWarning
       >
         <Script

@@ -13,7 +13,8 @@ export default {
         foreground: "var(--foreground)",
       },
       fontFamily: {
-        'plus-jakarta': ['var(--font-plus-jakarta)'],
+        outfit: ["var(--font-outfit)", "system-ui", "sans-serif"],
+        "plus-jakarta": ["var(--font-outfit)", "system-ui", "sans-serif"],
       },
     },
   },

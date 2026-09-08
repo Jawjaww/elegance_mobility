@@ -86,15 +86,8 @@ export function ClientHeader() {
         <div className="container flex h-16 max-w-screen-2xl items-center justify-between px-4 sm:px-6 lg:px-8">
           {/* Logo à gauche */}
           <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2">
-              <span
-                className={cn(
-                  "text-xl font-bold tracking-tight transition-opacity hover:opacity-90",
-                  LANDING_BRAND,
-                )}
-              >
-                Vector Elegans
-              </span>
+            <Link href="/" className={LANDING_BRAND}>
+              Vector&nbsp;Elegans
             </Link>
           </div>
 

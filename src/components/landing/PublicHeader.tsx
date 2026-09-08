@@ -14,14 +14,8 @@ export function PublicHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-blue-500/15 bg-neutral-950/85 backdrop-blur-xl pt-[env(safe-area-inset-top,0px)]">
       <div className={cn("mx-auto flex h-16 max-w-7xl items-center justify-between gap-4", LANDING_PAGE_X)}>
-        <Link
-          href="/"
-          className={cn(
-            "text-lg font-bold tracking-tight transition-opacity hover:opacity-90",
-            LANDING_BRAND,
-          )}
-        >
-          Vector Elegans
+        <Link href="/" className={LANDING_BRAND}>
+          Vector&nbsp;Elegans
         </Link>
         <div className="flex items-center gap-2">
           <Link
