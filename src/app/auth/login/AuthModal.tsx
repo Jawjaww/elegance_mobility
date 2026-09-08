@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { LoginForm } from "./LoginForm"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
+import { LANDING_LINK } from "@/components/landing/landingSurface"
 
 interface AuthModalProps {
   open: boolean
@@ -36,16 +37,16 @@ export function AuthModal({
       <div className="text-center space-y-2">
         <Link
           href="/auth/forgot-password"
-          className="text-sm text-muted-foreground hover:text-primary"
+          className={`text-sm ${LANDING_LINK}`}
         >
           Mot de passe oublié ?
         </Link>
 
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-neutral-400">
           Pas encore de compte ?{' '}
           <Link
             href={signupUrl}
-            className="font-medium text-primary hover:underline"
+            className={`font-medium ${LANDING_LINK}`}
           >
             S&apos;inscrire
           </Link>

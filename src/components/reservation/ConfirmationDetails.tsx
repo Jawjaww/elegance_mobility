@@ -27,6 +27,7 @@ import { pricingService } from "@/lib/services/pricingService";
 import { resolveRideFinalPrice } from "@/lib/services/resolveRideFinalPrice";
 import { normalizePickupDateTime } from "@/lib/utils/normalizePickupDateTime";
 import type { VehicleType } from "@/lib/vehicle";
+import { LANDING_CTA } from "@/components/landing/landingSurface";
 
 // Type de la table rides de Supabase
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
@@ -50,8 +51,9 @@ function toNullableNumber(value: number | null | undefined): number | null {
 }
 
 function vehicleLabel(vehicle: VehicleType): string {
-  if (vehicle === "STANDARD") return "Berline Premium";
-  if (vehicle === "VAN") return "Van de Luxe";
+  if (vehicle === "STANDARD") return "Berline";
+  if (vehicle === "PREMIUM") return "Berline premium";
+  if (vehicle === "VAN") return "Van de confort";
   return vehicle;
 }
 
@@ -317,7 +319,7 @@ export function ConfirmationDetails() {
       />
 
       <div className="mb-6 md:mb-8 text-center">
-        <h1 className="text-2xl md:text-3xl font-bold mb-2 bg-elegant-gradient bg-clip-text text-transparent">
+        <h1 className="mb-2 text-2xl font-bold text-white md:text-3xl">
           Confirmation de réservation
         </h1>
         <p className="text-neutral-400">
@@ -326,7 +328,7 @@ export function ConfirmationDetails() {
       </div>
 
       <div className="grid gap-6 md:gap-8 max-w-4xl mx-auto">
-        <Card className="p-4 md:p-6 bg-neutral-900 border-neutral-800">
+        <Card className="border-blue-500/20 bg-neutral-900/80 p-4 md:rounded-3xl md:p-6">
           <h2 className="text-lg md:text-xl font-semibold mb-4 md:mb-6 flex items-center">
             <Route className="w-5 h-5 mr-2 text-blue-500" />
             Détails du trajet
@@ -463,7 +465,7 @@ export function ConfirmationDetails() {
             </Card>
           }
         >
-          <Card className="p-0 overflow-hidden bg-neutral-900 border-neutral-800 rounded-xl">
+          <Card className="overflow-hidden rounded-xl border-blue-500/20 bg-neutral-900/80 p-0 md:rounded-3xl">
             <div className="h-48 md:h-64 lg:h-80">
               <ReservationMap
                 departure={departure}
@@ -479,14 +481,14 @@ export function ConfirmationDetails() {
           <Button
             variant="outline"
             onClick={handleModify}
-            className="flex-1 bg-neutral-800 border-neutral-700 hover:bg-neutral-700 text-neutral-100 py-3 md:py-3"
+            className="flex-1 border-blue-400/30 bg-transparent py-3 text-white hover:bg-blue-500/15"
             disabled={isLoading}
           >
             Modifier
           </Button>
           <Button
             onClick={handleConfirm}
-            className="flex-1 btn-gradient hover:opacity-90 text-neutral-100 py-4 md:py-3"
+            className={`flex-1 py-4 md:py-3 ${LANDING_CTA}`}
             disabled={isLoading}
           >
             {isLoading ? (

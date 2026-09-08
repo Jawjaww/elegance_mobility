@@ -14,6 +14,7 @@ import { supabaseAuthErrorMessage, getSupabasePublicConfigError } from "@/lib/ut
 import { buildAuthRedirectPath } from "@/lib/auth/auth-redirect-origin";
 import type { SupabaseEnvReport } from "@/lib/utils/supabase-env-check";
 import { ButtonLoading } from "@/components/ui/loading";
+import { LANDING_CTA, LANDING_LINK } from "@/components/landing/landingSurface";
 
 interface CustomerFormData {
   email: string;
@@ -313,7 +314,7 @@ export default function CustomerSignup() {
           </div>
         </div>
 
-        <Button type="submit" className="w-full" disabled={loading || !!configError}>
+        <Button type="submit" className={`w-full ${LANDING_CTA}`} disabled={loading || !!configError}>
           {loading ? (
             <ButtonLoading />
           ) : (
@@ -326,12 +327,12 @@ export default function CustomerSignup() {
         </Button>
       </form>
 
-      <div className="text-center space-y-2 text-sm text-muted-foreground">
+      <div className="text-center space-y-2 text-sm text-neutral-400">
         <p>
           Déjà un compte ?{" "}
           <Link
             href="/auth/login"
-            className="font-medium text-primary hover:underline"
+            className={`font-medium ${LANDING_LINK}`}
           >
             Se connecter
           </Link>
@@ -340,7 +341,7 @@ export default function CustomerSignup() {
           Vous êtes chauffeur ?{" "}
           <Link
             href="/auth/signup/driver"
-            className="font-medium text-primary hover:underline"
+            className={`font-medium ${LANDING_LINK}`}
           >
             Inscription chauffeur
           </Link>

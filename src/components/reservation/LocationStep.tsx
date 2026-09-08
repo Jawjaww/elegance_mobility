@@ -10,10 +10,11 @@ import { Coordinates } from "@/lib/types/map-types";
 import DateTimeStep from "@/components/reservation/DateTimeStep";
 import { formatDuration, cn } from "@/lib/utils";
 import UnifiedMap from "@/components/map/UnifiedMap";
+import { LANDING_CTA } from "@/components/landing/landingSurface";
 
-/** Card chrome only on sm+ — mobile stays edge-to-edge for address fields. */
+/** Section chrome only from md — mobile stays edge-to-edge. */
 const sectionClass =
-  "md:rounded-lg md:border md:border-neutral-800 md:bg-neutral-900/60 md:p-6";
+  "md:rounded-2xl md:border md:border-blue-500/20 md:bg-blue-500/[0.04] md:p-6";
 
 export interface LocationStepProps {
   onNextStep: () => void;
@@ -199,7 +200,7 @@ export function LocationStep({
         <section
           className={cn(
             "h-[min(42vh,280px)] overflow-hidden sm:h-[400px]",
-            "rounded-lg border border-neutral-800 md:rounded-lg",
+            "rounded-lg border border-blue-500/20 md:rounded-2xl",
           )}
         >
           <UnifiedMap
@@ -249,7 +250,7 @@ export function LocationStep({
         <Button
           onClick={onNextStep}
           disabled={!formValid}
-          className="w-full px-8 btn-gradient text-white sm:w-auto"
+          className={`w-full px-8 ${LANDING_CTA} sm:w-auto`}
         >
           {isEditing ? "Mettre à jour" : "Continuer"}
         </Button>

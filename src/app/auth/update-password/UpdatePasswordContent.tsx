@@ -3,13 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +15,8 @@ import {
   waitForActiveSession,
   watchAuthSession,
 } from "@/lib/auth/auth-link-verification";
+import { AuthFormShell } from "@/components/landing/AuthFormShell";
+import { LANDING_CTA, LANDING_LINK } from "@/components/landing/landingSurface";
 
 type RecoveryState = "loading" | "ready" | "error";
 
@@ -218,35 +213,31 @@ export default function UpdatePasswordContent() {
 
   if (recoveryState === "loading") {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Nouveau mot de passe</CardTitle>
-          <CardDescription>Vérification du lien en cours…</CardDescription>
-        </CardHeader>
-        <CardContent className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </CardContent>
-      </Card>
+      <AuthFormShell
+        kicker="Compte"
+        title="Nouveau mot de passe"
+        description="Vérification du lien en cours…"
+      >
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
+        </div>
+      </AuthFormShell>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Nouveau mot de passe</CardTitle>
-        <CardDescription>
-          Choisissez un nouveau mot de passe sécurisé
-        </CardDescription>
-      </CardHeader>
-
-      <CardContent>
+    <AuthFormShell
+      kicker="Compte"
+      title="Nouveau mot de passe"
+      description="Choisissez un nouveau mot de passe sécurisé."
+    >
         {recoveryState === "error" && error ? (
           <div className="mb-4 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
             {error}
             <div className="mt-2">
               <Link
                 href="/auth/forgot-password"
-                className="font-medium text-primary hover:underline"
+                className={`font-medium ${LANDING_LINK}`}
               >
                 Demander un lien de réinitialisation
               </Link>
@@ -290,18 +281,17 @@ export default function UpdatePasswordContent() {
               />
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className={`w-full ${LANDING_CTA}`} disabled={isLoading}>
               {isLoading ? "Mise à jour en cours…" : "Mettre à jour le mot de passe"}
             </Button>
           </form>
         ) : null}
 
-        <div className="mt-6 space-y-2 text-center text-sm text-muted-foreground">
-          <Link href="/auth/login" className="block hover:text-primary">
+        <div className="mt-6 space-y-2 text-center text-sm text-neutral-400">
+          <Link href="/auth/login" className={`block ${LANDING_LINK}`}>
             Retour à la connexion
           </Link>
         </div>
-      </CardContent>
-    </Card>
+    </AuthFormShell>
   );
 }

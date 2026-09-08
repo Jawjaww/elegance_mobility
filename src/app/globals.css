@@ -349,27 +349,23 @@
     @apply text-lg font-semibold text-neutral-100 mb-2 block;
   }
 
-  /* Background gradient — mimic FullscreenRideModal: dark global backdrop with a light, subtle gradient */
+  /* Landing-aligned backdrop: near-black with a faint cool wash. */
   .bg-elegant-gradient {
     @apply relative;
-    /* Elegant gray -> black gradient (subtle, modern) */
-    background: linear-gradient(180deg, #2f3338 0%, #000000 100%);
+    background:
+      radial-gradient(ellipse 70% 42% at 16% 6%, rgba(37, 99, 235, 0.1), transparent 62%),
+      linear-gradient(180deg, #0a0c12 0%, #0a0a0a 55%, #000000 100%);
     background-repeat: no-repeat;
-    /* avoid background-attachment: fixed due to rendering issues with backdrop-filter/stacking contexts */
     background-attachment: scroll;
-    /* fallback solid color to avoid black flash if gradient fails */
-    background-color: #0b1220;
+    background-color: #0a0a0a;
   }
 
-  /* Very soft radial overlay for depth — reduced intensity */
   .bg-elegant-gradient::after {
-    /* remove metallic "lueur" effect for a cleaner backdrop */
     content: "";
     position: absolute;
     inset: 0;
     pointer-events: none;
     background: transparent;
-    mix-blend-mode: normal;
   }
 
   /* Elegant backdrop */
@@ -385,11 +381,6 @@
   /* Style des inputs */
   .input-elegant {
     @apply w-full bg-neutral-800 text-neutral-100 border-neutral-700 placeholder:text-neutral-400;
-  }
-
-  /* Bouton de position actuelle (taille réduite) */
-  .location-btn {
-    @apply py-1 px-3 h-auto text-xs flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-all;
   }
 
   /* Pour les boutons dans les formulaires qui doivent être plus petits */

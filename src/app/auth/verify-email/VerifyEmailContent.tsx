@@ -3,16 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle, Loader2, Mail, XCircle } from "lucide-react";
+import { CheckCircle, Loader2 } from "lucide-react";
 import {
   exchangeAuthLinkCode,
   hasActiveSession,
@@ -21,6 +14,8 @@ import {
   watchAuthSession,
 } from "@/lib/auth/auth-link-verification";
 import { resolvePostAuthRedirect } from "@/lib/auth/auth-link-handler";
+import { AuthFormShell } from "@/components/landing/AuthFormShell";
+import { LANDING_CTA } from "@/components/landing/landingSurface";
 
 type VerifyState = "loading" | "success" | "error" | "pending";
 
@@ -123,76 +118,69 @@ export default function VerifyEmailContent() {
 
   if (state === "loading") {
     return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>Vérification de l&apos;email</CardTitle>
-          <CardDescription>Validation du lien en cours…</CardDescription>
-        </CardHeader>
-        <CardContent className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </CardContent>
-      </Card>
+      <AuthFormShell
+        kicker="Compte"
+        title="Vérification de l'email"
+        description="Validation du lien en cours…"
+      >
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
+        </div>
+      </AuthFormShell>
     );
   }
 
   if (state === "success") {
     return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-green-600" />
-            Email confirmé
-          </CardTitle>
-          <CardDescription>Redirection en cours…</CardDescription>
-        </CardHeader>
-      </Card>
+      <AuthFormShell
+        kicker="Compte"
+        title="Email confirmé"
+        description="Redirection en cours…"
+      >
+        <div className="flex justify-center py-4">
+          <CheckCircle className="h-8 w-8 text-blue-400" />
+        </div>
+      </AuthFormShell>
     );
   }
 
   if (state === "error") {
     return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <XCircle className="h-5 w-5 text-destructive" />
-            Confirmation impossible
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <AuthFormShell kicker="Compte" title="Confirmation impossible">
+        <div className="space-y-4">
           {message ? (
             <Alert variant="destructive">
               <AlertDescription>{message}</AlertDescription>
             </Alert>
           ) : null}
-          <Button asChild className="w-full">
+          <Button asChild className={`w-full ${LANDING_CTA}`}>
             <Link href="/auth/signup">Retour à l&apos;inscription</Link>
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </AuthFormShell>
     );
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Mail className="h-5 w-5" />
-          Confirmez votre email
-        </CardTitle>
-        <CardDescription>
-          Cliquez sur le lien reçu par email pour activer votre compte.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <AuthFormShell
+      kicker="Compte"
+      title="Confirmez votre email"
+      description="Cliquez sur le lien reçu par email pour activer votre compte."
+    >
+      <div className="space-y-4">
         {message ? (
           <Alert>
             <AlertDescription>{message}</AlertDescription>
           </Alert>
         ) : null}
-        <Button asChild variant="outline" className="w-full">
+        <Button
+          asChild
+          variant="outline"
+          className="w-full border-blue-400/30 text-white hover:bg-blue-500/15"
+        >
           <Link href="/auth/login">Aller à la connexion</Link>
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </AuthFormShell>
   );
 }

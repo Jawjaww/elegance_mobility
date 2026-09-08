@@ -1,7 +1,6 @@
 'use client'
 
 import { Suspense, useEffect, useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,8 +9,12 @@ import { buildPkceSafeAuthRedirectPath } from "@/lib/auth/auth-redirect-origin"
 import { supabaseAuthErrorMessage } from "@/lib/utils/supabase-public-config"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
+import {
+  AuthFormShell,
+  AuthLoadingSpinner,
+} from "@/components/landing/AuthFormShell"
+import { LANDING_CTA, LANDING_LINK } from "@/components/landing/landingSurface"
 
-// Composant qui utilise useSearchParams - doit être dans Suspense
 function ForgotPasswordForm() {
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -19,14 +22,12 @@ function ForgotPasswordForm() {
   const [error, setError] = useState("")
   const searchParams = useSearchParams()
 
-  // Lire le paramètre d'erreur de l'URL
   useEffect(() => {
     if (!searchParams) return
     const errorParam = searchParams.get('error')
     if (errorParam) {
       const decodedError = decodeURIComponent(errorParam)
       setError(decodedError)
-      // Nettoyer l'URL pour éviter de réafficher l'erreur au rechargement
       const newUrl = new URL(window.location.href)
       newUrl.searchParams.delete('error')
       window.history.replaceState({}, '', newUrl.toString())
@@ -40,7 +41,6 @@ function ForgotPasswordForm() {
     setMessage("")
 
     try {
-      // PKCE stores code_verifier on this origin — redirect must match or the email link fails.
       const redirect = buildPkceSafeAuthRedirectPath(
         "/auth/update-password?type=recovery",
       )
@@ -70,86 +70,72 @@ function ForgotPasswordForm() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Réinitialiser votre mot de passe</CardTitle>
-        <CardDescription>
-          Entrez votre adresse email pour recevoir un lien de réinitialisation
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {message && (
-          <div className="mb-4 p-3 bg-green-100 text-green-800 rounded text-sm">
-            {message}
-          </div>
-        )}
-        {error && (
-          <div className="mb-4 p-4 bg-red-100 border-2 border-red-500 text-red-900 rounded-lg text-sm font-bold">
-            <div className="font-bold text-lg">⚠️ Erreur</div>
-            {error}
-          </div>
-        )}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="exemple@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={isLoading}
-              autoComplete="email"
-              suppressHydrationWarning
-            />
-          </div>
-          <Button
-            className="btn-gradient text-white w-full"
-            type="submit"
-            disabled={isLoading}
-          >
-            {isLoading ? "Envoi en cours..." : "Envoyer le lien de réinitialisation"}
-          </Button>
-        </form>
-        <div className="mt-6 text-center space-y-2">
-          <Link
-            href="/auth/login"
-            className="text-sm text-muted-foreground hover:text-primary block"
-          >
-            Retour à la connexion
-          </Link>
-          <div className="text-sm text-muted-foreground">
-            Pas encore de compte ?{' '}
-            <Link
-              href="/auth/signup"
-              className="font-medium text-primary hover:underline"
-            >
-              S'inscrire
-            </Link>
-          </div>
+    <AuthFormShell
+      kicker="Compte"
+      title="Réinitialiser votre mot de passe"
+      description="Entrez votre adresse email pour recevoir un lien de réinitialisation."
+    >
+      {message && (
+        <div className="mb-4 rounded-lg border border-blue-500/25 bg-blue-500/10 p-3 text-sm text-blue-100">
+          {message}
         </div>
-      </CardContent>
-    </Card>
+      )}
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300">
+          {error}
+        </div>
+      )}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="exemple@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            disabled={isLoading}
+            autoComplete="email"
+            suppressHydrationWarning
+          />
+        </div>
+        <Button
+          className={`w-full ${LANDING_CTA}`}
+          type="submit"
+          disabled={isLoading}
+        >
+          {isLoading ? "Envoi en cours..." : "Envoyer le lien de réinitialisation"}
+        </Button>
+      </form>
+      <div className="mt-6 space-y-2 text-center text-sm text-neutral-400">
+        <Link href="/auth/login" className={`block ${LANDING_LINK}`}>
+          Retour à la connexion
+        </Link>
+        <div>
+          Pas encore de compte ?{" "}
+          <Link href="/auth/signup" className={`font-medium ${LANDING_LINK}`}>
+            S&apos;inscrire
+          </Link>
+        </div>
+      </div>
+    </AuthFormShell>
   )
 }
 
-// Page avec Suspense boundary
 export default function ForgotPasswordPage() {
   return (
-    <Suspense fallback={
-      <Card>
-        <CardHeader>
-          <CardTitle>Réinitialiser votre mot de passe</CardTitle>
-          <CardDescription>Chargement...</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-32 flex items-center justify-center">
-            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-          </div>
-        </CardContent>
-      </Card>
-    }>
+    <Suspense
+      fallback={
+        <AuthFormShell
+          kicker="Compte"
+          title="Réinitialiser votre mot de passe"
+          description="Chargement…"
+        >
+          <AuthLoadingSpinner />
+        </AuthFormShell>
+      }
+    >
       <ForgotPasswordForm />
     </Suspense>
   )

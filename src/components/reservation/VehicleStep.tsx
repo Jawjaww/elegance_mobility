@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { type VehicleType, type VehicleOptions } from "@/lib/vehicle";
 import { formatDuration } from "@/lib/utils";
 import { ReservationOptionsToggles } from "@/components/reservation/ReservationOptionsToggles";
+import { LANDING_CTA } from "@/components/landing/landingSurface";
 
 export interface VehicleStepProps {
   vehicleType: VehicleType;
@@ -20,18 +21,18 @@ export interface VehicleStepProps {
 const vehicleOptions = [
   {
     value: "STANDARD" as VehicleType,
-    label: "Berline Standard",
-    description: "Confort et élégance pour 4 passagers",
+    label: "Berline",
+    description: "4 passagers, 3 bagages. Confort au quotidien.",
   },
   {
     value: "PREMIUM" as VehicleType,
-    label: "Berline Premium",
-    description: "Véhicule Premium et raffinement pour 4 passagers",
+    label: "Berline premium",
+    description: "L’allure, et l’heure d’arrivée.",
   },
   {
     value: "VAN" as VehicleType,
-    label: "Van",
-    description: "Espace et confort pour 7 passagers",
+    label: "Van de confort",
+    description: "7 sièges, tout le bagage. Le groupe part ensemble.",
   },
 ];
 
@@ -48,8 +49,8 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-semibold text-neutral-100 mb-4">
-          Sélectionnez votre véhicule
+        <h2 className="text-2xl font-semibold text-white mb-4">
+          Choisissez votre trajet
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -58,25 +59,23 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
               key={option.value}
               type="button"
               aria-pressed={vehicleType === option.value}
-              className={`relative p-4 rounded-lg border transition-all duration-200 ${
+              className={`relative p-4 rounded-2xl border text-left transition-all duration-200 ${
                 vehicleType === option.value
-                  ? "bg-blue-600/20 border-blue-500"
-                  : "bg-neutral-800/50 border-neutral-700 hover:bg-neutral-800"
+                  ? "bg-blue-500/15 border-blue-500/60"
+                  : "bg-blue-500/[0.04] border-blue-500/20 hover:border-blue-400/40"
               }`}
               onClick={() => onVehicleTypeChange(option.value)}
             >
               <div className="mb-2">
-                <h3 className="font-semibold text-neutral-100">
-                  {option.label}
-                </h3>
+                <h3 className="font-semibold text-white">{option.label}</h3>
                 <p className="text-sm text-neutral-400">{option.description}</p>
               </div>
             </button>
           ))}
         </div>
 
-        <div className="space-y-4 pt-4 border-t border-neutral-700">
-          <h3 className="font-semibold text-neutral-100">Options</h3>
+        <div className="space-y-4 pt-4 border-t border-blue-500/15">
+          <h3 className="font-semibold text-white">Options</h3>
           <ReservationOptionsToggles
             options={options}
             onOptionsChange={onOptionsChange}
@@ -86,16 +85,16 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
       </div>
 
       {distance && duration ? (
-        <div className="bg-neutral-800 rounded-lg p-4 space-y-2">
+        <div className="rounded-2xl border border-blue-500/20 bg-blue-500/[0.04] p-4 space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-neutral-400">Distance</span>
-            <span className="text-neutral-100 font-medium">
+            <span className="text-white font-medium">
               {distance.toFixed(1)} km
             </span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-neutral-400">Durée estimée</span>
-            <span className="text-neutral-100 font-medium">
+            <span className="text-white font-medium">
               {formatDuration(duration)}
             </span>
           </div>
@@ -106,14 +105,11 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
         <Button
           onClick={onPrevious}
           variant="outline"
-          className="bg-neutral-800 border-neutral-700 hover:bg-neutral-700 text-neutral-100"
+          className="border-blue-400/30 bg-transparent text-white hover:bg-blue-500/15"
         >
           Retour
         </Button>
-        <Button
-          onClick={onConfirm}
-          className="py-2 inline-flex items-center justify-center hover:bg-primary/90 text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-11 rounded-md px-8 relative bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 transition-all duration-300 ease-out"
-        >
+        <Button onClick={onConfirm} className={LANDING_CTA}>
           Continuer
         </Button>
       </div>

@@ -7,7 +7,7 @@ interface ClientLayoutProps {
   children: React.ReactNode
 }
 
-export function ClientLayout({ children }: ClientLayoutProps) {
+export function ClientLayout({ children }: Readonly<ClientLayoutProps>) {
   return (
     <div className="min-h-screen bg-neutral-950 text-white">
       <ClientHeader />

@@ -1,18 +1,17 @@
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { DriverLoginForm } from "@/app/driver-portal/login/DriverLoginForm";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/database/client";
 import { getUserRole } from "@/lib/utils/auth-helpers";
 import Link from "next/link";
+import { PublicPageShell } from "@/components/landing/PublicPageShell";
+import {
+  AuthFormShell,
+  AuthLoadingSpinner,
+} from "@/components/landing/AuthFormShell";
+import { LANDING_LINK } from "@/components/landing/landingSurface";
 
 export default function DriverLoginPage() {
   const router = useRouter();
@@ -20,7 +19,6 @@ export default function DriverLoginPage() {
   const hasChecked = useRef(false);
 
   useEffect(() => {
-    // Éviter les redirections multiples
     if (hasChecked.current) return;
 
     const checkSession = async () => {
@@ -31,14 +29,12 @@ export default function DriverLoginPage() {
         if (user && !hasChecked.current) {
           hasChecked.current = true;
 
-          // Vérifier si c'est un driver pour rediriger directement
           const role = getUserRole(user);
           if (role === "app_driver") {
             router.replace("/driver-portal/dashboard");
           } else if (role === "app_admin" || role === "app_super_admin") {
             router.replace("/backoffice-portal");
           } else {
-            // Client standard
             router.replace("/my-account");
           }
           return;
@@ -54,54 +50,38 @@ export default function DriverLoginPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleClose = () => {
-    router.push("/"); // Retour à l'accueil
-  };
-
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-neutral-950 flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
-      </div>
+      <PublicPageShell>
+        <div className="flex min-h-[calc(100svh-4rem)] items-center justify-center">
+          <AuthLoadingSpinner />
+        </div>
+      </PublicPageShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 flex items-center justify-center py-8">
-      <Card className="w-full max-w-[425px]">
-        <CardHeader>
-          <CardTitle className="text-center text-white">
-            Connexion Chauffeur
-          </CardTitle>
-          <CardDescription className="text-center text-neutral-300">
-            Accès réservé aux chauffeurs partenaires
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+    <PublicPageShell>
+      <div className="flex min-h-[calc(100svh-4rem)] items-center justify-center px-4 py-10">
+        <AuthFormShell
+          kicker="Partenaire"
+          title="Connexion chauffeur"
+          description="Accès réservé aux chauffeurs partenaires."
+        >
           <DriverLoginForm />
-
-          <div className="text-center space-y-2">
-            <div className="text-sm text-neutral-400">
-              Pas encore chauffeur partenaire ?
-            </div>
-            <Link
-              href="/auth/signup/driver"
-              className="text-sm text-blue-400 hover:text-blue-300 font-medium"
-            >
-              Rejoindre notre équipe
+          <div className="mt-6 space-y-2 text-center text-sm text-neutral-400">
+            <p>
+              Pas encore partenaire ?{" "}
+              <Link href="/auth/signup/driver" className={`font-medium ${LANDING_LINK}`}>
+                Rejoindre l&apos;équipe
+              </Link>
+            </p>
+            <Link href="/" className="text-neutral-500 hover:text-neutral-300">
+              Retour à l&apos;accueil
             </Link>
           </div>
-
-          <div className="text-center">
-            <Link
-              href="/"
-              className="text-sm text-neutral-400 hover:text-white"
-            >
-              Retour à l'accueil
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        </AuthFormShell>
+      </div>
+    </PublicPageShell>
   );
 }

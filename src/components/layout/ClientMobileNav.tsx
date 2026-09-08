@@ -29,7 +29,7 @@ export default function ClientMobileNav() {
     pathname === path || pathname.startsWith(`${path}/`);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-neutral-900/70 backdrop-blur-md z-[1000] md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-[1000] border-t border-blue-500/15 bg-neutral-950/85 backdrop-blur-xl md:hidden">
       <div className="h-20 px-6 flex justify-evenly items-center">
         {/* Home Link */}
         <Link

@@ -4,15 +4,15 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { ButtonLoading } from "@/components/ui/loading"
 import { useRouter } from "next/navigation"
 import { z } from "zod"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { supabase } from "@/lib/database/client"
 import { buildAuthRedirectPath } from "@/lib/auth/auth-redirect-origin"
 import { useToast } from "@/hooks/useToast"
-import { Mail, User, ArrowRight, Lock, Car } from "lucide-react"
+import { Mail, User, ArrowRight, Lock } from "lucide-react"
+import { AuthFormShell } from "@/components/landing/AuthFormShell"
+import { LANDING_CTA, LANDING_LINK } from "@/components/landing/landingSurface"
 
 // Schéma de validation simple pour la création de compte
 const signupSchema = z.object({
@@ -143,52 +143,30 @@ export default function ModernDriverSignup() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 bg-elegant-gradient py-8 px-4">
-      <div className="container mx-auto max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <User className="w-8 h-8 text-blue-400" />
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Devenir Chauffeur Partenaire</h1>
-          <p className="text-neutral-400">Créez votre compte pour commencer</p>
-        </div>
+    <AuthFormShell
+      wide
+      kicker="Partenaire"
+      title="Devenir chauffeur"
+      description="Créez votre compte pour commencer. Le dossier se complète ensuite."
+    >
+        <ol className="mb-6 space-y-2 text-sm text-neutral-300">
+          {[
+            "Créer votre compte",
+            "Confirmer votre email",
+            "Compléter votre profil",
+            "Attendre la validation",
+          ].map((label, index) => (
+            <li key={label} className="flex items-center gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-blue-500/30 bg-blue-500/10 text-xs font-bold text-blue-300">
+                {index + 1}
+              </span>
+              <span className={index === 0 ? "text-white" : "text-neutral-400"}>
+                {label}
+              </span>
+            </li>
+          ))}
+        </ol>
 
-        {/* Étapes du processus */}
-        <div className="mb-8 p-4 bg-blue-900/20 border border-blue-700/30 rounded-lg">
-          <h3 className="text-blue-300 font-semibold mb-3">Processus d'inscription :</h3>
-          <div className="space-y-2 text-sm text-blue-200">
-            <div className="flex items-center">
-              <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-xs font-bold mr-3">1</div>
-              <span>Créer votre compte</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-6 h-6 bg-neutral-600 rounded-full flex items-center justify-center text-xs font-bold mr-3">2</div>
-              <span>Confirmer votre email</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-6 h-6 bg-neutral-600 rounded-full flex items-center justify-center text-xs font-bold mr-3">3</div>
-              <span>Compléter votre profil chauffeur</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-6 h-6 bg-neutral-600 rounded-full flex items-center justify-center text-xs font-bold mr-3">4</div>
-              <span>Attendre la validation</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Formulaire */}
-        <Card className="elegant-backdrop">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center">
-              <Car className="w-5 h-5 mr-2 text-blue-400" />
-              Création de compte
-            </CardTitle>
-            <CardDescription className="text-neutral-400">
-              Renseignez vos informations de base
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -263,7 +241,7 @@ export default function ModernDriverSignup() {
               </div>
 
               {errors.submit && (
-                <div className="p-3 bg-red-900/20 border border-red-700/30 rounded-lg">
+                <div className="rounded-lg border border-red-500/30 bg-red-900/20 p-3">
                   <p className="text-red-400 text-sm">{errors.submit}</p>
                 </div>
               )}
@@ -271,7 +249,7 @@ export default function ModernDriverSignup() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full btn-gradient text-white"
+                className={`w-full ${LANDING_CTA}`}
               >
                 {isLoading ? (
                   <ButtonLoading />
@@ -283,28 +261,26 @@ export default function ModernDriverSignup() {
                 )}
               </Button>
             </form>
-          </CardContent>
-        </Card>
 
-        {/* Liens de navigation */}
-        <div className="text-center mt-8 space-y-2">
-          <p className="text-neutral-400 text-sm">
+        <div className="mt-6 space-y-2 text-center text-sm text-neutral-400">
+          <p>
             Déjà un compte chauffeur ?{" "}
             <button
-              onClick={() => router.push('/driver-portal/login')}
-              className="text-blue-400 hover:text-blue-300 font-medium"
+              type="button"
+              onClick={() => router.push("/driver-portal/login")}
+              className={`font-medium ${LANDING_LINK}`}
             >
               Se connecter
             </button>
           </p>
           <button
-            onClick={() => router.push('/')}
-            className="text-neutral-500 hover:text-neutral-400 text-sm"
+            type="button"
+            onClick={() => router.push("/")}
+            className="text-neutral-500 hover:text-neutral-300"
           >
-            Retour à l'accueil
+            Retour à l&apos;accueil
           </button>
         </div>
-      </div>
-    </div>
+    </AuthFormShell>
   )
 }

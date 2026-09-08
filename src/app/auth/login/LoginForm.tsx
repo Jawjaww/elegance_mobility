@@ -14,6 +14,7 @@ import {
   postLoginRequest,
   resolveLoginRedirectPath,
 } from "@/lib/auth/login-form-helpers";
+import { LANDING_CTA, LANDING_LINK } from "@/components/landing/landingSurface";
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -153,7 +154,7 @@ export function LoginForm({ onSuccess }: Readonly<LoginFormProps> = {}) {
                 : "Afficher le mot de passe"
             }
             onClick={() => setShowPassword((s) => !s)}
-            className="ml-2 text-neutral-300 hover:text-white"
+            className="ml-2 text-neutral-400 hover:text-white"
           >
             {showPassword ? "🙈" : "👁️"}
           </button>
@@ -172,13 +173,13 @@ export function LoginForm({ onSuccess }: Readonly<LoginFormProps> = {}) {
       <div className="text-right">
         <Link
           href="/auth/forgot-password"
-          className="text-sm text-muted-foreground hover:text-primary"
+          className={`text-sm ${LANDING_LINK}`}
         >
           Mot de passe oublié ?
         </Link>
       </div>
 
-      <Button type="submit" className="w-full" disabled={isLoading}>
+      <Button type="submit" className={`w-full ${LANDING_CTA}`} disabled={isLoading}>
         {isLoading ? "Connexion en cours..." : "Se connecter"}
       </Button>
     </form>

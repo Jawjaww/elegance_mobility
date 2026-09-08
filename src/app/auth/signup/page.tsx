@@ -1,17 +1,14 @@
 "use client";
 
 import { Suspense, useEffect, useState, useRef } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
 import CustomerSignup from "@/components/auth/CustomerSignup";
 import { useRouter } from "next/navigation";
 import { getUserRole } from "@/lib/utils/auth-helpers";
 import { getOptionalAuthUser } from "@/lib/utils/auth-session-check";
+import {
+  AuthFormShell,
+  AuthLoadingSpinner,
+} from "@/components/landing/AuthFormShell";
 
 function SignupContent() {
   const router = useRouter();
@@ -46,25 +43,17 @@ function SignupContent() {
   }, [router]);
 
   if (isChecking) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
-      </div>
-    );
+    return <AuthLoadingSpinner />;
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Créer un compte</CardTitle>
-        <CardDescription>
-          Rejoignez Élégance Mobilité pour réserver vos courses
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <CustomerSignup />
-      </CardContent>
-    </Card>
+    <AuthFormShell
+      kicker="Compte"
+      title="Créer un compte"
+      description="Rejoignez Vector Elegans pour réserver vos courses."
+    >
+      <CustomerSignup />
+    </AuthFormShell>
   );
 }
 
@@ -72,17 +61,13 @@ export default function SignupPage() {
   return (
     <Suspense
       fallback={
-        <Card className="w-full">
-          <CardHeader>
-            <CardTitle>Créer un compte</CardTitle>
-            <CardDescription>Chargement...</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-center p-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
-            </div>
-          </CardContent>
-        </Card>
+        <AuthFormShell
+          kicker="Compte"
+          title="Créer un compte"
+          description="Chargement…"
+        >
+          <AuthLoadingSpinner />
+        </AuthFormShell>
       }
     >
       <SignupContent />

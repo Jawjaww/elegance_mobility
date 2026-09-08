@@ -1,4 +1,4 @@
-"use client";
+import { PublicPageShell } from "@/components/landing/PublicPageShell";
 
 export default function AuthLayout({
   children,
@@ -6,8 +6,10 @@ export default function AuthLayout({
   readonly children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md sm:max-w-lg">{children}</div>
-    </div>
+    <PublicPageShell>
+      <div className="flex min-h-[calc(100svh-4rem)] items-center justify-center px-4 py-10">
+        {children}
+      </div>
+    </PublicPageShell>
   );
 }

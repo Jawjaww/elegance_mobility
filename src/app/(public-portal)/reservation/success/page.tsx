@@ -1,12 +1,16 @@
 export default function ReservationSuccessPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-5 py-12 sm:px-6">
+    <div className="flex min-h-[calc(100svh-4rem)] items-center justify-center px-5 py-12 sm:px-6">
       <div className="w-full max-w-md text-center">
-        <h1 className="text-xl sm:text-2xl font-bold text-green-600 text-balance">
-          Réservation confirmée&nbsp;!
+        <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-blue-400">
+          Réservation
+        </p>
+        <h1 className="text-balance text-2xl font-bold text-white sm:text-3xl">
+          Réservation confirmée
         </h1>
-        <p className="text-sm sm:text-base text-gray-600 mt-4">
-          Votre réservation a été créée avec succès.
+        <p className="mt-4 text-sm text-neutral-400 sm:text-base">
+          Votre course est enregistrée. Vous recevrez les détails du chauffeur
+          avant le départ.
         </p>
       </div>
     </div>

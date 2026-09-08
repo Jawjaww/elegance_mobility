@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/useToast";
 import { resolveBackofficePostLoginPath } from "@/lib/auth/backoffice-auth";
 import { supabase } from "@/lib/database/client";
+import { LANDING_CTA, LANDING_LINK } from "@/components/landing/landingSurface";
 
 export function AdminLoginForm() {
   const [isLoading, setIsLoading] = useState(false);
@@ -186,13 +187,13 @@ export function AdminLoginForm() {
       <div className="text-right">
         <Link
           href="/auth/forgot-password"
-          className="text-sm text-muted-foreground hover:text-primary"
+          className={`text-sm ${LANDING_LINK}`}
         >
           Mot de passe oublié ?
         </Link>
       </div>
 
-      <Button type="submit" className="w-full" disabled={isLoading}>
+      <Button type="submit" className={`w-full ${LANDING_CTA}`} disabled={isLoading}>
         {isLoading ? "Connexion en cours..." : "Se connecter"}
       </Button>
     </form>

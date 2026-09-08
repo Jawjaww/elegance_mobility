@@ -3,6 +3,7 @@
 import LocationStep from "../../../components/reservation/LocationStep";
 import VehicleStep from "../../../components/reservation/VehicleStep";
 import { useReservation } from "../../../hooks/useReservation";
+import { LandingDesktopPanel } from "@/components/landing/LandingDesktopPanel";
 
 export default function ReservationPage() {
   const {
@@ -28,17 +29,9 @@ export default function ReservationPage() {
   } = useReservation();
 
   return (
-    <section className="relative grid min-h-screen bg-neutral-950 overflow-hidden">
-      <div className="absolute inset-0 perspective-[1000px]">
-        <div className="relative h-full w-full [transform-style:preserve-3d]">
-          <div className="absolute inset-0 bg-[url('/images/car-bg.jpg')] bg-cover bg-center [transform:translateZ(-100px)] scale-110" />
-          <div className="absolute inset-0 bg-neutral-950/90 backdrop-blur-3xl [transform:translateZ(-50px)]" />
-        </div>
-      </div>
-
-      <div className="relative z-10 place-self-center w-full max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
-        {/* Full-bleed on mobile; card chrome only from sm+ to keep address fields usable */}
-        <div className="p-0 sm:bg-neutral-900/50 sm:backdrop-blur-lg sm:rounded-lg sm:border sm:border-neutral-800 sm:p-8">
+    <section className="relative min-h-[calc(100svh-4rem)]">
+      <div className="relative z-10 mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-10">
+        <LandingDesktopPanel>
           {step === 1 ? (
             <LocationStep
               onNextStep={handleNextStep}
@@ -66,7 +59,7 @@ export default function ReservationPage() {
               isEditing={false}
             />
           )}
-        </div>
+        </LandingDesktopPanel>
       </div>
     </section>
   );
