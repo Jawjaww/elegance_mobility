@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
 import { ButtonLoading } from "@/components/ui/loading"
 import { useRouter } from "next/navigation"
@@ -225,10 +226,9 @@ export default function ModernDriverSignup() {
                 <Label htmlFor="password" className="text-neutral-300">Mot de passe</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-neutral-400" />
-                  <Input
+                  <PasswordInput
                     id="password"
                     name="password"
-                    type="password"
                     value={formData.password}
                     onChange={handleChange}
                     placeholder="••••••••"

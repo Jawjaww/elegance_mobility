@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/useToast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +26,7 @@ interface SettingsFormProps {
   };
 }
 
-export default function SettingsForm({ user, initialData }: SettingsFormProps) {
+export default function SettingsForm({ user, initialData }: Readonly<SettingsFormProps>) {
   const router = useRouter();
   const { toast } = useToast();
 
@@ -222,9 +223,8 @@ export default function SettingsForm({ user, initialData }: SettingsFormProps) {
               >
                 Mot de passe actuel
               </label>
-              <Input
+              <PasswordInput
                 id="currentPassword"
-                type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 className={ACCOUNT_INPUT}
@@ -239,9 +239,8 @@ export default function SettingsForm({ user, initialData }: SettingsFormProps) {
               >
                 Nouveau mot de passe
               </label>
-              <Input
+              <PasswordInput
                 id="newPassword"
-                type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 className={ACCOUNT_INPUT}
@@ -256,9 +255,8 @@ export default function SettingsForm({ user, initialData }: SettingsFormProps) {
               >
                 Confirmer le nouveau mot de passe
               </label>
-              <Input
+              <PasswordInput
                 id="confirmPassword"
-                type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className={ACCOUNT_INPUT}

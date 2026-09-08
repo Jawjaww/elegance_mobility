@@ -11,7 +11,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -113,8 +113,7 @@ export default function PasswordPage() {
                     Mot de passe actuel
                   </FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       placeholder="Entrez votre mot de passe actuel"
                       className={ACCOUNT_INPUT}
                       {...field}
@@ -134,8 +133,7 @@ export default function PasswordPage() {
                     Nouveau mot de passe
                   </FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       placeholder="Entrez votre nouveau mot de passe"
                       className={ACCOUNT_INPUT}
                       {...field}
@@ -155,8 +153,7 @@ export default function PasswordPage() {
                     Confirmer le nouveau mot de passe
                   </FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       placeholder="Confirmez votre nouveau mot de passe"
                       className={ACCOUNT_INPUT}
                       {...field}
@@ -167,7 +164,7 @@ export default function PasswordPage() {
               )}
             />
 
-            <div className="flex justify-end pt-1">
+            <div className="flex justify-end pt-[0.25rem]">
               <Button type="submit" className={ACCOUNT_CTA}>
                 Mettre à jour le mot de passe
               </Button>

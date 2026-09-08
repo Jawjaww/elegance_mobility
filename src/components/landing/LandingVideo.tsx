@@ -5,10 +5,13 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
+/** Let the decoder pass the first dropped frames before showing the clip. */
+const PLAYBACK_WARMUP_MS = 280;
+
 type LandingVideoProps = Readonly<{
   src: string;
   poster: string;
-  /** Hero: decode immediately. Other clips wait until they enter the snap viewport. */
+  /** Hero: decode after first paint. Other clips wait until they enter the snap viewport. */
   eager?: boolean;
   className?: string;
   sizes?: string;
@@ -21,9 +24,17 @@ function snapRoot(node: Element): Element | null {
   return scroller instanceof Element ? scroller : null;
 }
 
+function afterFirstPaint(run: () => void): () => void {
+  const id = requestAnimationFrame(() => {
+    requestAnimationFrame(run);
+  });
+  return () => cancelAnimationFrame(id);
+}
+
 /**
- * Poster stays on screen until the decoder paints a real frame, then native
- * `loop` takes over. Manual seek / poster-cover loops flash black on Android.
+ * Poster covers a full-size video that never moves or fades.
+ * Previous approaches stuttered on Android: Ken Burns / opacity on <video>,
+ * poster-loop seeks, and sliding the element from off-screen into place.
  */
 export function LandingVideo({
   src,
@@ -37,32 +48,30 @@ export function LandingVideo({
   const reducedMotion = usePrefersReducedMotion();
   const wrapRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [hasFrame, setHasFrame] = useState(false);
+  const inViewRef = useRef(eager);
+  const [shouldLoad, setShouldLoad] = useState(false);
+  const [showClip, setShowClip] = useState(false);
 
   useEffect(() => {
     if (reducedMotion) return;
     const wrap = wrapRef.current;
-    const el = videoRef.current;
-    if (!wrap || !el) return;
+    if (!wrap) return;
 
-    el.muted = true;
-    el.defaultMuted = true;
-    el.playsInline = true;
-
-    const playIfVisible = () => {
-      el.muted = true;
-      void el.play().catch(() => undefined);
-    };
-
-    if (eager) playIfVisible();
+    const enableLoad = () => setShouldLoad(true);
+    const cancelPaint = eager ? afterFirstPaint(enableLoad) : undefined;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry?.isIntersecting) {
-          playIfVisible();
+        const visible = Boolean(entry?.isIntersecting);
+        inViewRef.current = visible;
+        if (visible) enableLoad();
+        const el = videoRef.current;
+        if (!el) return;
+        if (visible) {
+          el.muted = true;
+          void el.play().catch(() => undefined);
         } else {
           el.pause();
-          setHasFrame(false);
         }
       },
       {
@@ -72,33 +81,60 @@ export function LandingVideo({
     );
     observer.observe(wrap);
 
-    return () => observer.disconnect();
-  }, [reducedMotion, eager, src]);
+    return () => {
+      cancelPaint?.();
+      observer.disconnect();
+    };
+  }, [reducedMotion, eager]);
+
+  useEffect(() => {
+    if (reducedMotion || !shouldLoad) return;
+    const el = videoRef.current;
+    if (!el) return;
+
+    let warmup = 0;
+
+    el.muted = true;
+    el.defaultMuted = true;
+    el.playsInline = true;
+    el.setAttribute("playsinline", "true");
+    el.setAttribute("webkit-playsinline", "true");
+
+    const onPlaying = () => {
+      window.clearTimeout(warmup);
+      warmup = window.setTimeout(() => setShowClip(true), PLAYBACK_WARMUP_MS);
+    };
+
+    el.addEventListener("playing", onPlaying);
+    if (inViewRef.current) {
+      void el.play().catch(() => undefined);
+    }
+
+    return () => {
+      window.clearTimeout(warmup);
+      el.removeEventListener("playing", onPlaying);
+    };
+  }, [reducedMotion, shouldLoad, src]);
 
   return (
     <div
       ref={wrapRef}
       className={cn("relative overflow-hidden bg-neutral-950", className)}
     >
-      {reducedMotion ? null : (
+      {!reducedMotion && shouldLoad ? (
         <video
           ref={videoRef}
           src={src}
           muted
           loop
           playsInline
-          autoPlay={eager}
-          preload={eager ? "auto" : "none"}
-          poster={poster}
+          preload={eager ? "auto" : "metadata"}
           disablePictureInPicture
           disableRemotePlayback
-          onPlaying={() => setHasFrame(true)}
-          className={cn(
-            "absolute inset-0 h-full w-full object-cover",
-            hasFrame ? "opacity-100" : "opacity-0",
-          )}
+          controls={false}
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
         />
-      )}
+      ) : null}
       <Image
         src={poster}
         alt=""
@@ -107,7 +143,7 @@ export function LandingVideo({
         sizes={sizes}
         className={cn(
           "pointer-events-none z-[1] object-cover",
-          hasFrame && !reducedMotion ? "opacity-0" : "opacity-100",
+          showClip && !reducedMotion ? "hidden" : "block",
         )}
       />
       {children ? (

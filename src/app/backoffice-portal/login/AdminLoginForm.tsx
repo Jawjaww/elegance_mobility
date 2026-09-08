@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/useToast";
 import { resolveBackofficePostLoginPath } from "@/lib/auth/backoffice-auth";
@@ -13,7 +14,6 @@ import { LANDING_CTA, LANDING_LINK } from "@/components/landing/landingSurface";
 
 export function AdminLoginForm() {
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -160,28 +160,13 @@ export function AdminLoginForm() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Mot de passe</Label>
-        <div className="flex items-center">
-          <Input
-            id="password"
-            name="password"
-            type={showPassword ? "text" : "password"}
-            required
-            autoComplete="current-password"
-            disabled={isLoading}
-          />
-          <button
-            type="button"
-            aria-label={
-              showPassword
-                ? "Masquer le mot de passe"
-                : "Afficher le mot de passe"
-            }
-            onClick={() => setShowPassword((s) => !s)}
-            className="ml-2 text-neutral-300 hover:text-white"
-          >
-            {showPassword ? "🙈" : "👁️"}
-          </button>
-        </div>
+        <PasswordInput
+          id="password"
+          name="password"
+          required
+          autoComplete="current-password"
+          disabled={isLoading}
+        />
       </div>
 
       <div className="text-right">

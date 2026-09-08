@@ -18,7 +18,7 @@ export function HeroSection() {
 
   return (
     <section className="relative flex min-h-0 flex-1 flex-col justify-center overflow-hidden pt-20 pb-4">
-      <div className="absolute inset-0 -z-10">
+      <div className="absolute inset-0 z-0">
         <LandingVideo
           src={LANDING_ASSETS.heroVideo}
           poster={LANDING_ASSETS.heroPoster}
@@ -39,7 +39,7 @@ export function HeroSection() {
         />
       </div>
 
-      <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-0">
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-0">
         <div className="max-w-3xl">
           <motion.div
             initial={reducedMotion ? false : { opacity: 0, y: 10 }}

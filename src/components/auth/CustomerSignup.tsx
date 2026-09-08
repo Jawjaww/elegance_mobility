@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Mail, User, Lock, ArrowRight, CheckCircle } from "lucide-react";
@@ -282,9 +283,8 @@ export default function CustomerSignup() {
           <Label htmlFor="password">Mot de passe *</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               value={formData.password}
               onChange={(e) => handleInputChange("password", e.target.value)}
               placeholder="Votre mot de passe"
@@ -299,9 +299,8 @@ export default function CustomerSignup() {
           <Label htmlFor="confirmPassword">Confirmer le mot de passe *</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
+            <PasswordInput
               id="confirmPassword"
-              type="password"
               value={formData.confirmPassword}
               onChange={(e) =>
                 handleInputChange("confirmPassword", e.target.value)

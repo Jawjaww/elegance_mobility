@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useToast } from "@/hooks/useToast";
@@ -52,7 +53,6 @@ function loginErrorMessage(
 
 export function LoginForm({ onSuccess }: Readonly<LoginFormProps> = {}) {
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -135,30 +135,15 @@ export function LoginForm({ onSuccess }: Readonly<LoginFormProps> = {}) {
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Mot de passe</Label>
-        <div className="flex items-center">
-          <Input
-            id="password"
-            name="password"
-            type={showPassword ? "text" : "password"}
-            required
-            autoComplete="current-password"
-            disabled={isLoading}
-            aria-invalid={Boolean(formError)}
-            suppressHydrationWarning
-          />
-          <button
-            type="button"
-            aria-label={
-              showPassword
-                ? "Masquer le mot de passe"
-                : "Afficher le mot de passe"
-            }
-            onClick={() => setShowPassword((s) => !s)}
-            className="ml-2 text-neutral-400 hover:text-white"
-          >
-            {showPassword ? "🙈" : "👁️"}
-          </button>
-        </div>
+        <PasswordInput
+          id="password"
+          name="password"
+          required
+          autoComplete="current-password"
+          disabled={isLoading}
+          aria-invalid={Boolean(formError)}
+          suppressHydrationWarning
+        />
       </div>
 
       {formError && (

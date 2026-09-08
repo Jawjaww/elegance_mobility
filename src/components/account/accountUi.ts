@@ -13,7 +13,7 @@ export const ACCOUNT_ICON_WRAP =
   "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-blue-500/25 bg-blue-500/10 text-blue-400";
 
 export const ACCOUNT_INPUT =
-  "mt-1 bg-neutral-950 border-neutral-800 text-neutral-100 focus-visible:border-blue-500/55 focus-visible:ring-1 focus-visible:ring-blue-500/30 focus-visible:ring-offset-0";
+  "mt-[0.25rem] bg-neutral-950 border-neutral-800 text-neutral-100 focus-visible:border-blue-500/55 focus-visible:ring-1 focus-visible:ring-blue-500/30 focus-visible:ring-offset-0";
 
 export const ACCOUNT_CTA =
   "bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-500 hover:to-blue-700 shadow-lg shadow-blue-950/40";
