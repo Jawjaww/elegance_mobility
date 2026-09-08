@@ -345,7 +345,7 @@ export function AutocompleteInput({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           className={cn(
-            "flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+            "flex w-full rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 shadow-none placeholder:text-neutral-500 focus-visible:border-blue-500/55 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/30 disabled:cursor-not-allowed disabled:opacity-50 transition-colors",
             styles.addressField,
             shouldExpand
               ? styles.addressFieldExpanded
@@ -376,7 +376,12 @@ export function AutocompleteInput({
           onMouseLeave={handleLocationButtonLeave}
           onFocus={handleLocationButtonEnter}
           onBlur={handleLocationButtonLeave}
-          className={cn(styles.locationButton, "rounded-full")}
+          className={cn(
+            styles.locationButton,
+            "rounded-full border-neutral-800 bg-neutral-950 text-neutral-400",
+            "hover:border-blue-400/55 hover:bg-blue-800/45 hover:text-blue-100",
+            "focus-visible:border-blue-400/55 focus-visible:bg-blue-800/45 focus-visible:text-blue-100 focus-visible:ring-0 focus-visible:ring-offset-0",
+          )}
           disabled={isLocating}
           aria-label="Utiliser ma position actuelle"
         >

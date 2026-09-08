@@ -1,4 +1,7 @@
-export { LANDING_CTA } from "@/components/landing/landingAssets";
+export {
+  LANDING_BRAND,
+  LANDING_CTA,
+} from "@/components/landing/landingAssets";
 
 /** Full-page canvas aligned with the landing hero (blue-neutral, not gray metal). */
 export const LANDING_PAGE_BG = "relative bg-neutral-950 text-white";

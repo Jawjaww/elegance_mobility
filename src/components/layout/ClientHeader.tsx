@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Car, History, User2, LogOut } from "lucide-react";
 import { supabase } from "@/lib/database/client";
+import { LANDING_BRAND } from "@/components/landing/landingAssets";
 
 const NAV_ITEMS = [
   {
@@ -86,7 +87,12 @@ export function ClientHeader() {
           {/* Logo à gauche */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2">
-              <span className="text-xl font-bold tracking-tight text-white hover:text-blue-300">
+              <span
+                className={cn(
+                  "text-xl font-bold tracking-tight transition-opacity hover:opacity-90",
+                  LANDING_BRAND,
+                )}
+              >
                 Vector Elegans
               </span>
             </Link>

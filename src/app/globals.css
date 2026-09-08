@@ -139,9 +139,9 @@
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    --border: 0 0% 25%;
+    --input: 0 0% 25%;
+    --ring: 217 91% 60%;
 
     /* Elegant tokens for dark mode */
     --elegant-bg-start: #0b1220;
@@ -163,11 +163,11 @@
     @apply bg-neutral-950 text-neutral-100;
   }
 
-  /* Styles pour les formulaires */
+  /* Styles pour les formulaires — near-black fields, soft blue focus elsewhere */
   input,
   select,
   textarea {
-    @apply bg-neutral-800 text-neutral-100 border-neutral-700 placeholder:text-neutral-400;
+    @apply bg-neutral-950 text-neutral-100 border-neutral-800 placeholder:text-neutral-500;
   }
 
   /* Suppression du style par défaut générique qui surcharge tous les boutons */
@@ -380,7 +380,7 @@
 
   /* Style des inputs */
   .input-elegant {
-    @apply w-full bg-neutral-800 text-neutral-100 border-neutral-700 placeholder:text-neutral-400;
+    @apply w-full bg-neutral-950 text-neutral-100 border-neutral-800 placeholder:text-neutral-500;
   }
 
   /* Pour les boutons dans les formulaires qui doivent être plus petits */

@@ -135,8 +135,8 @@ export function DateTimePicker({
           onClick={openNativePicker}
           min={minDateString}
           className={cn(
-            "min-w-0 flex-1 bg-neutral-900 border-neutral-700 text-white",
-            "focus:border-neutral-500 focus:ring-neutral-500 [color-scheme:dark]",
+            "min-w-0 flex-1 bg-neutral-950 border-neutral-800 text-white",
+            "focus-visible:border-blue-500/55 focus-visible:ring-1 focus-visible:ring-blue-500/30 focus-visible:ring-offset-0 [color-scheme:dark]",
             // Hide native calendar glyph so only the Lucide button is visible
             "[&::-webkit-calendar-picker-indicator]:hidden",
           )}
@@ -144,7 +144,7 @@ export function DateTimePicker({
         <button
           type="button"
           onClick={openNativePicker}
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-neutral-700 bg-neutral-900 text-neutral-300 hover:border-neutral-500 hover:text-white"
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-neutral-800 bg-neutral-950 text-neutral-400 transition-colors hover:border-blue-500/45 hover:bg-blue-500/10 hover:text-blue-400"
           aria-label="Ouvrir le calendrier"
         >
           <CalendarDays className="h-5 w-5" />

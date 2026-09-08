@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { LANDING_CTA } from "@/components/landing/landingAssets";
+import { LANDING_BRAND, LANDING_CTA } from "@/components/landing/landingAssets";
 import {
   getLandingScroller,
   scrollLandingTo,
@@ -93,7 +93,10 @@ export function LandingNav() {
         <Link
           href="/"
           onClick={goToTop}
-          className="text-lg font-bold tracking-tight text-white hover:text-blue-300 transition-colors"
+          className={cn(
+            "text-lg font-bold tracking-tight transition-opacity hover:opacity-90",
+            LANDING_BRAND,
+          )}
         >
           Vector Elegans
         </Link>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { LANDING_CTA } from "@/components/landing/landingAssets";
+import { LANDING_BRAND, LANDING_CTA } from "@/components/landing/landingAssets";
 import { LANDING_PAGE_X } from "@/components/landing/landingSurface";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +16,10 @@ export function PublicHeader() {
       <div className={cn("mx-auto flex h-16 max-w-7xl items-center justify-between gap-4", LANDING_PAGE_X)}>
         <Link
           href="/"
-          className="text-lg font-bold tracking-tight text-white transition-colors hover:text-blue-300"
+          className={cn(
+            "text-lg font-bold tracking-tight transition-opacity hover:opacity-90",
+            LANDING_BRAND,
+          )}
         >
           Vector Elegans
         </Link>
