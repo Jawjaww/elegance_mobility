@@ -57,7 +57,6 @@ export function BerlineExperienceSection() {
           video={LANDING_ASSETS.berlineVideo}
           poster={LANDING_ASSETS.berlinePoster}
           overlay="from-blue-950/70"
-          pingPong
         >
           <BerlineHeading />
         </ExperienceMediaStage>

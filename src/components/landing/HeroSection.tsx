@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { LandingVideo } from "@/components/landing/LandingVideo";
 import {
   LANDING_ASSETS,
   LANDING_CTA,
@@ -19,34 +19,14 @@ export function HeroSection() {
   return (
     <section className="relative flex min-h-0 flex-1 flex-col justify-center overflow-hidden pt-20 pb-4">
       <div className="absolute inset-0 -z-10">
-        {reducedMotion ? (
-          <Image
-            src={LANDING_ASSETS.heroPoster}
-            alt=""
-            fill
-            priority
-            className="object-cover"
-            sizes="100vw"
-          />
-        ) : (
-          <motion.div
-            className="absolute inset-0"
-            initial={{ scale: 1.08 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 14, ease: "linear" }}
-          >
-            <video
-              autoPlay
-              muted
-              loop
-              playsInline
-              poster={LANDING_ASSETS.heroPoster}
-              className="absolute inset-0 h-full w-full object-cover"
-            >
-              <source src={LANDING_ASSETS.heroVideo} type="video/mp4" />
-            </video>
-          </motion.div>
-        )}
+        <LandingVideo
+          src={LANDING_ASSETS.heroVideo}
+          poster={LANDING_ASSETS.heroPoster}
+          eager
+          priority
+          className="absolute inset-0"
+          sizes="100vw"
+        />
         <div className="absolute inset-0 bg-gradient-to-b from-neutral-950/80 via-neutral-950/45 to-neutral-950" />
         <div className="absolute inset-0 bg-gradient-to-r from-blue-950/70 via-transparent to-neutral-950/50" />
         <div
