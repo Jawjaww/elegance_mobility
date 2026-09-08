@@ -473,6 +473,61 @@
 }
 
 @layer utilities {
+  /* Premium horizontal inset with notch / home-indicator safe area. */
+  .landing-page-x {
+    padding-left: max(1.5rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1.5rem, env(safe-area-inset-right, 0px));
+  }
+
+  @media (min-width: 640px) {
+    .landing-page-x {
+      padding-left: max(2rem, env(safe-area-inset-left, 0px));
+      padding-right: max(2rem, env(safe-area-inset-right, 0px));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .landing-page-x {
+      padding-left: max(2.5rem, env(safe-area-inset-left, 0px));
+      padding-right: max(2.5rem, env(safe-area-inset-right, 0px));
+    }
+  }
+
+  /* Auth / short pages: top-aligned on mobile, centered from md (keyboard-friendly). */
+  .landing-page-main {
+    display: flex;
+    width: 100%;
+    min-height: calc(100svh - 4rem);
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding-top: 1.5rem;
+    padding-bottom: 2.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .landing-page-main {
+      align-items: center;
+      justify-content: center;
+      padding-top: 2.5rem;
+      padding-bottom: 2.5rem;
+    }
+  }
+
+  /* Multi-step flows (reservation): always scroll from top. */
+  .landing-page-flow {
+    min-height: calc(100svh - 4rem);
+    padding-top: 1.5rem;
+    padding-bottom: 2.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .landing-page-flow {
+      padding-top: 2.5rem;
+      padding-bottom: 2.5rem;
+    }
+  }
+
   /* Ajoute un padding en bas sur mobile pour éviter que le menu mobile cache le contenu */
   .mobile-safe-area {
     @apply pb-20 md:pb-0;

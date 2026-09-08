@@ -11,7 +11,7 @@ import {
   AuthFormShell,
   AuthLoadingSpinner,
 } from "@/components/landing/AuthFormShell";
-import { LANDING_LINK } from "@/components/landing/landingSurface";
+import { LANDING_LINK, LANDING_PAGE_MAIN } from "@/components/landing/landingSurface";
 
 export default function DriverLoginPage() {
   const router = useRouter();
@@ -62,7 +62,7 @@ export default function DriverLoginPage() {
 
   return (
     <PublicPageShell>
-      <div className="flex min-h-[calc(100svh-4rem)] items-center justify-center px-4 py-10">
+      <div className={LANDING_PAGE_MAIN}>
         <AuthFormShell
           kicker="Partenaire"
           title="Connexion chauffeur"

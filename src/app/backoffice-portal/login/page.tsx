@@ -12,6 +12,7 @@ import {
   AuthFormShell,
   AuthLoadingSpinner,
 } from "@/components/landing/AuthFormShell";
+import { LANDING_PAGE_MAIN } from "@/components/landing/landingSurface";
 
 function AdminLoginPageContent() {
   const router = useRouter();
@@ -54,7 +55,7 @@ function AdminLoginPageContent() {
   }
 
   return (
-    <div className="flex min-h-[calc(100svh-4rem)] items-center justify-center px-4 py-10">
+    <div className={LANDING_PAGE_MAIN}>
       <AuthFormShell
         kicker="Équipe"
         title="Connexion administrateur"

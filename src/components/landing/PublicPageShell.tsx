@@ -4,6 +4,7 @@ import { PublicHeader } from "@/components/landing/PublicHeader";
 import {
   LANDING_PAGE_BG,
   LANDING_PAGE_GLOW,
+  LANDING_PAGE_X,
 } from "@/components/landing/landingSurface";
 
 export function PublicPageShell({
@@ -19,7 +20,7 @@ export function PublicPageShell({
     <div className={cn("min-h-svh", LANDING_PAGE_BG, className)}>
       <div aria-hidden className={LANDING_PAGE_GLOW} />
       {showHeader ? <PublicHeader /> : null}
-      <div className="relative">{children}</div>
+      <div className={cn("relative", LANDING_PAGE_X)}>{children}</div>
     </div>
   );
 }

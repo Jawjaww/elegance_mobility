@@ -4,6 +4,7 @@ import LocationStep from "../../../components/reservation/LocationStep";
 import VehicleStep from "../../../components/reservation/VehicleStep";
 import { useReservation } from "../../../hooks/useReservation";
 import { LandingDesktopPanel } from "@/components/landing/LandingDesktopPanel";
+import { LANDING_PAGE_FLOW } from "@/components/landing/landingSurface";
 
 export default function ReservationPage() {
   const {
@@ -29,8 +30,8 @@ export default function ReservationPage() {
   } = useReservation();
 
   return (
-    <section className="relative min-h-[calc(100svh-4rem)]">
-      <div className="relative z-10 mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-10">
+    <section className={`relative ${LANDING_PAGE_FLOW}`}>
+      <div className="relative z-10 mx-auto w-full max-w-2xl">
         <LandingDesktopPanel>
           {step === 1 ? (
             <LocationStep

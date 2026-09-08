@@ -1,4 +1,5 @@
 import { PublicPageShell } from "@/components/landing/PublicPageShell";
+import { LANDING_PAGE_MAIN } from "@/components/landing/landingSurface";
 
 export default function AuthLayout({
   children,
@@ -7,9 +8,7 @@ export default function AuthLayout({
 }) {
   return (
     <PublicPageShell>
-      <div className="flex min-h-[calc(100svh-4rem)] items-center justify-center px-4 py-10">
-        {children}
-      </div>
+      <div className={LANDING_PAGE_MAIN}>{children}</div>
     </PublicPageShell>
   );
 }

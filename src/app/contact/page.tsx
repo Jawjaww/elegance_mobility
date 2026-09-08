@@ -1,12 +1,17 @@
 import Link from "next/link";
 import { PublicPageShell } from "@/components/landing/PublicPageShell";
-import { LANDING_CTA, LANDING_KICKER } from "@/components/landing/landingSurface";
+import {
+  LANDING_CTA,
+  LANDING_KICKER,
+  LANDING_PAGE_MAIN,
+} from "@/components/landing/landingSurface";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export default function Contact() {
   return (
     <PublicPageShell>
-      <main className="mx-auto flex min-h-[calc(100svh-4rem)] max-w-xl flex-col justify-center px-4 py-12">
+      <main className={cn("mx-auto w-full max-w-xl", LANDING_PAGE_MAIN)}>
         <p className={`${LANDING_KICKER} mb-3`}>Contact</p>
         <h1 className="text-3xl font-bold text-white md:text-4xl">
           Contactez-nous

@@ -1,6 +1,8 @@
+import { LANDING_PAGE_MAIN } from "@/components/landing/landingSurface";
+
 export default function ReservationSuccessPage() {
   return (
-    <div className="flex min-h-[calc(100svh-4rem)] items-center justify-center px-5 py-12 sm:px-6">
+    <div className={`${LANDING_PAGE_MAIN} text-center`}>
       <div className="w-full max-w-md text-center">
         <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-blue-400">
           Réservation

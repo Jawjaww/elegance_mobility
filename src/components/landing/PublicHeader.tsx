@@ -4,14 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { LANDING_CTA } from "@/components/landing/landingAssets";
+import { LANDING_PAGE_X } from "@/components/landing/landingSurface";
+import { cn } from "@/lib/utils";
 
 export function PublicHeader() {
   const pathname = usePathname() ?? "";
   const isLogin = pathname.startsWith("/auth/login");
 
   return (
-    <header className="sticky top-0 z-50 border-b border-blue-500/15 bg-neutral-950/85 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 border-b border-blue-500/15 bg-neutral-950/85 backdrop-blur-xl pt-[env(safe-area-inset-top,0px)]">
+      <div className={cn("mx-auto flex h-16 max-w-7xl items-center justify-between gap-4", LANDING_PAGE_X)}>
         <Link
           href="/"
           className="text-lg font-bold tracking-tight text-white transition-colors hover:text-blue-300"
