@@ -23,20 +23,22 @@ export function HeroBackdrop() {
         poster={LANDING_ASSETS.heroPoster}
         eager
         priority
-        className="absolute inset-0"
+        className="absolute inset-0 z-0"
         sizes="100vw"
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-neutral-950/80 via-neutral-950/35 to-neutral-950/45" />
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-950/70 via-transparent to-neutral-950/40" />
-      <div
-        className="absolute inset-0 opacity-40 pointer-events-none"
-        aria-hidden
-        style={{
-          background:
-            "radial-gradient(ellipse 80% 55% at 20% 78%, rgba(37,99,235,0.38), transparent 62%)",
-        }}
-      />
-      <div className={LANDING_HERO_BOTTOM_FADE} aria-hidden />
+      {/* Always above poster + video so the blue wash is on the first paint. */}
+      <div className="pointer-events-none absolute inset-0 z-[1]" aria-hidden>
+        <div className="absolute inset-0 bg-gradient-to-b from-neutral-950/80 via-neutral-950/35 to-neutral-950/45" />
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-950/70 via-transparent to-neutral-950/40" />
+        <div
+          className="absolute inset-0 opacity-40"
+          style={{
+            background:
+              "radial-gradient(ellipse 80% 55% at 20% 78%, rgba(37,99,235,0.38), transparent 62%)",
+          }}
+        />
+        <div className={LANDING_HERO_BOTTOM_FADE} />
+      </div>
     </div>
   );
 }

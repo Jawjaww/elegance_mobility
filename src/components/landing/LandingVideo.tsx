@@ -119,7 +119,7 @@ export function LandingVideo({
   return (
     <div
       ref={wrapRef}
-      className={cn("relative overflow-hidden bg-neutral-950", className)}
+      className={cn("relative isolate overflow-hidden bg-neutral-950", className)}
     >
       {!reducedMotion && shouldLoad ? (
         <video
@@ -142,7 +142,7 @@ export function LandingVideo({
         priority={priority}
         sizes={sizes}
         className={cn(
-          "pointer-events-none z-[1] object-cover",
+          "pointer-events-none object-cover",
           showClip && !reducedMotion ? "hidden" : "block",
         )}
       />

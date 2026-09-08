@@ -5,6 +5,7 @@ import {
   StaggerContainer,
   StaggerItem,
 } from "@/components/motion/StaggerContainer";
+import { LANDING_TRUST_GLASS } from "@/components/landing/landingSurface";
 
 const TRUST_ITEMS = [
   {
@@ -34,7 +35,7 @@ export function TrustStrip() {
     <section className="relative z-10 shrink-0 px-4 pb-5 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8">
       <StaggerContainer
         stagger={0.08}
-        className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 rounded-2xl border border-blue-500/15 bg-neutral-900/85 backdrop-blur-xl p-3 sm:p-5 shadow-2xl shadow-blue-950/30"
+        className={`max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 p-3 sm:p-5 ${LANDING_TRUST_GLASS}`}
       >
         {TRUST_ITEMS.map(({ icon: Icon, label, tone }, index) => (
           <StaggerItem

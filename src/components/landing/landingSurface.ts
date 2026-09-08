@@ -36,6 +36,10 @@ export const LANDING_HERO_TO_HOWITWORKS =
 export const LANDING_HERO_BOTTOM_FADE =
   "pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent_52%,rgb(23_37_84/0.42)_78%,#172554_100%)]";
 
+/** Glass chip over the hero — dark translucent, lets the Cayenne show through. */
+export const LANDING_TRUST_GLASS =
+  "rounded-2xl border border-white/[0.08] bg-gradient-to-b from-neutral-950/50 to-black/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_12px_32px_rgba(0,0,0,0.32)] backdrop-blur-xl";
+
 export const LANDING_KICKER =
   "text-[11px] md:text-xs font-medium uppercase tracking-[0.2em] text-blue-400";
 
