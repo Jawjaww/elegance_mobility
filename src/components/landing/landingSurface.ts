@@ -25,6 +25,17 @@ export const LANDING_PAGE_FLOW = "landing-page-flow";
 export const LANDING_DESKTOP_PANEL =
   "md:relative md:overflow-hidden md:rounded-3xl md:border md:border-white/[0.08] md:bg-neutral-950/95 md:p-8 md:shadow-lg md:shadow-black/40";
 
+/**
+ * Snap seam hero → “Comment ça marche”: a short blue band at the top,
+ * then near-black before mid-panel so the berline screen does not clash.
+ */
+export const LANDING_HERO_TO_HOWITWORKS =
+  "pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,#172554_0%,#101628_10%,#0a0a0a_26%)]";
+
+/** Last stretch of the hero: dissolve the Cayenne into the seam color. */
+export const LANDING_HERO_BOTTOM_FADE =
+  "pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent_52%,rgb(23_37_84/0.42)_78%,#172554_100%)]";
+
 export const LANDING_KICKER =
   "text-[11px] md:text-xs font-medium uppercase tracking-[0.2em] text-blue-400";
 

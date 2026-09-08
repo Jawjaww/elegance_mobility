@@ -7,6 +7,7 @@ import {
   StaggerItem,
 } from "@/components/motion/StaggerContainer";
 import { LANDING_PANEL } from "@/components/landing/landingPanel";
+import { LANDING_HERO_TO_HOWITWORKS } from "@/components/landing/landingSurface";
 
 const STEPS = [
   {
@@ -28,8 +29,20 @@ const STEPS = [
 
 export function HowItWorksSection() {
   return (
-    <section id="comment-ca-marche" className={LANDING_PANEL}>
-      <div className="flex min-h-0 flex-1 flex-col justify-center px-4 sm:px-6 lg:px-8 pt-16 pb-4 md:pb-8">
+    <section
+      id="comment-ca-marche"
+      className={`${LANDING_PANEL} relative bg-neutral-950`}
+    >
+      <div className={LANDING_HERO_TO_HOWITWORKS} aria-hidden />
+      <div
+        className="pointer-events-none absolute inset-0"
+        aria-hidden
+        style={{
+          background:
+            "radial-gradient(ellipse 50% 18% at 20% 0%, rgba(37,99,235,0.14), transparent 70%)",
+        }}
+      />
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col justify-center px-4 sm:px-6 lg:px-8 pt-16 pb-4 md:pb-8">
         <div className="max-w-7xl mx-auto w-full">
           <FadeIn from="left" className="text-center mb-5 md:mb-12 lg:mb-16">
             <p className="text-[11px] md:text-sm font-medium uppercase tracking-wider text-blue-400 mb-1.5 md:mb-3">

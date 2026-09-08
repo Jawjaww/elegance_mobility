@@ -10,36 +10,43 @@ import {
   LANDING_ASSETS,
   LANDING_CTA,
 } from "@/components/landing/landingAssets";
+import { LANDING_HERO_BOTTOM_FADE } from "@/components/landing/landingSurface";
 
 const ease = [0.22, 1, 0.36, 1] as const;
+
+/** Full-bleed Cayenne + blue wash for the first snap panel (behind copy and TrustStrip). */
+export function HeroBackdrop() {
+  return (
+    <div className="absolute inset-0 z-0">
+      <LandingVideo
+        src={LANDING_ASSETS.heroVideo}
+        poster={LANDING_ASSETS.heroPoster}
+        eager
+        priority
+        className="absolute inset-0"
+        sizes="100vw"
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-neutral-950/80 via-neutral-950/35 to-neutral-950/45" />
+      <div className="absolute inset-0 bg-gradient-to-r from-blue-950/70 via-transparent to-neutral-950/40" />
+      <div
+        className="absolute inset-0 opacity-40 pointer-events-none"
+        aria-hidden
+        style={{
+          background:
+            "radial-gradient(ellipse 80% 55% at 20% 78%, rgba(37,99,235,0.38), transparent 62%)",
+        }}
+      />
+      <div className={LANDING_HERO_BOTTOM_FADE} aria-hidden />
+    </div>
+  );
+}
 
 export function HeroSection() {
   const reducedMotion = usePrefersReducedMotion();
 
   return (
-    <section className="relative flex min-h-0 flex-1 flex-col justify-center overflow-hidden pt-20 pb-4">
-      <div className="absolute inset-0 z-0">
-        <LandingVideo
-          src={LANDING_ASSETS.heroVideo}
-          poster={LANDING_ASSETS.heroPoster}
-          eager
-          priority
-          className="absolute inset-0"
-          sizes="100vw"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-neutral-950/80 via-neutral-950/45 to-neutral-950" />
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-950/70 via-transparent to-neutral-950/50" />
-        <div
-          className="absolute inset-0 opacity-40 pointer-events-none"
-          aria-hidden
-          style={{
-            background:
-              "radial-gradient(ellipse 80% 50% at 20% 70%, rgba(37,99,235,0.35), transparent 60%)",
-          }}
-        />
-      </div>
-
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-0">
+    <section className="relative z-10 flex min-h-0 flex-1 flex-col justify-center overflow-hidden pt-20 pb-4">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-0">
         <div className="max-w-3xl">
           <motion.div
             initial={reducedMotion ? false : { opacity: 0, y: 10 }}

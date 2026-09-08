@@ -1,5 +1,5 @@
 import { LandingNav } from "@/components/landing/LandingNav";
-import { HeroSection } from "@/components/landing/HeroSection";
+import { HeroBackdrop, HeroSection } from "@/components/landing/HeroSection";
 import { TrustStrip } from "@/components/landing/TrustStrip";
 import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
 import { BerlineExperienceSection } from "@/components/landing/BerlineExperienceSection";
@@ -16,7 +16,8 @@ export function LandingPage() {
     >
       <LandingNav />
       <main>
-        <section className={LANDING_PANEL} aria-label="Accueil">
+        <section className={`${LANDING_PANEL} relative`} aria-label="Accueil">
+          <HeroBackdrop />
           <HeroSection />
           <TrustStrip />
         </section>
