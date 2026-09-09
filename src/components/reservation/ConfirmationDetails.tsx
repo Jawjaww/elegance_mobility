@@ -3,21 +3,14 @@
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { formatDuration, cn } from "@/lib/utils";
-import {
-  CalendarIcon,
-  MapPinIcon,
-  CarIcon,
-  PackageCheck,
-  ArrowRight,
-  Route,
-} from "lucide-react";
+import { CalendarIcon, CarIcon, Route } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import type { Database } from "@/lib/types/database.types";
 import { useReservationStore } from "@/lib/stores/reservationStore";
 import { supabase } from "@/lib/database/client";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "../ui/loading-spinner";
-import { Suspense, useState, useEffect, type ComponentType } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import ReservationMap from "@/components/map/ReservationMap";
@@ -126,28 +119,22 @@ function reservationErrorMessage(error: unknown): string {
 }
 
 
-function DetailRow({
+function Fact({
   icon: Icon,
   label,
   children,
 }: Readonly<{
-  icon: ComponentType<{ className?: string }>;
+  icon: typeof CalendarIcon;
   label: string;
   children: React.ReactNode;
 }>) {
   return (
-    <div className="flex min-w-0 items-start gap-2.5 md:gap-3">
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600/20 md:h-8 md:w-8">
-        <Icon className="h-3.5 w-3.5 text-blue-500 md:h-4 md:w-4" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-[11px] leading-tight text-neutral-400 md:mb-1 md:text-sm">
-          {label}
-        </p>
-        <div className="text-sm leading-snug text-neutral-100 md:text-base">
-          {children}
-        </div>
-      </div>
+    <div className="min-w-0">
+      <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-500">
+        <Icon className="h-3 w-3 text-blue-400" aria-hidden />
+        {label}
+      </p>
+      <p className="mt-0.5 text-sm leading-snug text-white">{children}</p>
     </div>
   );
 }
@@ -418,42 +405,67 @@ export function ConfirmationDetails() {
       </div>
 
       <div className="grid gap-3 md:gap-6 lg:grid-cols-2 lg:items-start">
-        <Card className="order-1 border-blue-500/20 bg-neutral-900/80 p-3 md:rounded-3xl md:p-6 lg:col-start-1 lg:row-start-1">
-          <h2 className="mb-2.5 flex items-center text-base font-semibold md:mb-5 md:text-lg">
-            <Route className="mr-2 h-4 w-4 text-blue-500 md:h-5 md:w-5" />
+        <Card className="order-1 border-blue-500/20 bg-neutral-900/80 p-4 md:rounded-3xl md:p-5 lg:col-start-1 lg:row-start-1">
+          <h2 className="mb-3 flex items-center text-sm font-semibold text-white md:text-base">
+            <Route className="mr-2 h-4 w-4 text-blue-500" aria-hidden />
             Détails du trajet
           </h2>
 
-          <div className="grid gap-3 md:gap-5">
-            <DetailRow icon={MapPinIcon} label="Départ">
-              {departure.display_name}
-            </DetailRow>
+          <div className="flex gap-3">
+            <div className="flex w-3 shrink-0 flex-col items-center pt-1.5" aria-hidden>
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 ring-4 ring-emerald-400/15" />
+              <span className="my-1 w-px flex-1 bg-gradient-to-b from-emerald-400/50 to-sky-400/50" />
+              <span className="h-2.5 w-2.5 rounded-full bg-sky-400 ring-4 ring-sky-400/15" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-3">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">
+                  Départ
+                </p>
+                <p className="mt-0.5 text-sm leading-snug text-white">
+                  {departure.display_name}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">
+                  Destination
+                </p>
+                <p className="mt-0.5 text-sm leading-snug text-white">
+                  {destination.display_name}
+                </p>
+              </div>
+            </div>
+          </div>
 
-            <DetailRow icon={ArrowRight} label="Destination">
-              {destination.display_name}
-            </DetailRow>
-
-            <DetailRow icon={CalendarIcon} label="Date et heure">
+          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/[0.08] pt-3">
+            <Fact icon={CalendarIcon} label="Date et heure">
               <span className="capitalize">{formattedDate}</span>
               {formattedTime ? (
                 <span className="text-neutral-400"> · {formattedTime}</span>
               ) : null}
-            </DetailRow>
-
-            <DetailRow icon={CarIcon} label="Type de véhicule">
+            </Fact>
+            <Fact icon={CarIcon} label="Véhicule">
               {vehicleLabel(selectedVehicle)}
-            </DetailRow>
-
-            {selectedOptions.length > 0 && (
-              <DetailRow icon={PackageCheck} label="Options">
-                <ul className="space-y-0.5">
-                  {selectedOptions.map((option) => (
-                    <li key={option}>{option}</li>
-                  ))}
-                </ul>
-              </DetailRow>
-            )}
+            </Fact>
           </div>
+
+          {selectedOptions.length > 0 ? (
+            <div className="mt-3 border-t border-white/[0.08] pt-3">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">
+                Options
+              </p>
+              <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                {selectedOptions.map((option) => (
+                  <li
+                    key={option}
+                    className="rounded-full border border-blue-500/25 bg-blue-500/10 px-2.5 py-0.5 text-xs text-blue-100"
+                  >
+                    {option}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </Card>
 
         <Suspense

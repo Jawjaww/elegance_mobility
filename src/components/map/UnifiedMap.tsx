@@ -336,11 +336,29 @@ export default function UnifiedMap({
     const container = mapContainer.current;
     if (!mapInstance || !isLoaded || !container) return;
 
-    const ro = new ResizeObserver(() => mapInstance.resize());
+    const refit = () => {
+      mapInstance.resize();
+      const p = toCoord(pickup, departure);
+      const d = toCoord(dropoff, destination);
+      const points = [p, d, driverLocation].filter(isValidCoord);
+      if (points.length >= 2) {
+        fitMapToPoints(mapInstance, points, mode);
+      }
+    };
+
+    const ro = new ResizeObserver(() => refit());
     ro.observe(container);
-    mapInstance.resize();
+    refit();
     return () => ro.disconnect();
-  }, [isLoaded]);
+  }, [
+    isLoaded,
+    mode,
+    pickup,
+    dropoff,
+    departure,
+    destination,
+    driverLocation,
+  ]);
 
   return (
     <div

@@ -9,7 +9,6 @@ import {
   Lock,
   Bell,
   CalendarClock,
-  Settings,
   ChevronRight,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -56,12 +55,6 @@ const MENU_ITEMS = [
     icon: Bell,
     title: "Notifications",
     description: "Gérer vos préférences de notification",
-  },
-  {
-    href: "/my-account/settings",
-    icon: Settings,
-    title: "Paramètres",
-    description: "Préférences générales",
   },
 ] as const;
 
