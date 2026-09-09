@@ -144,7 +144,7 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-4 pt-2 lg:flex-row lg:items-center lg:justify-between lg:pt-0">
+      <div className="flex flex-col gap-4 pt-2 lg:gap-5 lg:pt-0">
         {distance && duration ? (
           <p className="text-sm text-neutral-400 lg:hidden">
             <span className="font-medium text-white">{distance.toFixed(1)} km</span>
@@ -155,15 +155,18 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
           </p>
         ) : null}
 
-        <div className="flex justify-between gap-3 lg:ml-auto lg:justify-end lg:gap-4">
+        <div className="flex w-full flex-col gap-3 sm:flex-row lg:gap-5">
           <Button
             onClick={onPrevious}
             variant="outline"
-            className="border-blue-400/30 bg-transparent text-white hover:bg-blue-500/15"
+            className="min-h-11 w-full flex-1 px-8 text-base border-blue-400/30 bg-transparent text-white hover:bg-blue-500/15 md:min-h-12 md:px-10"
           >
             Retour
           </Button>
-          <Button onClick={onConfirm} className={LANDING_CTA}>
+          <Button
+            onClick={onConfirm}
+            className={`min-h-11 w-full flex-1 px-8 text-base md:min-h-12 md:px-10 ${LANDING_CTA}`}
+          >
             Continuer
           </Button>
         </div>

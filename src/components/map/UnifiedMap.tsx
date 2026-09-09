@@ -3,7 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import { Navigation, MapPin, LandPlot, Flag } from "lucide-react";
-import { syncMarker } from "./map-helpers/markers";
+import {
+  MAP_DROPOFF_COLOR,
+  MAP_PICKUP_COLOR,
+  syncMarker,
+} from "./map-helpers/markers";
 import { ensureSourcesAndLayers } from "./map-helpers/sources";
 import { fetchAndSetRoutes } from "./map-helpers/routes";
 import {
@@ -228,7 +232,7 @@ export default function UnifiedMap({
       "pickup",
       p,
       MapPin,
-      "#059669",
+      MAP_PICKUP_COLOR,
       markers.current,
       roots.current,
     );
@@ -237,7 +241,7 @@ export default function UnifiedMap({
       "dropoff",
       d,
       mode === "EDIT" ? Flag : LandPlot,
-      "#dc2626",
+      MAP_DROPOFF_COLOR,
       markers.current,
       roots.current,
     );

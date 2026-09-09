@@ -2,7 +2,8 @@ import { formatCurrency } from "@/lib/utils";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "../ui/card";
 import { formatDateTime } from "@/lib/utils/date-format";
-import { Car, MapPin, Bell } from "lucide-react";
+import { Car, Bell } from "lucide-react";
+import { TripEndpointRail } from "@/components/reservation/TripEndpointRail";
 import { StatusBadge } from "./StatusBadge";
 import { getRideStatusLabelForRide } from "@/lib/services/statusService";
 import { RideIncentivePanel } from "./RideIncentivePanel";
@@ -97,28 +98,18 @@ export default function ReservationCard({
           <p className="font-medium text-neutral-100">{formattedDateTime}</p>
         </div>
 
-        <div className="space-y-3">
-          <div className="flex">
-            <div className="mr-2 flex flex-col items-center">
-              <MapPin className="h-4 w-4 text-blue-400" />
-              <div className="h-10 w-0.5 bg-neutral-700"></div>
-              <MapPin className="h-4 w-4 text-sky-400" />
+        <div className="flex gap-2">
+          <TripEndpointRail className="pt-0.5" />
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-neutral-400">Départ</p>
+              <p className="text-sm text-neutral-100">{ride.pickup_address}</p>
             </div>
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-neutral-400">Départ</p>
-                <p className="text-sm text-neutral-100">
-                  {ride.pickup_address}
-                </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-neutral-400">
-                  Destination
-                </p>
-                <p className="text-sm text-neutral-100">
-                  {ride.dropoff_address}
-                </p>
-              </div>
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-neutral-400">
+                Destination
+              </p>
+              <p className="text-sm text-neutral-100">{ride.dropoff_address}</p>
             </div>
           </div>
         </div>

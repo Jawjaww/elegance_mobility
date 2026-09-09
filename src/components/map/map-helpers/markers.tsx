@@ -1,5 +1,8 @@
 import maplibregl from "maplibre-gl";
 
+export const MAP_PICKUP_COLOR = "#3b82f6";
+export const MAP_DROPOFF_COLOR = "#10b981";
+
 export type IconLike = (props: any) => any;
 
 function pinSvg(color: string, label: string): string {

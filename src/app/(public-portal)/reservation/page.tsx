@@ -30,9 +30,9 @@ export default function ReservationPage() {
   } = useReservation();
 
   return (
-    <section className={`relative ${LANDING_PAGE_FLOW}`}>
+    <section className={`relative ${LANDING_PAGE_FLOW} lg:py-4`}>
       <div className="relative z-10 mx-auto w-full max-w-2xl lg:max-w-6xl">
-        <LandingDesktopPanel>
+        <LandingDesktopPanel className="lg:p-5">
           {step === 1 ? (
             <LocationStep
               onNextStep={handleNextStep}

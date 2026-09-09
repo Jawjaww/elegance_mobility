@@ -1,25 +1,41 @@
 import { EditConfirmationDetails } from "@/components/reservation/EditConfirmationDetails";
-import { use } from "react";
+import { LandingDesktopPanel } from "@/components/landing/LandingDesktopPanel";
+import { LANDING_PAGE_FLOW } from "@/components/landing/landingSurface";
 
-// For static export compatibility (Tauri)
 export function generateStaticParams() {
   return [{ id: "__placeholder__" }];
 }
 
 interface PageProps {
-  params: any | Promise<any>;
+  params: Promise<{ id: string }> | { id: string };
 }
 
-export default async function Page({ params }: PageProps) {
-  const { id: reservationId } = (await params) as any;
+export default async function Page({ params }: Readonly<PageProps>) {
+  const resolved = await params;
+  const reservationId = resolved.id;
 
   if (!reservationId) {
     return (
-      <div className="container mx-auto py-8 text-center">
-        <h1 className="text-xl font-bold text-red-500">Erreur</h1>
-        <p>Identifiant de réservation manquant</p>
-      </div>
+      <section className={`relative ${LANDING_PAGE_FLOW}`}>
+        <div className="relative z-10 mx-auto w-full max-w-2xl">
+          <LandingDesktopPanel>
+            <div className="space-y-4 text-center">
+              <h1 className="text-xl font-bold text-red-500">Erreur</h1>
+              <p>Identifiant de réservation manquant</p>
+            </div>
+          </LandingDesktopPanel>
+        </div>
+      </section>
     );
   }
-  return <EditConfirmationDetails reservationId={reservationId} />;
+
+  return (
+    <section className={`relative ${LANDING_PAGE_FLOW}`}>
+      <div className="relative z-10 mx-auto w-full max-w-4xl lg:max-w-6xl">
+        <LandingDesktopPanel>
+          <EditConfirmationDetails reservationId={reservationId} />
+        </LandingDesktopPanel>
+      </div>
+    </section>
+  );
 }

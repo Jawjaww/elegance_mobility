@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { formatDateTime } from "@/lib/utils/date-format";
 import { formatCurrency } from "@/lib/utils";
-import { Car, MapPin, Calendar, Clock3, Route } from "lucide-react";
+import { Car, Calendar, Clock3, Route } from "lucide-react";
+import { TripEndpointRail } from "@/components/reservation/TripEndpointRail";
 import { StatusBadge } from "./StatusBadge";
 import { RideIncentivePanel } from "./RideIncentivePanel";
 import { formatLiveNavHint } from "@/lib/utils/liveNavHint";
@@ -93,18 +94,16 @@ export default function DetailModal({
           </div>
 
           <div className="flex items-start gap-3">
-            <MapPin className="h-5 w-5 text-blue-500 mt-1" />
-            <div>
-              <p className="text-sm text-neutral-400">Adresse de départ</p>
-              <p className="text-neutral-100">{ride.pickup_address}</p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3">
-            <MapPin className="h-5 w-5 text-blue-500 mt-1" />
-            <div>
-              <p className="text-sm text-neutral-400">Adresse d&apos;arrivée</p>
-              <p className="text-neutral-100">{ride.dropoff_address}</p>
+            <TripEndpointRail className="pt-1" />
+            <div className="min-w-0 flex-1 space-y-4">
+              <div>
+                <p className="text-sm text-neutral-400">Départ</p>
+                <p className="text-neutral-100">{ride.pickup_address}</p>
+              </div>
+              <div>
+                <p className="text-sm text-neutral-400">Destination</p>
+                <p className="text-neutral-100">{ride.dropoff_address}</p>
+              </div>
             </div>
           </div>
 

@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import { useReservationStore } from "@/lib/stores/reservationStore";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { MapPin, Flag } from "lucide-react";
 import { AutocompleteInput } from "@/components/AutocompleteInput";
 import { Coordinates } from "@/lib/types/map-types";
 import DateTimeStep from "@/components/reservation/DateTimeStep";
+import { TripEndpointRail } from "@/components/reservation/TripEndpointRail";
 import { formatDuration, cn } from "@/lib/utils";
 import UnifiedMap from "@/components/map/UnifiedMap";
 import { LANDING_CTA } from "@/components/landing/landingSurface";
@@ -15,6 +15,11 @@ import { LANDING_CTA } from "@/components/landing/landingSurface";
 /** Section chrome only from md — mobile stays edge-to-edge. */
 const sectionClass =
   "md:rounded-2xl md:border md:border-blue-500/20 md:bg-blue-500/[0.04] md:p-6";
+
+const desktopContinueButtonClass = cn(
+  LANDING_CTA,
+  "min-h-11 px-10 text-base lg:w-full lg:max-w-none",
+);
 
 export interface LocationStepProps {
   onNextStep: () => void;
@@ -163,123 +168,140 @@ export function LocationStep({
       className={cn(
         "grid gap-3 sm:gap-6",
         showMap &&
-          "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-start lg:gap-8",
+          "lg:max-h-[calc(100svh-13rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-stretch lg:gap-6",
       )}
     >
-      <section className={cn(sectionClass, "order-1 lg:col-start-1")}>
-        <h2 className="mb-3 text-lg font-semibold sm:mb-4 sm:text-xl lg:mb-5 lg:text-2xl">
-          Sélectionner votre trajet
-        </h2>
-
-        <div className="flex gap-2.5 sm:block sm:space-y-6">
-          <div
-            className="flex w-3 shrink-0 flex-col items-center pt-6 sm:hidden"
-            aria-hidden
-          >
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 ring-4 ring-emerald-400/15" />
-            <span className="my-1 w-px flex-1 bg-gradient-to-b from-emerald-400/50 to-sky-400/50" />
-            <span className="h-2.5 w-2.5 rounded-full bg-sky-400 ring-4 ring-sky-400/15" />
-          </div>
-
-          <div className="min-w-0 flex-1 space-y-2.5 sm:space-y-6">
-            <div>
-              <Label
-                htmlFor="departure-input"
-                className="mb-1 flex items-center gap-1.5 text-sm text-neutral-200 sm:mb-2 sm:text-base"
-              >
-                Départ
-                <MapPin
-                  className="hidden h-4 w-4 text-emerald-400 sm:inline"
-                  aria-hidden
-                />
-              </Label>
-              <AutocompleteInput
-                id="departure-input"
-                value={originAddress || store.departure?.display_name || ""}
-                onChange={onOriginChange}
-                onSelect={handleDepartureSelect}
-                placeholder="Adresse de départ"
-              />
-            </div>
-
-            <div>
-              <Label
-                htmlFor="destination-input"
-                className="mb-1 flex items-center gap-1.5 text-sm text-neutral-200 sm:mb-2 sm:text-base"
-              >
-                Destination
-                <Flag
-                  className="hidden h-4 w-4 text-sky-400 sm:inline"
-                  aria-hidden
-                />
-              </Label>
-              <AutocompleteInput
-                id="destination-input"
-                value={
-                  destinationAddress || store.destination?.display_name || ""
-                }
-                onChange={onDestinationChange}
-                onSelect={handleDestinationSelect}
-                placeholder="Adresse de destination"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {showMap ? (
+      {/*
+        Mobile: `contents` so children keep order (addresses → map → meta → CTA).
+        Desktop: one left column so distance/datetime sit beside the map, not below it.
+      */}
+      <div
+        className={cn(
+          "contents lg:col-start-1 lg:row-start-1 lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:gap-5",
+          "lg:rounded-2xl lg:border lg:border-blue-500/20 lg:bg-blue-500/[0.04] lg:p-6",
+        )}
+      >
         <section
           className={cn(
-            "order-2 overflow-hidden rounded-lg border border-blue-500/20",
-            "h-44 sm:h-[400px] md:rounded-2xl",
-            "lg:order-2 lg:col-start-2 lg:row-start-1 lg:row-span-4 lg:h-[min(28rem,calc(100svh-9rem))] lg:self-start lg:rounded-3xl",
+            sectionClass,
+            "order-1 lg:flex lg:flex-1 lg:flex-col lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0",
           )}
         >
-          <UnifiedMap
-            mode="REQUEST"
-            key={mapKey}
-            departure={store.departure}
-            destination={store.destination}
-            onRouteCalculated={handleRouteCalculated}
-            height="100%"
+          <h2 className="mb-3 text-lg font-semibold sm:mb-4 sm:text-xl lg:mb-5 lg:text-2xl">
+            Sélectionner votre trajet
+          </h2>
+
+          <div className="flex flex-1 gap-2.5 sm:gap-3 lg:gap-4">
+            <TripEndpointRail className="pt-6 sm:pt-8 lg:pt-9" />
+
+            <div className="min-w-0 flex-1 space-y-2.5 sm:space-y-6 lg:flex lg:flex-col lg:justify-center lg:gap-6 lg:space-y-0 lg:py-2">
+              <div>
+                <Label
+                  htmlFor="departure-input"
+                  className="mb-1 block text-sm text-neutral-200 sm:mb-2 sm:text-base lg:mb-2"
+                >
+                  Départ
+                </Label>
+                <AutocompleteInput
+                  id="departure-input"
+                  value={originAddress || store.departure?.display_name || ""}
+                  onChange={onOriginChange}
+                  onSelect={handleDepartureSelect}
+                  placeholder="Adresse de départ"
+                />
+              </div>
+
+              <div>
+                <Label
+                  htmlFor="destination-input"
+                  className="mb-1 block text-sm text-neutral-200 sm:mb-2 sm:text-base lg:mb-2"
+                >
+                  Destination
+                </Label>
+                <AutocompleteInput
+                  id="destination-input"
+                  value={
+                    destinationAddress || store.destination?.display_name || ""
+                  }
+                  onChange={onDestinationChange}
+                  onSelect={handleDestinationSelect}
+                  placeholder="Adresse de destination"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section
+          className={cn(
+            sectionClass,
+            "order-3 lg:mt-auto lg:rounded-none lg:border-x-0 lg:border-b-0 lg:bg-transparent lg:p-0 lg:border-t lg:border-blue-500/20 lg:pt-5",
+          )}
+        >
+          {hasTripStats ? (
+            <p className="mb-2.5 flex items-center justify-between gap-3 text-sm sm:mb-3 lg:mb-3">
+              <span>
+                <span className="text-neutral-400">Distance </span>
+                <span className="font-medium text-white">
+                  {store.distance} km
+                </span>
+              </span>
+              <span className="text-right">
+                <span className="text-neutral-400">Durée </span>
+                <span className="font-medium text-white">
+                  {formatDuration(store.duration)}
+                </span>
+              </span>
+            </p>
+          ) : null}
+          <Label className="mb-1 block text-sm sm:mb-2 sm:text-base lg:mb-2">
+            Date et heure de prise en charge
+          </Label>
+          <DateTimeStep
+            pickupDateTime={pickupDateTime || null}
+            onDateTimeSelect={(date) => onDateTimeChange?.(date)}
           />
         </section>
-      ) : null}
 
-      {hasTripStats ? (
-        <p className="order-3 flex items-center justify-between gap-3 text-sm lg:col-start-1 sm:rounded-2xl sm:border sm:border-blue-500/20 sm:bg-blue-500/[0.04] sm:px-6 sm:py-4">
-          <span>
-            <span className="text-neutral-400">Distance </span>
-            <span className="font-medium text-white">{store.distance} km</span>
-          </span>
-          <span className="text-right">
-            <span className="text-neutral-400">Durée </span>
-            <span className="font-medium text-white">
-              {formatDuration(store.duration)}
-            </span>
-          </span>
-        </p>
-      ) : null}
-
-      <section className={cn(sectionClass, "order-4 lg:col-start-1")}>
-        <Label className="mb-1 block text-sm sm:mb-2 sm:text-base">
-          Date et heure de prise en charge
-        </Label>
-        <DateTimeStep
-          pickupDateTime={pickupDateTime || null}
-          onDateTimeSelect={(date) => onDateTimeChange?.(date)}
-        />
-      </section>
-
-      <div className="order-5 flex justify-stretch sm:justify-end lg:col-start-1">
-        <Button
-          onClick={onNextStep}
-          disabled={!formValid}
-          className={`w-full px-8 ${LANDING_CTA} sm:w-auto`}
+        <div
+          className={cn(
+            "order-5 flex justify-stretch sm:justify-end",
+            showMap && "lg:hidden",
+          )}
         >
-          {isEditing ? "Mettre à jour" : "Continuer"}
-        </Button>
+          <Button
+            onClick={onNextStep}
+            disabled={!formValid}
+            className={`w-full px-8 ${LANDING_CTA} sm:w-auto`}
+          >
+            {isEditing ? "Mettre à jour" : "Continuer"}
+          </Button>
+        </div>
       </div>
+
+      {showMap ? (
+        <div className="order-2 flex h-44 min-h-0 flex-col gap-3 sm:h-[400px] lg:col-start-2 lg:row-start-1 lg:h-full lg:self-stretch">
+          <section className="min-h-0 flex-1 overflow-hidden rounded-lg border border-blue-500/20 md:rounded-2xl lg:min-h-[18rem] lg:rounded-3xl">
+            <UnifiedMap
+              mode="REQUEST"
+              key={mapKey}
+              departure={store.departure}
+              destination={store.destination}
+              onRouteCalculated={handleRouteCalculated}
+              height="100%"
+            />
+          </section>
+          <div className="hidden shrink-0 lg:block lg:w-full">
+            <Button
+              onClick={onNextStep}
+              disabled={!formValid}
+              className={desktopContinueButtonClass}
+            >
+              {isEditing ? "Mettre à jour" : "Continuer"}
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

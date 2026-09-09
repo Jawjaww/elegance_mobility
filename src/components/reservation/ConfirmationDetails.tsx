@@ -20,6 +20,7 @@ import { resolveRideFinalPrice } from "@/lib/services/resolveRideFinalPrice";
 import { normalizePickupDateTime } from "@/lib/utils/normalizePickupDateTime";
 import type { VehicleType } from "@/lib/vehicle";
 import { LANDING_CTA } from "@/components/landing/landingSurface";
+import { TripEndpointRail } from "@/components/reservation/TripEndpointRail";
 
 // Type de la table rides de Supabase
 type Ride = Database["public"]["Tables"]["rides"]["Row"];
@@ -412,11 +413,7 @@ export function ConfirmationDetails() {
           </h2>
 
           <div className="flex gap-3">
-            <div className="flex w-3 shrink-0 flex-col items-center pt-1.5" aria-hidden>
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 ring-4 ring-emerald-400/15" />
-              <span className="my-1 w-px flex-1 bg-gradient-to-b from-emerald-400/50 to-sky-400/50" />
-              <span className="h-2.5 w-2.5 rounded-full bg-sky-400 ring-4 ring-sky-400/15" />
-            </div>
+            <TripEndpointRail className="pt-1.5" />
             <div className="min-w-0 flex-1 space-y-3">
               <div>
                 <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">
@@ -498,18 +495,18 @@ export function ConfirmationDetails() {
           </div>
         )}
 
-        <div className="order-4 flex gap-2 md:gap-4 lg:col-span-2">
+        <div className="order-4 flex w-full gap-3 md:gap-4 lg:col-span-2 lg:gap-5">
           <Button
             variant="outline"
             onClick={handleModify}
-            className="flex-1 border-blue-400/30 bg-transparent py-2.5 text-white hover:bg-blue-500/15 md:py-3"
+            className="min-h-11 flex-1 px-8 text-base border-blue-400/30 bg-transparent text-white hover:bg-blue-500/15 md:min-h-12 md:px-10"
             disabled={isLoading}
           >
             Modifier
           </Button>
           <Button
             onClick={handleConfirm}
-            className={`flex-1 py-2.5 md:py-3 ${LANDING_CTA}`}
+            className={`min-h-11 flex-1 px-8 text-base md:min-h-12 md:px-10 ${LANDING_CTA}`}
             disabled={isLoading}
           >
             {isLoading ? (

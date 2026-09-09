@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import type { Database } from "@/lib/types/database.types";
@@ -14,6 +13,9 @@ import {
   vehicleOptionsFromSelected,
 } from "@/lib/vehicle";
 import { normalizeSelectedOptions } from "@/lib/services/optionsCatalogService";
+import { useReservationStore } from "@/lib/stores/reservationStore";
+import { LandingDesktopPanel } from "@/components/landing/LandingDesktopPanel";
+import { LANDING_PAGE_FLOW } from "@/components/landing/landingSurface";
 
 type Reservation = Database["public"]["Tables"]["rides"]["Row"];
 
@@ -27,8 +29,7 @@ function EditReservationContent() {
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const [storeInitialized, setStoreInitialized] = useState(false);
-  const reservationStore =
-    require("@/lib/stores/reservationStore").useReservationStore();
+  const reservationStore = useReservationStore();
 
   useEffect(() => {
     if (!reservationId) {
@@ -74,16 +75,12 @@ function EditReservationContent() {
         address: { formatted: reservation.dropoff_address },
       });
       reservationStore.setPickupDateTime(new Date(reservation.pickup_time));
-      // Ensure vehicle_type from DB is valid VehicleType; fallback to STANDARD
-      // Use assertVehicleType at DB boundary to fail-fast on invalid DB values
       (async () => {
         try {
           const { assertVehicleType } = await import("@/lib/utils/vehicle");
           const v = reservation.vehicle_type as unknown;
-          reservationStore.setSelectedVehicle(assertVehicleType(v) as any);
+          reservationStore.setSelectedVehicle(assertVehicleType(v));
         } catch (e) {
-          // Re-throw so CI / dev sees DB inconsistencies. If you prefer to fall back in prod,
-          // we can catch and fallback here, but for now we surface the error.
           console.error("[VEHICLE] Invalid vehicle type from DB", e);
           throw e;
         }
@@ -109,31 +106,33 @@ function EditReservationContent() {
 
   if (!reservationId) {
     return (
-      <div className="container mx-auto py-10">
-        <Card className="p-6">
-          <div className="text-center space-y-4">
-            <h2 className="text-xl font-bold text-red-600">Erreur</h2>
-            <p>Identifiant de réservation manquant</p>
-            <Button onClick={() => router.push("/my-account/reservations")}>
-              Retour
-            </Button>
-          </div>
-        </Card>
-      </div>
+      <section className={`relative ${LANDING_PAGE_FLOW}`}>
+        <div className="relative z-10 mx-auto w-full max-w-2xl">
+          <LandingDesktopPanel>
+            <div className="space-y-4 text-center">
+              <h2 className="text-xl font-bold text-red-500">Erreur</h2>
+              <p>Identifiant de réservation manquant</p>
+              <Button onClick={() => router.push("/my-account/reservations")}>
+                Retour
+              </Button>
+            </div>
+          </LandingDesktopPanel>
+        </div>
+      </section>
     );
   }
 
   let body: ReactNode;
   if (loading) {
     body = (
-      <div className="flex justify-center my-12">
+      <div className="my-12 flex justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   } else if (error) {
     body = (
-      <div className="text-center space-y-4">
-        <h2 className="text-xl font-bold text-red-600">Erreur</h2>
+      <div className="space-y-4 text-center">
+        <h2 className="text-xl font-bold text-red-500">Erreur</h2>
         <p>{error}</p>
         <Button onClick={() => router.back()}>Retour</Button>
       </div>
@@ -179,7 +178,7 @@ function EditReservationContent() {
       );
   } else {
     body = (
-      <div className="text-center space-y-4">
+      <div className="space-y-4 text-center">
         <p>Réservation non trouvée</p>
         <Button onClick={() => router.back()}>Retour</Button>
       </div>
@@ -187,17 +186,9 @@ function EditReservationContent() {
   }
 
   return (
-    <section className="relative grid min-h-screen bg-neutral-950 overflow-hidden">
-      <div className="absolute inset-0 perspective-[1000px]">
-        <div className="relative h-full w-full [transform-style:preserve-3d]">
-          <div className="absolute inset-0 bg-[url('/images/car-bg.jpg')] bg-cover bg-center [transform:translateZ(-100px)] scale-110" />
-          <div className="absolute inset-0 bg-neutral-950/90 backdrop-blur-3xl [transform:translateZ(-50px)]" />
-        </div>
-      </div>
-      <div className="relative z-10 place-self-center w-full max-w-2xl mx-auto px-4 py-8">
-        <div className="bg-neutral-900/50 backdrop-blur-lg rounded-lg border border-neutral-800 p-8">
-          {body}
-        </div>
+    <section className={`relative ${LANDING_PAGE_FLOW} lg:py-4`}>
+      <div className="relative z-10 mx-auto w-full max-w-2xl lg:max-w-6xl">
+        <LandingDesktopPanel className="lg:p-5">{body}</LandingDesktopPanel>
       </div>
     </section>
   );
@@ -207,7 +198,7 @@ export default function EditReservationPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex justify-center my-12">
+        <div className="my-12 flex justify-center">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
       }
