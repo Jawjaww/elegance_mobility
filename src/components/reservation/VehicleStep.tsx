@@ -74,8 +74,8 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
           ))}
         </div>
 
-        <div className="space-y-4 pt-4 border-t border-blue-500/15">
-          <h3 className="font-semibold text-white">Options</h3>
+        <div className="space-y-2.5 border-t border-blue-500/15 pt-3 md:space-y-4 md:pt-4">
+          <h3 className="text-sm font-semibold text-white md:text-base">Options</h3>
           <ReservationOptionsToggles
             options={options}
             onOptionsChange={onOptionsChange}

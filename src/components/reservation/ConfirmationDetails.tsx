@@ -5,7 +5,6 @@ import { fr } from "date-fns/locale";
 import { formatDuration } from "@/lib/utils";
 import {
   CalendarIcon,
-  Clock,
   MapPinIcon,
   CarIcon,
   PackageCheck,
@@ -18,7 +17,7 @@ import { useReservationStore } from "@/lib/stores/reservationStore";
 import { supabase } from "@/lib/database/client";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "../ui/loading-spinner";
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, type ComponentType } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import ReservationMap from "@/components/map/ReservationMap";
@@ -127,8 +126,34 @@ function reservationErrorMessage(error: unknown): string {
 }
 
 const SimpleSeparator = ({ className }: { className?: string }) => (
-  <div className={`h-[1px] w-full bg-neutral-800 my-2 ${className || ""}`} />
+  <div className={`h-px w-full bg-neutral-800 ${className || ""}`} />
 );
+
+function DetailRow({
+  icon: Icon,
+  label,
+  children,
+}: Readonly<{
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  children: React.ReactNode;
+}>) {
+  return (
+    <div className="flex min-w-0 items-start gap-2.5 md:gap-4">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600/20 md:mt-1 md:h-8 md:w-8">
+        <Icon className="h-3.5 w-3.5 text-blue-500 md:h-4 md:w-4" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[11px] leading-tight text-neutral-400 md:mb-1 md:text-sm">
+          {label}
+        </p>
+        <div className="text-sm leading-snug text-neutral-100 md:text-base">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function ConfirmationDetails() {
   const router = useRouter();
@@ -310,7 +335,7 @@ export function ConfirmationDetails() {
   };
 
   return (
-    <div className="container mx-auto py-6 md:py-8 mb-20 px-4 md:px-6">
+    <div className="mx-auto w-full max-w-4xl py-3 pb-5 md:py-8">
       <AuthModal
         open={showAuthModal}
         onClose={() => setShowAuthModal(false)}
@@ -318,103 +343,60 @@ export function ConfirmationDetails() {
         defaultTab="login"
       />
 
-      <div className="mb-6 md:mb-8 text-center">
-        <h1 className="mb-2 text-2xl font-bold text-white md:text-3xl">
+      <div className="mb-3 text-center md:mb-8">
+        <h1 className="text-xl font-bold text-white md:mb-2 md:text-3xl">
           Confirmation de réservation
         </h1>
-        <p className="text-neutral-400">
+        <p className="mt-0.5 text-xs text-neutral-400 md:text-base">
           Vérifiez les détails avant de confirmer votre trajet
         </p>
       </div>
 
-      <div className="grid gap-6 md:gap-8 max-w-4xl mx-auto">
-        <Card className="border-blue-500/20 bg-neutral-900/80 p-4 md:rounded-3xl md:p-6">
-          <h2 className="text-lg md:text-xl font-semibold mb-4 md:mb-6 flex items-center">
-            <Route className="w-5 h-5 mr-2 text-blue-500" />
+      <div className="grid gap-3 md:gap-8">
+        <Card className="border-blue-500/20 bg-neutral-900/80 p-3 md:rounded-3xl md:p-6">
+          <h2 className="mb-2.5 flex items-center text-base font-semibold md:mb-6 md:text-xl">
+            <Route className="mr-2 h-4 w-4 text-blue-500 md:h-5 md:w-5" />
             Détails du trajet
           </h2>
 
-          <div className="grid gap-6">
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
-                <MapPinIcon className="h-4 w-4 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-sm text-neutral-400 mb-1">Départ</p>
-                <p className="text-neutral-100">{departure.display_name}</p>
-              </div>
-            </div>
+          <div className="grid gap-3 md:gap-6">
+            <DetailRow icon={MapPinIcon} label="Départ">
+              {departure.display_name}
+            </DetailRow>
 
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
-                <ArrowRight className="h-4 w-4 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-sm text-neutral-400 mb-1">Destination</p>
-                <p className="text-neutral-100">{destination.display_name}</p>
-              </div>
-            </div>
+            <DetailRow icon={ArrowRight} label="Destination">
+              {destination.display_name}
+            </DetailRow>
 
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
-                <CalendarIcon className="h-4 w-4 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-sm text-neutral-400 mb-1">Date</p>
-                <p className="text-neutral-100">{formattedDate}</p>
-              </div>
-            </div>
+            <DetailRow icon={CalendarIcon} label="Date et heure">
+              <span className="capitalize">{formattedDate}</span>
+              {formattedTime ? (
+                <span className="text-neutral-400"> · {formattedTime}</span>
+              ) : null}
+            </DetailRow>
 
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
-                <Clock className="h-4 w-4 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-sm text-neutral-400 mb-1">Heure</p>
-                <p className="text-neutral-100">{formattedTime}</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
-                <CarIcon className="h-4 w-4 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-sm text-neutral-400 mb-1">
-                  Type de véhicule
-                </p>
-                <p className="text-neutral-100">
-                  {vehicleLabel(selectedVehicle)}
-                </p>
-              </div>
-            </div>
+            <DetailRow icon={CarIcon} label="Type de véhicule">
+              {vehicleLabel(selectedVehicle)}
+            </DetailRow>
 
             {selectedOptions.length > 0 && (
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 h-8 w-8 bg-blue-600/20 rounded-full flex items-center justify-center mt-1">
-                  <PackageCheck className="h-4 w-4 text-blue-500" />
-                </div>
-                <div>
-                  <p className="text-sm text-neutral-400 mb-1">Options</p>
-                  <ul className="space-y-1">
-                    {selectedOptions.map((option) => (
-                      <li key={option} className="text-neutral-100">
-                        {option}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
+              <DetailRow icon={PackageCheck} label="Options">
+                <ul className="space-y-0.5">
+                  {selectedOptions.map((option) => (
+                    <li key={option}>{option}</li>
+                  ))}
+                </ul>
+              </DetailRow>
             )}
 
             {(distance || duration || priceDetails) && (
               <>
-                <SimpleSeparator className="my-3 md:my-4" />
-                <div className="grid gap-2 bg-neutral-800/40 p-3 rounded-lg">
+                <SimpleSeparator className="my-0.5 md:my-4" />
+                <div className="grid gap-1 rounded-lg bg-neutral-800/40 px-3 py-2 text-sm md:gap-2 md:p-3">
                   {distance && (
                     <div className="flex justify-between">
                       <span className="text-neutral-400">Distance estimée</span>
-                      <span className="text-neutral-100 font-medium">
+                      <span className="font-medium text-neutral-100">
                         {distance} km
                       </span>
                     </div>
@@ -422,29 +404,29 @@ export function ConfirmationDetails() {
                   {duration && (
                     <div className="flex justify-between">
                       <span className="text-neutral-400">Durée estimée</span>
-                      <span className="text-neutral-100 font-medium">
+                      <span className="font-medium text-neutral-100">
                         {formatDuration(duration)}
                       </span>
                     </div>
                   )}
                   {priceDetails && (
                     <>
-                      <SimpleSeparator className="my-2" />
+                      <SimpleSeparator className="my-1.5" />
                       <div className="flex justify-between">
                         <span className="text-neutral-400">Prix de base</span>
-                        <span className="text-neutral-100 font-medium">
+                        <span className="font-medium text-neutral-100">
                           {priceDetails.basePrice}€
                         </span>
                       </div>
                       {priceDetails.optionsPrice > 0 && (
                         <div className="flex justify-between">
                           <span className="text-neutral-400">Options</span>
-                          <span className="text-neutral-100 font-medium">
+                          <span className="font-medium text-neutral-100">
                             +{priceDetails.optionsPrice}€
                           </span>
                         </div>
                       )}
-                      <div className="flex justify-between font-semibold mt-2">
+                      <div className="mt-1 flex justify-between font-semibold">
                         <span className="text-neutral-300">Total estimé</span>
                         <span className="text-blue-400">
                           {priceDetails.totalPrice}€
@@ -477,18 +459,18 @@ export function ConfirmationDetails() {
           </Card>
         </Suspense>
 
-        <div className="flex flex-col sm:flex-row gap-3 md:gap-4 mt-2 md:mt-4">
+        <div className="flex gap-2 md:mt-4 md:gap-4">
           <Button
             variant="outline"
             onClick={handleModify}
-            className="flex-1 border-blue-400/30 bg-transparent py-3 text-white hover:bg-blue-500/15"
+            className="flex-1 border-blue-400/30 bg-transparent py-2.5 text-white hover:bg-blue-500/15 md:py-3"
             disabled={isLoading}
           >
             Modifier
           </Button>
           <Button
             onClick={handleConfirm}
-            className={`flex-1 py-4 md:py-3 ${LANDING_CTA}`}
+            className={`flex-1 py-2.5 md:py-3 ${LANDING_CTA}`}
             disabled={isLoading}
           >
             {isLoading ? (
@@ -497,7 +479,10 @@ export function ConfirmationDetails() {
                 Création en cours...
               </>
             ) : (
-              "Confirmer la réservation"
+              <>
+                <span className="md:hidden">Confirmer</span>
+                <span className="hidden md:inline">Confirmer la réservation</span>
+              </>
             )}
           </Button>
         </div>

@@ -6,6 +6,10 @@ import { Navigation, MapPin, LandPlot, Flag } from "lucide-react";
 import { syncMarker } from "./map-helpers/markers";
 import { ensureSourcesAndLayers } from "./map-helpers/sources";
 import { fetchAndSetRoutes } from "./map-helpers/routes";
+import {
+  boundsFromLngLats,
+  fitMapToBounds,
+} from "./map-helpers/bounds";
 import "maplibre-gl/dist/maplibre-gl.css";
 import mapStyle from "./mapStyle";
 
@@ -111,22 +115,9 @@ function fitMapToPoints(
   if (points.length === 0) return;
 
   const coords = points.map((p): [number, number] => [p.lng, p.lat]);
-  const isShort =
-    globalThis.window !== undefined && globalThis.window.innerHeight <= 700;
-  const padding = isShort
-    ? { top: 40, bottom: 120, left: 40, right: 40 }
-    : 80;
-
   if (coords.length >= 2) {
-    const bounds = coords.reduce(
-      (b, c) => b.extend(c),
-      new maplibregl.LngLatBounds(coords[0], coords[0]),
-    );
-    mapInstance.fitBounds(bounds, {
-      padding,
-      animate: mode === "TRACKING",
-      maxZoom: 15,
-    });
+    const bounds = boundsFromLngLats(coords);
+    if (bounds) fitMapToBounds(mapInstance, bounds, { animate: mode === "TRACKING" });
     return;
   }
 
@@ -339,6 +330,17 @@ export default function UnifiedMap({
       { enableHighAccuracy: true, timeout: 10000 },
     );
   }, [isLoaded, mode, driverLocation]);
+
+  useEffect(() => {
+    const mapInstance = map.current;
+    const container = mapContainer.current;
+    if (!mapInstance || !isLoaded || !container) return;
+
+    const ro = new ResizeObserver(() => mapInstance.resize());
+    ro.observe(container);
+    mapInstance.resize();
+    return () => ro.disconnect();
+  }, [isLoaded]);
 
   return (
     <div

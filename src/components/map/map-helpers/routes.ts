@@ -1,5 +1,6 @@
 import maplibregl from "maplibre-gl";
 import { getDirections } from "@/lib/services/directionsService";
+import { boundsFromLngLats, fitMapToBounds } from "@/components/map/map-helpers/bounds";
 
 export async function fetchAndSetRoutes(
   mapInstance: maplibregl.Map,
@@ -26,6 +27,13 @@ export async function fetchAndSetRoutes(
     try {
       if (main && main.features && main.features[0]) {
         (mapInstance.getSource("route-main") as any).setData(main);
+        const coords = main.features[0].geometry?.coordinates as
+          | [number, number][]
+          | undefined;
+        if (coords && coords.length > 1) {
+          const bounds = boundsFromLngLats(coords);
+          if (bounds) fitMapToBounds(mapInstance, bounds);
+        }
         try {
           const route = main.features[0];
           const distance =
