@@ -7,12 +7,11 @@ export function generateStaticParams() {
 }
 
 interface PageProps {
-  params: Promise<{ id: string }> | { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export default async function Page({ params }: Readonly<PageProps>) {
-  const resolved = await params;
-  const reservationId = resolved.id;
+export default async function Page({ params }: PageProps) {
+  const { id: reservationId } = await params;
 
   if (!reservationId) {
     return (

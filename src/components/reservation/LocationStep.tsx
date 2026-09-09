@@ -249,7 +249,7 @@ export function LocationStep({
               <span className="text-right">
                 <span className="text-neutral-400">Durée </span>
                 <span className="font-medium text-white">
-                  {formatDuration(store.duration)}
+                  {formatDuration(store.duration ?? 0)}
                 </span>
               </span>
             </p>
