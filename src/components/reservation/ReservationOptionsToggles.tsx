@@ -17,6 +17,12 @@ import {
 } from "@/lib/services/optionsCatalogService";
 import type { VehicleOptions } from "@/lib/vehicle";
 import { cn } from "@/lib/utils";
+import {
+  RESERVATION_PICKER_CARD,
+  RESERVATION_PICKER_CARD_SELECTED,
+  RESERVATION_PICKER_ICON,
+  RESERVATION_PICKER_ICON_SELECTED,
+} from "@/components/landing/landingSurface";
 
 interface ReservationOptionsTogglesProps {
   options: VehicleOptions;
@@ -128,10 +134,10 @@ export function ReservationOptionsToggles({
             aria-label={ariaLabel}
             onClick={() => handleChange(option.name, !selected)}
             className={cn(
-              "relative flex flex-col items-center justify-center gap-0.5 rounded-lg border px-2 py-2.5 transition-all duration-200 md:rounded-xl md:px-2.5 md:py-3",
+              "relative flex flex-col items-center justify-center gap-0.5 rounded-xl border px-2 py-2.5 transition-all duration-200 md:px-2.5 md:py-3 lg:gap-1 lg:px-3 lg:py-3",
               selected
-                ? "border-blue-500/60 bg-blue-500/15"
-                : "border-blue-500/20 bg-blue-500/[0.04] hover:border-blue-400/40",
+                ? RESERVATION_PICKER_CARD_SELECTED
+                : RESERVATION_PICKER_CARD,
             )}
           >
             {selected ? (
@@ -148,18 +154,18 @@ export function ReservationOptionsToggles({
                 className={cn(
                   "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border",
                   selected
-                    ? "border-blue-400/40 bg-blue-500/20"
-                    : "border-blue-500/25 bg-blue-500/10",
+                    ? RESERVATION_PICKER_ICON_SELECTED
+                    : RESERVATION_PICKER_ICON,
                 )}
               >
                 <Icon className="h-3.5 w-3.5 text-blue-400" aria-hidden />
               </span>
-              <span className="text-xs font-semibold leading-none text-white">
+              <span className="text-xs font-semibold leading-none text-white lg:text-sm">
                 {label}
               </span>
             </div>
 
-            <span className="text-[10px] font-medium leading-none text-blue-300/90">
+            <span className="text-[10px] font-medium leading-none text-blue-300/90 lg:text-xs">
               {price}
             </span>
           </button>

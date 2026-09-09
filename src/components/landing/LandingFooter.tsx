@@ -20,7 +20,7 @@ export function LandingFooter() {
           </Link>
           <Link
             href="/reservation"
-            className="text-blue-400 hover:text-blue-300 transition-colors"
+            className="hover:text-neutral-300 transition-colors"
           >
             Réserver
           </Link>

@@ -4,6 +4,7 @@ import { useEffect, useState, type MouseEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { PublicAuthActions } from "@/components/landing/PublicAuthActions";
 import { cn } from "@/lib/utils";
 import { LANDING_BRAND, LANDING_CTA } from "@/components/landing/landingAssets";
 import {
@@ -19,6 +20,7 @@ const NAV_LINKS = [
 
 export function LandingNav() {
   const [scrolled, setScrolled] = useState(false);
+  const [onFinalCta, setOnFinalCta] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -41,6 +43,23 @@ export function LandingNav() {
       document.body.style.overflow = previousBodyOverflow;
       target.removeEventListener("scroll", onScroll);
     };
+  }, []);
+
+  useEffect(() => {
+    const panel = document.getElementById("reserver");
+    if (!panel) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setOnFinalCta(entry.isIntersecting && entry.intersectionRatio >= 0.4);
+      },
+      {
+        root: getLandingScroller(),
+        threshold: [0.4, 0.6],
+      },
+    );
+    observer.observe(panel);
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -115,17 +134,12 @@ export function LandingNav() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="text-neutral-300 hover:text-white hover:bg-white/10"
-          >
-            <Link href="/auth/login">Connexion</Link>
-          </Button>
-          <Button asChild size="sm" className={LANDING_CTA}>
-            <Link href="/reservation">Réserver</Link>
-          </Button>
+          <PublicAuthActions />
+          {!onFinalCta ? (
+            <Button asChild size="sm" className={LANDING_CTA}>
+              <Link href="/reservation">Réserver</Link>
+            </Button>
+          ) : null}
         </div>
       </div>
     </header>

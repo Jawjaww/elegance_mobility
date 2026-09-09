@@ -2,7 +2,7 @@
 
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { formatDuration } from "@/lib/utils";
+import { formatDuration, cn } from "@/lib/utils";
 import {
   CalendarIcon,
   MapPinIcon,
@@ -125,9 +125,6 @@ function reservationErrorMessage(error: unknown): string {
   return "Une erreur est survenue lors de la création de la réservation. Veuillez réessayer.";
 }
 
-const SimpleSeparator = ({ className }: { className?: string }) => (
-  <div className={`h-px w-full bg-neutral-800 ${className || ""}`} />
-);
 
 function DetailRow({
   icon: Icon,
@@ -139,8 +136,8 @@ function DetailRow({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="flex min-w-0 items-start gap-2.5 md:gap-4">
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600/20 md:mt-1 md:h-8 md:w-8">
+    <div className="flex min-w-0 items-start gap-2.5 md:gap-3">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600/20 md:h-8 md:w-8">
         <Icon className="h-3.5 w-3.5 text-blue-500 md:h-4 md:w-4" />
       </div>
       <div className="min-w-0">
@@ -151,6 +148,74 @@ function DetailRow({
           {children}
         </div>
       </div>
+    </div>
+  );
+}
+
+function TripSummaryBar({
+  distance,
+  duration,
+  priceDetails,
+}: Readonly<{
+  distance?: number | null;
+  duration?: number | null;
+  priceDetails: PriceDetails | null;
+}>) {
+  return (
+    <div className="rounded-2xl border border-blue-500/15 bg-neutral-800/40 px-4 py-3 sm:px-6 sm:py-4">
+      {(distance || duration) && (
+        <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4 sm:gap-x-8">
+          {distance ? (
+            <div className="sm:col-span-2">
+              <p className="text-xs text-neutral-400 sm:text-sm">Distance estimée</p>
+              <p className="mt-0.5 text-base font-semibold text-white sm:mt-1 sm:text-lg">
+                {distance} km
+              </p>
+            </div>
+          ) : null}
+          {duration ? (
+            <div
+              className={cn(
+                "text-right sm:col-span-2",
+                !distance && "col-span-2 text-left",
+              )}
+            >
+              <p className="text-xs text-neutral-400 sm:text-sm">Durée estimée</p>
+              <p className="mt-0.5 text-base font-semibold text-white sm:mt-1 sm:text-lg">
+                {formatDuration(duration)}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {priceDetails && (
+        <div
+          className={cn(
+            "grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4 sm:gap-x-8",
+            (distance || duration) &&
+              "mt-3 border-t border-neutral-700/50 pt-3 sm:mt-4 sm:pt-4",
+          )}
+        >
+          <div className="sm:col-span-2">
+            <p className="text-xs text-neutral-400 sm:text-sm">Prix de base</p>
+            <p className="mt-0.5 text-base font-semibold text-white sm:mt-1 sm:text-lg">
+              {priceDetails.basePrice}€
+              {priceDetails.optionsPrice > 0 ? (
+                <span className="ml-2 text-sm font-normal text-neutral-400">
+                  (+{priceDetails.optionsPrice}€ options)
+                </span>
+              ) : null}
+            </p>
+          </div>
+          <div className="text-right sm:col-span-2">
+            <p className="text-xs text-neutral-400 sm:text-sm">Total estimé</p>
+            <p className="mt-0.5 text-xl font-bold text-blue-400 sm:mt-1 sm:text-2xl">
+              {priceDetails.totalPrice}€
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -335,7 +400,7 @@ export function ConfirmationDetails() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-4xl py-3 pb-5 md:py-8">
+    <div className="mx-auto w-full max-w-4xl py-3 pb-5 md:py-6 lg:max-w-6xl lg:py-5">
       <AuthModal
         open={showAuthModal}
         onClose={() => setShowAuthModal(false)}
@@ -343,23 +408,23 @@ export function ConfirmationDetails() {
         defaultTab="login"
       />
 
-      <div className="mb-3 text-center md:mb-8">
-        <h1 className="text-xl font-bold text-white md:mb-2 md:text-3xl">
+      <div className="mb-3 text-center md:mb-6">
+        <h1 className="text-xl font-bold text-white md:mb-1 md:text-2xl">
           Confirmation de réservation
         </h1>
-        <p className="mt-0.5 text-xs text-neutral-400 md:text-base">
+        <p className="mt-0.5 text-xs text-neutral-400 md:text-sm">
           Vérifiez les détails avant de confirmer votre trajet
         </p>
       </div>
 
-      <div className="grid gap-3 md:gap-8">
-        <Card className="border-blue-500/20 bg-neutral-900/80 p-3 md:rounded-3xl md:p-6">
-          <h2 className="mb-2.5 flex items-center text-base font-semibold md:mb-6 md:text-xl">
+      <div className="grid gap-3 md:gap-6 lg:grid-cols-2 lg:items-start">
+        <Card className="order-1 border-blue-500/20 bg-neutral-900/80 p-3 md:rounded-3xl md:p-6 lg:col-start-1 lg:row-start-1">
+          <h2 className="mb-2.5 flex items-center text-base font-semibold md:mb-5 md:text-lg">
             <Route className="mr-2 h-4 w-4 text-blue-500 md:h-5 md:w-5" />
             Détails du trajet
           </h2>
 
-          <div className="grid gap-3 md:gap-6">
+          <div className="grid gap-3 md:gap-5">
             <DetailRow icon={MapPinIcon} label="Départ">
               {departure.display_name}
             </DetailRow>
@@ -388,78 +453,40 @@ export function ConfirmationDetails() {
                 </ul>
               </DetailRow>
             )}
-
-            {(distance || duration || priceDetails) && (
-              <>
-                <SimpleSeparator className="my-0.5 md:my-4" />
-                <div className="grid gap-1 rounded-lg bg-neutral-800/40 px-3 py-2 text-sm md:gap-2 md:p-3">
-                  {distance && (
-                    <div className="flex justify-between">
-                      <span className="text-neutral-400">Distance estimée</span>
-                      <span className="font-medium text-neutral-100">
-                        {distance} km
-                      </span>
-                    </div>
-                  )}
-                  {duration && (
-                    <div className="flex justify-between">
-                      <span className="text-neutral-400">Durée estimée</span>
-                      <span className="font-medium text-neutral-100">
-                        {formatDuration(duration)}
-                      </span>
-                    </div>
-                  )}
-                  {priceDetails && (
-                    <>
-                      <SimpleSeparator className="my-1.5" />
-                      <div className="flex justify-between">
-                        <span className="text-neutral-400">Prix de base</span>
-                        <span className="font-medium text-neutral-100">
-                          {priceDetails.basePrice}€
-                        </span>
-                      </div>
-                      {priceDetails.optionsPrice > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-neutral-400">Options</span>
-                          <span className="font-medium text-neutral-100">
-                            +{priceDetails.optionsPrice}€
-                          </span>
-                        </div>
-                      )}
-                      <div className="mt-1 flex justify-between font-semibold">
-                        <span className="text-neutral-300">Total estimé</span>
-                        <span className="text-blue-400">
-                          {priceDetails.totalPrice}€
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </>
-            )}
           </div>
         </Card>
 
         <Suspense
           fallback={
-            <Card className="p-4 md:p-6">
+            <Card className="order-2 p-4 md:p-6 lg:col-start-2 lg:row-start-1">
               <LoadingSpinner />
             </Card>
           }
         >
-          <Card className="overflow-hidden rounded-xl border-blue-500/20 bg-neutral-900/80 p-0 md:rounded-3xl">
-            <div className="h-48 md:h-64 lg:h-80">
+          <Card className="order-2 overflow-hidden rounded-xl border-blue-500/20 bg-neutral-900/80 p-0 md:rounded-3xl lg:col-start-2 lg:row-start-1">
+            <div className="h-48 md:h-64 lg:h-[min(18.5rem,calc(100svh-13rem))]">
               <ReservationMap
                 departure={departure}
                 destination={destination}
                 onRouteCalculated={handleRouteCalculated}
-                className="h-48 md:h-64 lg:h-80"
+                className="h-48 md:h-64 lg:h-[min(18.5rem,calc(100svh-13rem))]"
+                height="100%"
               />
             </div>
           </Card>
         </Suspense>
 
-        <div className="flex gap-2 md:mt-4 md:gap-4">
+        {(distance || duration || priceDetails) && (
+          <div className="order-3 w-full lg:col-span-2">
+            <TripSummaryBar
+              distance={distance}
+              duration={duration}
+              priceDetails={priceDetails}
+            />
+          </div>
+        )}
+
+        <div className="order-4 flex gap-2 md:gap-4 lg:col-span-2">
           <Button
             variant="outline"
             onClick={handleModify}
@@ -481,7 +508,9 @@ export function ConfirmationDetails() {
             ) : (
               <>
                 <span className="md:hidden">Confirmer</span>
-                <span className="hidden md:inline">Confirmer la réservation</span>
+                <span className="hidden md:inline">
+                  Confirmer la réservation
+                </span>
               </>
             )}
           </Button>

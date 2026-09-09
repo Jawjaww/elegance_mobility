@@ -31,7 +31,7 @@ export default function ReservationPage() {
 
   return (
     <section className={`relative ${LANDING_PAGE_FLOW}`}>
-      <div className="relative z-10 mx-auto w-full max-w-2xl">
+      <div className="relative z-10 mx-auto w-full max-w-2xl lg:max-w-6xl">
         <LandingDesktopPanel>
           {step === 1 ? (
             <LocationStep

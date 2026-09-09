@@ -151,9 +151,16 @@ export function LocationStep({
   };
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <div
+      className={cn(
+        "space-y-6 sm:space-y-8",
+        showMap &&
+          "lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-start lg:gap-8 lg:space-y-0",
+      )}
+    >
+      <div className="space-y-6 sm:space-y-8 lg:flex lg:flex-col lg:space-y-6">
       <section className={sectionClass}>
-        <h2 className="mb-4 text-xl font-semibold">
+        <h2 className="mb-4 text-xl font-semibold lg:mb-5 lg:text-2xl">
           Sélectionner votre trajet
         </h2>
 
@@ -196,24 +203,6 @@ export function LocationStep({
         </div>
       </section>
 
-      {showMap && (
-        <section
-          className={cn(
-            "h-[min(42vh,280px)] overflow-hidden sm:h-[400px]",
-            "rounded-lg border border-blue-500/20 md:rounded-2xl",
-          )}
-        >
-          <UnifiedMap
-            mode="REQUEST"
-            key={mapKey}
-            departure={store.departure}
-            destination={store.destination}
-            onRouteCalculated={handleRouteCalculated}
-            height="100%"
-          />
-        </section>
-      )}
-
       {store.distance !== null &&
         store.duration !== null &&
         store.distance > 0 &&
@@ -221,16 +210,16 @@ export function LocationStep({
         hasFiniteCoords(store.departure) &&
         hasFiniteCoords(store.destination) && (
           <section className={cn(sectionClass, "py-3 md:py-4")}>
-            <div className="flex justify-between items-center gap-4">
+            <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm text-neutral-400">Distance estimée</p>
                 <p className="font-medium text-white">{store.distance} km</p>
               </div>
               <div>
-                <p className="text-sm text-neutral-400 text-right">
+                <p className="text-right text-sm text-neutral-400">
                   Durée estimée
                 </p>
-                <p className="font-medium text-white text-right">
+                <p className="text-right font-medium text-white">
                   {formatDuration(store.duration)}
                 </p>
               </div>
@@ -255,6 +244,26 @@ export function LocationStep({
           {isEditing ? "Mettre à jour" : "Continuer"}
         </Button>
       </div>
+      </div>
+
+      {showMap ? (
+        <section
+          className={cn(
+            "h-[min(42vh,280px)] overflow-hidden sm:h-[400px]",
+            "rounded-lg border border-blue-500/20 md:rounded-2xl",
+            "lg:h-[min(28rem,calc(100svh-9rem))] lg:self-start lg:rounded-3xl",
+          )}
+        >
+          <UnifiedMap
+            mode="REQUEST"
+            key={mapKey}
+            departure={store.departure}
+            destination={store.destination}
+            onRouteCalculated={handleRouteCalculated}
+            height="100%"
+          />
+        </section>
+      ) : null}
     </div>
   );
 }

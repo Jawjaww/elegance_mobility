@@ -528,6 +528,13 @@
     }
   }
 
+  @media (min-width: 1024px) {
+    .landing-page-flow {
+      padding-top: 2rem;
+      padding-bottom: 2rem;
+    }
+  }
+
   /* Ajoute un padding en bas sur mobile pour éviter que le menu mobile cache le contenu */
   .mobile-safe-area {
     @apply pb-20 md:pb-0;

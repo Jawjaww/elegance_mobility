@@ -45,3 +45,13 @@ export const LANDING_KICKER =
 
 export const LANDING_LINK =
   "text-blue-400 hover:text-blue-300 transition-colors";
+
+/** Reservation vehicle / option picker — default and selected card chrome. */
+export const RESERVATION_PICKER_CARD =
+  "border-neutral-800 bg-neutral-900/80 hover:border-neutral-700";
+export const RESERVATION_PICKER_CARD_SELECTED =
+  "border-blue-500/40 bg-blue-500/[0.06]";
+export const RESERVATION_PICKER_ICON =
+  "border-neutral-700 bg-neutral-800";
+export const RESERVATION_PICKER_ICON_SELECTED =
+  "border-blue-500/30 bg-blue-500/10";

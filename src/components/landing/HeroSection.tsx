@@ -79,14 +79,14 @@ export function HeroSection() {
             className="mt-4 text-base sm:text-lg text-neutral-300 max-w-xl leading-relaxed"
           >
             Chauffeur confirmé, tarif transparent, prise en charge ponctuelle.
-            Simulez votre trajet et bloquez votre course en toute sérénité.
+            Le prix s’affiche tout de suite — vous confirmez ensuite.
           </motion.p>
 
           <motion.div
             initial={reducedMotion ? false : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.18, ease }}
-            className="mt-5 flex flex-col sm:flex-row gap-3"
+            className="mt-5"
           >
             <Button
               asChild
@@ -94,17 +94,9 @@ export function HeroSection() {
               className={`h-12 px-8 text-base ${LANDING_CTA}`}
             >
               <Link href="/reservation">
-                Réserver ma course
+                Simuler un prix
                 <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
               </Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="h-12 px-8 border-blue-400/30 bg-blue-500/5 text-white hover:bg-blue-500/15 hover:text-white text-base backdrop-blur-sm"
-            >
-              <Link href="/reservation">Simuler un prix</Link>
             </Button>
           </motion.div>
         </div>
