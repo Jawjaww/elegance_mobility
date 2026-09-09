@@ -64,6 +64,7 @@ const franceLandmarks = {
  * Modern FR-oriented basemap:
  * - terrain hillshade + landcover / water
  * - contrasted major roads (casing darker, fill lighter)
+ * - GeoJSON overlay of FR motorway/trunk until OpenFreeMap tiles include roads (z9)
  * - reliable French city landmarks + tile place hierarchy
  */
 const mapStyle: StyleSpecification = {
@@ -86,6 +87,14 @@ const mapStyle: StyleSpecification = {
     "fr-landmarks": {
       type: "geojson",
       data: franceLandmarks,
+    },
+    /**
+     * OpenFreeMap planet tiles omit almost all FR roads until z9.
+     * Country-scale views (France fit, ~z5–z8) need this overlay.
+     */
+    "fr-major-roads": {
+      type: "geojson",
+      data: "/maps/fr-major-roads.geojson",
     },
   },
   layers: [
@@ -274,6 +283,96 @@ const mapStyle: StyleSpecification = {
         "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.6, 8, 1.4],
         "line-opacity": 0.55,
         "line-dasharray": [3, 2],
+      },
+    },
+
+    // --- COUNTRY-SCALE AXES (GeoJSON, hidden once tile roads exist at z9) ---
+    {
+      id: "fr-major-motorway-casing",
+      type: "line",
+      source: "fr-major-roads",
+      maxzoom: 9,
+      filter: ["==", "class", "motorway"],
+      layout: { "line-join": "round", "line-cap": "round" },
+      paint: {
+        "line-color": m.motorwayCasing,
+        "line-width": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          4,
+          2.4,
+          6,
+          3.4,
+          8,
+          5,
+        ],
+      },
+    },
+    {
+      id: "fr-major-trunk-casing",
+      type: "line",
+      source: "fr-major-roads",
+      maxzoom: 9,
+      filter: ["==", "class", "trunk"],
+      layout: { "line-join": "round", "line-cap": "round" },
+      paint: {
+        "line-color": m.trunkCasing,
+        "line-width": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          4,
+          1.8,
+          6,
+          2.6,
+          8,
+          4,
+        ],
+      },
+    },
+    {
+      id: "fr-major-motorway",
+      type: "line",
+      source: "fr-major-roads",
+      maxzoom: 9,
+      filter: ["==", "class", "motorway"],
+      layout: { "line-join": "round", "line-cap": "round" },
+      paint: {
+        "line-color": m.motorwayFill,
+        "line-width": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          4,
+          1.3,
+          6,
+          2,
+          8,
+          3.2,
+        ],
+      },
+    },
+    {
+      id: "fr-major-trunk",
+      type: "line",
+      source: "fr-major-roads",
+      maxzoom: 9,
+      filter: ["==", "class", "trunk"],
+      layout: { "line-join": "round", "line-cap": "round" },
+      paint: {
+        "line-color": m.trunkFill,
+        "line-width": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          4,
+          1,
+          6,
+          1.5,
+          8,
+          2.4,
+        ],
       },
     },
 
