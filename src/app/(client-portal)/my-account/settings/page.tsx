@@ -4,13 +4,19 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import SettingsForm from "./settings-form";
 import type { AppUser as User } from "@/lib/types/common.types";
-import { getUserRole as getAppRole } from "@/lib/utils/auth-helpers";
 import { supabase } from "@/lib/database/client";
+import {
+  canUserAccessClientPortal,
+  clientPortalLoginUrl,
+} from "@/lib/auth/client-portal-access";
+import { useRoleNavigation } from "@/lib/auth/navigation.client";
+import { getUserRole } from "@/lib/utils/auth-helpers";
 import { AccountPageHeader } from "@/components/account/AccountPageHeader";
 import { ACCOUNT_PAGE } from "@/components/account/accountUi";
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { redirectToRoleHome } = useRoleNavigation();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [initialData, setInitialData] = useState({
@@ -23,22 +29,27 @@ export default function SettingsPage() {
   useEffect(() => {
     const checkAuth = async () => {
       const {
-        data: { user },
+        data: { user: fetchedUser },
         error,
       } = await supabase.auth.getUser();
 
-      if (error || !user || getAppRole(user) !== "app_customer") {
-        router.push("/auth/login?redirectTo=/my-account/settings");
+      if (error || !fetchedUser) {
+        router.push(clientPortalLoginUrl("/my-account/settings"));
         return;
       }
 
-      setUser(user as User);
+      if (!canUserAccessClientPortal(fetchedUser)) {
+        redirectToRoleHome(getUserRole(fetchedUser));
+        return;
+      }
 
-      const userMetadata = user.user_metadata || {};
+      setUser(fetchedUser as User);
+
+      const userMetadata = fetchedUser.user_metadata || {};
       setInitialData({
         first_name: userMetadata.first_name || "",
         last_name: userMetadata.last_name || "",
-        email: user.email || "",
+        email: fetchedUser.email || "",
         phone: userMetadata.phone || "",
       });
 
@@ -46,7 +57,7 @@ export default function SettingsPage() {
     };
 
     checkAuth();
-  }, [router]);
+  }, [router, redirectToRoleHome]);
 
   if (isLoading) {
     return (

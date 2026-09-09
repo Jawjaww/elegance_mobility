@@ -110,17 +110,18 @@ export function canAccessDriverPortal(role: AppRole | null | undefined): boolean
 
 /**
  * Vérifie l'accès au portail client
+ * (customers, drivers — hierarchy includes client rights — and admins)
  */
 export function canAccessClientPortal(role: AppRole | null | undefined): boolean {
-  return isCustomer(role) || isAdmin(role)
+  return isCustomer(role) || isDriver(role) || isAdmin(role)
 }
 
 /**
  * Vérifie si l'utilisateur peut créer des courses
- * (customers, admins)
+ * (customers, drivers, admins — RLS: user_id = auth.uid())
  */
 export function canCreateRides(role: AppRole | null | undefined): boolean {
-  return isCustomer(role) || isAdmin(role)
+  return isCustomer(role) || isDriver(role) || isAdmin(role)
 }
 
 /**

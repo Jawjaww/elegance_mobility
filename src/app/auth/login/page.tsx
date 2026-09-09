@@ -5,6 +5,7 @@ import { AuthModal } from "./AuthModal";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getUserRole } from "@/lib/utils/auth-helpers";
 import { getOptionalAuthUser } from "@/lib/utils/auth-session-check";
+import { resolveLoginRedirectPath } from "@/lib/auth/login-form-helpers";
 import {
   AuthFormShell,
   AuthLoadingSpinner,
@@ -14,6 +15,7 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const from = searchParams?.get("from");
+  const redirectTo = searchParams?.get("redirectTo");
   const [isChecking, setIsChecking] = useState(true);
   const hasRedirected = useRef(false);
 
@@ -27,10 +29,16 @@ function LoginContent() {
         if (user && !hasRedirected.current) {
           hasRedirected.current = true;
           const role = getUserRole(user);
-          if (role === "app_driver") router.replace("/driver-portal/dashboard");
-          else if (role === "app_admin" || role === "app_super_admin")
-            router.replace("/backoffice-portal");
-          else router.replace("/my-account");
+          const result = resolveLoginRedirectPath({
+            redirectTo: redirectTo ?? null,
+            from: from ?? null,
+            userRole: role,
+          });
+          if ("path" in result) {
+            router.replace(result.path);
+          } else {
+            router.replace("/my-account");
+          }
           return;
         }
 
@@ -42,7 +50,7 @@ function LoginContent() {
     };
 
     checkSession();
-  }, [router]);
+  }, [router, redirectTo, from]);
 
   const handleClose = () => {
     if (from) {

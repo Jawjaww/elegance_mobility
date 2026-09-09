@@ -33,9 +33,12 @@ La navigation est gérée par le HeaderClient qui inclut :
 ## Authentification
 
 - Accès public pour les pages principales
-- Authentification requise pour :
-  - `/my-account/*`
-  - `/reservation`
+- Authentification requise pour `/my-account/*`
+- **Portail client** : `app_customer`, `app_driver` (droits client inclus), `app_admin`, `app_super_admin`
+  - Helper frontend : `canAccessClientPortal()` dans `src/lib/utils/roles.ts`
+  - Garde pages : `canUserAccessClientPortal()` dans `src/lib/auth/client-portal-access.ts`
+- Un chauffeur (`app_driver`) peut réserver et gérer son compte client **en plus** du portail `/driver-portal/*`
+- Login avec session active : `redirectTo` est respecté (ex. `/my-account/reservations` ne renvoie plus silencieusement vers le dashboard chauffeur)
 
 ## Composants Partagés
 

@@ -4,6 +4,7 @@ import {
   canAccessAdminPortal,
   canAcceptRides,
   canAccessClientPortal,
+  canCreateRides,
   getEffectiveRole,
   ROLES,
 } from '@/lib/utils/roles'
@@ -25,5 +26,13 @@ describe('roles helpers', () => {
   it('defaults missing role to customer', () => {
     expect(getEffectiveRole(null)).toBe(ROLES.CUSTOMER)
     expect(canAccessClientPortal(null)).toBe(true)
+  })
+
+  it('grants drivers full client portal and booking rights', () => {
+    expect(canAccessClientPortal(ROLES.DRIVER)).toBe(true)
+    expect(canCreateRides(ROLES.DRIVER)).toBe(true)
+    expect(canAccessClientPortal(ROLES.CUSTOMER)).toBe(true)
+    expect(canCreateRides(ROLES.CUSTOMER)).toBe(true)
+    expect(canAccessClientPortal(ROLES.ADMIN)).toBe(true)
   })
 })
