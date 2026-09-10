@@ -77,7 +77,9 @@ class DriverRideService {
       .select("*")
       .in("status", ["pending", "delayed"])
       .is("matching_paused_at", null)
-      .gt("matching_deadline_at", new Date().toISOString())
+      .or(
+        `matching_deadline_at.gt.${new Date().toISOString()},matching_deadline_at.is.null`,
+      )
       .order("created_at", { ascending: false })
       .limit(10);
 
