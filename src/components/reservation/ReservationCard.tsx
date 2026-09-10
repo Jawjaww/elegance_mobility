@@ -8,15 +8,93 @@ import { StatusBadge } from "./StatusBadge";
 import { getRideStatusLabelForRide } from "@/lib/services/statusService";
 import { RideIncentivePanel } from "./RideIncentivePanel";
 import { formatLiveNavHint } from "@/lib/utils/liveNavHint";
+import {
+  cancelBadgeLabel,
+  cancelChipWithBilling,
+  clientStatusBadgeOverride,
+  isSystemExpiredRide,
+  vehicleTypeDisplayName,
+} from "@/lib/rides/rideCancelLabels";
+import {
+  CancelPolicyLine,
+  SystemExpiredNotice,
+} from "./MatchingNotices";
 
 import type { Database } from "@/lib/types/database.types";
 
+type RideRow = Database["public"]["Tables"]["rides"]["Row"];
+
 interface ReservationCardProps {
-  ride: Database["public"]["Tables"]["rides"]["Row"];
+  ride: RideRow;
   onEdit?: (id: string) => void;
   onCancel?: (id: string) => void;
   onDetails?: (id: string) => void;
   onRefresh?: () => void;
+}
+
+function isMatchingOpen(status: string): boolean {
+  return status === "pending" || status === "delayed";
+}
+
+function rideFareLabel(
+  estimated: number | null,
+  incentive: number,
+): string {
+  if (estimated == null) return "Prix non défini";
+  return formatCurrency(Number(estimated) + incentive);
+}
+
+function ReservationCardActions({
+  rideId,
+  matchingOpen,
+  showCancel,
+  onDetails,
+  onEdit,
+  onCancel,
+}: Readonly<{
+  rideId: string;
+  matchingOpen: boolean;
+  showCancel: boolean;
+  onDetails?: (id: string) => void;
+  onEdit?: (id: string) => void;
+  onCancel?: (id: string) => void;
+}>) {
+  return (
+    <CardFooter className="border-t border-blue-500/10 bg-neutral-950/40 px-4 py-2">
+      <div className="flex w-full justify-end gap-2">
+        {onDetails ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-3 text-xs border-blue-500/25 bg-blue-500/5 text-neutral-200 hover:bg-blue-500/15 hover:text-white"
+            onClick={() => onDetails(rideId)}
+          >
+            Détails
+          </Button>
+        ) : null}
+        {onEdit && matchingOpen ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-3 text-xs border-blue-500/40 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 hover:text-blue-200"
+            onClick={() => onEdit(rideId)}
+          >
+            Modifier
+          </Button>
+        ) : null}
+        {showCancel ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-3 text-xs border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20 hover:text-red-200"
+            onClick={() => onCancel?.(rideId)}
+          >
+            Annuler
+          </Button>
+        ) : null}
+      </div>
+    </CardFooter>
+  );
 }
 
 export default function ReservationCard({
@@ -26,42 +104,32 @@ export default function ReservationCard({
   onDetails,
   onRefresh,
 }: Readonly<ReservationCardProps>) {
-  // S'assurer que l'ID de la réservation est défini
   if (!ride.id) {
     console.error("Réservation sans ID détectée", ride);
     return null;
   }
 
-  // Formater la date et l'heure
   const formattedDateTime = formatDateTime(ride.pickup_time);
-
-  // Fonction pour capitaliser la première lettre
-  const capitalize = (str: string) => {
-    return str?.charAt(0).toUpperCase() + str?.slice(1).toLowerCase();
-  };
-
-  // Déterminer le type de trajet à afficher dans l'en-tête
-  const getVehicleTypeDisplay = () => {
-    if (!ride.vehicle_type) return "Trajet VTC";
-
-    const vehicleType = ride.vehicle_type.toLowerCase();
-
-    if (vehicleType.includes("van")) return "Van";
-    if (vehicleType.includes("premium")) return "Premium";
-    if (vehicleType.includes("standard")) return "Standard";
-
-    // Capitaliser le type pour tout autre cas
-    return `Trajet ${capitalize(vehicleType)}`;
-  };
-
+  const matchingOpen = isMatchingOpen(ride.status);
   const driverWaiting =
     ride.status === "scheduled" && Boolean(ride.driver_arrived_at);
   const statusLabel = getRideStatusLabelForRide(
     ride.status,
     ride.pickup_time,
     ride.driver_arrived_at,
+    ride.matching_deadline_at,
+    ride.matching_paused_at,
   );
   const liveNavHint = formatLiveNavHint(ride);
+  const systemExpired = isSystemExpiredRide(ride.status, ride.canceled_by);
+  const cancelChip = cancelBadgeLabel(ride.status, ride.canceled_by);
+  const badgeOverride = clientStatusBadgeOverride(
+    ride.status,
+    statusLabel,
+    cancelChip,
+    systemExpired,
+  );
+  const policyLine = cancelChipWithBilling(cancelChip, ride.cancel_billing);
 
   return (
     <Card className="overflow-hidden border-blue-500/15 bg-neutral-900/80 transition-colors duration-200 hover:border-blue-500/30">
@@ -70,7 +138,7 @@ export default function ReservationCard({
           <div className="flex items-center gap-2">
             <Car className="h-5 w-5 text-blue-400" />
             <h3 className="font-semibold text-neutral-100">
-              {getVehicleTypeDisplay()}
+              {vehicleTypeDisplayName(ride.vehicle_type)}
             </h3>
           </div>
           <StatusBadge
@@ -78,6 +146,7 @@ export default function ReservationCard({
             driverArrivedAt={ride.driver_arrived_at}
             className="shadow-sm"
             showDetailed={true}
+            labelOverride={badgeOverride}
           />
         </div>
       </CardHeader>
@@ -94,6 +163,8 @@ export default function ReservationCard({
             Estimation · {liveNavHint}
           </div>
         ) : null}
+        {systemExpired ? <SystemExpiredNotice ride={ride} /> : null}
+        <CancelPolicyLine text={policyLine} />
         <div className="text-sm">
           <p className="font-medium text-neutral-100">{formattedDateTime}</p>
         </div>
@@ -114,19 +185,16 @@ export default function ReservationCard({
           </div>
         </div>
 
-        {/* Prix affiché directement sans le type de véhicule en doublon */}
         <div className="flex justify-end pt-2">
           <div className="text-lg font-semibold text-neutral-100">
-            {ride.estimated_price != null
-              ? formatCurrency(
-                  Number(ride.estimated_price) +
-                    Number(ride.client_incentive ?? 0),
-                )
-              : "Prix non défini"}
+            {rideFareLabel(
+              ride.estimated_price,
+              Number(ride.client_incentive ?? 0),
+            )}
           </div>
         </div>
 
-        {(ride.status === "pending" || ride.status === "delayed") && (
+        {matchingOpen ? (
           <div className="pt-3">
             <RideIncentivePanel
               rideId={ride.id}
@@ -135,46 +203,19 @@ export default function ReservationCard({
               matchingPausedAt={ride.matching_paused_at}
               matchingDeadlineAt={ride.matching_deadline_at}
               onUpdated={onRefresh}
+              onCancel={onCancel ? () => onCancel(ride.id) : undefined}
             />
           </div>
-        )}
+        ) : null}
       </CardContent>
-      <CardFooter className="border-t border-blue-500/10 bg-neutral-950/40 px-4 py-2">
-        <div className="flex w-full justify-end gap-2">
-          {onDetails && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 px-3 text-xs border-blue-500/25 bg-blue-500/5 text-neutral-200 hover:bg-blue-500/15 hover:text-white"
-              onClick={() => onDetails(ride.id)}
-            >
-              Détails
-            </Button>
-          )}
-          {onEdit &&
-            (ride.status === "pending" || ride.status === "delayed") && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 px-3 text-xs border-blue-500/40 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 hover:text-blue-200"
-              onClick={() => onEdit(ride.id)}
-            >
-              Modifier
-            </Button>
-          )}
-          {onCancel &&
-            (ride.status === "pending" || ride.status === "delayed") && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 px-3 text-xs border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20 hover:text-red-200"
-              onClick={() => onCancel(ride.id)}
-            >
-              Annuler
-            </Button>
-          )}
-        </div>
-      </CardFooter>
+      <ReservationCardActions
+        rideId={ride.id}
+        matchingOpen={matchingOpen}
+        showCancel={Boolean(onCancel)}
+        onDetails={onDetails}
+        onEdit={onEdit}
+        onCancel={onCancel}
+      />
     </Card>
   );
 }

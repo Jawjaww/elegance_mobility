@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/useToast";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Coordinates } from "../lib/types/map-types";
 import {
   type VehicleType,
@@ -13,6 +13,7 @@ import {
 import { normalizeSelectedOptions } from "../lib/services/optionsCatalogService";
 import { useReservationStore } from "../lib/stores/reservationStore";
 import { normalizePickupDateTime } from "../lib/utils/normalizePickupDateTime";
+import { validateVehicleType } from "../lib/utils/vehicle";
 
 interface LocationState {
   raw: string;
@@ -26,8 +27,10 @@ const DEFAULT_LOCATION_STATE: LocationState = {
 
 export function useReservation() {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState(1);
   const reservationStore = useReservationStore();
+  const didApplyRebookRef = useRef(false);
 
   // Standardisation sur lon et gestion des cas null
   const [origin, setOrigin] = useState<Coordinates | undefined>(() => {
@@ -89,6 +92,81 @@ export function useReservation() {
       normalizeSelectedOptions(reservationStore.selectedOptions),
     ),
   );
+
+  // Prefill from system-expire rebook CTA (?rebook=1&from=&to=&…).
+  useEffect(() => {
+    if (didApplyRebookRef.current) return;
+    if (searchParams?.get("rebook") !== "1") return;
+    if (typeof window === "undefined") return;
+    if (localStorage.getItem("currentEditingReservationId")) return;
+    didApplyRebookRef.current = true;
+
+    const from = searchParams.get("from")?.trim() || "";
+    const to = searchParams.get("to")?.trim() || "";
+    const fromLat = Number(searchParams.get("from_lat"));
+    const fromLon = Number(searchParams.get("from_lon"));
+    const toLat = Number(searchParams.get("to_lat"));
+    const toLon = Number(searchParams.get("to_lon"));
+    const vehicle = validateVehicleType(searchParams.get("vehicle"));
+    const optionsRaw = searchParams.get("options");
+    const optionNames = optionsRaw
+      ? normalizeSelectedOptions(
+          optionsRaw
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
+        )
+      : [];
+
+    const hasFromCoords =
+      Number.isFinite(fromLat) && Number.isFinite(fromLon) && from.length > 0;
+    const hasToCoords =
+      Number.isFinite(toLat) && Number.isFinite(toLon) && to.length > 0;
+
+    if (hasFromCoords) {
+      const coords = { lat: fromLat, lon: fromLon };
+      setOrigin(coords);
+      setOriginAddress(from);
+      setPickup({ raw: from, validated: { location: coords } });
+      reservationStore.setDeparture({
+        lat: fromLat,
+        lon: fromLon,
+        display_name: from,
+        address: {},
+      });
+    } else if (from) {
+      setOriginAddress(from);
+    }
+
+    if (hasToCoords) {
+      const coords = { lat: toLat, lon: toLon };
+      setDestination(coords);
+      setDestinationAddress(to);
+      setDropoff({ raw: to, validated: { location: coords } });
+      reservationStore.setDestination({
+        lat: toLat,
+        lon: toLon,
+        display_name: to,
+        address: {},
+      });
+    } else if (to) {
+      setDestinationAddress(to);
+    }
+
+    if (vehicle) {
+      setVehicleType(vehicle);
+      reservationStore.setSelectedVehicle(vehicle);
+    }
+    if (optionNames.length > 0) {
+      setOptions(vehicleOptionsFromSelected(optionNames));
+      reservationStore.setSelectedOptions(optionNames);
+    }
+
+    const normalized = normalizePickupDateTime(new Date());
+    setPickupDateTime(normalized);
+    reservationStore.setPickupDateTime(normalized);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- apply query once
+  }, [searchParams]);
 
   const handleNextStep = useCallback(() => {
     const storeOrigin = reservationStore.departure;

@@ -1,12 +1,13 @@
 "use client";
 
+import { Suspense } from "react";
 import LocationStep from "../../../components/reservation/LocationStep";
 import VehicleStep from "../../../components/reservation/VehicleStep";
 import { useReservation } from "../../../hooks/useReservation";
 import { LandingDesktopPanel } from "@/components/landing/LandingDesktopPanel";
 import { LANDING_PAGE_FLOW } from "@/components/landing/landingSurface";
 
-export default function ReservationPage() {
+function ReservationPageContent() {
   const {
     step,
     originAddress,
@@ -63,5 +64,13 @@ export default function ReservationPage() {
         </LandingDesktopPanel>
       </div>
     </section>
+  );
+}
+
+export default function ReservationPage() {
+  return (
+    <Suspense fallback={null}>
+      <ReservationPageContent />
+    </Suspense>
   );
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import { ThemeProvider } from "./ThemeProvider";
-import { ReactNode, useEffect, useRef } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastProvider, useToast } from "@/hooks/useToast";
 import { supabase } from "@/lib/database/client";
 import { AuthLinkHandler } from "@/components/auth/AuthLinkHandler";
@@ -85,11 +86,25 @@ function ClientProvidersInner({ children }: Readonly<ClientProvidersProps>) {
 }
 
 export function ClientProviders({ children }: Readonly<ClientProvidersProps>) {
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 15_000,
+            refetchOnWindowFocus: false,
+          },
+        },
+      }),
+  );
+
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-      <ToastProvider>
-        <ClientProvidersInner>{children}</ClientProvidersInner>
-      </ToastProvider>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+        <ToastProvider>
+          <ClientProvidersInner>{children}</ClientProvidersInner>
+        </ToastProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }

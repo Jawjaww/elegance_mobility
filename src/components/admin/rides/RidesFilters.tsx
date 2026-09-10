@@ -5,7 +5,8 @@ import { fr } from "date-fns/locale"
 import { useUnifiedRidesStore } from "@/lib/stores/unifiedRidesStore"
 import { useDriversStore } from "@/lib/stores/driversStore"
 import { StatusBadge } from "@/components/reservation/StatusBadge"
-import { ALL_UI_STATUSES } from "@/lib/services/statusService"
+import { ALL_UI_STATUSES, RIDE_STATUS_MAP } from "@/lib/services/statusService"
+import type { FilterStatus } from "@/lib/stores/unifiedRidesStore"
 import {
   Select,
   SelectContent,
@@ -24,7 +25,8 @@ import { CalendarIcon, FilterIcon, UserIcon, ListFilterIcon, Users, Search, X } 
 import { useState, useMemo } from "react"
 import { cn } from "@/lib/utils"
 import { formatPersonName } from "@/lib/rides/rideCancelLabels"
-import type { RideWithRelations } from "@/lib/stores/unifiedRidesStore"
+import { useAdminRidesInfiniteQuery } from "@/hooks/useAdminRidesInfiniteQuery"
+import type { AdminRideListRow } from "@/lib/rides/fetchAdminRidesChunk"
 
 const MONTHS = [
   "janvier",
@@ -43,7 +45,14 @@ const MONTHS = [
 
 const WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"] as const
 
-function clientFilterLabel(ride: RideWithRelations): string {
+function nextCalendarYear(year: number, month: number, delta: -1 | 1): number {
+  const shifted = month + delta
+  if (shifted < 0) return year - 1
+  if (shifted > 11) return year + 1
+  return year
+}
+
+function clientFilterLabel(ride: AdminRideListRow): string {
   const name = formatPersonName(
     ride.customer?.first_name,
     ride.customer?.last_name,
@@ -121,14 +130,14 @@ export function RidesFilters() {
     setSearchQuery,
     viewMode, 
     setViewMode,
-    rides
   } = useUnifiedRidesStore()
   const { drivers } = useDriversStore()
+  const ridesQuery = useAdminRidesInfiniteQuery()
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
 
   const clientOptions = useMemo(() => {
     const byId = new Map<string, { id: string; label: string }>();
-    for (const ride of rides) {
+    for (const ride of ridesQuery.data?.pages.flat() ?? []) {
       if (!ride.user_id || byId.has(ride.user_id)) continue;
       byId.set(ride.user_id, {
         id: ride.user_id,
@@ -138,7 +147,7 @@ export function RidesFilters() {
     return Array.from(byId.values()).sort((a, b) =>
       a.label.localeCompare(b.label, "fr"),
     );
-  }, [rides]);
+  }, [ridesQuery.data]);
   
   // Mode d'affichage : 'day' ou 'month' (stocké dans le store)
   const [month, setMonth] = useState<number>(selectedDate.getMonth())
@@ -177,7 +186,7 @@ export function RidesFilters() {
 
   const shiftMonth = (delta: -1 | 1) => {
     const nextMonth = (month + delta + 12) % 12
-    const nextYear = month + delta < 0 ? year - 1 : month + delta > 11 ? year + 1 : year
+    const nextYear = nextCalendarYear(year, month, delta)
     setMonth(nextMonth)
     setYear(nextYear)
     setSelectedDate(new Date(nextYear, nextMonth, 1))
@@ -205,7 +214,7 @@ export function RidesFilters() {
 
   return (
     <div
-      className="sticky top-16 z-40 mb-6 p-4 rounded-lg border border-neutral-800 w-full"
+      className="sticky top-16 z-30 mb-6 p-4 rounded-lg border border-neutral-800 w-full"
       style={{
         background: 'rgba(12, 12, 14, 0.35)',
         backdropFilter: 'blur(16px)',
@@ -475,7 +484,10 @@ export function RidesFilters() {
         </div>
 
         <div className="flex flex-col md:flex-row gap-2 md:gap-4 w-[80vw] md:w-full items-center md:items-stretch">
-          <Select value={selectedStatus} onValueChange={value => setSelectedStatus(value as any)}>
+          <Select
+            value={selectedStatus}
+            onValueChange={(value) => setSelectedStatus(value as FilterStatus)}
+          >
             <SelectTrigger
               className="w-full md:w-[200px] lg:w-[240px]"
               style={{
@@ -513,7 +525,7 @@ export function RidesFilters() {
               ).map((status) => (
                 <SelectItem
                   key={status}
-                  value={status === 'inProgress' ? 'in-progress' : status}
+                  value={RIDE_STATUS_MAP[status]}
                   style={{ color: 'white' }}
                   className="hover:bg-white/10"
                 >
@@ -598,6 +610,16 @@ export function RidesFilters() {
               }}
             >
               <SelectItem value="all" style={{ color: 'white' }} className="hover:bg-white/10">Tous les clients</SelectItem>
+              {clientFilter &&
+              !clientOptions.some((client) => client.id === clientFilter) ? (
+                <SelectItem
+                  value={clientFilter}
+                  style={{ color: "white" }}
+                  className="hover:bg-white/10"
+                >
+                  Client sélectionné
+                </SelectItem>
+              ) : null}
               {clientOptions.map((client) => (
                 <SelectItem key={client.id} value={client.id} style={{ color: 'white' }} className="hover:bg-white/10">
                   {client.label}

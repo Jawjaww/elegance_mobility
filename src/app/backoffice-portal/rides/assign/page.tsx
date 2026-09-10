@@ -17,8 +17,10 @@ import { fr } from "date-fns/locale";
 import { PageLoading } from "@/components/ui/loading";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/useToast";
+import { useQueryClient } from "@tanstack/react-query";
 import { useDriversStore } from "@/lib/stores/driversStore";
 import { supabase } from "@/lib/database/client";
+import { ADMIN_RIDES_QUERY_KEY } from "@/lib/rides/fetchAdminRidesChunk";
 import type { Database } from "@/lib/types/database.types";
 
 type Driver = Database["public"]["Tables"]["drivers"]["Row"];
@@ -26,6 +28,7 @@ type Ride = Database["public"]["Tables"]["rides"]["Row"];
 
 function AssignDriverContent() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const rideId = searchParams?.get("id") || null;
   const { toast } = useToast();
@@ -87,15 +90,24 @@ function AssignDriverContent() {
 
   const assignDriver = async () => {
     if (!selectedDriverId || !ride) return;
+    if (ride.matching_paused_at) {
+      toast({
+        variant: "destructive",
+        title: "Assignation bloquée",
+        description:
+          "La recherche est en pause — le client doit confirmer avant assignation.",
+      });
+      return;
+    }
 
     setAssigning(true);
     try {
-      const { adminReassignRide } = await import(
+      const { adminReassignRide, isAdminRpcFailure } = await import(
         "@/services/adminRideService"
       );
-      const result: any = await adminReassignRide(ride.id, selectedDriverId);
+      const result = await adminReassignRide(ride.id, selectedDriverId);
 
-      if (result?.success === false) {
+      if (isAdminRpcFailure(result)) {
         throw new Error(result.error || "Réaffectation impossible");
       }
 
@@ -104,13 +116,18 @@ function AssignDriverContent() {
         description: "Le chauffeur a été assigné à cette course avec succès.",
       });
 
+      await queryClient.invalidateQueries({ queryKey: [ADMIN_RIDES_QUERY_KEY] });
       router.push("/backoffice-portal/rides");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur lors de l'assignation:", error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Impossible d'assigner le chauffeur.";
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: error.message || "Impossible d'assigner le chauffeur.",
+        description: message,
       });
     } finally {
       setAssigning(false);
@@ -155,6 +172,8 @@ function AssignDriverContent() {
     );
   }
 
+  const matchingPaused = ride.matching_paused_at != null;
+
   return (
     <div className="py-8 px-4 sm:px-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -166,6 +185,14 @@ function AssignDriverContent() {
           Retour
         </Button>
       </div>
+
+      {matchingPaused ? (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          Recherche en pause — le client doit confirmer (« Continuer la
+          recherche ») avant toute assignation. L&apos;assignation est
+          bloquée côté serveur.
+        </div>
+      ) : null}
 
       <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
         <Card className="md:col-span-1">
@@ -374,10 +401,12 @@ function AssignDriverContent() {
               <Button
                 className="w-full"
                 size="lg"
-                disabled={!selectedDriverId || assigning}
+                disabled={!selectedDriverId || assigning || matchingPaused}
                 onClick={assignDriver}
               >
-                {getAssignButtonContent(assigning, Boolean(selectedDriverId))}
+                {matchingPaused
+                  ? "Assignation bloquée (pause matching)"
+                  : getAssignButtonContent(assigning, Boolean(selectedDriverId))}
               </Button>
             </div>
           </CardContent>

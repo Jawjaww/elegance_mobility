@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { DashboardMetricCard } from "./dashboard-metric-card";
 import { DashboardActionCard } from "./dashboard-action-card";
 import { DashboardPendingPanel } from "./dashboard-pending-panel";
+import { DashboardDelayedPanel } from "./dashboard-delayed-panel";
 import { DashboardInProgressPanel } from "./dashboard-in-progress-panel";
 import { DashboardFleetPanel } from "./dashboard-fleet-panel";
 import { AdminCardGrid } from "./admin-card-grid";
@@ -14,6 +15,7 @@ import {
   CreditCard,
   MapPin,
   PackageOpen,
+  Scale,
 } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import {
@@ -32,7 +34,7 @@ function DashboardSkeleton() {
         <Card className="animate-pulse border-neutral-800 bg-neutral-900/50 h-[108px]" />
         <Card className="animate-pulse border-neutral-800 bg-neutral-900/50 h-[108px]" />
       </div>
-      <Card className="animate-pulse border-neutral-800 bg-neutral-900/50 h-24" />
+      <Card className="animate-pulse border-neutral-800 bg-neutral-900/50 h-[108px]" />
       <div className="grid grid-cols-2 gap-4">
         <Card className="animate-pulse border-neutral-800 bg-neutral-900/50 h-20" />
         <Card className="animate-pulse border-neutral-800 bg-neutral-900/50 h-20" />
@@ -104,16 +106,21 @@ export function AdminDashboardClient({
         <DashboardSkeleton />
       ) : (
         <>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:items-stretch">
             <DashboardPendingPanel
               count={metrics.pendingRides}
               refreshKey={refreshKey}
             />
-            <DashboardInProgressPanel
-              count={metrics.inProgressRides}
+            <DashboardDelayedPanel
+              count={metrics.delayedRides}
               refreshKey={refreshKey}
             />
           </div>
+
+          <DashboardInProgressPanel
+            count={metrics.inProgressRides}
+            refreshKey={refreshKey}
+          />
 
           <DashboardFleetPanel
             onlineDrivers={metrics.onlineDrivers}
@@ -174,6 +181,13 @@ export function AdminDashboardClient({
                 href="/backoffice-portal/rates"
                 icon={<CreditCard className="h-5 w-5" aria-hidden />}
                 iconClassName="bg-blue-500/10 border-blue-500/20 text-blue-400"
+              />
+              <DashboardActionCard
+                title="Politique courses"
+                description="Durées de recherche et frais d’annulation"
+                href="/backoffice-portal/ride-policies"
+                icon={<Scale className="h-5 w-5" aria-hidden />}
+                iconClassName="bg-violet-500/10 border-violet-500/20 text-violet-400"
               />
               <DashboardActionCard
                 title="Options"

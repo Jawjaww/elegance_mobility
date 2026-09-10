@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
-export type OpsPanelTone = "pending" | "live" | "fleet" | "default";
+export type OpsPanelTone = "pending" | "urgent" | "live" | "fleet" | "default";
 
 const TONE_STYLES: Record<
   OpsPanelTone,
@@ -16,6 +16,12 @@ const TONE_STYLES: Record<
     icon: "bg-amber-500/15 border-amber-500/30 text-amber-400",
     count: "text-amber-100",
     action: "border-amber-500/40 text-amber-300 hover:bg-amber-500/10",
+  },
+  urgent: {
+    shell: "border-rose-500/40 bg-gradient-to-br from-rose-500/[0.08] to-neutral-900",
+    icon: "bg-rose-500/15 border-rose-500/30 text-rose-400",
+    count: "text-rose-100",
+    action: "border-rose-500/40 text-rose-300 hover:bg-rose-500/10",
   },
   live: {
     shell: "border-blue-500/30 bg-gradient-to-br from-blue-500/[0.07] to-neutral-900",
@@ -70,7 +76,7 @@ export function DashboardOpsPanel({
   return (
     <div
       className={cn(
-        "flex flex-col rounded-xl border overflow-hidden h-fit",
+        "flex h-full min-h-0 flex-col rounded-xl border overflow-hidden",
         styles.shell,
         className,
       )}
@@ -115,8 +121,8 @@ export function DashboardOpsPanel({
           <Separator className="bg-neutral-800/80" />
           <div
             className={cn(
-              "px-4 sm:px-5 py-3",
-              hasItems && "max-h-[min(42vh,360px)] overflow-y-auto",
+              "min-h-0 flex-1 px-4 sm:px-5 py-3",
+              hasItems && "max-h-[220px] overflow-y-auto",
             )}
           >
             {loading ? (

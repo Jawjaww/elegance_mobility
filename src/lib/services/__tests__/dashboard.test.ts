@@ -18,6 +18,7 @@ function countResult(
   chain.gte = jest.fn(self);
   chain.lt = jest.fn(self);
   chain.eq = jest.fn(self);
+  chain.or = jest.fn(self);
   chain.then = (
     onFulfilled: (value: typeof result) => unknown,
     onRejected?: (reason: unknown) => unknown,

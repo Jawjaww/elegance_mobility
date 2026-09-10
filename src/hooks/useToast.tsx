@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useMemo,
   useState,
   useEffect,
 } from "react";
@@ -23,7 +24,9 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | undefined>(undefined);
 
-export function ToastProvider({ children }: { children: React.ReactNode }) {
+export function ToastProvider({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState<ToastProps | null>(null);
 
@@ -31,6 +34,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setCurrent(props);
     setOpen(true);
   }, []);
+
+  const contextValue = useMemo(() => ({ toast: showToast }), [showToast]);
 
   useEffect(() => {
     if (!open) {
@@ -42,7 +47,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, [open]);
 
   return (
-    <ToastContext.Provider value={{ toast: showToast }}>
+    <ToastContext.Provider value={contextValue}>
       <ToastPrimitives.Provider swipeDirection="right">
         {children}
         {current && (
@@ -51,32 +56,32 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             onOpenChange={setOpen}
             duration={current.duration ?? 5000}
             className={cn(
-              "fixed z-[100] flex items-center justify-between space-x-4 rounded-md p-4 shadow-lg transition-all w-[calc(100%-2rem)] sm:w-auto max-w-md", // Adjusted padding and width
-              "left-1/2 -trangray-x-1/2 top-4 sm:left-auto sm:trangray-x-0 sm:right-4", // Position top-center (mobile) / top-right (desktop)
+              "fixed z-[100] flex items-start overflow-hidden rounded-2xl p-4 shadow-lg shadow-black/40 transition-all",
+              "left-4 right-4 top-[max(0.75rem,env(safe-area-inset-top))] w-auto max-w-none",
+              "sm:left-auto sm:right-4 sm:w-auto sm:max-w-md",
               current.variant === "destructive" &&
-                "border border-red-800 bg-red-900 text-white", // Darker solid red
+                "border border-red-500/30 bg-neutral-900 text-white",
               current.variant === "success" &&
-                "border border-green-700 bg-green-800 text-white", // Adjusted success color
+                "border border-green-500/30 bg-neutral-900 text-white",
               (!current.variant || current.variant === "default") &&
-                "border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900", // Default style
+                "border border-white/10 bg-neutral-900 text-white",
             )}
           >
-            <div className="grid gap-1">
+            <div className="grid min-w-0 flex-1 gap-1">
               {current.title && (
-                <ToastPrimitives.Title className="text-sm font-semibold">
+                <ToastPrimitives.Title className="text-sm font-semibold break-words">
                   {current.title}
                 </ToastPrimitives.Title>
               )}
               {current.description && (
-                <ToastPrimitives.Description className="text-sm opacity-90">
+                <ToastPrimitives.Description className="text-sm opacity-90 break-words">
                   {current.description}
                 </ToastPrimitives.Description>
               )}
             </div>
           </ToastPrimitives.Root>
         )}
-        {/* Viewport positioning is less critical now as Root handles positioning */}
-        <ToastPrimitives.Viewport className="fixed top-0 right-0 z-[100] flex flex-col p-4 gap-2 w-full sm:w-auto m-0" />
+        <ToastPrimitives.Viewport className="pointer-events-none fixed top-0 right-0 z-[100] m-0 flex w-[calc(100%-2rem)] max-w-md flex-col gap-2 p-4 sm:w-auto" />
       </ToastPrimitives.Provider>
     </ToastContext.Provider>
   );

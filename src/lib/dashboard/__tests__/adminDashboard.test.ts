@@ -1,4 +1,4 @@
-import { truncateAddress } from "../adminDashboard";
+import { overdueUnassignedOrFilter, truncateAddress } from "../adminDashboard";
 
 describe("truncateAddress", () => {
   it("returns em dash for empty values", () => {
@@ -14,5 +14,15 @@ describe("truncateAddress", () => {
   it("truncates long addresses with ellipsis", () => {
     const long = "a".repeat(40);
     expect(truncateAddress(long, 10)).toBe(`${"a".repeat(10)}…`);
+  });
+});
+
+describe("overdueUnassignedOrFilter", () => {
+  it("matches delayed or overdue pending", () => {
+    expect(
+      overdueUnassignedOrFilter("2026-09-10T12:00:00.000Z"),
+    ).toBe(
+      'status.eq.delayed,and(status.eq.pending,pickup_time.lt."2026-09-10T12:00:00.000Z")',
+    );
   });
 });

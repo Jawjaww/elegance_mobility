@@ -1,16 +1,20 @@
 "use client";
 
-import { useState } from "react";
-import { useUnifiedRidesStore } from "@/lib/stores/unifiedRidesStore";
-import type { RideWithRelations } from "@/lib/stores/unifiedRidesStore";
+import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAdminRidesInfiniteQuery } from "@/hooks/useAdminRidesInfiniteQuery";
+import type { AdminRideListRow } from "@/lib/rides/fetchAdminRidesChunk";
+import { ADMIN_RIDES_QUERY_KEY } from "@/lib/rides/fetchAdminRidesChunk";
 import { useDriversStore } from "@/lib/stores/driversStore";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { adminCancelRide, isAdminRpcFailure } from "@/services/adminRideService";
 import { AdminRideListCard } from "./AdminRideListCard";
 import { RideDetailDialog } from "./RideDetailDialog";
 import { formatPersonName } from "@/lib/rides/rideCancelLabels";
+import { LANDING_CTA } from "@/components/landing/landingAssets";
 
 const LOADING_SKELETON_IDS = ["ride-skel-1", "ride-skel-2", "ride-skel-3"] as const;
 
@@ -59,7 +63,7 @@ function RideListCardSkeleton() {
 }
 
 function resolveDriverLabel(
-  ride: RideWithRelations,
+  ride: AdminRideListRow,
   drivers: Array<{ id: string; first_name: string | null; last_name: string | null }>,
 ): string {
   if (ride.driver) {
@@ -74,17 +78,21 @@ function resolveDriverLabel(
 }
 
 export function RidesList() {
-  const { filteredRides, loading, fetchRides } = useUnifiedRidesStore();
+  const query = useAdminRidesInfiniteQuery();
+  const queryClient = useQueryClient();
   const { drivers } = useDriversStore();
   const router = useRouter();
   const { toast } = useToast();
-  const [selectedRide, setSelectedRide] = useState<RideWithRelations | null>(
-    null,
-  );
+  const [selectedRideId, setSelectedRideId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  const openDetails = (ride: RideWithRelations) => {
-    setSelectedRide(ride);
+  const rides = useMemo(
+    () => query.data?.pages.flat() ?? [],
+    [query.data],
+  );
+
+  const openDetails = (ride: AdminRideListRow) => {
+    setSelectedRideId(ride.id);
     setDetailOpen(true);
   };
 
@@ -102,7 +110,7 @@ export function RidesList() {
         return;
       }
       toast({ title: "Course annulée" });
-      await fetchRides?.();
+      await queryClient.invalidateQueries({ queryKey: [ADMIN_RIDES_QUERY_KEY] });
     } catch (e: unknown) {
       toast({
         title: "Erreur",
@@ -112,7 +120,7 @@ export function RidesList() {
     }
   };
 
-  if (loading) {
+  if (query.isPending) {
     return (
       <div className={RIDES_GRID_CLASS}>
         {LOADING_SKELETON_IDS.map((id) => (
@@ -122,7 +130,17 @@ export function RidesList() {
     );
   }
 
-  if (filteredRides.length === 0) {
+  if (query.isError) {
+    return (
+      <Card className="elegant-backdrop p-6 sm:p-8 text-center border-neutral-800 bg-neutral-900/50 w-full">
+        <p className="text-neutral-400 text-sm sm:text-base">
+          Impossible de charger les courses.
+        </p>
+      </Card>
+    );
+  }
+
+  if (rides.length === 0) {
     return (
       <Card className="elegant-backdrop p-6 sm:p-8 text-center border-neutral-800 bg-neutral-900/50 w-full">
         <p className="text-neutral-400 text-sm sm:text-base">
@@ -135,7 +153,7 @@ export function RidesList() {
   return (
     <>
       <div className={RIDES_GRID_CLASS}>
-        {filteredRides.map((ride) => (
+        {rides.map((ride) => (
           <AdminRideListCard
             key={ride.id}
             ride={ride}
@@ -151,12 +169,25 @@ export function RidesList() {
         ))}
       </div>
 
+      {query.hasNextPage ? (
+        <div className="flex justify-center pt-4">
+          <Button
+            type="button"
+            onClick={() => void query.fetchNextPage()}
+            disabled={query.isFetchingNextPage}
+            className={`min-h-11 px-8 ${LANDING_CTA}`}
+          >
+            {query.isFetchingNextPage ? "Chargement..." : "Charger plus"}
+          </Button>
+        </div>
+      ) : null}
+
       <RideDetailDialog
-        ride={selectedRide}
+        rideId={selectedRideId}
         open={detailOpen}
         onOpenChange={(open) => {
           setDetailOpen(open);
-          if (!open) setSelectedRide(null);
+          if (!open) setSelectedRideId(null);
         }}
       />
     </>

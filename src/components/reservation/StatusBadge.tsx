@@ -10,6 +10,8 @@ interface StatusBadgeProps {
   size?: "default" | "sm" | "lg";
   showDetailed?: boolean;
   driverArrivedAt?: string | null;
+  /** Override when matching pause / delay labels differ from STATUS_LABELS */
+  labelOverride?: string | null;
 }
 
 function normalizeStatus(status: UiStatus | DbRideStatus): UiStatus {
@@ -87,15 +89,18 @@ export function StatusBadge({
   size = "default",
   showDetailed = false,
   driverArrivedAt = null,
+  labelOverride = null,
 }: Readonly<StatusBadgeProps>) {
   const normalizedStatus = normalizeStatus(status);
   const variant = badgeVariantForStatus(normalizedStatus);
-  const displayLabel = displayLabelForStatus(
-    normalizedStatus,
-    status,
-    showDetailed,
-    driverArrivedAt,
-  );
+  const displayLabel =
+    labelOverride ||
+    displayLabelForStatus(
+      normalizedStatus,
+      status,
+      showDetailed,
+      driverArrivedAt,
+    );
 
   return (
     <Badge variant={variant as "default"} size={size} className={className}>

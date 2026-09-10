@@ -1,8 +1,10 @@
 import { supabase } from "@/lib/database/client";
+import { overdueUnassignedOrFilter } from "@/lib/dashboard/adminDashboard";
 
 export interface DashboardMetrics {
   todayRides: number;
   pendingRides: number;
+  delayedRides: number;
   inProgressRides: number;
   activeDrivers: number;
   onlineDrivers: number;
@@ -28,10 +30,12 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = yesterday.toISOString();
+  const nowIso = new Date().toISOString();
 
   const [
     todayRidesResult,
     pendingRidesResult,
+    delayedRidesResult,
     inProgressRidesResult,
     activeDriversResult,
     onlineDriversResult,
@@ -48,7 +52,13 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     supabase
       .from("rides")
       .select("id", { count: "exact", head: true })
-      .eq("status", "pending"),
+      .eq("status", "pending")
+      .gte("pickup_time", nowIso),
+
+    supabase
+      .from("rides")
+      .select("id", { count: "exact", head: true })
+      .or(overdueUnassignedOrFilter(nowIso)),
 
     supabase
       .from("rides")
@@ -96,6 +106,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   return {
     todayRides: todayRidesCount,
     pendingRides: pendingRidesResult.count || 0,
+    delayedRides: delayedRidesResult.count || 0,
     inProgressRides: inProgressRidesResult.count || 0,
     activeDrivers: activeDriversResult.count || 0,
     onlineDrivers: onlineDriversResult.count || 0,

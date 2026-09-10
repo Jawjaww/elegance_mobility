@@ -1,5 +1,9 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { Database } from "@/lib/types/database.types";
+import {
+  parseCancelQuote,
+  type CancelQuote,
+} from "@/lib/rides/rideFeePolicy";
 
 export type ClientCancelResult = {
   success?: boolean;
@@ -8,6 +12,9 @@ export type ClientCancelResult = {
   ride_id?: string;
   canceled_by?: string;
   cancellation_reason?: string;
+  cancel_billing?: string;
+  cancel_fee_amount?: number;
+  reason_code?: string;
 };
 
 const createClient = () =>
@@ -44,4 +51,16 @@ export function isClientCancelFailure(
   result: ClientCancelResult | null | undefined,
 ): result is ClientCancelResult & { success: false } {
   return result?.success === false;
+}
+
+export async function previewClientCancelQuote(
+  rideId: string,
+): Promise<CancelQuote> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc(
+    "preview_ride_cancel_quote" as never,
+    { p_ride_id: rideId } as never,
+  );
+  if (error) throw error;
+  return parseCancelQuote(data);
 }

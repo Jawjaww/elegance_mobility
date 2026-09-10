@@ -18,6 +18,7 @@ import {
   Car,
   LogOut,
   CreditCard,
+  Scale,
   PackageOpen,
   Truck,
 } from "lucide-react";
@@ -49,6 +50,11 @@ const NAV_ITEMS = [
     name: "Tarifs",
     href: "/backoffice-portal/rates",
     icon: CreditCard,
+  },
+  {
+    name: "Politique",
+    href: "/backoffice-portal/ride-policies",
+    icon: Scale,
   },
   {
     name: "Options",

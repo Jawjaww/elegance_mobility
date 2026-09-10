@@ -19,6 +19,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/useToast";
+import { LANDING_CTA } from "@/components/landing/landingAssets";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 import {
   driverStatusColors,
@@ -397,8 +399,11 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
     }
   }
 
-  async function loadData() {
-    setLoading(true);
+  async function loadData(opts?: { silent?: boolean }) {
+    const silent = opts?.silent === true;
+    if (!silent) {
+      setLoading(true);
+    }
     setLoadError(null);
     try {
       console.log("[DriverFolderAdmin] Loading data for driverId:", driverId);
@@ -485,7 +490,9 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }
 
@@ -520,7 +527,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
       if (error) throw error;
       toast({ title: "Profil mis à jour" });
       setEditing(false);
-      loadData();
+      void loadData({ silent: true });
     } catch (e: unknown) {
       console.warn("DriverFolderAdmin.saveDriver error:", e);
       toast({
@@ -572,7 +579,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
         throw new Error(payload.error || "Validation refusée");
       }
       toast({ title: approve ? "Document approuvé" : "Document rejeté" });
-      loadData();
+      await loadData({ silent: true });
     } catch (e: unknown) {
       console.warn("DriverFolderAdmin.validateDoc error:", e);
       toast({
@@ -598,7 +605,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
         throw new Error(payload.error || "Mise à jour refusée");
       }
       toast({ title: "Date de validité mise à jour" });
-      await loadData();
+      await loadData({ silent: true });
     } catch (e: unknown) {
       toast({
         title: "Erreur",
@@ -632,7 +639,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
         throw new Error(body.error || `Upload échoué (${res.status})`);
       }
       toast({ title: "Document déposé", description: DOC_LABELS[docType] });
-      await loadData();
+      await loadData({ silent: true });
     } catch (e: unknown) {
       console.warn("DriverFolderAdmin.uploadAdminDocument error:", e);
       toast({
@@ -686,7 +693,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
             ? String((row as { message?: string }).message ?? "")
             : undefined,
       });
-      loadData();
+      void loadData({ silent: true });
     } catch (e: unknown) {
       console.warn("DriverFolderAdmin.approveOrRejectDossier error:", e);
       toast({
@@ -746,7 +753,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
             ? String((row as { message?: string }).message ?? "")
             : "Le chauffeur peut à nouveau modifier son dossier.",
       });
-      loadData();
+      void loadData({ silent: true });
     } catch (e: unknown) {
       console.warn("DriverFolderAdmin.cancelPendingReview error:", e);
       toast({
@@ -811,11 +818,11 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
         </Link>
       </Button>
 
-      <Card className="overflow-hidden border-neutral-800 bg-neutral-900/80">
+      <Card className="overflow-hidden border-blue-500/20 bg-neutral-900/80 md:rounded-3xl">
         <CardHeader className="relative pb-4">
           <div className="absolute top-0 right-0 p-32 bg-blue-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
-          <div className="relative flex items-start justify-between gap-4">
-            <div>
+          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-3">
                 <h2 className="text-2xl font-bold text-neutral-100 tracking-tight">
                   {driver?.first_name ?? "—"} {driver?.last_name ?? ""}
@@ -832,17 +839,18 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
               <p className="mt-1 text-sm text-neutral-400">
                 Dossier chauffeur
               </p>
-              <span className="inline-block mt-2 px-2 py-1 bg-neutral-800/80 text-neutral-500 text-xs rounded-md border border-neutral-700/50 font-mono">
+              <span className="inline-block mt-2 px-2 py-1 bg-neutral-800/80 text-neutral-500 text-xs rounded-md border border-white/[0.08] font-mono">
                 ID: {driver?.id}
               </span>
             </div>
-            <div className="flex gap-2 shrink-0">
+            <div className="flex flex-wrap gap-2 shrink-0">
               {editing ? (
                 <>
                   <Button
                     onClick={saveDriver}
                     disabled={saving}
                     size="sm"
+                    className={LANDING_CTA}
                   >
                     {saving ? "Enregistrement..." : "Enregistrer"}
                   </Button>
@@ -853,13 +861,17 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                       setEditing(false);
                       setForm(driver ?? {});
                     }}
-                    className="border-neutral-700 hover:bg-neutral-800"
+                    className="border-blue-400/30 bg-transparent text-white hover:bg-blue-500/15"
                   >
                     Annuler
                   </Button>
                 </>
               ) : (
-                <Button onClick={() => setEditing(true)} size="sm">
+                <Button
+                  onClick={() => setEditing(true)}
+                  size="sm"
+                  className={LANDING_CTA}
+                >
                   <Pencil className="h-4 w-4 mr-2" aria-hidden />
                   Modifier le profil
                 </Button>
@@ -867,7 +879,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
             </div>
           </div>
 
-          <div className="relative mt-6 pt-4 border-t border-neutral-800">
+          <div className="relative mt-6 pt-4 border-t border-white/[0.08]">
             <div className="flex justify-between items-end mb-2">
               <div>
                 <span className="text-sm font-medium text-neutral-300">
@@ -913,10 +925,10 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
               type="button"
               key={s.id}
               onClick={() => setActiveSection(i)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors border ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm whitespace-nowrap transition-colors border ${
                 activeSection === i
-                  ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
-                  : "bg-neutral-900 text-neutral-400 border-neutral-800 hover:border-neutral-700 hover:text-neutral-200"
+                  ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
+                  : "bg-neutral-900/80 text-neutral-400 border-white/[0.08] hover:border-neutral-700 hover:text-neutral-200"
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -926,8 +938,8 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
         })}
       </div>
 
-      <Card className="border-neutral-800">
-        <CardContent className="pt-6">
+      <Card className="border-blue-500/20 bg-neutral-900/80 md:rounded-3xl">
+        <CardContent className="px-4 py-5 sm:p-6">
           {activeSection === 0 && renderProfil()}
           {activeSection === 1 && renderProfessionnel()}
           {activeSection === 2 && renderDocuments()}
@@ -974,7 +986,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                   onChange={(e) =>
                     setForm({ ...form, [f.key]: e.target.value })
                   }
-                  className="bg-neutral-700 border-neutral-600 text-white"
+                  className="bg-neutral-900/80 border-neutral-700 text-white"
                 />
               ) : (
                 <div className="text-white">
@@ -1026,7 +1038,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                   onChange={(e) =>
                     setForm({ ...form, [f.key]: e.target.value })
                   }
-                  className="bg-neutral-700 border-neutral-600 text-white"
+                  className="bg-neutral-900/80 border-neutral-700 text-white"
                 />
               ) : (
                 <div className="text-white">
@@ -1037,7 +1049,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
           ))}
         </div>
 
-        <div className="mt-6 pt-4 border-t border-neutral-700">
+        <div className="mt-6 pt-4 border-t border-white/[0.08]">
           <span className="text-sm text-neutral-400 mb-2 block">
             Statut actuel
           </span>
@@ -1082,9 +1094,12 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
             const latest = typeDocs[0];
             const inputId = `admin-upload-${docType}`;
             return (
-              <div key={docType} className="p-4 bg-neutral-700 rounded-lg">
-                <div className="flex items-center justify-between mb-2 gap-2">
-                  <span className="font-medium text-white">
+              <div
+                key={docType}
+                className="rounded-2xl border border-white/[0.08] bg-neutral-900/60 p-4"
+              >
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <span className="min-w-0 truncate font-medium text-white">
                     {DOC_LABELS[docType] ?? docType}
                   </span>
                   {latest && (
@@ -1101,7 +1116,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                   )}
                 </div>
                 {!latest ? (
-                  <div className="flex items-center justify-between gap-3 bg-neutral-800 p-3 rounded">
+                  <div className="flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-neutral-950/50 p-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="text-sm text-neutral-400">Aucun document</div>
                     <DocumentActionBar
                       docType={docType}
@@ -1114,34 +1129,44 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                     />
                   </div>
                 ) : (
-                  <div className="flex items-start gap-3 bg-neutral-800 p-3 rounded">
-                    <DocumentPreview
-                      doc={latest}
-                      signedUrl={signedUrls[latest.id]}
-                    />
+                  <div className="flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-neutral-950/50 p-3 sm:flex-row sm:items-start">
+                    <div className="flex min-w-0 flex-1 flex-col gap-3">
+                      <div className="flex min-w-0 gap-3">
+                        <DocumentPreview
+                          doc={latest}
+                          signedUrl={signedUrls[latest.id]}
+                        />
 
-                    <div className="flex-1 min-w-0 space-y-2">
-                      <div className="text-white text-sm">
-                        {latest.file_name ?? "-"}
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                          <ExpandableFileName
+                            name={latest.file_name ?? "-"}
+                          />
+                          <div className="text-xs text-neutral-400">
+                            {latest.upload_date
+                              ? new Date(latest.upload_date).toLocaleString()
+                              : "-"}
+                          </div>
+                          {latest.rejection_reason && (
+                            <div className="text-xs text-red-400 break-words">
+                              Motif rejet: {latest.rejection_reason}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-xs text-neutral-400">
-                        {latest.upload_date
-                          ? new Date(latest.upload_date).toLocaleString()
-                          : "-"}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
+
+                      <div className="min-w-0 space-y-1.5">
                         <label
                           htmlFor={`doc-expiry-${latest.id}`}
-                          className="text-xs text-neutral-400 shrink-0"
+                          className="block text-[11px] font-medium uppercase tracking-wide text-neutral-500"
                         >
-                          Date de fin (pré-saisie chauffeur)
+                          Date de fin
                         </label>
                         <Input
                           id={`doc-expiry-${latest.id}`}
                           type="date"
                           defaultValue={latest.expiry_date ?? ""}
                           key={`${latest.id}-${latest.expiry_date ?? "none"}`}
-                          className="bg-neutral-900 border-neutral-600 text-white h-8 w-auto text-sm"
+                          className="h-9 w-full min-w-0 max-w-full bg-neutral-900/80 border-neutral-700 text-white text-sm"
                           onBlur={(e) => {
                             const next = e.target.value;
                             if (
@@ -1152,37 +1177,34 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                             }
                           }}
                         />
-                        {latest.expiry_date &&
-                          new Date(latest.expiry_date) <
-                            new Date(new Date().toDateString()) && (
-                            <Badge
-                              variant="outline"
-                              className="bg-red-500/20 text-red-400 border-red-500/30"
-                            >
-                              Expiré
-                            </Badge>
-                          )}
-                        {latest.expiry_date &&
-                          (() => {
-                            const days =
-                              (new Date(latest.expiry_date).getTime() -
-                                new Date().setHours(0, 0, 0, 0)) /
-                              86400000;
-                            return days >= 0 && days <= 30 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {latest.expiry_date &&
+                            new Date(latest.expiry_date) <
+                              new Date(new Date().toDateString()) && (
                               <Badge
                                 variant="outline"
-                                className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+                                className="bg-red-500/20 text-red-400 border-red-500/30"
                               >
-                                Expire bientôt
+                                Expiré
                               </Badge>
-                            ) : null;
-                          })()}
-                      </div>
-                      {latest.rejection_reason && (
-                        <div className="text-xs text-red-400">
-                          Motif rejet: {latest.rejection_reason}
+                            )}
+                          {latest.expiry_date &&
+                            (() => {
+                              const days =
+                                (new Date(latest.expiry_date).getTime() -
+                                  new Date().setHours(0, 0, 0, 0)) /
+                                86400000;
+                              return days >= 0 && days <= 30 ? (
+                                <Badge
+                                  variant="outline"
+                                  className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+                                >
+                                  Expire bientôt
+                                </Badge>
+                              ) : null;
+                            })()}
                         </div>
-                      )}
+                      </div>
                     </div>
 
                     <DocumentActionBar
@@ -1226,10 +1248,10 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
 
         {/* Completeness summary for admin review */}
         <div
-          className={`p-4 rounded-lg mb-6 border ${
+          className={`p-4 rounded-2xl mb-6 border ${
             completeness && isComplete
-              ? "bg-green-900/20 border-green-700"
-              : "bg-yellow-900/20 border-yellow-700"
+              ? "bg-green-900/20 border-green-700/50"
+              : "bg-yellow-900/20 border-yellow-700/50"
           }`}
         >
           <div className="flex items-center gap-3 mb-3">
@@ -1287,7 +1309,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
         </div>
 
         {/* Actions sur le dossier */}
-        <div className="pt-4 border-t border-neutral-700">
+        <div className="pt-4 border-t border-white/[0.08]">
           <span className="text-sm text-neutral-400 mb-2 block">
             Actions sur le dossier
           </span>
@@ -1337,6 +1359,25 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
 
 // Extracted components to reduce cognitive complexity and nesting
 
+function ExpandableFileName({ name }: Readonly<{ name: string }>) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <button
+      type="button"
+      title={name}
+      aria-expanded={expanded}
+      onClick={() => setExpanded((value) => !value)}
+      className={cn(
+        "w-full text-left text-sm text-white hover:text-blue-200",
+        expanded ? "break-all whitespace-normal" : "truncate",
+      )}
+    >
+      {name}
+    </button>
+  );
+}
+
 function DocumentPreview({
   doc,
   signedUrl,
@@ -1350,7 +1391,7 @@ function DocumentPreview({
 
   if (!signedUrl) {
     return (
-      <div className="w-20 h-20 flex items-center justify-center rounded border border-neutral-600 bg-neutral-700 text-neutral-500 text-xs flex-shrink-0">
+      <div className="w-20 h-20 flex items-center justify-center rounded-xl border border-white/10 bg-neutral-900 text-neutral-500 text-xs flex-shrink-0">
         —
       </div>
     );
@@ -1362,7 +1403,7 @@ function DocumentPreview({
         type="button"
         onClick={() => setOpen(true)}
         title="Agrandir"
-        className="relative group w-20 h-20 flex-shrink-0 rounded border border-neutral-600 overflow-hidden bg-neutral-700 hover:ring-2 hover:ring-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+        className="relative group w-20 h-20 flex-shrink-0 rounded-xl border border-white/10 overflow-hidden bg-neutral-900 hover:ring-2 hover:ring-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
       >
         {isImage ? (
           <img
@@ -1379,12 +1420,12 @@ function DocumentPreview({
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-[min(96vw,1100px)] w-full p-0 gap-0 overflow-hidden bg-neutral-950 border-neutral-700 text-white">
-          <DialogHeader className="px-4 py-3 border-b border-neutral-800 pr-12">
-            <DialogTitle className="text-base text-white truncate">
+        <DialogContent className="z-[60] max-w-[min(96vw,1100px)] w-full p-0 gap-0 overflow-hidden bg-neutral-950 border-white/[0.08] text-white">
+          <DialogHeader className="px-4 py-3 border-b border-white/[0.08] pr-12">
+            <DialogTitle className="text-base text-white">
               {title}
               {doc.file_name ? (
-                <span className="ml-2 text-sm font-normal text-neutral-400">
+                <span className="ml-2 text-sm font-normal text-neutral-400 break-all">
                   {doc.file_name}
                 </span>
               ) : null}
@@ -1619,7 +1660,7 @@ function DocumentActionBar({
   }
 
   return (
-    <div className="flex items-center gap-1 flex-shrink-0">
+    <div className="flex w-full items-center justify-end gap-1 sm:w-auto sm:flex-shrink-0">
       {doc && status !== "pending_temp" && canApprove && (
         <DelayedTooltip label="Approuver">
           <Button
@@ -1651,7 +1692,7 @@ function DocumentActionBar({
         <label
           htmlFor={inputId}
           aria-label={uploadLabel}
-          className={`inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-neutral-500 bg-neutral-700 text-neutral-200 hover:bg-neutral-600 ${
+          className={`inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-blue-400/30 bg-transparent text-neutral-200 hover:bg-blue-500/15 ${
             uploading ? "pointer-events-none opacity-50" : ""
           }`}
         >

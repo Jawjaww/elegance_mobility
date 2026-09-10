@@ -32,7 +32,7 @@ export function MobileAdminNav() {
   const pathname = usePathname() || ''
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-neutral-950/95 to-neutral-900/90 backdrop-blur-sm border-t border-neutral-700/30 shadow-md shadow-black/10 md:hidden">
+    <div className="fixed bottom-0 left-0 right-0 isolate z-50 border-t border-blue-500/15 bg-neutral-950/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden">
       <nav className="flex justify-around items-center h-14 px-3">
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)

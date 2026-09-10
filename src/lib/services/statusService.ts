@@ -52,8 +52,8 @@ export const STATUS_LABELS: Record<UiStatus, string> = {
   clientCanceled: "Annulée par le client",
   driverCanceled: "Annulée par le chauffeur",
   adminCanceled: "Annulée",
-  noShow: "Client absent",
-  delayed: "Retardée",
+  noShow: "Client absent (facturable)",
+  delayed: "En recherche (retard matching)",
   scheduled: "Planifiée",
 };
 
@@ -145,17 +145,26 @@ export function isValidUiStatus(status: string): status is UiStatus {
   return ALL_UI_STATUSES.includes(status as UiStatus);
 }
 
-/** Pending label reflects pickup_time grace window before cron expires the ride */
+/** Pending/delayed label reflects matching window + soft-confirm pause */
 export function getRideStatusLabelForRide(
   dbStatus: DbStatus,
   pickupTime?: string | null,
   driverArrivedAt?: string | null,
+  matchingDeadlineAt?: string | null,
+  matchingPausedAt?: string | null,
 ): string {
   if (dbStatus === "scheduled" && driverArrivedAt) {
     return "Chauffeur sur place";
   }
-  if (dbStatus === "pending") {
-    return getPendingRideDisplayLabel(pickupTime);
+  if (dbStatus === "pending" || dbStatus === "delayed") {
+    return getPendingRideDisplayLabel(
+      pickupTime,
+      matchingDeadlineAt,
+      matchingPausedAt,
+    );
+  }
+  if (dbStatus === "admin-canceled") {
+    return "Annulée";
   }
   const uiStatus = mapStatusFromDb(dbStatus);
   return STATUS_LABELS[uiStatus];

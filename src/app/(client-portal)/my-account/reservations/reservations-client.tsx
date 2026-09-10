@@ -18,10 +18,8 @@ import {
 import type { AppUser as User } from "@/lib/types/common.types";
 import { reservationService } from "@/lib/services/reservationService";
 import { supabase } from "@/lib/database/client";
-import {
-  clientCancelRide,
-  isClientCancelFailure,
-} from "@/services/clientRideService";
+import { CancelRideDialog } from "@/components/reservation/CancelRideDialog";
+import { canClientCancelRide } from "@/lib/rides/rideCancelLabels";
 
 import type { Database } from "@/lib/types/database.types";
 type Reservation = Database["public"]["Tables"]["rides"]["Row"];
@@ -222,7 +220,7 @@ function ReservationsListBody({
               : undefined
           }
           onCancel={
-            ride.status === "pending" || ride.status === "delayed"
+            canClientCancelRide(ride.status)
               ? () => onCancel(ride.id)
               : undefined
           }
@@ -248,6 +246,7 @@ export default function ReservationsClient({
   const [sorting, setSorting] = useState<SortingState>([
     { id: "pickup_time", desc: true },
   ]);
+  const [cancelRideId, setCancelRideId] = useState<string | null>(null);
 
   const loadReservations = useCallback(async () => {
     setIsLoading(true);
@@ -311,28 +310,17 @@ export default function ReservationsClient({
     router.push(`/my-account/reservations/edit?id=${id}`);
   };
 
-  const handleCancel = async (id: string) => {
-    try {
-      const result = await clientCancelRide(id);
-      if (isClientCancelFailure(result)) {
-        throw new Error(result.error || "Impossible d'annuler la réservation");
-      }
+  const handleCancelRequest = (id: string) => {
+    setCancelRideId(id);
+  };
 
-      toast({
-        title: "Réservation annulée",
-        description: "Votre réservation a été annulée avec succès",
-      });
-
-      void loadReservations();
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Impossible d'annuler la réservation";
-      toast({
-        title: "Erreur",
-        description: message,
-        variant: "destructive",
-      });
-    }
+  const handleCanceled = () => {
+    toast({
+      title: "Réservation annulée",
+      description: "Votre réservation a été annulée.",
+    });
+    setCancelRideId(null);
+    void loadReservations();
   };
 
   const handleDetails = (id: string) => {
@@ -431,7 +419,7 @@ export default function ReservationsClient({
         hasActiveFilters={hasActiveFilters}
         onClearFilters={() => setColumnFilters([])}
         onEdit={handleEdit}
-        onCancel={handleCancel}
+        onCancel={handleCancelRequest}
         onDetails={handleDetails}
         onBook={() => router.push("/reservation")}
         onRefresh={() => void loadReservations()}
@@ -456,6 +444,13 @@ export default function ReservationsClient({
         open={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
         onRefresh={() => void loadReservations()}
+        onCancel={handleCancelRequest}
+      />
+      <CancelRideDialog
+        rideId={cancelRideId}
+        open={cancelRideId != null}
+        onClose={() => setCancelRideId(null)}
+        onCanceled={handleCanceled}
       />
     </div>
   );

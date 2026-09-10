@@ -6,10 +6,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/reservation/StatusBadge";
 import { MapPin, User, XCircle } from "lucide-react";
-import type { RideWithRelations } from "@/lib/stores/unifiedRidesStore";
+import type { AdminRideListRow } from "@/lib/rides/fetchAdminRidesChunk";
 import type { Database } from "@/lib/types/database.types";
 import {
+  adminMatchingBadgeOverride,
   cancelBadgeLabel,
+  cancelBillingLabel,
   formatPersonName,
 } from "@/lib/rides/rideCancelLabels";
 import { CopyableRef } from "@/components/admin/CopyableRef";
@@ -27,24 +29,39 @@ const CANCELABLE = new Set<DbRideStatus>([
 function RideStatusCorner({
   status,
   canceledBy,
+  cancelBilling,
+  matchingPausedAt,
+  delayKind,
 }: Readonly<{
   status: DbRideStatus;
   canceledBy: string | null;
+  cancelBilling: string | null;
+  matchingPausedAt: string | null;
+  delayKind: string | null;
 }>) {
   const isCanceled = status.includes("canceled");
   const reasonBadge = cancelBadgeLabel(status, canceledBy);
 
   if (!isCanceled) {
     return (
-      <StatusBadge
-        status={status}
-        showDetailed
-        className="text-xs sm:text-sm shadow-sm"
-      />
+      <div className="inline-flex flex-col items-end gap-0.5">
+        <StatusBadge
+          status={status}
+          showDetailed
+          className="text-xs sm:text-sm shadow-sm"
+          labelOverride={adminMatchingBadgeOverride(
+            matchingPausedAt,
+            status,
+            delayKind,
+          )}
+        />
+        {matchingPausedAt ? (
+          <span className="text-[10px] text-amber-400/90">Confirm. client</span>
+        ) : null}
+      </div>
     );
   }
 
-  // Unified cancel chip: "Annulée" + secondary reason (Expirée / Admin / …)
   const secondary =
     reasonBadge && reasonBadge !== "Annulée" ? reasonBadge : null;
 
@@ -57,6 +74,11 @@ function RideStatusCorner({
           <span className="text-red-300/80 font-normal">· {secondary}</span>
         ) : null}
       </span>
+      {cancelBilling ? (
+        <span className="text-[10px] text-neutral-500">
+          {cancelBillingLabel(cancelBilling)}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -68,7 +90,7 @@ export function AdminRideListCard({
   onAssign,
   onCancel,
 }: Readonly<{
-  ride: RideWithRelations;
+  ride: AdminRideListRow;
   driverLabel: string;
   onOpenDetails: () => void;
   onAssign: () => void;
@@ -80,6 +102,12 @@ export function AdminRideListCard({
     ride.customer?.last_name,
   );
   const showDriver = Boolean(ride.driver_id);
+  const matchingPaused = ride.matching_paused_at != null;
+  const canAssign =
+    (ride.status === "pending" ||
+      ride.status === "scheduled" ||
+      ride.status === "delayed") &&
+    !matchingPaused;
 
   return (
     <Card className="overflow-hidden border-neutral-800 bg-neutral-900 w-full hover:border-neutral-700 transition-colors">
@@ -101,6 +129,9 @@ export function AdminRideListCard({
           <RideStatusCorner
             status={ride.status}
             canceledBy={ride.canceled_by}
+            cancelBilling={ride.cancel_billing}
+            matchingPausedAt={ride.matching_paused_at}
+            delayKind={ride.delay_kind}
           />
         </div>
 
@@ -160,7 +191,7 @@ export function AdminRideListCard({
 
         {/* Actions */}
         <div className="flex flex-wrap gap-2 mt-3">
-          {(ride.status === "pending" || ride.status === "scheduled") && (
+          {canAssign ? (
             <Button
               variant="outline"
               size="sm"
@@ -170,7 +201,13 @@ export function AdminRideListCard({
               <User className="w-3.5 h-3.5 mr-1.5" />
               {ride.driver_id ? "Réassigner" : "Assigner"}
             </Button>
-          )}
+          ) : null}
+          {matchingPaused &&
+          (ride.status === "pending" || ride.status === "delayed") ? (
+            <span className="inline-flex items-center h-8 px-2 text-[11px] text-amber-400/90">
+              Assigner bloqué — pause matching
+            </span>
+          ) : null}
           {CANCELABLE.has(ride.status) && (
             <Button
               variant="outline"

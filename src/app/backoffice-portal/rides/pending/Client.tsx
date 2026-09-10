@@ -11,7 +11,7 @@ export default function PendingRidesPage() {
   useEffect(() => {
     // Définir le filtre sur "pending" avant la redirection
     setSelectedStatus("pending")
-    router.replace("/backoffice-portal/rides")
+    router.replace("/backoffice-portal/rides?filter=pending")
   }, [router, setSelectedStatus])
  
   return null
