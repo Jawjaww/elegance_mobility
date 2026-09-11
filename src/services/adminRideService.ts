@@ -19,7 +19,12 @@ const createClient = () =>
  * (second arg typed as undefined). Call through this helper with explicit casts.
  */
 async function callAdminRpc(
-  fn: "admin_cancel_ride" | "admin_reassign_ride" | "validate_driver_dossier",
+  fn:
+    | "admin_cancel_ride"
+    | "admin_reassign_ride"
+    | "validate_driver_dossier"
+    | "admin_set_driver_status"
+    | "reopen_driver_dossier",
   args: Record<string, unknown>,
 ): Promise<AdminRpcResult> {
   const supabase = createClient();
@@ -74,5 +79,27 @@ export async function validateDriverDossier(
     ...(rejectionReason != null
       ? { p_rejection_reason: rejectionReason }
       : {}),
+  });
+}
+
+export async function adminSetDriverStatus(
+  driverId: string,
+  status: "active" | "suspended" | "on_vacation",
+  reason?: string | null,
+): Promise<AdminRpcResult> {
+  return callAdminRpc("admin_set_driver_status", {
+    p_driver_id: driverId,
+    p_status: status,
+    ...(reason ? { p_reason: reason } : {}),
+  });
+}
+
+export async function reopenDriverDossier(
+  driverId: string,
+  reason?: string | null,
+): Promise<AdminRpcResult> {
+  return callAdminRpc("reopen_driver_dossier", {
+    p_driver_id: driverId,
+    ...(reason ? { p_reason: reason } : {}),
   });
 }

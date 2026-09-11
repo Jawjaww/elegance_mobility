@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { Check } from "lucide-react";
 
 export default function ReservationSuccessPage() {
@@ -16,7 +17,14 @@ export default function ReservationSuccessPage() {
             Votre réservation a bien été enregistrée.
             <br />
             Vous pouvez la retrouver, la modifier ou l&apos;annuler à tout moment
-            dans votre espace client.
+            dans{" "}
+            <Link
+              href="/my-account/reservations"
+              className="text-blue-400 hover:text-blue-300"
+            >
+              Mes réservations
+            </Link>
+            .
           </p>
         </div>
       </div>

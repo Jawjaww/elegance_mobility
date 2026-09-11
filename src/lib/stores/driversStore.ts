@@ -168,32 +168,31 @@ export const useDriversStore = create<DriversState>((set, get) => ({
 
   updateDriverStatus: async (driverId: string, status: Driver["status"]) => {
     try {
-      if (status !== "active" && status !== "rejected") {
+      if (
+        status !== "active" &&
+        status !== "suspended" &&
+        status !== "on_vacation"
+      ) {
         throw new Error(
-          "Seules les transitions active/rejected via validate_driver_dossier sont supportées",
+          "Seuls les statuts opérationnels active, suspended et on_vacation sont supportés",
         );
       }
 
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-      if (authError || !user) throw new Error("Non authentifié");
-
-      const { data, error } = await supabase.rpc("validate_driver_dossier", {
+      const { data, error } = await supabase.rpc("admin_set_driver_status", {
         p_driver_id: driverId,
-        p_admin_user_id: user.id,
-        p_approved: status === "active",
-        p_rejection_reason: null,
+        p_status: status,
       });
       if (error) throw error;
 
       const row = Array.isArray(data) ? data[0] : data;
-      if (row?.success === false) {
-        throw new Error(row.message || "Validation refusée");
+      const payload = row as
+        | { success?: boolean; error?: string; new_status?: string }
+        | null;
+      if (payload?.success === false) {
+        throw new Error(payload.error || "Mise à jour du statut refusée");
       }
 
-      const nextStatus = (row?.new_status as Driver["status"]) || status;
+      const nextStatus = (payload?.new_status as Driver["status"]) || status;
 
       // Optimistic local update
       set((state) => ({

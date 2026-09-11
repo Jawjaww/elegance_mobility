@@ -43,21 +43,13 @@ export function useDriverLocation(enabled: boolean) {
       if (!user) return
 
       // Upsert location avec ignoreDuplicates pour éviter les erreurs 409
-      const { error } = await supabase
-        .from('driver_locations')
-        .upsert({
-          driver_id: user.id,
-          lat: location.lat,
-          lon: location.lng,
-          heading: location.heading,
-          speed: location.speed,
-          accuracy: location.accuracy,
-          is_online: true,
-          recorded_at: new Date().toISOString()
-        }, { 
-          onConflict: 'driver_id',
-          ignoreDuplicates: false 
-        })
+      const { error } = await supabase.rpc('update_driver_location', {
+        p_lat: location.lat,
+        p_lng: location.lng,
+        p_heading: location.heading ?? undefined,
+        p_speed: location.speed ?? undefined,
+        p_accuracy: location.accuracy ?? undefined,
+      })
 
       if (error && retryCount.current < MAX_RETRY) {
         retryCount.current++

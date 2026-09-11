@@ -8,7 +8,11 @@ jest.mock('@supabase/ssr', () => ({
   }),
 }))
 
-import { validateDriverDossier } from '@/services/adminRideService'
+import {
+  validateDriverDossier,
+  adminSetDriverStatus,
+  reopenDriverDossier,
+} from '@/services/adminRideService'
 
 describe('validateDriverDossier helper', () => {
   beforeEach(() => {
@@ -36,4 +40,42 @@ describe('validateDriverDossier helper', () => {
     });
     expect(result).toMatchObject({ success: true, new_status: "active" });
   });
+
+  it('calls admin_set_driver_status for operational statuses', async () => {
+    mockRpc.mockResolvedValue({
+      data: { success: true, new_status: 'suspended' },
+      error: null,
+    })
+
+    const result = await adminSetDriverStatus(
+      'driver-1',
+      'suspended',
+      'fraude',
+    )
+
+    expect(mockRpc).toHaveBeenCalledWith('admin_set_driver_status', {
+      p_driver_id: 'driver-1',
+      p_status: 'suspended',
+      p_reason: 'fraude',
+    })
+    expect(result).toMatchObject({ success: true, new_status: 'suspended' })
+  })
+
+  it('calls reopen_driver_dossier', async () => {
+    mockRpc.mockResolvedValue({
+      data: { success: true, new_status: 'pending_review' },
+      error: null,
+    })
+
+    const result = await reopenDriverDossier('driver-1', 'erreur admin')
+
+    expect(mockRpc).toHaveBeenCalledWith('reopen_driver_dossier', {
+      p_driver_id: 'driver-1',
+      p_reason: 'erreur admin',
+    })
+    expect(result).toMatchObject({
+      success: true,
+      new_status: 'pending_review',
+    })
+  })
 });

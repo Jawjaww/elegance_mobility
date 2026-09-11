@@ -1,9 +1,10 @@
 "use client";
 
-import { DollarSign, Wifi, Power, ChevronDown } from "lucide-react";
+import { DollarSign, Wifi, Power } from "lucide-react";
 import { useDriverStore } from "@/lib/driver/store";
 import { MobileNav } from "./MobileNav";
 import { motion } from "framer-motion";
+import { supabase } from "@/lib/database/client";
 
 export function Header() {
   const { isOnline, setIsOnline, stats } = useDriverStore();
@@ -21,7 +22,11 @@ export function Header() {
       >
         {/* Bouton En ligne/Hors ligne - Capsule glass ultra moderne */}
         <button
-          onClick={() => setIsOnline(!isOnline)}
+          onClick={() => {
+            const next = !isOnline;
+            setIsOnline(next);
+            if (!next) void supabase.rpc("set_driver_offline");
+          }}
           className={`flex items-center gap-2 pl-2 pr-5 py-2 rounded-full transition-all duration-300 active:scale-97 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 backdrop-blur-lg border border-white/10 shadow-xl hover:shadow-emerald-500/40 ${
             isOnline
               ? "bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-300 text-white hover:bg-emerald-600"

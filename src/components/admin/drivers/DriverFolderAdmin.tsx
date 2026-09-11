@@ -15,9 +15,12 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/useToast";
 import { LANDING_CTA } from "@/components/landing/landingAssets";
 import { cn } from "@/lib/utils";
@@ -48,6 +51,109 @@ import {
 type DriverRow = Database["public"]["Tables"]["drivers"]["Row"];
 type DriverDocRow = Database["public"]["Tables"]["driver_documents"]["Row"];
 type DriverStatus = Database["public"]["Enums"]["driver_status"];
+
+function jsonRpcError(data: unknown): string | null {
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || typeof row !== "object" || !("success" in row)) return null;
+  if ((row as { success?: boolean }).success !== false) return null;
+  return (
+    (row as { error?: string; message?: string }).error ||
+    (row as { message?: string }).message ||
+    "Action refusée"
+  );
+}
+
+function tableRpcFailure(data: unknown): string | null {
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || typeof row !== "object") return "Réponse RPC invalide";
+  if ((row as { success?: boolean }).success === false) {
+    return (
+      (row as { message?: string }).message ||
+      (row as { error?: string }).error ||
+      "Action refusée"
+    );
+  }
+  return null;
+}
+
+function isPlaceholderDocumentUrl(fileUrl: string | null | undefined): boolean {
+  const url = (fileUrl ?? "").trim().toLowerCase();
+  if (!url) return true;
+  return (
+    url.includes("example.local") ||
+    url.includes("://example.com") ||
+    url.includes("://www.example.com")
+  );
+}
+
+function isMissingDocumentFile(
+  doc: Pick<DriverDocRow, "file_url">,
+  signedUrl: string | undefined,
+): boolean {
+  if (isPlaceholderDocumentUrl(doc.file_url)) return true;
+  return !signedUrl;
+}
+
+function isUnsubmittedDossierStatus(
+  status: DriverStatus | undefined,
+): boolean {
+  return (
+    status === "draft" ||
+    status === "rejected" ||
+    status === "incomplete"
+  );
+}
+
+type OpsStatus = "active" | "suspended" | "on_vacation";
+type PendingDriverAction =
+  | { type: "ops"; next: OpsStatus }
+  | { type: "reopen" };
+
+const OPS_ACTION_COPY: Record<
+  OpsStatus,
+  {
+    title: string;
+    description: string;
+    confirmLabel: string;
+    confirmClassName: string;
+  }
+> = {
+  active: {
+    title: "Réactiver ce chauffeur ?",
+    description: "Il pourra de nouveau accepter des courses.",
+    confirmLabel: "Réactiver",
+    confirmClassName: "bg-green-600 hover:bg-green-700 text-white",
+  },
+  suspended: {
+    title: "Suspendre ce chauffeur ?",
+    description: "Il ne pourra plus accepter de courses.",
+    confirmLabel: "Suspendre",
+    confirmClassName: "bg-red-600 hover:bg-red-700 text-white",
+  },
+  on_vacation: {
+    title: "Passer ce chauffeur en congé ?",
+    description:
+      "Il ne pourra plus accepter de courses tant qu’il est en congé.",
+    confirmLabel: "Mettre en congé",
+    confirmClassName:
+      "border-blue-600 text-blue-300 hover:bg-blue-900/30",
+  },
+};
+
+const REOPEN_ACTION_COPY = {
+  title: "Remettre ce dossier en vérification ?",
+  description:
+    "Le chauffeur ne sera plus actif tant qu’un admin ne le revalidera pas.",
+  confirmLabel: "Remettre en vérification",
+  confirmClassName:
+    "border-amber-600 text-amber-300 hover:bg-amber-900/30",
+} as const;
+
+function driverActionCopy(pending: PendingDriverAction) {
+  return pending.type === "reopen"
+    ? REOPEN_ACTION_COPY
+    : OPS_ACTION_COPY[pending.next];
+}
 
 type CompletenessView = {
   is_complete: boolean;
@@ -272,6 +378,10 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
   );
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [uploadingType, setUploadingType] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] =
+    useState<PendingDriverAction | null>(null);
+  const [actionReason, setActionReason] = useState("");
+  const [actionBusy, setActionBusy] = useState(false);
 
   useEffect(() => {
     if (!driverId) return;
@@ -578,7 +688,13 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
       if (payload?.success === false) {
         throw new Error(payload.error || "Validation refusée");
       }
-      toast({ title: approve ? "Document approuvé" : "Document rejeté" });
+      toast({
+        title: approve ? "Document approuvé" : "Document rejeté",
+        description:
+          !approve && driver?.status === "active"
+            ? "Le dossier est remis en vérification pour permettre un nouvel envoi."
+            : undefined,
+      });
       await loadData({ silent: true });
     } catch (e: unknown) {
       console.warn("DriverFolderAdmin.validateDoc error:", e);
@@ -649,6 +765,71 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
       });
     } finally {
       setUploadingType(null);
+    }
+  }
+
+  async function submitDossierForReview(): Promise<void> {
+    if (!driver?.user_id) throw new Error("Chauffeur sans compte utilisateur");
+    const { data, error } = await supabase.rpc("submit_driver_dossier", {
+      p_driver_id: driverId,
+      p_user_id: driver.user_id,
+    });
+    if (error) throw error;
+    const failed = tableRpcFailure(data);
+    if (failed) throw new Error(failed);
+  }
+
+  async function putDossierInReview() {
+    try {
+      await submitDossierForReview();
+      toast({
+        title: "Dossier en vérification",
+        description: "Le chauffeur est passé en attente de validation.",
+      });
+      void loadData({ silent: true });
+    } catch (e: unknown) {
+      console.warn("DriverFolderAdmin.putDossierInReview error:", e);
+      toast({
+        title: "Erreur",
+        description: errorMessage(e),
+        variant: "destructive",
+      });
+    }
+  }
+
+  async function validateIncludingSubmit() {
+    try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+      if (authError || !user) throw new Error("Admin non authentifié");
+
+      if (isUnsubmittedDossierStatus(driver?.status)) {
+        await submitDossierForReview();
+      }
+
+      const { data, error } = await supabase.rpc("validate_driver_dossier", {
+        p_driver_id: driverId,
+        p_admin_user_id: user.id,
+        p_approved: true,
+      });
+      if (error) throw error;
+      const failed = tableRpcFailure(data);
+      if (failed) throw new Error(failed);
+
+      toast({
+        title: "Dossier validé",
+        description: "Le chauffeur est maintenant actif.",
+      });
+      void loadData({ silent: true });
+    } catch (e: unknown) {
+      console.warn("DriverFolderAdmin.validateIncludingSubmit error:", e);
+      toast({
+        title: "Erreur",
+        description: errorMessage(e),
+        variant: "destructive",
+      });
     }
   }
 
@@ -764,6 +945,266 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
     }
   }
 
+  async function setOperationalStatus(
+    next: OpsStatus,
+    reason: string | null,
+  ) {
+    try {
+      const { data, error } = await supabase.rpc("admin_set_driver_status", {
+        p_driver_id: driverId,
+        p_status: next,
+        ...(reason ? { p_reason: reason } : {}),
+      });
+      if (error) throw error;
+      const failed = jsonRpcError(data);
+      if (failed) throw new Error(failed);
+
+      toast({
+        title: "Statut mis à jour",
+        description: driverStatusLabels[next],
+      });
+      void loadData({ silent: true });
+    } catch (e: unknown) {
+      console.warn("DriverFolderAdmin.setOperationalStatus error:", e);
+      toast({
+        title: "Erreur",
+        description: errorMessage(e),
+        variant: "destructive",
+      });
+      throw e;
+    }
+  }
+
+  async function reopenDossier(reason: string | null) {
+    try {
+      const { data, error } = await supabase.rpc("reopen_driver_dossier", {
+        p_driver_id: driverId,
+        ...(reason ? { p_reason: reason } : {}),
+      });
+      if (error) throw error;
+      const failed = jsonRpcError(data);
+      if (failed) throw new Error(failed);
+
+      toast({
+        title: "Dossier remis en vérification",
+        description: "Le chauffeur a été prévenu de consulter son dossier.",
+      });
+      void loadData({ silent: true });
+    } catch (e: unknown) {
+      console.warn("DriverFolderAdmin.reopenDossier error:", e);
+      toast({
+        title: "Erreur",
+        description: errorMessage(e),
+        variant: "destructive",
+      });
+      throw e;
+    }
+  }
+
+  function openOpsDialog(next: OpsStatus) {
+    setActionReason("");
+    setPendingAction({ type: "ops", next });
+  }
+
+  function openReopenDialog() {
+    setActionReason("");
+    setPendingAction({ type: "reopen" });
+  }
+
+  function closeActionDialog() {
+    if (actionBusy) return;
+    setPendingAction(null);
+    setActionReason("");
+  }
+
+  function renderAdminActionBar(opts?: { compact?: boolean }) {
+    const status = driver?.status;
+    const compact = opts?.compact === true;
+    const isComplete = completeness?.is_complete ?? false;
+    const canSubmit = completeness?.can_submit ?? isComplete;
+    const showOps =
+      status === "active" ||
+      status === "suspended" ||
+      status === "on_vacation" ||
+      status === "inactive";
+    const showReview = status === "pending_review";
+    const showDraft = isUnsubmittedDossierStatus(status);
+
+    const opsButtons = (
+      <>
+        {status !== "suspended" && (
+          <Button
+            size="sm"
+            onClick={() => openOpsDialog("suspended")}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            Suspendre
+          </Button>
+        )}
+        {status !== "on_vacation" && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => openOpsDialog("on_vacation")}
+            className="border-blue-600 text-blue-300 hover:bg-blue-900/30"
+          >
+            Mettre en congé
+          </Button>
+        )}
+        {status !== "active" && (
+          <Button
+            size="sm"
+            onClick={() => openOpsDialog("active")}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            Réactiver
+          </Button>
+        )}
+      </>
+    );
+
+    const reopenButton = (
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => openReopenDialog()}
+        className="border-amber-600 text-amber-300 hover:bg-amber-900/30"
+      >
+        Remettre en vérification
+      </Button>
+    );
+
+    const reviewButtons = (
+      <>
+        <Button
+          size="sm"
+          onClick={() => approveOrRejectDossier(true)}
+          className="bg-green-600 hover:bg-green-700"
+          disabled={!isComplete}
+        >
+          ✓ Valider le dossier
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => approveOrRejectDossier(false)}
+          className="bg-red-600 hover:bg-red-700"
+        >
+          ✗ Rejeter le dossier
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => void cancelPendingReview()}
+          className="border-amber-600 text-amber-300 hover:bg-amber-900/30"
+        >
+          ↩ Renvoyer pour correction
+        </Button>
+      </>
+    );
+
+    const draftButtons = (
+      <>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => void putDossierInReview()}
+          disabled={!canSubmit}
+          className="border-amber-600 text-amber-300 hover:bg-amber-900/30"
+        >
+          Mettre en vérification
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => void validateIncludingSubmit()}
+          className="bg-green-600 hover:bg-green-700"
+          disabled={!isComplete}
+        >
+          ✓ Valider le dossier
+        </Button>
+      </>
+    );
+
+    if (compact) {
+      return (
+        <div className="flex flex-wrap gap-2">
+          {showOps && (
+            <>
+              {opsButtons}
+              {reopenButton}
+            </>
+          )}
+          {showReview && reviewButtons}
+          {showDraft && draftButtons}
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-3">
+        {showOps && (
+          <div>
+            <span className="text-sm text-neutral-400 mb-2 block">
+              Activité
+            </span>
+            <p className="text-xs text-neutral-500 mb-2">
+              Suspendre ou passer en congé empêche d&apos;accepter de nouvelles
+              courses. Cela ne change pas l&apos;état du dossier.
+            </p>
+            <div className="flex flex-wrap gap-2">{opsButtons}</div>
+          </div>
+        )}
+        {showOps && (
+          <div>
+            <span className="text-sm text-neutral-400 mb-2 block">
+              Dossier
+            </span>
+            {reopenButton}
+          </div>
+        )}
+        {showReview && (
+          <div>
+            <span className="text-sm text-neutral-400 mb-2 block">
+              Dossier
+            </span>
+            <div className="flex flex-wrap gap-2">{reviewButtons}</div>
+          </div>
+        )}
+        {showDraft && (
+          <div>
+            <span className="text-sm text-neutral-400 mb-2 block">
+              Dossier
+            </span>
+            <p className="text-xs text-neutral-500 mb-2">
+              Le chauffeur n&apos;a pas encore soumis. Vous pouvez le passer
+              en vérification ou l&apos;activer directement s&apos;il est
+              complet.
+            </p>
+            <div className="flex flex-wrap gap-2">{draftButtons}</div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  async function confirmPendingAction() {
+    if (!pendingAction) return;
+    const reason = actionReason.trim() || null;
+    setActionBusy(true);
+    try {
+      if (pendingAction.type === "ops") {
+        await setOperationalStatus(pendingAction.next, reason);
+      } else {
+        await reopenDossier(reason);
+      }
+      setPendingAction(null);
+      setActionReason("");
+    } catch {
+      // Toast already shown by the RPC helpers.
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-[200px] flex items-center justify-center">
@@ -843,7 +1284,8 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                 ID: {driver?.id}
               </span>
             </div>
-            <div className="flex flex-wrap gap-2 shrink-0">
+            <div className="flex flex-wrap gap-2 shrink-0 justify-end">
+              {renderAdminActionBar({ compact: true })}
               {editing ? (
                 <>
                   <Button
@@ -946,6 +1388,15 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
           {activeSection === 3 && renderValidation()}
         </CardContent>
       </Card>
+
+      <DriverActionConfirmDialog
+        pending={pendingAction}
+        reason={actionReason}
+        busy={actionBusy}
+        onReasonChange={setActionReason}
+        onClose={closeActionDialog}
+        onConfirm={() => void confirmPendingAction()}
+      />
     </div>
   );
 
@@ -1059,14 +1510,11 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
           >
             {driverStatusLabels[driver?.status ?? "draft"]}
           </Badge>
-          {driver?.status === "pending_review" && (
-            <p className="text-xs text-neutral-500 mt-2">
-              Tant que le dossier est en attente, utilisez les actions en bas de
-              page pour activer, rejeter ou renvoyer le chauffeur en correction.
-              « Renvoyer pour correction » remet le dossier en brouillon sans
-              rejet formel.
-            </p>
-          )}
+          <p className="text-xs text-neutral-500 mt-2">
+            Suspendre, remettre en vérification, valider ou rejeter : boutons
+            en haut de la fiche (à côté de Modifier le profil) et sous le
+            résumé de complétion dans l&apos;onglet Validation.
+          </p>
         </div>
       </div>
     );
@@ -1103,16 +1551,29 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                     {DOC_LABELS[docType] ?? docType}
                   </span>
                   {latest && (
-                    <Badge
-                      variant="outline"
-                      className={
-                        docStatusColors[latest.validation_status ?? ""] ||
-                        "bg-neutral-500/20 text-neutral-400 border-neutral-500/30"
-                      }
-                    >
-                      {docStatusLabels[latest.validation_status ?? ""] ??
-                        latest.validation_status}
-                    </Badge>
+                    <div className="flex flex-wrap items-center justify-end gap-1.5">
+                      {isMissingDocumentFile(
+                        latest,
+                        signedUrls[latest.id],
+                      ) && (
+                        <Badge
+                          variant="outline"
+                          className="bg-red-500/20 text-red-400 border-red-500/30"
+                        >
+                          Fichier introuvable
+                        </Badge>
+                      )}
+                      <Badge
+                        variant="outline"
+                        className={
+                          docStatusColors[latest.validation_status ?? ""] ||
+                          "bg-neutral-500/20 text-neutral-400 border-neutral-500/30"
+                        }
+                      >
+                        {docStatusLabels[latest.validation_status ?? ""] ??
+                          latest.validation_status}
+                      </Badge>
+                    </div>
                   )}
                 </div>
                 {!latest ? (
@@ -1149,6 +1610,15 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                           {latest.rejection_reason && (
                             <div className="text-xs text-red-400 break-words">
                               Motif rejet: {latest.rejection_reason}
+                            </div>
+                          )}
+                          {isMissingDocumentFile(
+                            latest,
+                            signedUrls[latest.id],
+                          ) && (
+                            <div className="text-xs text-red-400">
+                              Fichier absent du storage (URL seed ou aperçu
+                              impossible). Déposez une pièce à jour.
                             </div>
                           )}
                         </div>
@@ -1308,53 +1778,85 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
           )}
         </div>
 
-        {/* Actions sur le dossier */}
         <div className="pt-4 border-t border-white/[0.08]">
-          <span className="text-sm text-neutral-400 mb-2 block">
-            Actions sur le dossier
-          </span>
-          <div className="flex flex-wrap gap-2">
-            {driver?.status === "pending_review" && (
-              <>
-                <Button
-                  size="sm"
-                  onClick={() => approveOrRejectDossier(true)}
-                  className="bg-green-600 hover:bg-green-700"
-                  disabled={!isComplete}
-                >
-                  ✓ Valider le dossier
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => approveOrRejectDossier(false)}
-                  className="bg-red-600 hover:bg-red-700"
-                >
-                  ✗ Rejeter le dossier
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void cancelPendingReview()}
-                  className="border-amber-600 text-amber-300 hover:bg-amber-900/30"
-                >
-                  ↩ Renvoyer pour correction
-                </Button>
-              </>
-            )}
-            {driver?.status !== "pending_review" && (
-              <p className="text-xs text-neutral-500">
-                L&apos;activation ou le rejet du dossier est disponible
-                uniquement lorsque le statut est «{" "}
-                {driverStatusLabels.pending_review} ».
-              </p>
-            )}
-          </div>
+          {renderAdminActionBar()}
         </div>
       </div>
     );
   }
 
   /* calculateCompletion removed — header uses check_driver_profile_completeness RPC */
+}
+
+function DriverActionConfirmDialog({
+  pending,
+  reason,
+  busy,
+  onReasonChange,
+  onClose,
+  onConfirm,
+}: Readonly<{
+  pending: PendingDriverAction | null;
+  reason: string;
+  busy: boolean;
+  onReasonChange: (value: string) => void;
+  onClose: () => void;
+  onConfirm: () => void;
+}>) {
+  const copy = pending ? driverActionCopy(pending) : null;
+  const outlineConfirm =
+    pending?.type === "reopen" ||
+    (pending?.type === "ops" && pending.next === "on_vacation");
+
+  return (
+    <Dialog
+      open={pending != null}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <DialogContent className="bg-neutral-950 border-neutral-800 text-neutral-100 sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{copy?.title ?? "Confirmer"}</DialogTitle>
+          <DialogDescription className="text-neutral-400">
+            {copy?.description}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          <Label htmlFor="driver-action-reason" className="text-neutral-400">
+            Motif (optionnel)
+          </Label>
+          <Input
+            id="driver-action-reason"
+            value={reason}
+            onChange={(event) => onReasonChange(event.target.value)}
+            placeholder="Ex. contrôle, congés, pièce à mettre à jour"
+            className="bg-neutral-900/80 border-neutral-700 text-white"
+            disabled={busy}
+          />
+        </div>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={busy}
+          >
+            Annuler
+          </Button>
+          <Button
+            type="button"
+            variant={outlineConfirm ? "outline" : "default"}
+            className={copy?.confirmClassName}
+            disabled={busy}
+            onClick={onConfirm}
+          >
+            {busy ? "En cours…" : copy?.confirmLabel}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 // Extracted components to reduce cognitive complexity and nesting

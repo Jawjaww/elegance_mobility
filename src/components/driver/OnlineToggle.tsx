@@ -3,13 +3,18 @@
 import { motion } from 'framer-motion'
 import { Power } from 'lucide-react'
 import { useDriverStore } from '@/lib/driver/store'
+import { supabase } from '@/lib/database/client'
 
 export function OnlineToggle() {
   const { isOnline, setIsOnline } = useDriverStore()
 
   return (
     <motion.button
-      onClick={() => setIsOnline(!isOnline)}
+      onClick={() => {
+        const next = !isOnline
+        setIsOnline(next)
+        if (!next) void supabase.rpc('set_driver_offline')
+      }}
       whileTap={{ scale: 0.98 }}
       whileHover={{ scale: 1.02 }}
       className={`w-full h-16 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-lg ${

@@ -56,9 +56,7 @@ export function ToastProvider({
             onOpenChange={setOpen}
             duration={current.duration ?? 5000}
             className={cn(
-              "fixed z-[100] flex items-start overflow-hidden rounded-2xl p-4 shadow-lg shadow-black/40 transition-all",
-              "left-4 right-4 top-[max(0.75rem,env(safe-area-inset-top))] w-auto max-w-none",
-              "sm:left-auto sm:right-4 sm:w-auto sm:max-w-md",
+              "pointer-events-auto flex w-full max-w-md items-start overflow-hidden rounded-2xl p-4 shadow-lg shadow-black/40",
               current.variant === "destructive" &&
                 "border border-red-500/30 bg-neutral-900 text-white",
               current.variant === "success" &&
@@ -81,7 +79,7 @@ export function ToastProvider({
             </div>
           </ToastPrimitives.Root>
         )}
-        <ToastPrimitives.Viewport className="pointer-events-none fixed top-0 right-0 z-[100] m-0 flex w-[calc(100%-2rem)] max-w-md flex-col gap-2 p-4 sm:w-auto" />
+        <ToastPrimitives.Viewport className="pointer-events-none fixed inset-x-0 top-0 z-[100] flex w-full justify-center px-5 pt-[max(0.75rem,env(safe-area-inset-top))] outline-none sm:inset-x-auto sm:right-5 sm:w-auto sm:max-w-md sm:justify-end sm:px-0" />
       </ToastPrimitives.Provider>
     </ToastContext.Provider>
   );
