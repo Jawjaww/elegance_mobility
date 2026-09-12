@@ -1288,6 +1288,14 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
               <p className="mt-1 text-sm text-neutral-400">
                 Dossier chauffeur
               </p>
+              {driver.ops_status_reason &&
+                (driver.status === "suspended" ||
+                  driver.status === "on_vacation" ||
+                  driver.status === "inactive") && (
+                  <p className="mt-2 text-sm text-amber-200/90">
+                    Motif : {driver.ops_status_reason}
+                  </p>
+                )}
               <span className="inline-block mt-2 px-2 py-1 bg-neutral-800/80 text-neutral-500 text-xs rounded-md border border-white/[0.08] font-mono">
                 ID: {driver?.id}
               </span>
