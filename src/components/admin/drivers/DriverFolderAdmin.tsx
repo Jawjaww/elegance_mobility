@@ -32,6 +32,11 @@ import {
   docStatusLabels,
 } from "@/components/admin/drivers/driverStatusStyles";
 import {
+  approveDossierFromServer,
+  mapDossierAdminRpcMessage,
+  type DossierApproveClient,
+} from "@/lib/drivers/approveDossierFromServer";
+import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
@@ -56,10 +61,10 @@ function jsonRpcError(data: unknown): string | null {
   const row = Array.isArray(data) ? data[0] : data;
   if (!row || typeof row !== "object" || !("success" in row)) return null;
   if ((row as { success?: boolean }).success !== false) return null;
-  return (
+  return mapDossierAdminRpcMessage(
     (row as { error?: string; message?: string }).error ||
-    (row as { message?: string }).message ||
-    "Action refusée"
+      (row as { message?: string }).message ||
+      "Action refusée",
   );
 }
 
@@ -67,10 +72,10 @@ function tableRpcFailure(data: unknown): string | null {
   const row = Array.isArray(data) ? data[0] : data;
   if (!row || typeof row !== "object") return "Réponse RPC invalide";
   if ((row as { success?: boolean }).success === false) {
-    return (
+    return mapDossierAdminRpcMessage(
       (row as { message?: string }).message ||
-      (row as { error?: string }).error ||
-      "Action refusée"
+        (row as { error?: string }).error ||
+        "Action refusée",
     );
   }
   return null;
@@ -305,16 +310,19 @@ async function resolveSignedUrlForPath(
 }
 
 function errorMessage(e: unknown): string {
-  if (e instanceof Error) return e.message;
-  if (typeof e === "string") return e;
-  if (e && typeof e === "object" && "message" in e) {
-    return String((e as { message: unknown }).message);
+  let raw = "Erreur inconnue";
+  if (e instanceof Error) raw = e.message;
+  else if (typeof e === "string") raw = e;
+  else if (e && typeof e === "object" && "message" in e) {
+    raw = String((e as { message: unknown }).message);
+  } else {
+    try {
+      raw = JSON.stringify(e);
+    } catch {
+      raw = "Erreur inconnue";
+    }
   }
-  try {
-    return JSON.stringify(e);
-  } catch {
-    return "Erreur inconnue";
-  }
+  return mapDossierAdminRpcMessage(raw);
 }
 
 const REQUIRED_DOCUMENTS = [
@@ -797,7 +805,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
     }
   }
 
-  async function validateIncludingSubmit() {
+  async function approveDossierFromDb() {
     try {
       const {
         data: { user },
@@ -805,18 +813,10 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
       } = await supabase.auth.getUser();
       if (authError || !user) throw new Error("Admin non authentifié");
 
-      if (isUnsubmittedDossierStatus(driver?.status)) {
-        await submitDossierForReview();
-      }
-
-      const { data, error } = await supabase.rpc("validate_driver_dossier", {
-        p_driver_id: driverId,
-        p_admin_user_id: user.id,
-        p_approved: true,
-      });
-      if (error) throw error;
-      const failed = tableRpcFailure(data);
-      if (failed) throw new Error(failed);
+      await approveDossierFromServer(
+        supabase as unknown as DossierApproveClient,
+        { driverId, adminUserId: user.id },
+      );
 
       toast({
         title: "Dossier validé",
@@ -824,7 +824,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
       });
       void loadData({ silent: true });
     } catch (e: unknown) {
-      console.warn("DriverFolderAdmin.validateIncludingSubmit error:", e);
+      console.warn("DriverFolderAdmin.approveDossierFromDb error:", e);
       toast({
         title: "Erreur",
         description: errorMessage(e),
@@ -1074,11 +1074,18 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
       </Button>
     );
 
+    const approveDocsHint = !isComplete ? (
+      <p className="text-xs text-amber-300 basis-full">
+        Approuvez d’abord les documents remplacés
+      </p>
+    ) : null;
+
     const reviewButtons = (
       <>
+        {approveDocsHint}
         <Button
           size="sm"
-          onClick={() => approveOrRejectDossier(true)}
+          onClick={() => void approveDossierFromDb()}
           className="bg-green-600 hover:bg-green-700"
           disabled={!isComplete}
         >
@@ -1104,6 +1111,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
 
     const draftButtons = (
       <>
+        {approveDocsHint}
         <Button
           size="sm"
           variant="outline"
@@ -1115,7 +1123,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
         </Button>
         <Button
           size="sm"
-          onClick={() => void validateIncludingSubmit()}
+          onClick={() => void approveDossierFromDb()}
           className="bg-green-600 hover:bg-green-700"
           disabled={!isComplete}
         >

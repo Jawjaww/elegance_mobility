@@ -13,6 +13,7 @@ import {
   adminSetDriverStatus,
   reopenDriverDossier,
 } from '@/services/adminRideService'
+import { resolveDossierApprovePath } from '@/lib/drivers/approveDossierFromServer'
 
 describe('validateDriverDossier helper', () => {
   beforeEach(() => {
@@ -77,5 +78,9 @@ describe('validateDriverDossier helper', () => {
       success: true,
       new_status: 'pending_review',
     })
+  })
+
+  it('does not submit when the live status is already pending_review', () => {
+    expect(resolveDossierApprovePath('pending_review')).toBe('validate_only')
   })
 });
