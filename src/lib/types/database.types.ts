@@ -346,7 +346,6 @@ export type Database = {
           date_of_birth: string | null
           document_urls: Json | null
           dossier_update_requested_at: string | null
-          ops_status_reason: string | null
           driving_license_categories: string[] | null
           driving_license_expiry_date: string | null
           driving_license_issue_date: string | null
@@ -362,6 +361,7 @@ export type Database = {
           languages_spoken: string[] | null
           last_name: string | null
           nationality: string | null
+          ops_status_reason: string | null
           payment_provider_account_id: string | null
           phone: string | null
           postal_code: string | null
@@ -389,7 +389,6 @@ export type Database = {
           date_of_birth?: string | null
           document_urls?: Json | null
           dossier_update_requested_at?: string | null
-          ops_status_reason?: string | null
           driving_license_categories?: string[] | null
           driving_license_expiry_date?: string | null
           driving_license_issue_date?: string | null
@@ -405,6 +404,7 @@ export type Database = {
           languages_spoken?: string[] | null
           last_name?: string | null
           nationality?: string | null
+          ops_status_reason?: string | null
           payment_provider_account_id?: string | null
           phone?: string | null
           postal_code?: string | null
@@ -432,7 +432,6 @@ export type Database = {
           date_of_birth?: string | null
           document_urls?: Json | null
           dossier_update_requested_at?: string | null
-          ops_status_reason?: string | null
           driving_license_categories?: string[] | null
           driving_license_expiry_date?: string | null
           driving_license_issue_date?: string | null
@@ -448,6 +447,7 @@ export type Database = {
           languages_spoken?: string[] | null
           last_name?: string | null
           nationality?: string | null
+          ops_status_reason?: string | null
           payment_provider_account_id?: string | null
           phone?: string | null
           postal_code?: string | null
