@@ -33,12 +33,6 @@ type PriceDetails = {
 
 type RideEndpoint = { display_name: string; lat: number; lon: number };
 
-function toPickupDate(pickupDateTime: Date | string): Date {
-  return pickupDateTime instanceof Date
-    ? pickupDateTime
-    : new Date(pickupDateTime);
-}
-
 function toNullableNumber(value: number | null | undefined): number | null {
   return value ?? null;
 }
@@ -61,7 +55,7 @@ function buildPendingRidePayload(input: {
   duration: number | null | undefined;
   estimatedPrice: number | null | undefined;
 }): Partial<Ride> {
-  const dateObj = toPickupDate(input.pickupDateTime);
+  const dateObj = normalizePickupDateTime(input.pickupDateTime);
   return {
     user_id: input.userId,
     pickup_address: input.departure.display_name,

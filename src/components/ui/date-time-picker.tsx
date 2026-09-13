@@ -90,7 +90,9 @@ export function DateTimePicker({
     }
     const newDateTime = new Date(raw);
     if (!Number.isNaN(newDateTime.getTime())) {
-      onChange(new Date(newDateTime));
+      const next =
+        minDate && newDateTime < minDate ? new Date(minDate) : newDateTime;
+      onChange(next);
     }
   };
 

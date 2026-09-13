@@ -1,34 +1,40 @@
 "use client";
 
-import { useState } from 'react';
-import { Card } from "@/components/ui/card";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  asapPickupDateTime,
+  RESERVATION_MIN_LEAD_MS,
+} from "@/lib/utils/normalizePickupDateTime";
 
 interface DateTimeStepProps {
   pickupDateTime: Date | string | null;
   onDateTimeSelect: (date: Date) => void;
-  onNextStep?: () => void;
-  onPrevStep?: () => void;
 }
 
-export default function DateTimeStep({ 
-  pickupDateTime, 
-  onDateTimeSelect, 
-  onNextStep, 
-  onPrevStep 
-}: DateTimeStepProps) {
-  // Convertir la date si nécessaire
+function parsePickup(value: Date | string | null | undefined): Date | null {
+  if (value instanceof Date) return value;
+  if (typeof value === "string") {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  return null;
+}
+
+export default function DateTimeStep({
+  pickupDateTime,
+  onDateTimeSelect,
+}: Readonly<DateTimeStepProps>) {
   const [date, setDate] = useState<Date>(() => {
-    if (pickupDateTime instanceof Date) return pickupDateTime;
-    if (typeof pickupDateTime === 'string') return new Date(pickupDateTime);
-    
-    // Date par défaut: 3h dans le futur
-    const defaultDate = new Date();
-    defaultDate.setHours(defaultDate.getHours() + 3);
-    return defaultDate;
+    return parsePickup(pickupDateTime) ?? asapPickupDateTime();
   });
+
+  useEffect(() => {
+    const next = parsePickup(pickupDateTime);
+    if (!next) return;
+    setDate(next);
+  }, [pickupDateTime]);
 
   const handleDateChange = (newDate: Date | null) => {
     if (newDate) {
@@ -37,22 +43,30 @@ export default function DateTimeStep({
     }
   };
 
-  // Calculer la date minimale (maintenant + 1h)
-  const getMinDate = () => {
-    const now = new Date();
-    now.setHours(now.getHours() + 1);
-    return now;
+  const handleAsap = () => {
+    const asap = asapPickupDateTime();
+    setDate(asap);
+    onDateTimeSelect(asap);
   };
 
+  const getMinDate = () => new Date(Date.now() + RESERVATION_MIN_LEAD_MS);
+
   return (
-      
-  
-        <div>
-          <DateTimePicker
-            value={date}
-            onChange={handleDateChange}
-            minDate={getMinDate()}
-          />
-        </div>     
+    <div className="space-y-2">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="border-blue-400/30 bg-transparent text-white hover:bg-blue-500/15"
+        onClick={handleAsap}
+      >
+        Au plus vite
+      </Button>
+      <DateTimePicker
+        value={date}
+        onChange={handleDateChange}
+        minDate={getMinDate()}
+      />
+    </div>
   );
 }
