@@ -23,7 +23,6 @@ export function usePendingRides() {
     driverRideService.fetchPendingRides().then((rides) => {
       if (rides.length > 0 && !availableRide) {
         setAvailableRide(rides[0]);
-        void driverRideService.recordOffer(rides[0].id);
       }
     });
 
@@ -31,7 +30,6 @@ export function usePendingRides() {
       (ride) => {
         console.log("[usePendingRides] New ride received:", ride.id);
         setAvailableRide(ride);
-        void driverRideService.recordOffer(ride.id);
       },
       (ride) => {
         console.log("[usePendingRides] Ride updated:", ride.id);

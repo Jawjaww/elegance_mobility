@@ -1,6 +1,11 @@
 import { supabase } from "@/lib/database/client";
 import type { Database } from "@/lib/types/database.types";
 import { isRideStillOfferable } from "@/lib/utils/ridePickup";
+import {
+  isOpenRideOffer,
+  shouldDropOverlayForOfferStatus,
+  type RideOfferRealtimeRow,
+} from "./offerRealtime";
 
 type DbRide = Database["public"]["Tables"]["rides"]["Row"];
 
@@ -18,6 +23,7 @@ export interface AcceptRideResult {
 
 class DriverRideService {
   private subscription: ReturnType<typeof supabase.channel> | null = null;
+  private subscribeGen = 0;
 
   subscribeToPendingRides(
     onNewRide: (ride: PendingRide) => void,
@@ -25,9 +31,39 @@ class DriverRideService {
     onRideRemoved: (rideId: string) => void,
   ) {
     this.unsubscribe();
+    const gen = ++this.subscribeGen;
+    void this.bindPendingRideChannel(
+      gen,
+      onNewRide,
+      onRideUpdated,
+      onRideRemoved,
+    );
+    return this.subscription;
+  }
 
-    this.subscription = supabase
-      .channel("driver-pending-rides")
+  private async bindPendingRideChannel(
+    gen: number,
+    onNewRide: (ride: PendingRide) => void,
+    onRideUpdated: (ride: PendingRide) => void,
+    onRideRemoved: (rideId: string) => void,
+  ) {
+    const driverId = await this.resolveDriverId();
+    const handleOfferRow = (row: RideOfferRealtimeRow) => {
+      if (isOpenRideOffer(row)) {
+        void this.fetchRideById(row.ride_id).then((ride) => {
+          if (ride) onNewRide(ride);
+        });
+        return;
+      }
+      if (shouldDropOverlayForOfferStatus(row.status)) {
+        onRideRemoved(row.ride_id);
+      }
+    };
+
+    let channel = supabase.channel(
+      driverId ? `driver-matching:${driverId}` : "driver-pending-rides",
+    );
+    channel = channel
       .on(
         "postgres_changes",
         {
@@ -56,15 +92,69 @@ class DriverRideService {
           }
           onRideUpdated(this.mapToPendingRide(ride));
         },
-      )
-      .subscribe((status) => {
-        console.log("[DriverRideService] Subscription status:", status);
-      });
+      );
+    if (driverId) {
+      const offerFilter = `driver_id=eq.${driverId}` as const;
+      channel = channel
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "ride_offers",
+            filter: offerFilter,
+          },
+          (payload) => {
+            handleOfferRow(payload.new as RideOfferRealtimeRow);
+          },
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "ride_offers",
+            filter: offerFilter,
+          },
+          (payload) => {
+            handleOfferRow(payload.new as RideOfferRealtimeRow);
+          },
+        );
+    }
 
-    return this.subscription;
+    if (gen !== this.subscribeGen) return;
+
+    this.subscription = channel.subscribe((status) => {
+      console.log("[DriverRideService] Subscription status:", status);
+    });
+  }
+
+  private async resolveDriverId(): Promise<string | null> {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data } = await supabase
+      .from("drivers")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    return data?.id ?? null;
+  }
+
+  async fetchRideById(rideId: string): Promise<PendingRide | null> {
+    const { data, error } = await supabase
+      .from("rides")
+      .select("*")
+      .eq("id", rideId)
+      .maybeSingle();
+    if (error || !data) return null;
+    if (!isRideStillOfferable(data)) return null;
+    return this.mapToPendingRide(data);
   }
 
   unsubscribe() {
+    this.subscribeGen += 1;
     if (this.subscription) {
       this.subscription.unsubscribe();
       this.subscription = null;
@@ -120,13 +210,6 @@ class DriverRideService {
         error: error instanceof Error ? error.message : "Erreur réseau",
       };
     }
-  }
-
-  async recordOffer(rideId: string) {
-    const { error } = await supabase.rpc("record_ride_offer", {
-      p_ride_id: rideId,
-    });
-    if (error) console.warn("[DriverRideService] record_ride_offer", error);
   }
 
   async respondOffer(rideId: string, response: "declined" | "timeout") {

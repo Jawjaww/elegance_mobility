@@ -66,7 +66,7 @@ export function useReservation() {
   });
   const didNormalizePickupRef = useRef(false);
 
-  // Create mode only: bump stale draft datetime to now+1h (keep addresses).
+  // Create mode only: bump stale draft datetime to now+min lead (keep addresses).
   useEffect(() => {
     if (didNormalizePickupRef.current) return;
     if (typeof window === "undefined") return;
