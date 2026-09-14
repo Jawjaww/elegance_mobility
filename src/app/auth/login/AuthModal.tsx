@@ -35,13 +35,6 @@ export function AuthModal({
       <LoginForm onSuccess={onSuccess} />
       
       <div className="text-center space-y-2">
-        <Link
-          href="/auth/forgot-password"
-          className={`text-sm ${LANDING_LINK}`}
-        >
-          Mot de passe oublié ?
-        </Link>
-
         <div className="text-sm text-neutral-400">
           Pas encore de compte ?{' '}
           <Link
