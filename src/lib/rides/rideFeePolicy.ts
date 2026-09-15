@@ -27,6 +27,14 @@ export type FeePolicySnapshot = {
   wait_max_minutes: number;
   no_show_flat: number;
   cancel_after_arrival_flat: number;
+  gps_max_age_seconds?: number;
+  gps_wave1_max_age_seconds?: number;
+  gps_wave2_max_age_seconds?: number;
+  gps_wave3_max_age_seconds?: number;
+  dispatch_include_offline_from_wave?: number;
+  offer_batch_size?: number;
+  offer_ttl_seconds?: number;
+  offer_driver_cooldown_seconds?: number;
   tiers: FeePolicyTier[];
 };
 
@@ -110,6 +118,23 @@ export function parseFeePolicySnapshot(raw: unknown): FeePolicySnapshot | null {
     wait_max_minutes: asNumber(raw.wait_max_minutes, 20),
     no_show_flat: asNumber(raw.no_show_flat, 15),
     cancel_after_arrival_flat: asNumber(raw.cancel_after_arrival_flat, 0),
+    gps_max_age_seconds: asNumber(raw.gps_max_age_seconds, 86400),
+    gps_wave1_max_age_seconds: asNumber(
+      raw.gps_wave1_max_age_seconds,
+      asNumber(raw.gps_max_age_seconds, 86400),
+    ),
+    gps_wave2_max_age_seconds: asNumber(raw.gps_wave2_max_age_seconds, 604800),
+    gps_wave3_max_age_seconds: asNumber(raw.gps_wave3_max_age_seconds, 2592000),
+    dispatch_include_offline_from_wave: asNumber(
+      raw.dispatch_include_offline_from_wave,
+      3,
+    ),
+    offer_batch_size: asNumber(raw.offer_batch_size, 2),
+    offer_ttl_seconds: asNumber(raw.offer_ttl_seconds, 90),
+    offer_driver_cooldown_seconds: asNumber(
+      raw.offer_driver_cooldown_seconds,
+      1800,
+    ),
     tiers: tiersRaw.map(parseTier).filter((t): t is FeePolicyTier => t != null),
   };
 }
@@ -376,6 +401,17 @@ export function buildFeePolicySnapshot(
     wait_max_minutes: policy.wait_max_minutes,
     no_show_flat: policy.no_show_flat,
     cancel_after_arrival_flat: policy.cancel_after_arrival_flat,
+    gps_max_age_seconds:
+      policy.gps_wave1_max_age_seconds ?? policy.gps_max_age_seconds,
+    gps_wave1_max_age_seconds:
+      policy.gps_wave1_max_age_seconds ?? policy.gps_max_age_seconds,
+    gps_wave2_max_age_seconds: policy.gps_wave2_max_age_seconds,
+    gps_wave3_max_age_seconds: policy.gps_wave3_max_age_seconds,
+    dispatch_include_offline_from_wave:
+      policy.dispatch_include_offline_from_wave,
+    offer_batch_size: policy.offer_batch_size,
+    offer_ttl_seconds: policy.offer_ttl_seconds,
+    offer_driver_cooldown_seconds: policy.offer_driver_cooldown_seconds,
     tiers: tiers.map((tier) => ({
       kind: tier.kind,
       after_minutes: tier.after_minutes,

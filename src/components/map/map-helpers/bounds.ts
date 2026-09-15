@@ -17,16 +17,17 @@ export function mapFitPadding(container: HTMLElement | null | undefined) {
 
   if (isCompactMapContainer(container)) {
     return {
-      top: Math.max(44, Math.round(h * 0.22)),
+      top: Math.max(56, Math.round(h * 0.26)),
       bottom: Math.max(44, Math.round(h * 0.22)),
       left: Math.max(40, Math.round(w * 0.14)),
       right: Math.max(40, Math.round(w * 0.14)),
     };
   }
 
-  const padX = Math.max(32, Math.round(w * 0.12));
-  const padY = Math.max(36, Math.round(h * 0.16));
-  return { top: padY, bottom: padY, left: padX, right: padX };
+  const padX = Math.max(36, Math.round(w * 0.12));
+  const padBottom = Math.max(36, Math.round(h * 0.16));
+  const padTop = Math.max(48, Math.round(h * 0.18));
+  return { top: padTop, bottom: padBottom, left: padX, right: padX };
 }
 
 export function boundsFromLngLats(coords: LngLat[]): maplibregl.LngLatBounds | null {
@@ -50,7 +51,7 @@ export function fitMapToBounds(
     map.fitBounds(bounds, {
       padding: mapFitPadding(container),
       animate: options?.animate ?? false,
-      maxZoom: options?.maxZoom ?? (compact ? 10 : 11),
+      maxZoom: options?.maxZoom ?? (compact ? 12 : 13),
       duration: options?.animate ? 300 : 0,
     });
   });

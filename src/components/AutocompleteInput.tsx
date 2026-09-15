@@ -1,17 +1,19 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
+import { X } from "lucide-react";
 import { Button } from "./ui/button";
 import { useDebounce } from "../hooks/useDebounce";
 import { useToast } from "../hooks/useToast";
 import { cn } from "@/lib/utils";
 import styles from "./AutocompleteInput.module.css";
-
-// Définir le type Coordinates localement en utilisant lon
-interface Coordinates {
-  lat: number;
-  lon: number; // Standardisé sur lon
-}
 
 const reverseGeocode = async (lat: number, lon: number) => {
   try {
@@ -29,12 +31,16 @@ const reverseGeocode = async (lat: number, lon: number) => {
   }
 };
 
+export type AutocompleteInputHandle = {
+  locate: () => Promise<void>;
+};
+
 interface AutocompleteInputProps {
   id: string;
   value?: string;
   onChange?: (value: string) => void;
   placeholder?: string;
-  onSelect?: (lat: number, lon: number, address: string) => void; // Mise à jour pour utiliser lon
+  onSelect?: (lat: number, lon: number, address: string) => void;
   className?: string;
   defaultValue?: string;
 }
@@ -152,28 +158,28 @@ async function getPositionWithFallback(): Promise<GeolocationPosition> {
   throw richest;
 }
 
-export function AutocompleteInput({
-  id,
-  value,
-  onChange,
-  placeholder,
-  onSelect,
-  className,
-  defaultValue,
-}: Readonly<AutocompleteInputProps>) {
+export const AutocompleteInput = forwardRef<
+  AutocompleteInputHandle,
+  Readonly<AutocompleteInputProps>
+>(function AutocompleteInput(
+  { id, value, onChange, placeholder, onSelect, className, defaultValue },
+  ref,
+) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const [query, setQuery] = useState<string>(value || defaultValue || "");
+  const [query, setQuery] = useState<string>(value ?? defaultValue ?? "");
   const debouncedQuery = useDebounce<string>(query, 300);
   const [suggestions, setSuggestions] = useState<AddressFeature[]>([]);
   const [isLocating, setIsLocating] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [showLocationHint, setShowLocationHint] = useState(false);
-  const locationHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressSuggestionsRef = useRef(false);
   const skipNextValueSync = useRef(false);
   const { toast } = useToast();
+  const onChangeRef = useRef(onChange);
+  const onSelectRef = useRef(onSelect);
+  onChangeRef.current = onChange;
+  onSelectRef.current = onSelect;
 
   // Two-line expand is mobile-only — desktop has enough horizontal room.
   useEffect(() => {
@@ -188,58 +194,17 @@ export function AutocompleteInput({
     isMobile &&
     (isFocused || query.trim().length > 28 || query.includes("\n"));
 
-  const clearLocationHintTimer = () => {
-    if (locationHintTimer.current) {
-      clearTimeout(locationHintTimer.current);
-      locationHintTimer.current = null;
-    }
-  };
-
-  const handleLocationButtonEnter = () => {
-    clearLocationHintTimer();
-    locationHintTimer.current = setTimeout(() => {
-      setShowLocationHint(true);
-    }, 2000);
-  };
-
-  const handleLocationButtonLeave = () => {
-    clearLocationHintTimer();
-    setShowLocationHint(false);
-  };
-
-  useEffect(() => {
-    return () => clearLocationHintTimer();
+  const clearField = useCallback(() => {
+    suppressSuggestionsRef.current = true;
+    skipNextValueSync.current = true;
+    setHasUserInteracted(true);
+    setQuery("");
+    setSuggestions([]);
+    onChangeRef.current?.("");
+    onSelectRef.current?.(Number.NaN, Number.NaN, "");
   }, []);
 
-  useEffect(() => {
-    if (suppressSuggestionsRef.current || !hasUserInteracted) {
-      return;
-    }
-
-    const cleanQuery = String(debouncedQuery || "")
-      .trim()
-      .replace(/[^\w\s]/g, "");
-    if (cleanQuery.length > 2) {
-      fetch(
-        `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(cleanQuery)}&limit=5&autocomplete=1`,
-      )
-        .then((res) => res.json())
-        .then((data) => {
-          if (suppressSuggestionsRef.current) return;
-          if (data.features) {
-            setSuggestions(data.features);
-          }
-        })
-        .catch((error) => {
-          console.error("Error fetching geocoding data:", error);
-          setSuggestions([]);
-        });
-    } else {
-      setSuggestions([]);
-    }
-  }, [debouncedQuery, hasUserInteracted]);
-
-  const handleGeolocation = async () => {
+  const handleGeolocation = useCallback(async () => {
     if (!navigator.geolocation) {
       toast({
         title: "Géolocalisation indisponible",
@@ -269,14 +234,13 @@ export function AutocompleteInput({
       const resolved =
         geocoded ?? `Ma position (${lat.toFixed(5)}, ${lon.toFixed(5)})`;
 
-      // Fill input; keep suggestions suppressed until the user types.
       suppressSuggestionsRef.current = true;
       skipNextValueSync.current = true;
       setSuggestions([]);
       setHasUserInteracted(true);
       setQuery(resolved);
-      onChange?.(resolved);
-      onSelect?.(lat, lon, resolved);
+      onChangeRef.current?.(resolved);
+      onSelectRef.current?.(lat, lon, resolved);
 
       if (!geocoded) {
         toast({
@@ -303,16 +267,48 @@ export function AutocompleteInput({
     } finally {
       setIsLocating(false);
     }
-  };
+  }, [toast]);
+
+  useImperativeHandle(ref, () => ({ locate: handleGeolocation }), [
+    handleGeolocation,
+  ]);
 
   useEffect(() => {
-    if (value === undefined || isLocating) return;
+    if (suppressSuggestionsRef.current || !hasUserInteracted) {
+      return;
+    }
+
+    const cleanQuery = String(debouncedQuery || "")
+      .trim()
+      .replace(/[^\w\s]/g, "");
+    if (cleanQuery.length > 2) {
+      fetch(
+        `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(cleanQuery)}&limit=5&autocomplete=1`,
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          if (suppressSuggestionsRef.current) return;
+          if (data.features) {
+            setSuggestions(data.features);
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching geocoding data:", error);
+          setSuggestions([]);
+        });
+    } else {
+      setSuggestions([]);
+    }
+  }, [debouncedQuery, hasUserInteracted]);
+
+  useEffect(() => {
+    if (value === undefined || isLocating || isFocused) return;
     if (skipNextValueSync.current) {
       skipNextValueSync.current = false;
       return;
     }
     setQuery(value);
-  }, [value, isLocating]);
+  }, [value, isLocating, isFocused]);
 
   useEffect(() => {
     if (defaultValue) {
@@ -329,8 +325,11 @@ export function AutocompleteInput({
 
     if (newValue === "") {
       setSuggestions([]);
+      onSelectRef.current?.(Number.NaN, Number.NaN, "");
     }
   };
+
+  const showClear = query.length > 0 && !isLocating;
 
   return (
     <div className={styles.container}>
@@ -367,46 +366,22 @@ export function AutocompleteInput({
             }
           }}
         />
-        <Button
-          type="button"
-          size="icon"
-          variant="outline"
-          onClick={handleGeolocation}
-          onMouseEnter={handleLocationButtonEnter}
-          onMouseLeave={handleLocationButtonLeave}
-          onFocus={handleLocationButtonEnter}
-          onBlur={handleLocationButtonLeave}
-          className={cn(
-            styles.locationButton,
-            "rounded-full border-neutral-800 bg-neutral-950 text-neutral-400",
-            "hover:border-blue-400/55 hover:bg-blue-800/45 hover:text-blue-100",
-            "focus-visible:border-blue-400/55 focus-visible:bg-blue-800/45 focus-visible:text-blue-100 focus-visible:ring-0 focus-visible:ring-offset-0",
-          )}
-          disabled={isLocating}
-          aria-label="Utiliser ma position actuelle"
-        >
-          {isLocating ? (
-            "⌛"
-          ) : (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className={styles.locationIcon}
-              aria-hidden
-            >
-              <path
-                fillRule="evenodd"
-                d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z"
-                clipRule="evenodd"
-              />
-            </svg>
-          )}
-        </Button>
-        {showLocationHint ? (
-          <span className={styles.locationTooltip} role="tooltip">
-            Ma position actuelle
-          </span>
+        {showClear ? (
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            onClick={clearField}
+            className={cn(
+              styles.fieldActionButton,
+              "rounded-full border-neutral-800 bg-neutral-950 text-neutral-400",
+              "hover:border-neutral-500 hover:bg-neutral-900 hover:text-neutral-100",
+              "focus-visible:border-blue-400/55 focus-visible:text-blue-100 focus-visible:ring-0 focus-visible:ring-offset-0",
+            )}
+            aria-label="Effacer l'adresse"
+          >
+            <X className={styles.fieldActionIcon} aria-hidden />
+          </Button>
         ) : null}
         {suggestions.length > 0 && (
           <ul className={styles.suggestions} role="listbox">
@@ -439,5 +414,6 @@ export function AutocompleteInput({
       </div>
     </div>
   );
-}
+});
+
 

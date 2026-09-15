@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertTriangle, Euro, Timer } from "lucide-react";
+import { AlertTriangle, Euro, MapPin, Timer } from "lucide-react";
 import {
   FEE_TIER_KINDS,
   TIER_KIND_LABELS,
@@ -16,9 +16,17 @@ import {
   helpCancelAfterArrivalFlat,
   helpDriverLate,
   helpEnRoute,
+  helpGpsWave1,
+  helpGpsWave2,
+  helpGpsWave3,
   helpHeartbeat,
+  helpIncludeOfflineFromWave,
   helpNoShowFlat,
+  helpOfferBatchSize,
+  helpOfferCooldown,
+  helpOfferTtl,
   helpSectionCancel,
+  helpSectionDispatch,
   helpSectionHeartbeat,
   helpSilence,
   helpWaitGrace,
@@ -43,9 +51,35 @@ export type PolicyFormValues = {
   wait_max_minutes: number;
   no_show_flat: number;
   cancel_after_arrival_flat: number;
+  gps_wave1_max_age_seconds: number;
+  gps_wave2_max_age_seconds: number;
+  gps_wave3_max_age_seconds: number;
+  dispatch_include_offline_from_wave: number;
+  offer_batch_size: number;
+  offer_ttl_seconds: number;
+  offer_driver_cooldown_seconds: number;
 };
 
 type FieldChange = (key: keyof PolicyFormValues, value: number) => void;
+
+const HOUR_S = 3600;
+const DAY_S = 86400;
+
+function asPositiveInt(value: number, fallback: number): number {
+  return Number.isFinite(value) && value > 0 ? Math.round(value) : fallback;
+}
+
+function withOrderedWaveAges(values: PolicyFormValues): PolicyFormValues {
+  const wave1 = Math.max(1, Math.round(values.gps_wave1_max_age_seconds));
+  const wave2 = Math.max(wave1, Math.round(values.gps_wave2_max_age_seconds));
+  const wave3 = Math.max(wave2, Math.round(values.gps_wave3_max_age_seconds));
+  return {
+    ...values,
+    gps_wave1_max_age_seconds: wave1,
+    gps_wave2_max_age_seconds: wave2,
+    gps_wave3_max_age_seconds: wave3,
+  };
+}
 
 export function policyRowToForm(row: PolicyRow): PolicyFormValues {
   return {
@@ -58,6 +92,33 @@ export function policyRowToForm(row: PolicyRow): PolicyFormValues {
     wait_max_minutes: row.wait_max_minutes,
     no_show_flat: Number(row.no_show_flat),
     cancel_after_arrival_flat: Number(row.cancel_after_arrival_flat),
+    gps_wave1_max_age_seconds: asPositiveInt(
+      row.gps_wave1_max_age_seconds,
+      86400,
+    ),
+    gps_wave2_max_age_seconds: asPositiveInt(
+      row.gps_wave2_max_age_seconds,
+      604800,
+    ),
+    gps_wave3_max_age_seconds: asPositiveInt(
+      row.gps_wave3_max_age_seconds,
+      2592000,
+    ),
+    dispatch_include_offline_from_wave: Math.min(
+      3,
+      Math.max(1, asPositiveInt(row.dispatch_include_offline_from_wave, 3)),
+    ),
+    offer_batch_size: Math.min(
+      3,
+      Math.max(1, asPositiveInt(row.offer_batch_size, 2)),
+    ),
+    offer_ttl_seconds: asPositiveInt(row.offer_ttl_seconds, 90),
+    offer_driver_cooldown_seconds: Math.max(
+      0,
+      Number.isFinite(row.offer_driver_cooldown_seconds)
+        ? Math.round(row.offer_driver_cooldown_seconds)
+        : 1800,
+    ),
   };
 }
 
@@ -222,6 +283,188 @@ function TierKindGroup({
         ))
       )}
     </div>
+  );
+}
+
+export function DispatchMatchingFields({
+  values,
+  onChange,
+}: Readonly<{
+  values: PolicyFormValues;
+  onChange: (next: PolicyFormValues) => void;
+}>) {
+  const wave1Hours = Math.max(
+    1,
+    Math.round(values.gps_wave1_max_age_seconds / HOUR_S),
+  );
+  const wave2Days = Math.max(
+    1,
+    Math.round(values.gps_wave2_max_age_seconds / DAY_S),
+  );
+  const wave3Days = Math.max(
+    1,
+    Math.round(values.gps_wave3_max_age_seconds / DAY_S),
+  );
+  const cooldownMinutes = Math.max(
+    0,
+    Math.round(values.offer_driver_cooldown_seconds / 60),
+  );
+
+  const patchWaves = (partial: Partial<PolicyFormValues>) => {
+    onChange(withOrderedWaveAges({ ...values, ...partial }));
+  };
+
+  return (
+    <PolicySectionCard
+      tone="matching"
+      icon={<MapPin className="h-5 w-5" aria-hidden />}
+      eyebrow="Matching"
+      title="Qui on contacte, vague par vague"
+      hint="On épuise le palier proche avant d’élargir. Vague 3 = filet (hors-ligne, GPS jusqu’à ~1 mois). Le score priorise toujours les en-ligne."
+      info={<PolicyInfoButton help={helpSectionDispatch()} />}
+    >
+      <div className="grid gap-3 sm:grid-cols-3">
+        <PolicyNumberField
+          id="gps_wave1_hours"
+          label="GPS vague 1"
+          gloss="10 km, en ligne"
+          unit="h"
+          min={1}
+          value={wave1Hours}
+          onChange={(hours) =>
+            patchWaves({ gps_wave1_max_age_seconds: Math.max(1, hours) * HOUR_S })
+          }
+          hint="Défaut 24 h. Plus un cut à 15 min."
+          info={<PolicyInfoButton help={helpGpsWave1(wave1Hours)} />}
+        />
+        <PolicyNumberField
+          id="gps_wave2_days"
+          label="GPS vague 2"
+          gloss="25 km, en ligne"
+          unit="j"
+          min={1}
+          value={wave2Days}
+          onChange={(days) =>
+            patchWaves({ gps_wave2_max_age_seconds: Math.max(1, days) * DAY_S })
+          }
+          hint="Défaut 7 jours."
+          info={<PolicyInfoButton help={helpGpsWave2(wave2Days)} />}
+        />
+        <PolicyNumberField
+          id="gps_wave3_days"
+          label="GPS vague 3"
+          gloss="80 km, filet large"
+          unit="j"
+          min={1}
+          value={wave3Days}
+          onChange={(days) =>
+            patchWaves({ gps_wave3_max_age_seconds: Math.max(1, days) * DAY_S })
+          }
+          hint="Défaut 30 jours. Hors-ligne inclus."
+          info={<PolicyInfoButton help={helpGpsWave3(wave3Days)} />}
+        />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <PolicyNumberField
+          id="offer_batch_size"
+          label="Taille du lot"
+          gloss="Chauffeurs par tick"
+          unit=""
+          min={1}
+          max={3}
+          value={values.offer_batch_size}
+          onChange={(size) =>
+            onChange({
+              ...values,
+              offer_batch_size: Math.min(3, Math.max(1, Math.round(size))),
+            })
+          }
+          hint="2 par défaut, maximum 3."
+          info={
+            <PolicyInfoButton help={helpOfferBatchSize(values.offer_batch_size)} />
+          }
+        />
+        <PolicyNumberField
+          id="offer_ttl_seconds"
+          label="TTL offre"
+          gloss="Avant le lot suivant"
+          unit="s"
+          min={15}
+          value={values.offer_ttl_seconds}
+          onChange={(seconds) =>
+            onChange({
+              ...values,
+              offer_ttl_seconds: Math.max(15, Math.round(seconds)),
+            })
+          }
+          hint="Défaut 90 s."
+          info={
+            <PolicyInfoButton help={helpOfferTtl(values.offer_ttl_seconds)} />
+          }
+        />
+        <PolicyNumberField
+          id="offer_driver_cooldown_seconds"
+          label="Cooldown"
+          gloss="Après refus ou timeout"
+          unit="min"
+          min={0}
+          value={cooldownMinutes}
+          onChange={(minutes) =>
+            onChange({
+              ...values,
+              offer_driver_cooldown_seconds: Math.max(0, Math.round(minutes)) * 60,
+            })
+          }
+          hint="Levé en vague 3. Défaut 30 min."
+          info={<PolicyInfoButton help={helpOfferCooldown(cooldownMinutes)} />}
+        />
+      </div>
+      <div className="rounded-xl border border-neutral-800/80 bg-neutral-950/40 px-3 py-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">
+              Hors-ligne dès la vague
+            </p>
+            <p className="mt-0.5 text-xs text-blue-300/80">
+              Avant ce palier, uniquement les chauffeurs en ligne
+            </p>
+          </div>
+          <PolicyInfoButton
+            help={helpIncludeOfflineFromWave(
+              values.dispatch_include_offline_from_wave,
+            )}
+          />
+        </div>
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          {([1, 2, 3] as const).map((wave) => {
+            const selected = values.dispatch_include_offline_from_wave === wave;
+            return (
+              <Button
+                key={wave}
+                type="button"
+                variant="outline"
+                className={
+                  selected
+                    ? "border-amber-400/60 bg-amber-500/15 text-amber-100"
+                    : "border-neutral-800 bg-neutral-950 text-neutral-400"
+                }
+                onClick={() =>
+                  onChange({
+                    ...values,
+                    dispatch_include_offline_from_wave: wave,
+                  })
+                }
+              >
+                Vague {wave}
+              </Button>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-xs text-neutral-500">
+          Défaut vague 3. Sans position GPS, le chauffeur reste exclu.
+        </p>
+      </div>
+    </PolicySectionCard>
   );
 }
 

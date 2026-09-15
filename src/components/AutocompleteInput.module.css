@@ -20,7 +20,7 @@
   white-space: nowrap;
   line-height: 1.35;
   transition: min-height 0.15s ease, max-height 0.15s ease;
-  /* Room for the in-field geolocation pill */
+  /* Room for the in-field clear control */
   padding-right: 2.75rem;
 }
 
@@ -87,7 +87,7 @@
   background-color: rgb(38, 38, 38);
 }
 
-.locationButton {
+.fieldActionButton {
   position: absolute;
   top: 0.35rem;
   right: 0.35rem;
@@ -107,42 +107,20 @@
   border: 1px solid rgb(38, 38, 38);
 }
 
-.locationButton:hover:not(:disabled) {
-  background-color: rgba(30, 64, 175, 0.45);
-  border-color: rgba(96, 165, 250, 0.55);
-  color: rgb(219, 234, 254);
+.fieldActionButton:hover:not(:disabled) {
+  background-color: rgb(23, 23, 23);
+  border-color: rgb(115, 115, 115);
+  color: rgb(250, 250, 250);
 }
 
-.locationButton:focus-visible:not(:disabled) {
-  background-color: rgba(30, 64, 175, 0.45);
+.fieldActionButton:focus-visible:not(:disabled) {
+  background-color: rgb(23, 23, 23);
   border-color: rgba(96, 165, 250, 0.55);
   color: rgb(219, 234, 254);
   outline: none;
 }
 
-.locationButton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.locationIcon {
-  width: 1rem;
-  height: 1rem;
-}
-
-.locationTooltip {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 0.35rem);
-  z-index: 11000;
-  white-space: nowrap;
-  border-radius: 0.375rem;
-  background-color: rgb(23, 23, 23);
-  border: 1px solid rgb(64, 64, 64);
-  padding: 0.35rem 0.6rem;
-  font-size: 0.75rem;
-  line-height: 1.2;
-  color: rgb(250, 250, 250);
-  box-shadow: 0 8px 16px rgb(0 0 0 / 0.35);
-  pointer-events: none;
+.fieldActionIcon {
+  width: 0.95rem;
+  height: 0.95rem;
 }

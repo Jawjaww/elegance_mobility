@@ -29,6 +29,8 @@ function EditReservationContent() {
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const [storeInitialized, setStoreInitialized] = useState(false);
+  const [originAddress, setOriginAddress] = useState("");
+  const [destinationAddress, setDestinationAddress] = useState("");
   const reservationStore = useReservationStore();
 
   useEffect(() => {
@@ -90,6 +92,8 @@ function EditReservationContent() {
       reservationStore.setSelectedOptions(
         normalizeSelectedOptions(reservation.options || []),
       );
+      setOriginAddress(reservation.pickup_address || "");
+      setDestinationAddress(reservation.dropoff_address || "");
       setStoreInitialized(true);
     }
   }, [reservation, storeInitialized, reservationStore]);
@@ -143,17 +147,15 @@ function EditReservationContent() {
         <LocationStep
           onNextStep={handleNextStep}
           isEditing={true}
-          onOriginChange={() => {}}
-          onDestinationChange={() => {}}
+          onOriginChange={setOriginAddress}
+          onDestinationChange={setDestinationAddress}
           onOriginSelect={() => {}}
           onDestinationSelect={() => {}}
           onRouteCalculated={() => {}}
           onDateTimeChange={reservationStore.setPickupDateTime}
           pickupDateTime={reservationStore.pickupDateTime}
-          originAddress={reservationStore.departure?.display_name || ""}
-          destinationAddress={
-            reservationStore.destination?.display_name || ""
-          }
+          originAddress={originAddress}
+          destinationAddress={destinationAddress}
         />
       ) : (
         <VehicleStep

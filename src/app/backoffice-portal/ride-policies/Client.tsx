@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/useToast";
 import { LANDING_CTA } from "@/components/landing/landingAssets";
 import {
   DelayPolicyFields,
+  DispatchMatchingFields,
   FeesPolicyFields,
   MatchingPolicyFields,
   policyRowToForm,
@@ -26,7 +27,7 @@ import type { FeePolicyTier, QuoteActor, SimulatorScenario } from "@/lib/rides/r
 import type { Database } from "@/lib/types/database.types";
 
 type PolicyUpdate = Database["public"]["Tables"]["ride_fee_policies"]["Update"];
-type PolicyTab = "heartbeat" | "cancel" | "examples";
+type PolicyTab = "heartbeat" | "matching" | "cancel" | "examples";
 
 function formToUpdate(values: PolicyFormValues): PolicyUpdate {
   return {
@@ -39,6 +40,15 @@ function formToUpdate(values: PolicyFormValues): PolicyUpdate {
     wait_max_minutes: values.wait_max_minutes,
     no_show_flat: values.no_show_flat,
     cancel_after_arrival_flat: values.cancel_after_arrival_flat,
+    gps_wave1_max_age_seconds: values.gps_wave1_max_age_seconds,
+    gps_wave2_max_age_seconds: values.gps_wave2_max_age_seconds,
+    gps_wave3_max_age_seconds: values.gps_wave3_max_age_seconds,
+    gps_max_age_seconds: values.gps_wave1_max_age_seconds,
+    dispatch_include_offline_from_wave:
+      values.dispatch_include_offline_from_wave,
+    offer_batch_size: values.offer_batch_size,
+    offer_ttl_seconds: values.offer_ttl_seconds,
+    offer_driver_cooldown_seconds: values.offer_driver_cooldown_seconds,
   };
 }
 
@@ -160,7 +170,7 @@ export default function RidePoliciesPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
             <PolicyChip
               tone="matching"
               label="Heartbeat"
@@ -169,9 +179,15 @@ export default function RidePoliciesPage() {
             />
             <PolicyChip
               tone="matching"
-              label="Silence"
-              gloss="Sans réponse après pause"
-              value={minutesLabel(values.silence_expire_minutes)}
+              label="Lot matching"
+              gloss="Chauffeurs par tick"
+              value={String(values.offer_batch_size)}
+            />
+            <PolicyChip
+              tone="matching"
+              label="GPS vague 1"
+              gloss="En ligne, premier palier"
+              value={`${Math.round(values.gps_wave1_max_age_seconds / 3600)} h`}
             />
             <PolicyChip
               tone="delays"
@@ -192,13 +208,17 @@ export default function RidePoliciesPage() {
             onValueChange={(next) => setTab(next as PolicyTab)}
             className="w-full"
           >
-            <TabsList className="grid h-auto w-full grid-cols-3 gap-1">
+            <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-4">
               <TabsTrigger value="heartbeat">Heartbeat</TabsTrigger>
+              <TabsTrigger value="matching">Matching</TabsTrigger>
               <TabsTrigger value="cancel">Retards et frais</TabsTrigger>
               <TabsTrigger value="examples">Exemples</TabsTrigger>
             </TabsList>
             <TabsContent value="heartbeat" className="mt-4">
               <MatchingPolicyFields values={values} onChange={setValues} />
+            </TabsContent>
+            <TabsContent value="matching" className="mt-4">
+              <DispatchMatchingFields values={values} onChange={setValues} />
             </TabsContent>
             <TabsContent value="cancel" className="mt-4 space-y-4">
               <DelayPolicyFields values={values} onChange={setValues} />

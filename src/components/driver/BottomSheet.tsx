@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from 'framer-motion'
-import { cn } from '@/lib/utils'
 
 interface BottomSheetProps {
   isOpen: boolean
@@ -20,7 +19,7 @@ export function BottomSheet({
   snapPoints = [20, 50, 85],
   initialSnap = 1,
   header
-}: BottomSheetProps) {
+}: Readonly<BottomSheetProps>) {
   const [currentSnap, setCurrentSnap] = useState(initialSnap)
   const constraintsRef = useRef<HTMLDivElement>(null)
   
@@ -120,10 +119,10 @@ export function BottomSheet({
 export function RideBottomSheet({
   isOpen,
   children,
-}: {
+}: Readonly<{
   isOpen: boolean
   children: React.ReactNode
-}) {
+}>) {
   return (
     <AnimatePresence>
       {isOpen && (

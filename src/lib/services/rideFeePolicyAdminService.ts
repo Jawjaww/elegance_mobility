@@ -109,10 +109,24 @@ export function snapshotFromPolicyFields(
     wait_max_minutes: number;
     no_show_flat: number;
     cancel_after_arrival_flat: number;
+    gps_wave1_max_age_seconds?: number;
+    gps_wave2_max_age_seconds?: number;
+    gps_wave3_max_age_seconds?: number;
+    dispatch_include_offline_from_wave?: number;
+    offer_batch_size?: number;
+    offer_ttl_seconds?: number;
+    offer_driver_cooldown_seconds?: number;
   },
   tiers: FeePolicyTier[],
 ): FeePolicySnapshot {
-  return buildFeePolicySnapshot({ id: policyId, ...fields }, tiers);
+  return buildFeePolicySnapshot(
+    {
+      id: policyId,
+      ...fields,
+      gps_max_age_seconds: fields.gps_wave1_max_age_seconds,
+    },
+    tiers,
+  );
 }
 
 export function snapshotFromBundle(
@@ -132,6 +146,15 @@ export function snapshotFromBundle(
       cancel_after_arrival_flat: Number(
         bundle.policy.cancel_after_arrival_flat,
       ),
+      gps_wave1_max_age_seconds: bundle.policy.gps_wave1_max_age_seconds,
+      gps_wave2_max_age_seconds: bundle.policy.gps_wave2_max_age_seconds,
+      gps_wave3_max_age_seconds: bundle.policy.gps_wave3_max_age_seconds,
+      dispatch_include_offline_from_wave:
+        bundle.policy.dispatch_include_offline_from_wave,
+      offer_batch_size: bundle.policy.offer_batch_size,
+      offer_ttl_seconds: bundle.policy.offer_ttl_seconds,
+      offer_driver_cooldown_seconds:
+        bundle.policy.offer_driver_cooldown_seconds,
     },
     bundle.tiers,
   );

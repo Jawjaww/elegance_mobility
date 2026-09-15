@@ -109,6 +109,7 @@ export function PolicyNumberField({
   onChange,
   info,
   min = 0,
+  max,
   step = "1",
 }: Readonly<{
   id: string;
@@ -120,6 +121,7 @@ export function PolicyNumberField({
   onChange: (value: number) => void;
   info?: ReactNode;
   min?: number;
+  max?: number;
   step?: string;
 }>) {
   return (
@@ -141,6 +143,7 @@ export function PolicyNumberField({
           id={id}
           type="number"
           min={min}
+          max={max}
           step={step}
           value={Number.isFinite(value) ? value : 0}
           onChange={(event) => onChange(Number(event.target.value))}

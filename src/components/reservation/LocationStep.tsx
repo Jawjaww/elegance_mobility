@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Locate } from "lucide-react";
 import { useReservationStore } from "@/lib/stores/reservationStore";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { AutocompleteInput } from "@/components/AutocompleteInput";
+import {
+  AutocompleteInput,
+  type AutocompleteInputHandle,
+} from "@/components/AutocompleteInput";
 import { Coordinates } from "@/lib/types/map-types";
 import DateTimeStep from "@/components/reservation/DateTimeStep";
 import { TripEndpointRail } from "@/components/reservation/TripEndpointRail";
@@ -64,6 +68,8 @@ export function LocationStep({
   const [formValid, setFormValid] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [mapKey, setMapKey] = useState(() => `map-${Date.now()}`);
+  const originInputRef = useRef<AutocompleteInputHandle>(null);
+  const [isLocating, setIsLocating] = useState(false);
 
   useEffect(() => {
     const valid = Boolean(
@@ -163,6 +169,19 @@ export function LocationStep({
     hasFiniteCoords(store.departure) &&
     hasFiniteCoords(store.destination);
 
+  const originValue = originAddress ?? store.departure?.display_name ?? "";
+  const destinationValue =
+    destinationAddress ?? store.destination?.display_name ?? "";
+
+  const handleUseMyLocation = async () => {
+    setIsLocating(true);
+    try {
+      await originInputRef.current?.locate();
+    } finally {
+      setIsLocating(false);
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -196,15 +215,29 @@ export function LocationStep({
 
             <div className="min-w-0 flex-1 space-y-2.5 sm:space-y-6 lg:flex lg:flex-col lg:justify-center lg:gap-6 lg:space-y-0 lg:py-2">
               <div>
-                <Label
-                  htmlFor="departure-input"
-                  className="mb-1 block text-sm text-neutral-200 sm:mb-2 sm:text-base lg:mb-2"
-                >
-                  Départ
-                </Label>
+                <div className="mb-1 flex items-center justify-between gap-2 sm:mb-2 lg:mb-2">
+                  <Label
+                    htmlFor="departure-input"
+                    className="text-sm text-neutral-200 sm:text-base"
+                  >
+                    Départ
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void handleUseMyLocation()}
+                    disabled={isLocating}
+                    className="h-8 shrink-0 gap-1.5 px-2 text-xs text-blue-300 hover:bg-blue-500/10 hover:text-blue-100 sm:text-sm"
+                  >
+                    <Locate className="h-3.5 w-3.5" aria-hidden />
+                    {isLocating ? "Localisation…" : "Ma position"}
+                  </Button>
+                </div>
                 <AutocompleteInput
+                  ref={originInputRef}
                   id="departure-input"
-                  value={originAddress || store.departure?.display_name || ""}
+                  value={originValue}
                   onChange={onOriginChange}
                   onSelect={handleDepartureSelect}
                   placeholder="Adresse de départ"
@@ -220,9 +253,7 @@ export function LocationStep({
                 </Label>
                 <AutocompleteInput
                   id="destination-input"
-                  value={
-                    destinationAddress || store.destination?.display_name || ""
-                  }
+                  value={destinationValue}
                   onChange={onDestinationChange}
                   onSelect={handleDestinationSelect}
                   placeholder="Adresse de destination"

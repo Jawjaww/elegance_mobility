@@ -142,6 +142,86 @@ export function helpTierNoShow(): PolicyHelp {
   };
 }
 
+export function helpGpsWave1(hours: number): PolicyHelp {
+  return {
+    term: "GPS vague 1",
+    gloss: "Âge max de la position, premier palier",
+    what: `Vague 1 (10 km, en ligne) : on contacte un chauffeur si sa dernière position a moins de ${hours} h. Ce n’est plus un cut à 15 min.`,
+    ifRaise: "Plus de chauffeurs en vague 1, y compris GPS un peu vieux.",
+    ifLower: "On n’appelle en premier que des GPS plus frais.",
+  };
+}
+
+export function helpGpsWave2(days: number): PolicyHelp {
+  return {
+    term: "GPS vague 2",
+    gloss: "Âge max de la position, palier 25 km",
+    what: `Vague 2 : encore en ligne, GPS jusqu’à ${days} j. On n’y arrive que lorsque plus personne ne matche la vague 1.`,
+    ifRaise: "On élargit plus tôt aux positions plus anciennes.",
+    ifLower: "Vague 2 reste plus exigeante sur le GPS.",
+  };
+}
+
+export function helpGpsWave3(days: number): PolicyHelp {
+  return {
+    term: "GPS vague 3",
+    gloss: "Filet large, dernier palier",
+    what: `Vague 3 (80 km) : GPS jusqu’à ${days} j, hors-ligne inclus. Score : les en-ligne sortent quand même en premier dans le lot.`,
+    ifRaise: "On peut réveiller des chauffeurs avec une position plus ancienne.",
+    ifLower: "On exclut plus de positions trop vieilles, même en vague 3.",
+  };
+}
+
+export function helpOfferBatchSize(size: number): PolicyHelp {
+  return {
+    term: "Taille du lot",
+    gloss: "Combien de chauffeurs par tick",
+    what: `Chaque cycle (TTL / cron) contacte ${size} chauffeur${size > 1 ? "s" : ""} du palier courant, puis le suivant, jusqu’à épuisement du palier avant d’élargir le rayon.`,
+    ifRaise: "On contacte plus de monde d’un coup (max 3).",
+    ifLower: "Rotation plus lente, moins de push simultanés.",
+  };
+}
+
+export function helpOfferTtl(seconds: number): PolicyHelp {
+  return {
+    term: "TTL d’offre",
+    gloss: "Durée avant expiration de l’offre",
+    what: `Une offre reste ouverte ${seconds} s. Tant qu’elle n’a pas expiré, on n’envoie pas le lot suivant sur la même course.`,
+    ifRaise: "Le chauffeur a plus de temps pour accepter.",
+    ifLower: "On tourne plus vite sur le palier suivant.",
+  };
+}
+
+export function helpOfferCooldown(minutes: number): PolicyHelp {
+  return {
+    term: "Cooldown refus / timeout",
+    gloss: "Pause avant de recontacter le même chauffeur",
+    what: `Après un refus ou un timeout, on ne recontacte pas ce chauffeur sur cette course pendant ${minutes} min — sauf en vague 3, où le cooldown est levé.`,
+    ifRaise: "Moins de relances rapides (sauf vague 3).",
+    ifLower: "On peut rappeler plus tôt dès les vagues 1–2.",
+  };
+}
+
+export function helpIncludeOfflineFromWave(wave: number): PolicyHelp {
+  return {
+    term: "Hors-ligne dès la vague",
+    gloss: "À partir de quel palier on appelle les hors-ligne",
+    what: `Les chauffeurs hors-ligne (dernière position connue + token push) entrent dans le pool à partir de la vague ${wave}. Avant, il faut être en ligne.`,
+    ifRaise: "On attend plus longtemps avant d’appeler les hors-ligne.",
+    ifLower: "On les contacte plus tôt (dès la vague 1 si vous mettez 1).",
+  };
+}
+
+export function helpSectionDispatch(): PolicyHelp {
+  return {
+    term: "Matching",
+    gloss: "Qui on contacte, et dans quel ordre",
+    what: "On épuise d’abord le palier proche (en ligne, GPS relativement frais), puis on élargit. La vague 3 est un filet : hors-ligne et GPS jusqu’à ~1 mois. Le score priorise toujours les en-ligne.",
+    ifRaise: "Sans objet — réglez les champs un par un.",
+    ifLower: "Sans objet — réglez les champs un par un.",
+  };
+}
+
 export const TIER_HELP = {
   wait: helpTierWait,
   cancel_en_route: helpTierEnRoute,
