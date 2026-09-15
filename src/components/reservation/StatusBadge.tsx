@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { STATUS_LABELS, type UiStatus } from "@/lib/services/statusService";
 import type { Database } from "@/lib/types/database.types";
+import { Flame } from "lucide-react";
 
 type DbRideStatus = Database["public"]["Enums"]["ride_status"];
 
@@ -12,6 +13,8 @@ interface StatusBadgeProps {
   driverArrivedAt?: string | null;
   /** Override when matching pause / delay labels differ from STATUS_LABELS */
   labelOverride?: string | null;
+  /** Compact flame icon instead of long matching-delay text */
+  showMatchingFlame?: boolean;
 }
 
 function normalizeStatus(status: UiStatus | DbRideStatus): UiStatus {
@@ -90,9 +93,25 @@ export function StatusBadge({
   showDetailed = false,
   driverArrivedAt = null,
   labelOverride = null,
+  showMatchingFlame = false,
 }: Readonly<StatusBadgeProps>) {
   const normalizedStatus = normalizeStatus(status);
   const variant = badgeVariantForStatus(normalizedStatus);
+
+  if (showMatchingFlame) {
+    return (
+      <Badge
+        variant={variant as "default"}
+        size={size}
+        className={className}
+        title="En recherche"
+        aria-label="En recherche"
+      >
+        <Flame className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      </Badge>
+    );
+  }
+
   const displayLabel =
     labelOverride ||
     displayLabelForStatus(

@@ -13,6 +13,7 @@ import {
   cancelBadgeLabel,
   cancelBillingLabel,
   formatPersonName,
+  shouldShowAdminMatchingFlameBadge,
 } from "@/lib/rides/rideCancelLabels";
 import { CopyableRef } from "@/components/admin/CopyableRef";
 
@@ -42,6 +43,12 @@ function RideStatusCorner({
   const isCanceled = status.includes("canceled");
   const reasonBadge = cancelBadgeLabel(status, canceledBy);
 
+  const showMatchingFlame = shouldShowAdminMatchingFlameBadge(
+    matchingPausedAt,
+    status,
+    delayKind,
+  );
+
   if (!isCanceled) {
     return (
       <div className="inline-flex flex-col items-end gap-0.5">
@@ -54,6 +61,7 @@ function RideStatusCorner({
             status,
             delayKind,
           )}
+          showMatchingFlame={showMatchingFlame}
         />
         {matchingPausedAt ? (
           <span className="text-[10px] text-amber-400/90">Confirm. client</span>

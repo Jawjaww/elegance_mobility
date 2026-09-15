@@ -25,6 +25,7 @@ import {
   cleanPickupNotes,
   delayKindLabel,
   formatPersonName,
+  shouldShowAdminMatchingFlameBadge,
 } from "@/lib/rides/rideCancelLabels";
 import {
   formatFeeEuro,
@@ -181,6 +182,11 @@ function RideDetailContent({
   const isCanceled = ride.status.includes("canceled");
   const price = ride.final_price ?? ride.price ?? ride.estimated_price ?? null;
   const matchingPaused = ride.matching_paused_at != null;
+  const showMatchingFlame = shouldShowAdminMatchingFlameBadge(
+    ride.matching_paused_at,
+    ride.status,
+    ride.delay_kind,
+  );
   const badgeOverride = adminMatchingBadgeOverride(
     ride.matching_paused_at,
     ride.status,
@@ -196,6 +202,7 @@ function RideDetailContent({
             status={ride.status}
             showDetailed
             labelOverride={badgeOverride}
+            showMatchingFlame={showMatchingFlame}
           />
         </DialogTitle>
       </DialogHeader>

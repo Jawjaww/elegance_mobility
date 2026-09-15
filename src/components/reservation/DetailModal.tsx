@@ -22,6 +22,7 @@ import {
   isSystemExpiredRide,
 } from "@/lib/rides/rideCancelLabels";
 import { getRideStatusLabelForRide } from "@/lib/services/statusService";
+import { shouldShowMatchingFlameBadge } from "@/lib/utils/ridePickup";
 import {
   CancelPolicyLine,
   SystemExpiredNotice,
@@ -158,6 +159,12 @@ function DetailModalBody({
     ride.matching_deadline_at,
     ride.matching_paused_at,
   );
+  const showMatchingFlame = shouldShowMatchingFlameBadge(
+    ride.status,
+    ride.pickup_time,
+    ride.matching_deadline_at,
+    ride.matching_paused_at,
+  );
   const badgeOverride = clientStatusBadgeOverride(
     ride.status,
     statusLabel,
@@ -172,7 +179,8 @@ function DetailModalBody({
           <StatusBadge
             status={ride.status}
             showDetailed
-            labelOverride={badgeOverride}
+            labelOverride={showMatchingFlame ? null : badgeOverride}
+            showMatchingFlame={showMatchingFlame}
           />
         </div>
         <DialogTitle>Détails de la réservation</DialogTitle>

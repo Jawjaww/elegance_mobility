@@ -53,7 +53,7 @@ export const STATUS_LABELS: Record<UiStatus, string> = {
   driverCanceled: "Annulée par le chauffeur",
   adminCanceled: "Annulée",
   noShow: "Client absent (facturable)",
-  delayed: "En recherche (retard matching)",
+  delayed: "En recherche",
   scheduled: "Planifiée",
 };
 

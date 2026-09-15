@@ -79,16 +79,23 @@ export function clientStatusBadgeOverride(
   return null;
 }
 
-/** Admin badge: pause first, then matching delay. */
-export function adminMatchingBadgeOverride(
+/** Admin flame badge when matching runs past pickup (icon replaces long text). */
+export function shouldShowAdminMatchingFlameBadge(
   matchingPausedAt: string | null | undefined,
   status: string,
   delayKind: string | null | undefined,
+): boolean {
+  if (matchingPausedAt) return false;
+  return status === "delayed" || delayKind === "matching";
+}
+
+/** Admin badge: pause label only — matching delay uses flame icon. */
+export function adminMatchingBadgeOverride(
+  matchingPausedAt: string | null | undefined,
+  _status: string,
+  _delayKind: string | null | undefined,
 ): string | null {
   if (matchingPausedAt) return "Recherche en pause";
-  if (status === "delayed" || delayKind === "matching") {
-    return "Retard matching";
-  }
   return null;
 }
 

@@ -11,6 +11,7 @@ import {
   cleanPickupNotes,
   delayKindLabel,
   isSystemExpiredRide,
+  shouldShowAdminMatchingFlameBadge,
   vehicleTypeDisplayName,
 } from '../rideCancelLabels';
 
@@ -36,8 +37,8 @@ describe('rideCancelLabels', () => {
 
   it('builds client and admin badge overrides', () => {
     expect(
-      clientStatusBadgeOverride('delayed', 'En recherche (retard matching)', null, false),
-    ).toBe('En recherche (retard matching)');
+      clientStatusBadgeOverride('delayed', 'En recherche', null, false),
+    ).toBe('En recherche');
     expect(
       clientStatusBadgeOverride(
         'admin-canceled',
@@ -50,9 +51,13 @@ describe('rideCancelLabels', () => {
     expect(
       adminMatchingBadgeOverride('2026-09-10T12:00:00Z', 'delayed', 'matching'),
     ).toBe('Recherche en pause');
-    expect(adminMatchingBadgeOverride(null, 'delayed', 'matching')).toBe(
-      'Retard matching',
-    );
+    expect(adminMatchingBadgeOverride(null, 'delayed', 'matching')).toBeNull();
+    expect(
+      shouldShowAdminMatchingFlameBadge(null, 'delayed', 'matching'),
+    ).toBe(true);
+    expect(
+      shouldShowAdminMatchingFlameBadge('2026-09-10T12:00:00Z', 'delayed', 'matching'),
+    ).toBe(false);
   });
 
   it('maps delay kind and vehicle display names', () => {

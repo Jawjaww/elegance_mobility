@@ -15,6 +15,7 @@ import {
   isSystemExpiredRide,
   vehicleTypeDisplayName,
 } from "@/lib/rides/rideCancelLabels";
+import { shouldShowMatchingFlameBadge } from "@/lib/utils/ridePickup";
 import {
   CancelPolicyLine,
   SystemExpiredNotice,
@@ -123,6 +124,12 @@ export default function ReservationCard({
   const liveNavHint = formatLiveNavHint(ride);
   const systemExpired = isSystemExpiredRide(ride.status, ride.canceled_by);
   const cancelChip = cancelBadgeLabel(ride.status, ride.canceled_by);
+  const showMatchingFlame = shouldShowMatchingFlameBadge(
+    ride.status,
+    ride.pickup_time,
+    ride.matching_deadline_at,
+    ride.matching_paused_at,
+  );
   const badgeOverride = clientStatusBadgeOverride(
     ride.status,
     statusLabel,
@@ -146,7 +153,8 @@ export default function ReservationCard({
             driverArrivedAt={ride.driver_arrived_at}
             className="shadow-sm"
             showDetailed={true}
-            labelOverride={badgeOverride}
+            labelOverride={showMatchingFlame ? null : badgeOverride}
+            showMatchingFlame={showMatchingFlame}
           />
         </div>
       </CardHeader>
