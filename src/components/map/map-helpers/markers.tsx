@@ -16,12 +16,13 @@ function mapPinSvg(color: string): string {
 </svg>`.trim();
 }
 
-/** LandPlot-style marker — matches TripEndpointRail arrival icon. */
-function landPlotSvg(color: string): string {
+/** Green arrival flag — pole base marks the dropoff point (matches the offer card). */
+function flagSvg(color: string): string {
   return `
-<svg width="28" height="28" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <rect x="5" y="5" width="18" height="18" rx="2.5" fill="${color}" stroke="#ffffff" stroke-width="2"/>
-  <path d="M5 14h18M14 5v18" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>
+<svg width="31" height="40" viewBox="0 0 31 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <path d="M4.5 4v34" stroke="#047857" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M6.1 5h21.4l-5.2 8 5.2 8H6.1z" fill="${color}" stroke="#047857" stroke-width="1.2" stroke-linejoin="round"/>
+  <circle cx="4.5" cy="4" r="2.5" fill="#047857"/>
 </svg>`.trim();
 }
 
@@ -57,9 +58,9 @@ function buildMarkerElement(
     return el;
   }
 
-  el.style.width = "28px";
-  el.style.height = "28px";
-  el.innerHTML = landPlotSvg(color);
+  el.style.width = "31px";
+  el.style.height = "40px";
+  el.innerHTML = flagSvg(color);
   return el;
 }
 
@@ -96,6 +97,7 @@ export function syncMarker(
     const el = buildMarkerElement(id, color, loc.heading);
     let anchor: maplibregl.MarkerOptions["anchor"] = "center";
     if (id === "pickup") anchor = "bottom";
+    else if (id === "dropoff") anchor = "bottom-left";
     const marker = new maplibregl.Marker({
       element: el,
       anchor,

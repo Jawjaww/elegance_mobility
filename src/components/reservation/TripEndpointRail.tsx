@@ -1,4 +1,4 @@
-import { LandPlot, MapPin } from "lucide-react";
+import { Flag, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** Departure (A) is blue, arrival (B) is green — matches map pins. */
@@ -12,7 +12,7 @@ export function TripEndpointRail({
     >
       <MapPin className="h-4 w-4 text-blue-400" />
       <span className="my-1 w-px flex-1 bg-gradient-to-b from-blue-400/50 to-emerald-400/50" />
-      <LandPlot className="h-4 w-4 text-emerald-400" />
+      <Flag className="h-4 w-4 text-emerald-400" />
     </div>
   );
 }

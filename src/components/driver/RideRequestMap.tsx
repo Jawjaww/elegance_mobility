@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import { createRoot } from "react-dom/client";
-import { Navigation, MapPin, LandPlot } from "lucide-react";
+import { Navigation, MapPin, Flag } from "lucide-react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { getDirections } from "@/lib/services/directionsService";
 import {
@@ -124,7 +124,7 @@ export function RideRequestMap({
       };
 
       addMarker(pickup, MapPin, "#3b82f6");
-      addMarker(dropoff, LandPlot, "#10b981");
+      addMarker(dropoff, Flag, "#10b981");
       if (driverLocation)
         addMarker(driverLocation, Navigation, "#3b82f6", true);
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
-import { Navigation, MapPin, LandPlot, Flag } from "lucide-react";
+import { Navigation, MapPin, Flag } from "lucide-react";
 import {
   MAP_DROPOFF_COLOR,
   MAP_PICKUP_COLOR,
@@ -251,7 +251,7 @@ export default function UnifiedMap({
       mapInstance,
       "dropoff",
       d,
-      mode === "EDIT" ? Flag : LandPlot,
+      Flag,
       MAP_DROPOFF_COLOR,
       markers.current,
       roots.current,
