@@ -6,6 +6,10 @@ import { createRoot } from "react-dom/client";
 import { Navigation, MapPin, LandPlot } from "lucide-react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { getDirections } from "@/lib/services/directionsService";
+import {
+  computeFitSpanKm,
+  resolveFitMaxZoom,
+} from "@/components/map/map-helpers/bounds";
 
 interface Location {
   lat: number;
@@ -23,7 +27,7 @@ export function RideRequestMap({
   dropoff,
   driverLocation,
   onReady,
-}: RideRequestMapProps) {
+}: Readonly<RideRequestMapProps>) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -119,12 +123,17 @@ export function RideRequestMap({
           .addTo(mapInstance);
       };
 
-      addMarker(pickup, MapPin, "#64748b");
+      addMarker(pickup, MapPin, "#3b82f6");
       addMarker(dropoff, LandPlot, "#10b981");
       if (driverLocation)
         addMarker(driverLocation, Navigation, "#3b82f6", true);
 
-      // --- CALCUL DU ZOOM ET DES TRACÉS ---
+      const fitPoints = [
+        pickup,
+        dropoff,
+        ...(driverLocation ? [driverLocation] : []),
+      ];
+      const spanKm = computeFitSpanKm(fitPoints);
       const bounds = new maplibregl.LngLatBounds();
       bounds
         .extend([pickup.lng, pickup.lat])
@@ -132,13 +141,11 @@ export function RideRequestMap({
       if (driverLocation)
         bounds.extend([driverLocation.lng, driverLocation.lat]);
 
-      // Ajustement Mobile Agressif
       const isMobile = window.innerHeight < 750;
       mapInstance.fitBounds(bounds, {
-        // On force un padding énorme en haut/bas pour dégager l'UI de la modal
         padding: isMobile ? { top: 30, bottom: 80, left: 40, right: 40 } : 80,
         animate: false,
-        maxZoom: 14, // Empêche d'être trop près sur les micro-trajets
+        maxZoom: resolveFitMaxZoom(spanKm, isMobile),
       });
 
       // Chargement asynchrone des tracés côté client (CSR / Tauri-ready)

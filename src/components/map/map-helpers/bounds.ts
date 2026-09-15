@@ -1,8 +1,16 @@
 import maplibregl from "maplibre-gl";
+import { resolveFitMaxZoom } from "./mapFitMath";
+
+export {
+  computeFitSpanKm,
+  geoDistanceMeters,
+  resolveFitMaxZoom,
+  type MapCoord,
+} from "./mapFitMath";
 
 type LngLat = [number, number];
 
-/** Short map cards (e.g. confirmation mobile h-48) need extra inset for A/B pin markers. */
+/** Short map cards (e.g. confirmation mobile h-48) need extra inset for pin markers. */
 const COMPACT_MAP_MAX_HEIGHT_PX = 220;
 
 function isCompactMapContainer(container: HTMLElement | null | undefined): boolean {
@@ -41,17 +49,20 @@ export function boundsFromLngLats(coords: LngLat[]): maplibregl.LngLatBounds | n
 export function fitMapToBounds(
   map: maplibregl.Map,
   bounds: maplibregl.LngLatBounds,
-  options?: { animate?: boolean; maxZoom?: number },
+  options?: { animate?: boolean; maxZoom?: number; spanKm?: number },
 ) {
   const container = map.getContainer();
   const compact = isCompactMapContainer(container);
+  const spanKm = options?.spanKm ?? 0;
+  const maxZoom =
+    options?.maxZoom ?? resolveFitMaxZoom(spanKm, compact);
 
   map.resize();
   requestAnimationFrame(() => {
     map.fitBounds(bounds, {
       padding: mapFitPadding(container),
       animate: options?.animate ?? false,
-      maxZoom: options?.maxZoom ?? (compact ? 12 : 13),
+      maxZoom,
       duration: options?.animate ? 300 : 0,
     });
   });

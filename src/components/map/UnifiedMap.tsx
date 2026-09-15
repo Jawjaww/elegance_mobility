@@ -12,7 +12,9 @@ import { ensureSourcesAndLayers } from "./map-helpers/sources";
 import { fetchAndSetRoutes } from "./map-helpers/routes";
 import {
   boundsFromLngLats,
+  computeFitSpanKm,
   fitMapToBounds,
+  resolveFitMaxZoom,
 } from "./map-helpers/bounds";
 import "maplibre-gl/dist/maplibre-gl.css";
 import mapStyle from "./mapStyle";
@@ -119,14 +121,23 @@ function fitMapToPoints(
   if (points.length === 0) return;
 
   const coords = points.map((p): [number, number] => [p.lng, p.lat]);
+  const spanKm = computeFitSpanKm(points);
   if (coords.length >= 2) {
     const bounds = boundsFromLngLats(coords);
-    if (bounds) fitMapToBounds(mapInstance, bounds, { animate: mode === "TRACKING" });
+    if (bounds) {
+      fitMapToBounds(mapInstance, bounds, {
+        animate: mode === "TRACKING",
+        spanKm,
+      });
+    }
     return;
   }
 
   mapInstance.setCenter(coords[0]);
-  mapInstance.setZoom(13);
+  const compact =
+    (mapInstance.getContainer()?.clientHeight ?? 0) > 0 &&
+    (mapInstance.getContainer()?.clientHeight ?? 0) < 220;
+  mapInstance.setZoom(resolveFitMaxZoom(spanKm, compact));
 }
 
 export default function UnifiedMap({
