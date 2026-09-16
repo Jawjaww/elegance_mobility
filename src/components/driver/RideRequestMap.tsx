@@ -10,6 +10,7 @@ import {
   computeFitSpanKm,
   resolveFitMaxZoom,
 } from "@/components/map/map-helpers/bounds";
+import { readMapPalette } from "@/components/map/map-helpers/mapPalette";
 
 interface Location {
   lat: number;
@@ -50,6 +51,10 @@ export function RideRequestMap({
     mapInstance.on("load", async () => {
       if (!map.current) return;
 
+      // Map colours come from the shared palette (globals.css) — same trip /
+      // approach language as the reservation map.
+      const palette = readMapPalette();
+
       // Sources
       mapInstance.addSource("route-client", {
         type: "geojson",
@@ -61,17 +66,32 @@ export function RideRequestMap({
         data: { type: "FeatureCollection", features: [] },
       });
 
-      // Layers (Glow + Main + Approach)
+      // Layers (glow → casing → main).
+      // The approach (driver → pickup) is dotted orange so the trip route
+      // stays the only coloured line.
+      mapInstance.addLayer({
+        id: "route-approach-glow",
+        type: "line",
+        source: "route-approach",
+        paint: {
+          "line-width": 7,
+          "line-color": palette.approachGlow,
+          "line-blur": palette.neonBlurPx,
+          "line-dasharray": [2, 2],
+          "line-offset": 3,
+        },
+      });
+
       mapInstance.addLayer({
         id: "route-approach-line",
         type: "line",
         source: "route-approach",
         paint: {
           "line-width": 3,
-          "line-color": "#d6d6d6",
+          "line-color": palette.approach,
           "line-dasharray": [2, 2],
           "line-offset": 3,
-          "line-opacity": 0.5,
+          "line-opacity": 0.6,
         },
       });
 
@@ -80,10 +100,21 @@ export function RideRequestMap({
         type: "line",
         source: "route-client",
         paint: {
-          "line-width": 9,
-          "line-color": "#ffc38f",
-          "line-blur": 8,
-          "line-opacity": 0.2,
+          "line-width": 11,
+          "line-color": palette.routeGlow,
+          "line-blur": palette.neonBlurPx,
+        },
+      });
+
+      mapInstance.addLayer({
+        id: "route-client-casing",
+        type: "line",
+        source: "route-client",
+        layout: { "line-join": "round", "line-cap": "round" },
+        paint: {
+          "line-width": 6,
+          "line-color": palette.routeEdge,
+          "line-opacity": 0.9,
         },
       });
 
@@ -93,8 +124,8 @@ export function RideRequestMap({
         source: "route-client",
         layout: { "line-join": "round", "line-cap": "round" },
         paint: {
-          "line-width": 3,
-          "line-color": "#fda456",
+          "line-width": 3.5,
+          "line-color": palette.route,
         },
       });
 
@@ -123,10 +154,10 @@ export function RideRequestMap({
           .addTo(mapInstance);
       };
 
-      addMarker(pickup, MapPin, "#3b82f6");
-      addMarker(dropoff, Flag, "#10b981");
+      addMarker(pickup, MapPin, palette.departure);
+      addMarker(dropoff, Flag, palette.arrival);
       if (driverLocation)
-        addMarker(driverLocation, Navigation, "#3b82f6", true);
+        addMarker(driverLocation, Navigation, palette.driver, true);
 
       const fitPoints = [
         pickup,

@@ -1,7 +1,13 @@
 import { Flag, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/** Departure (A) is blue, arrival (B) is green — matches map pins. */
+/**
+ * Departure (A) / arrival (B) rail shown next to the reservation inputs.
+ *
+ * Colours come from the `--ve-map-*` custom properties declared in
+ * `src/app/globals.css` so the rail stays in sync with the map markers
+ * (blue departure, green arrival) from a single place.
+ */
 export function TripEndpointRail({
   className,
 }: Readonly<{ className?: string }>) {
@@ -10,9 +16,15 @@ export function TripEndpointRail({
       className={cn("flex w-4 shrink-0 flex-col items-center", className)}
       aria-hidden
     >
-      <MapPin className="h-4 w-4 text-blue-400" />
-      <span className="my-1 w-px flex-1 bg-gradient-to-b from-blue-400/50 to-emerald-400/50" />
-      <Flag className="h-4 w-4 text-emerald-400" />
+      <MapPin className="h-4 w-4 text-[color:var(--ve-map-departure)]" />
+      <span
+        className="my-1 w-px flex-1"
+        style={{
+          backgroundImage:
+            "linear-gradient(to bottom, var(--ve-map-departure), var(--ve-map-arrival))",
+        }}
+      />
+      <Flag className="h-4 w-4 text-[color:var(--ve-map-arrival)]" />
     </div>
   );
 }

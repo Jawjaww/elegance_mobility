@@ -2,15 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
-import { Navigation, MapPin, Flag } from "lucide-react";
-import {
-  MAP_DROPOFF_COLOR,
-  MAP_PICKUP_COLOR,
-  syncMarker,
-} from "./map-helpers/markers";
+import { syncMarker } from "./map-helpers/markers";
 import { ensureSourcesAndLayers } from "./map-helpers/sources";
 import { fetchAndSetRoutes } from "./map-helpers/routes";
 import {
+  bearingDegrees,
   boundsFromLngLats,
   computeFitSpanKm,
   fitMapToBounds,
@@ -100,17 +96,51 @@ function clearMarker(
 function syncEndpointMarker(
   mapInstance: maplibregl.Map,
   id: "pickup" | "dropoff",
-  loc: Coord | undefined,
-  icon: unknown,
-  color: string,
+  loc: (Coord & { heading?: number }) | undefined,
   markers: Map<string, maplibregl.Marker>,
   roots: Map<string, { unmount: () => void }>,
 ) {
   if (loc) {
-    syncMarker(mapInstance, id, loc, icon, color, markers, roots);
+    syncMarker(mapInstance, id, loc, markers, roots);
   } else {
     clearMarker(id, markers, roots);
   }
+}
+
+/** Adds a rotation to a marker coordinate, leaving it untouched without one. */
+function withHeading<T extends Coord>(
+  coord: T,
+  heading: number | undefined,
+): T & { heading?: number } {
+  if (heading === undefined) return coord;
+  return { ...coord, heading };
+}
+
+/** Departure marker rotated towards the arrival, when both points are known. */
+function pickupMarkerLoc(
+  pickup: Coord | undefined,
+  dropoff: Coord | undefined,
+): (Coord & { heading?: number }) | undefined {
+  if (!pickup) return undefined;
+  if (!dropoff) return pickup;
+  return { ...pickup, heading: bearingDegrees(pickup, dropoff) };
+}
+
+/**
+ * The GPS heading is null while the vehicle is stopped, which would leave the
+ * puck pointing north regardless of the route. Fall back to the direction of
+ * the leg being driven: towards the pickup, or the arrival when there is none.
+ */
+function resolveDriverHeading(
+  driver: DriverCoord,
+  pickup: Coord | undefined,
+  dropoff: Coord | undefined,
+): number | undefined {
+  if (driver.heading !== undefined && Number.isFinite(driver.heading)) {
+    return driver.heading;
+  }
+  const target = pickup ?? dropoff;
+  return target ? bearingDegrees(driver, target) : undefined;
 }
 
 function fitMapToPoints(
@@ -195,7 +225,7 @@ export default function UnifiedMap({
     map.current = mapInstance;
 
     mapInstance.on("load", () => {
-      ensureSourcesAndLayers(mapInstance, mode);
+      ensureSourcesAndLayers(mapInstance);
       setIsLoaded(true);
       onReadyRef.current?.();
     });
@@ -238,12 +268,14 @@ export default function UnifiedMap({
     const p = toCoord(pickup, departure);
     const d = toCoord(dropoff, destination);
 
+    // Point the departure glyph at the arrival so it reads as "this way to the
+    // dropoff" instead of a fixed orientation.
+    const pickupLoc = pickupMarkerLoc(p, d);
+
     syncEndpointMarker(
       mapInstance,
       "pickup",
-      p,
-      MapPin,
-      MAP_PICKUP_COLOR,
+      pickupLoc,
       markers.current,
       roots.current,
     );
@@ -251,8 +283,6 @@ export default function UnifiedMap({
       mapInstance,
       "dropoff",
       d,
-      Flag,
-      MAP_DROPOFF_COLOR,
       markers.current,
       roots.current,
     );
@@ -261,9 +291,7 @@ export default function UnifiedMap({
       syncMarker(
         mapInstance,
         "driver",
-        driverLocation,
-        Navigation,
-        "#3b82f6",
+        withHeading(driverLocation, resolveDriverHeading(driverLocation, p, d)),
         markers.current,
         roots.current,
       );
@@ -327,12 +355,12 @@ export default function UnifiedMap({
           lng: pos.coords.longitude,
           heading: pos.coords.heading ?? undefined,
         };
+        const p = toCoord(pickup, departure);
+        const d = toCoord(dropoff, destination);
         syncMarker(
           mapInstance,
           "driver",
-          loc,
-          Navigation,
-          "#3b82f6",
+          withHeading(loc, resolveDriverHeading(loc, p, d)),
           markers.current,
           roots.current,
         );

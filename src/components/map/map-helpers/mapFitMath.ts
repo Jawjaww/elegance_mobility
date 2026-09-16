@@ -29,6 +29,25 @@ export function computeFitSpanKm(coords: MapCoord[]): number {
   return maxM / 1000;
 }
 
+/**
+ * Initial compass bearing (degrees, 0 = north, clockwise) from `a` to `b`.
+ *
+ * Used to orient the departure navigation glyph along the trip: a glyph drawn
+ * pointing up needs a rotation equal to this bearing.
+ */
+export function bearingDegrees(a: MapCoord, b: MapCoord): number {
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const dLng = toRad(b.lng - a.lng);
+
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x =
+    Math.cos(lat1) * Math.sin(lat2) -
+    Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+
+  return (((Math.atan2(y, x) * 180) / Math.PI) + 360) % 360;
+}
+
 /** Higher maxZoom on short spans so pickup, dropoff and driver stay visible. */
 export function resolveFitMaxZoom(spanKm: number, compact: boolean): number {
   if (spanKm > 0 && spanKm < 2) return 15;

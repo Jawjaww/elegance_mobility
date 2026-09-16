@@ -1,4 +1,5 @@
 import {
+  bearingDegrees,
   computeFitSpanKm,
   geoDistanceMeters,
   resolveFitMaxZoom,
@@ -34,5 +35,32 @@ describe("geoDistanceMeters", () => {
     );
     expect(m).toBeGreaterThan(1000);
     expect(m).toBeLessThan(1500);
+  });
+});
+
+describe("bearingDegrees", () => {
+  const origin = { lat: 48.85, lng: 2.35 };
+
+  it("reads 0 due north and 90 due east", () => {
+    expect(bearingDegrees(origin, { lat: 48.86, lng: 2.35 })).toBeCloseTo(0, 0);
+    expect(bearingDegrees(origin, { lat: 48.85, lng: 2.36 })).toBeCloseTo(90, 0);
+  });
+
+  it("reads 180 due south and 270 due west", () => {
+    expect(bearingDegrees(origin, { lat: 48.84, lng: 2.35 })).toBeCloseTo(180, 0);
+    expect(bearingDegrees(origin, { lat: 48.85, lng: 2.34 })).toBeCloseTo(270, 0);
+  });
+
+  it("always returns a compass value in [0, 360)", () => {
+    const samples = [
+      { lat: 48.80, lng: 2.45 },
+      { lat: 48.90, lng: 2.25 },
+      { lat: 48.845, lng: 2.359 },
+    ];
+    for (const target of samples) {
+      const bearing = bearingDegrees(origin, target);
+      expect(bearing).toBeGreaterThanOrEqual(0);
+      expect(bearing).toBeLessThan(360);
+    }
   });
 });

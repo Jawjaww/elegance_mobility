@@ -1,13 +1,9 @@
 import maplibregl from "maplibre-gl";
-import type { MapMode } from "../UnifiedMap";
-import { colors } from "@/styles/design-tokens";
+import { readMapPalette } from "./mapPalette";
 
-const { map: m } = colors;
+export function ensureSourcesAndLayers(mapInstance: maplibregl.Map) {
+  const palette = readMapPalette();
 
-export function ensureSourcesAndLayers(
-  mapInstance: maplibregl.Map,
-  modeLocal: MapMode,
-) {
   try {
     if (!mapInstance.getSource("route-main"))
       mapInstance.addSource("route-main", {
@@ -15,44 +11,24 @@ export function ensureSourcesAndLayers(
         lineMetrics: true,
         data: { type: "FeatureCollection", features: [] },
       });
-    if (!mapInstance.getSource("route-alt"))
-      mapInstance.addSource("route-alt", {
-        type: "geojson",
-        data: { type: "FeatureCollection", features: [] },
-      });
 
-    if (!mapInstance.getLayer("line-alt")) {
-      mapInstance.addLayer({
-        id: "line-alt",
-        type: "line",
-        source: "route-alt",
-        layout: { "line-join": "round", "line-cap": "round" },
-        paint: {
-          "line-width": 3,
-          "line-color": m.routeAlt,
-          "line-opacity": 0.55,
-          "line-dasharray": [2, 2],
-          "line-offset": modeLocal === "REQUEST" ? 3 : 0,
-        },
-      });
-    }
-
-    if (modeLocal === "REQUEST" && !mapInstance.getLayer("line-glow")) {
+    // Neon rim hugging the route — same subtle halo treatment as the markers.
+    // Drawn first so it sits under the casing and the line.
+    if (!mapInstance.getLayer("line-glow")) {
       mapInstance.addLayer({
         id: "line-glow",
         type: "line",
         source: "route-main",
         layout: { "line-join": "round", "line-cap": "round" },
         paint: {
-          "line-width": 10,
-          "line-color": m.routeGlow,
-          "line-blur": 6,
-          "line-opacity": 0.35,
+          "line-width": 11,
+          "line-color": palette.routeGlow,
+          "line-blur": palette.neonBlurPx,
         },
       });
     }
 
-    // Casing under main route for contrast against soft basemap roads
+    // Casing under the main route for contrast against soft basemap roads
     if (!mapInstance.getLayer("line-main-casing")) {
       mapInstance.addLayer({
         id: "line-main-casing",
@@ -61,8 +37,7 @@ export function ensureSourcesAndLayers(
         layout: { "line-join": "round", "line-cap": "round" },
         paint: {
           "line-width": 6,
-          "line-color":
-            modeLocal === "REQUEST" ? m.routeCasing : "#1d4ed8",
+          "line-color": palette.routeEdge,
           "line-opacity": 0.9,
         },
       });
@@ -76,7 +51,7 @@ export function ensureSourcesAndLayers(
         layout: { "line-join": "round", "line-cap": "round" },
         paint: {
           "line-width": 3.5,
-          "line-color": modeLocal === "REQUEST" ? m.route : "#3b82f6",
+          "line-color": palette.route,
           "line-opacity": 1,
         },
       });

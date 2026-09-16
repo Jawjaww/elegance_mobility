@@ -2,6 +2,7 @@ import maplibregl from "maplibre-gl";
 import { resolveFitMaxZoom } from "./mapFitMath";
 
 export {
+  bearingDegrees,
   computeFitSpanKm,
   geoDistanceMeters,
   resolveFitMaxZoom,

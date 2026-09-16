@@ -155,6 +155,53 @@
   }
 }
 
+/* ---------------------------------------------------------------------------
+ * Map palette — single source of truth for every map colour.
+ *
+ * Kept outside the light/dark split on purpose: a marker keeps the same
+ * identity over the basemap whatever the app theme.
+ *
+ * Consumers:
+ *   - inline SVG markers read `var(--ve-map-*)` straight from the DOM;
+ *   - MapLibre paint properties are WebGL and cannot resolve CSS custom
+ *     properties, so they go through `readMapPalette()`
+ *     (src/components/map/map-helpers/mapPalette.ts).
+ *
+ * `*-edge` is the contrasted outline, `*-glow` is the subtle neon rim
+ * (blur radius shared by every outline: `--ve-map-neon-blur`).
+ * ------------------------------------------------------------------------- */
+@layer base {
+  :root {
+    /* Departure — client pickup */
+    --ve-map-departure: #3b82f6;
+    --ve-map-departure-edge: #1d4ed8;
+    --ve-map-departure-glow: rgba(59, 130, 246, 0.4);
+
+    /* Arrival — dropoff flag */
+    --ve-map-arrival: #10b981;
+    --ve-map-arrival-edge: #047857;
+    --ve-map-arrival-glow: rgba(16, 185, 129, 0.4);
+
+    /* Driver live position */
+    --ve-map-driver: #3b82f6;
+    --ve-map-driver-edge: #1d4ed8;
+    --ve-map-driver-glow: rgba(59, 130, 246, 0.4);
+
+    /* Trip route (departure → arrival) */
+    --ve-map-route: #3b82f6;
+    --ve-map-route-edge: #1d4ed8;
+    --ve-map-route-glow: rgba(59, 130, 246, 0.32);
+
+    /* Driver → departure approach — dotted orange, distinct from the blue trip
+       route and the green arrival flag */
+    --ve-map-approach: #f97316;
+    --ve-map-approach-glow: rgba(249, 115, 22, 0.35);
+
+    /* Neon rim — one knob for every outline halo */
+    --ve-map-neon-blur: 3px;
+  }
+}
+
 @layer base {
   * {
     @apply border-border;
