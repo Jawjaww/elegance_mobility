@@ -31,7 +31,7 @@ interface ReservationOptionsTogglesProps {
 }
 
 const SHORT_LABELS: Record<string, string> = {
-  "Siège enfant": "Enfant",
+  "Siège enfant": "Siège enfant",
   "Animaux domestiques": "Animaux",
   "Attente aéroport": "Aéroport",
   "Boissons premium": "Boissons",

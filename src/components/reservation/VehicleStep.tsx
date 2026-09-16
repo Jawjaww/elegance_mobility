@@ -61,6 +61,10 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
   onPrevious,
   onConfirm,
 }) => {
+  const selectedVehicle = vehicleOptions.find(
+    (option) => option.value === vehicleType,
+  );
+
   return (
     <div className="space-y-6 lg:space-y-8">
       <div>
@@ -68,7 +72,7 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
           Choisissez votre véhicule
         </h2>
 
-        <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4 lg:mb-8 lg:gap-5">
+        <div className="mb-3 grid grid-cols-3 gap-2 md:mb-6 md:gap-4 lg:mb-8 lg:gap-5">
           {vehicleOptions.map((option) => {
             const selected = vehicleType === option.value;
             const Icon = option.icon;
@@ -79,7 +83,7 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
                 type="button"
                 aria-pressed={selected}
                 className={cn(
-                  "relative flex flex-col rounded-2xl border p-4 text-left transition-all duration-200 md:p-5",
+                  "relative flex flex-col rounded-2xl border p-2.5 text-center transition-all duration-200 md:p-5 md:text-left",
                   selected
                     ? RESERVATION_PICKER_CARD_SELECTED
                     : RESERVATION_PICKER_CARD,
@@ -88,36 +92,46 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
               >
                 {selected ? (
                   <span
-                    className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-white"
+                    className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-white md:right-3 md:top-3 md:h-5 md:w-5"
                     aria-hidden
                   >
-                    <Check className="h-3 w-3" strokeWidth={3} />
+                    <Check className="h-2.5 w-2.5 md:h-3 md:w-3" strokeWidth={3} />
                   </span>
                 ) : null}
 
-                <div className="mb-3 flex items-center gap-3 pr-6">
+                <div className="flex flex-col items-center gap-1.5 md:mb-3 md:flex-row md:items-center md:gap-3 md:pr-6">
                   <span
                     className={cn(
-                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border",
+                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border md:h-10 md:w-10",
                       selected
                         ? RESERVATION_PICKER_ICON_SELECTED
                         : RESERVATION_PICKER_ICON,
                     )}
                   >
-                    <Icon className="h-5 w-5 text-blue-400" aria-hidden />
+                    <Icon className="h-4 w-4 text-blue-400 md:h-5 md:w-5" aria-hidden />
                   </span>
-                  <h3 className="text-base font-semibold leading-snug text-white">
+                  <h3 className="text-[11px] font-semibold leading-tight text-white md:text-base md:leading-snug">
                     {option.label}
                   </h3>
                 </div>
 
-                <p className="text-sm leading-relaxed text-neutral-400">
+                <p className="hidden text-sm leading-relaxed text-neutral-400 md:block">
                   {option.description}
                 </p>
               </button>
             );
           })}
         </div>
+
+        {/*
+         * Mobile keeps the tile row one-line high, so the selected vehicle
+         * description lives below the deck instead of inside every card.
+         */}
+        {selectedVehicle ? (
+          <p className="mb-4 text-xs leading-snug text-neutral-400 md:hidden">
+            {selectedVehicle.description}
+          </p>
+        ) : null}
 
         <div className="space-y-2.5 border-t border-blue-500/15 pt-3 md:space-y-4 md:pt-4 lg:space-y-4 lg:pt-6">
           <h3 className="text-sm font-semibold text-white md:text-base">
