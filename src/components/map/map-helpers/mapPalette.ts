@@ -14,6 +14,7 @@ export type MapPalette = {
   departure: string;
   arrival: string;
   driver: string;
+  driverRing: string;
   route: string;
   routeEdge: string;
   routeGlow: string;
@@ -27,6 +28,7 @@ const FALLBACKS: MapPalette = {
   departure: "#3b82f6",
   arrival: "#10b981",
   driver: "#3b82f6",
+  driverRing: "#ffffff",
   route: "#3b82f6",
   routeEdge: "#1d4ed8",
   routeGlow: "rgba(59, 130, 246, 0.32)",
@@ -51,6 +53,7 @@ export function readMapPalette(): MapPalette {
     departure: readVar("--ve-map-departure") ?? FALLBACKS.departure,
     arrival: readVar("--ve-map-arrival") ?? FALLBACKS.arrival,
     driver: readVar("--ve-map-driver") ?? FALLBACKS.driver,
+    driverRing: readVar("--ve-map-driver-ring") ?? FALLBACKS.driverRing,
     route: readVar("--ve-map-route") ?? FALLBACKS.route,
     routeEdge: readVar("--ve-map-route-edge") ?? FALLBACKS.routeEdge,
     routeGlow: readVar("--ve-map-route-glow") ?? FALLBACKS.routeGlow,

@@ -34,11 +34,15 @@ const ARRIVAL_SVG = `
   <circle cx="4.5" cy="4" r="2.5" style="fill: var(--ve-map-arrival-edge)"/>
 </svg>`.trim();
 
-/** Driver puck — up-pointing arrow inside a disc; rotated by its heading. */
+/** Driver puck — up-pointing arrow inside a disc; rotated by its heading.
+ *  The white outer disc is a ring: the puck shares the trip route's blue on
+ *  purpose, so the ring — not the hue — is what detaches it where they overlap.
+ *  The inner disc and the arrow are scaled to keep the ring inside the viewBox. */
 const DRIVER_SVG = `
 <svg width="28" height="28" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <circle cx="14" cy="14" r="12" style="fill: var(--ve-map-driver); stroke: var(--ve-map-driver-edge); stroke-width: 2"/>
-  <path d="M14 6l6 14-6-3.2L8 20z" fill="#ffffff"/>
+  <circle cx="14" cy="14" r="14" style="fill: var(--ve-map-driver-ring)"/>
+  <circle cx="14" cy="14" r="10.5" style="fill: var(--ve-map-driver); stroke: var(--ve-map-driver-edge); stroke-width: 2"/>
+  <path d="M14 6l6 14-6-3.2L8 20z" fill="#ffffff" transform="translate(1.75,1.75) scale(0.875)"/>
 </svg>`.trim();
 
 type MarkerShape = {

@@ -186,6 +186,10 @@
     --ve-map-driver: #3b82f6;
     --ve-map-driver-edge: #1d4ed8;
     --ve-map-driver-glow: rgba(59, 130, 246, 0.4);
+    /* White outline painted under the puck. The puck shares the trip route's
+       blue on purpose (the driver belongs to the trip), so the ring — not the
+       hue — is what detaches it wherever the two overlap. */
+    --ve-map-driver-ring: #ffffff;
 
     /* Trip route (departure → arrival) */
     --ve-map-route: #3b82f6;
