@@ -210,6 +210,7 @@ export default function ReservationCard({
               clientIncentive={Number(ride.client_incentive ?? 0)}
               matchingPausedAt={ride.matching_paused_at}
               matchingDeadlineAt={ride.matching_deadline_at}
+              feePolicySnapshot={ride.fee_policy_snapshot}
               onUpdated={onRefresh}
               onCancel={onCancel ? () => onCancel(ride.id) : undefined}
             />

@@ -11,6 +11,7 @@ import {
   confirmRideMatching,
   isConfirmMatchingFailure,
 } from "@/services/confirmRideMatchingService";
+import { heartbeatMinutesOf } from "@/lib/rides/rideFeePolicy";
 
 const QUICK_AMOUNTS = [2, 5, 10] as const;
 
@@ -20,6 +21,11 @@ type RideIncentivePanelProps = Readonly<{
   clientIncentive: number;
   matchingPausedAt?: string | null;
   matchingDeadlineAt?: string | null;
+  /**
+   * The ride's fee policy snapshot. The panel reads the matching window length
+   * from it so the copy cannot drift from what the server actually grants.
+   */
+  feePolicySnapshot?: unknown;
   onUpdated?: () => void;
   onCancel?: () => void;
 }>;
@@ -31,12 +37,14 @@ function toastErrorMessage(error: unknown): string {
 function MatchingIntro({
   needsConfirm,
   deadlinePassed,
+  heartbeatMinutes,
   busy,
   onConfirm,
   onCancel,
 }: Readonly<{
   needsConfirm: boolean;
   deadlinePassed: boolean;
+  heartbeatMinutes: number;
   busy: boolean;
   onConfirm: () => void;
   onCancel?: () => void;
@@ -86,7 +94,7 @@ function MatchingIntro({
   return (
     <p className="text-sm text-neutral-300">
       Attente longue ? Ajoutez un bonus d&apos;intéressement visible par les
-      chauffeurs (prolonge la recherche de 20 min).
+      chauffeurs (prolonge la recherche de {heartbeatMinutes} min).
     </p>
   );
 }
@@ -97,11 +105,14 @@ export function RideIncentivePanel({
   clientIncentive,
   matchingPausedAt,
   matchingDeadlineAt,
+  feePolicySnapshot,
   onUpdated,
   onCancel,
 }: RideIncentivePanelProps) {
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
+
+  const heartbeatMinutes = heartbeatMinutesOf(feePolicySnapshot);
 
   const canBonus = status === "pending" || status === "delayed";
   if (!canBonus) return null;
@@ -125,7 +136,7 @@ export function RideIncentivePanel({
       }
       toast({
         title: "Recherche relancée",
-        description: "Nous cherchons à nouveau un chauffeur pendant 20 min.",
+        description: `Nous cherchons à nouveau un chauffeur pendant ${heartbeatMinutes} min.`,
         variant: "success",
       });
       onUpdated?.();
@@ -154,7 +165,7 @@ export function RideIncentivePanel({
       }
       toast({
         title: "Bonus ajouté",
-        description: `+${amount}€ — recherche prolongée de 20 min`,
+        description: `+${amount}€ — recherche prolongée de ${heartbeatMinutes} min`,
         variant: "success",
       });
       onUpdated?.();
@@ -174,6 +185,7 @@ export function RideIncentivePanel({
       <MatchingIntro
         needsConfirm={needsConfirm}
         deadlinePassed={deadlinePassed}
+        heartbeatMinutes={heartbeatMinutes}
         busy={busy}
         onConfirm={() => void onConfirm()}
         onCancel={onCancel}

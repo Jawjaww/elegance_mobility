@@ -48,6 +48,8 @@ interface Reservation {
   client_incentive?: number | null;
   matching_deadline_at?: string | null;
   matching_paused_at?: string | null;
+  /** Read for the matching window length; see heartbeatMinutesOf. */
+  fee_policy_snapshot?: unknown;
   canceled_by?: string | null;
   cancel_billing?: string | null;
   live_eta_minutes?: number | null;
@@ -225,6 +227,7 @@ function DetailModalBody({
             clientIncentive={incentive}
             matchingPausedAt={ride.matching_paused_at}
             matchingDeadlineAt={ride.matching_deadline_at}
+            feePolicySnapshot={ride.fee_policy_snapshot}
             onUpdated={onRefresh}
             onCancel={onCancel ? () => onCancel(ride.id) : undefined}
           />

@@ -141,6 +141,23 @@ export function parseFeePolicySnapshot(raw: unknown): FeePolicySnapshot | null {
   };
 }
 
+/**
+ * Matching window length in minutes, read from a ride's fee policy snapshot.
+ *
+ * The server extends the window by exactly this value (`ride_heartbeat_interval`,
+ * used by add_ride_incentive and confirm_ride_matching), so any UI copy promising
+ * a duration must derive it here rather than hardcode it. A literal survives a
+ * policy change and starts lying: heartbeat_minutes moved 20 -> 25 in
+ * 20260919192000 and the incentive panel kept advertising 20 min, promising the
+ * client a shorter extension than they actually got.
+ */
+export function heartbeatMinutesOf(raw: unknown): number {
+  return (
+    parseFeePolicySnapshot(raw)?.heartbeat_minutes ??
+    DEFAULT_PLATFORM_SNAPSHOT.heartbeat_minutes
+  );
+}
+
 export function parseCancelQuote(raw: unknown): CancelQuote {
   if (!isRecord(raw)) {
     return {
