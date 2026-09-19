@@ -108,7 +108,7 @@ export function parseFeePolicySnapshot(raw: unknown): FeePolicySnapshot | null {
   const tiersRaw = Array.isArray(raw.tiers) ? raw.tiers : [];
   return {
     policy_id: asString(raw.policy_id) ?? undefined,
-    heartbeat_minutes: asNumber(raw.heartbeat_minutes, 20),
+    heartbeat_minutes: asNumber(raw.heartbeat_minutes, 25),
     silence_expire_minutes: asNumber(raw.silence_expire_minutes, 20),
     en_route_before_pickup_minutes: asNumber(
       raw.en_route_before_pickup_minutes,
@@ -426,7 +426,7 @@ export function buildFeePolicySnapshot(
 
 export const DEFAULT_PLATFORM_SNAPSHOT: FeePolicySnapshot = {
   policy_id: "a1000000-0000-4000-8000-000000000001",
-  heartbeat_minutes: 20,
+  heartbeat_minutes: 25,
   silence_expire_minutes: 20,
   en_route_before_pickup_minutes: 60,
   driver_late_grace_minutes: 20,

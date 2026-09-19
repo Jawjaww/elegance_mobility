@@ -409,12 +409,12 @@ function RideFeeSnapshotSection({
 }>) {
   const { toast } = useToast();
   const snap = parseFeePolicySnapshot(ride.fee_policy_snapshot);
-  const [heartbeat, setHeartbeat] = useState(snap?.heartbeat_minutes ?? 20);
+  const [heartbeat, setHeartbeat] = useState(snap?.heartbeat_minutes ?? 25);
   const [silence, setSilence] = useState(snap?.silence_expire_minutes ?? 20);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    setHeartbeat(snap?.heartbeat_minutes ?? 20);
+    setHeartbeat(snap?.heartbeat_minutes ?? 25);
     setSilence(snap?.silence_expire_minutes ?? 20);
   }, [snap?.heartbeat_minutes, snap?.silence_expire_minutes]);
 
