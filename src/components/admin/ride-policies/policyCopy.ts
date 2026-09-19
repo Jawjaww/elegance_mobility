@@ -174,31 +174,41 @@ export function helpGpsWave3(days: number): PolicyHelp {
 
 export function helpOfferBatchSize(size: number): PolicyHelp {
   return {
-    term: "Taille du lot",
-    gloss: "Combien de chauffeurs par tick",
-    what: `Chaque cycle (TTL / cron) contacte ${size} chauffeur${size > 1 ? "s" : ""} du palier courant, puis le suivant, jusqu’à épuisement du palier avant d’élargir le rayon.`,
-    ifRaise: "On contacte plus de monde d’un coup (max 3).",
-    ifLower: "Rotation plus lente, moins de push simultanés.",
+    term: "Lot de base",
+    gloss: "Chauffeurs par vague, multiplié par le palier",
+    what: `La vague n contacte ${size} × n chauffeurs : ${size} en vague 1 (10 km), ${size * 2} en vague 2 (25 km), ${size * 3} en vague 3 (80 km). Le lot grandit donc avec le rayon au lieu de rester constant.`,
+    ifRaise: `Recherche plus large d’un coup (max 3, soit ${3 * 3} en vague 3).`,
+    ifLower: "Recherche plus économe et plus progressive.",
   };
 }
 
-export function helpOfferTtl(seconds: number): PolicyHelp {
+export function helpMaxRideOpenOffers(count: number): PolicyHelp {
   return {
-    term: "TTL d’offre",
-    gloss: "Durée avant expiration de l’offre",
-    what: `Une offre reste ouverte ${seconds} s. Tant qu’elle n’a pas expiré, on n’envoie pas le lot suivant sur la même course.`,
-    ifRaise: "Le chauffeur a plus de temps pour accepter.",
-    ifLower: "On tourne plus vite sur le palier suivant.",
+    term: "Plafond par course",
+    gloss: "Chauffeurs sollicités au total sur une course",
+    what: `Une course ne peut pas solliciter plus de ${count} chauffeurs sur toute sa durée de recherche. Garde-fou : les offres restent ouvertes jusqu’à la fin de la fenêtre de matching, donc sans plafond une course pourrait contacter indéfiniment.`,
+    ifRaise: "Plus de chances de trouver un chauffeur, plus de push au total.",
+    ifLower: "Recherche plus discrète, mais peut s’épuiser avant d’aboutir.",
   };
 }
 
 export function helpOfferCooldown(minutes: number): PolicyHelp {
   return {
-    term: "Cooldown refus / timeout",
+    term: "Cooldown après refus",
     gloss: "Pause avant de recontacter le même chauffeur",
-    what: `Après un refus ou un timeout, on ne recontacte pas ce chauffeur sur cette course pendant ${minutes} min — sauf en vague 3, où le cooldown est levé.`,
-    ifRaise: "Moins de relances rapides (sauf vague 3).",
-    ifLower: "On peut rappeler plus tôt dès les vagues 1–2.",
+    what: `Après un refus explicite, on ne recontacte pas ce chauffeur sur cette course pendant ${minutes} min. Ce n’est pas une exclusion : la course reste affichée et acceptable dans son bottomsheet pendant tout ce temps, et les autres chauffeurs sont sollicités normalement.`,
+    ifRaise: "Moins de relances du même chauffeur (au-delà de 25 min, il sort de la fenêtre de matching).",
+    ifLower: "Le chauffeur le plus proche peut être relancé plus tôt.",
+  };
+}
+
+export function helpOfferTtl(seconds: number): PolicyHelp {
+  return {
+    term: "Mise en avant",
+    gloss: "Durée d’affichage plein écran et de push",
+    what: `La course reste ${seconds} s en avant-plan (carte plein écran + push). Passé ce délai elle glisse dans le bottomsheet du chauffeur : elle reste acceptable, et la recherche peut solliciter la vague suivante.`,
+    ifRaise: "Le chauffeur garde la course en avant-plan plus longtemps.",
+    ifLower: "La recherche élargit plus vite ; l’offre reste acceptable dans le bottomsheet.",
   };
 }
 

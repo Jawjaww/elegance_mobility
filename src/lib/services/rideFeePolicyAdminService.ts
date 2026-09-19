@@ -114,6 +114,7 @@ export function snapshotFromPolicyFields(
     gps_wave3_max_age_seconds?: number;
     dispatch_include_offline_from_wave?: number;
     offer_batch_size?: number;
+    max_ride_open_offers?: number;
     offer_ttl_seconds?: number;
     offer_driver_cooldown_seconds?: number;
   },
@@ -152,6 +153,7 @@ export function snapshotFromBundle(
       dispatch_include_offline_from_wave:
         bundle.policy.dispatch_include_offline_from_wave,
       offer_batch_size: bundle.policy.offer_batch_size,
+      max_ride_open_offers: bundle.policy.max_ride_open_offers,
       offer_ttl_seconds: bundle.policy.offer_ttl_seconds,
       offer_driver_cooldown_seconds:
         bundle.policy.offer_driver_cooldown_seconds,
