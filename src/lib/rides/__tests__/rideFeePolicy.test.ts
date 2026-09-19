@@ -1,6 +1,7 @@
 import {
   DEFAULT_PLATFORM_SNAPSHOT,
   feeFromTiers,
+  heartbeatMinutesOf,
   parseCancelQuote,
   parseFeePolicySnapshot,
   simulateQuote,
@@ -63,5 +64,43 @@ describe("rideFeePolicy", () => {
     });
     expect(quote.amount).toBe(10);
     expect(quote.billing).toBe("client_fee");
+  });
+
+  // The matching window is granted by the server (ride_heartbeat_interval) and
+  // advertised by the incentive panel. Both must read the same number, and a UI
+  // copy that hardcodes it survives a policy change and starts lying — which is
+  // exactly what happened when heartbeat_minutes moved 20 -> 25.
+  describe("heartbeatMinutesOf", () => {
+    it("reads the ride's own policy, not a hardcoded window", () => {
+      expect(heartbeatMinutesOf({ heartbeat_minutes: 25 })).toBe(25);
+    });
+
+    it("follows a policy that differs from the platform default", () => {
+      expect(heartbeatMinutesOf({ heartbeat_minutes: 40 })).toBe(40);
+    });
+
+    it("falls back to the default when the key is absent", () => {
+      expect(heartbeatMinutesOf({ offer_batch_size: 3 })).toBe(
+        DEFAULT_PLATFORM_SNAPSHOT.heartbeat_minutes,
+      );
+    });
+
+    it("falls back to the default when there is no snapshot", () => {
+      expect(heartbeatMinutesOf(null)).toBe(
+        DEFAULT_PLATFORM_SNAPSHOT.heartbeat_minutes,
+      );
+      expect(heartbeatMinutesOf(undefined)).toBe(
+        DEFAULT_PLATFORM_SNAPSHOT.heartbeat_minutes,
+      );
+    });
+
+    it("falls back to the default on a malformed value", () => {
+      expect(heartbeatMinutesOf("not-a-snapshot")).toBe(
+        DEFAULT_PLATFORM_SNAPSHOT.heartbeat_minutes,
+      );
+      expect(heartbeatMinutesOf({ heartbeat_minutes: "abc" })).toBe(
+        DEFAULT_PLATFORM_SNAPSHOT.heartbeat_minutes,
+      );
+    });
   });
 });
