@@ -9,7 +9,7 @@ import {
 describe("rideFeePolicy", () => {
   it("parses snapshot and applies wait tier after grace", () => {
     const snap = parseFeePolicySnapshot(DEFAULT_PLATFORM_SNAPSHOT);
-    expect(snap?.heartbeat_minutes).toBe(20);
+    expect(snap?.heartbeat_minutes).toBe(25);
     expect(snap?.gps_wave1_max_age_seconds).toBe(86400);
     expect(snap?.dispatch_include_offline_from_wave).toBe(3);
     expect(feeFromTiers(DEFAULT_PLATFORM_SNAPSHOT, "wait", 5)).toBe(0);
