@@ -21,6 +21,7 @@ import {
   helpGpsWave3,
   helpHeartbeat,
   helpIncludeOfflineFromWave,
+  helpMaxRideOpenOffers,
   helpNoShowFlat,
   helpOfferBatchSize,
   helpOfferCooldown,
@@ -56,6 +57,7 @@ export type PolicyFormValues = {
   gps_wave3_max_age_seconds: number;
   dispatch_include_offline_from_wave: number;
   offer_batch_size: number;
+  max_ride_open_offers: number;
   offer_ttl_seconds: number;
   offer_driver_cooldown_seconds: number;
 };
@@ -110,8 +112,9 @@ export function policyRowToForm(row: PolicyRow): PolicyFormValues {
     ),
     offer_batch_size: Math.min(
       3,
-      Math.max(1, asPositiveInt(row.offer_batch_size, 2)),
+      Math.max(1, asPositiveInt(row.offer_batch_size, 3)),
     ),
+    max_ride_open_offers: asPositiveInt(row.max_ride_open_offers, 40),
     offer_ttl_seconds: asPositiveInt(row.offer_ttl_seconds, 90),
     offer_driver_cooldown_seconds: Math.max(
       0,
@@ -367,8 +370,8 @@ export function DispatchMatchingFields({
       <div className="grid gap-3 sm:grid-cols-3">
         <PolicyNumberField
           id="offer_batch_size"
-          label="Taille du lot"
-          gloss="Chauffeurs par tick"
+          label="Lot de base"
+          gloss="Chauffeurs par vague (× palier)"
           unit=""
           min={1}
           max={3}
@@ -379,15 +382,35 @@ export function DispatchMatchingFields({
               offer_batch_size: Math.min(3, Math.max(1, Math.round(size))),
             })
           }
-          hint="2 par défaut, maximum 3."
+          hint="3 par défaut → 3 / 6 / 9 selon la vague."
           info={
             <PolicyInfoButton help={helpOfferBatchSize(values.offer_batch_size)} />
           }
         />
         <PolicyNumberField
+          id="max_ride_open_offers"
+          label="Plafond par course"
+          gloss="Chauffeurs sollicités au total"
+          unit=""
+          min={1}
+          value={values.max_ride_open_offers}
+          onChange={(count) =>
+            onChange({
+              ...values,
+              max_ride_open_offers: Math.max(1, Math.round(count)),
+            })
+          }
+          hint="Garde-fou sur toute la recherche. Défaut 40."
+          info={
+            <PolicyInfoButton
+              help={helpMaxRideOpenOffers(values.max_ride_open_offers)}
+            />
+          }
+        />
+        <PolicyNumberField
           id="offer_ttl_seconds"
-          label="TTL offre"
-          gloss="Avant le lot suivant"
+          label="Mise en avant"
+          gloss="Plein écran + push"
           unit="s"
           min={15}
           value={values.offer_ttl_seconds}
@@ -397,7 +420,7 @@ export function DispatchMatchingFields({
               offer_ttl_seconds: Math.max(15, Math.round(seconds)),
             })
           }
-          hint="Défaut 90 s."
+          hint="La course reste acceptable ensuite. Défaut 90 s."
           info={
             <PolicyInfoButton help={helpOfferTtl(values.offer_ttl_seconds)} />
           }
@@ -405,7 +428,7 @@ export function DispatchMatchingFields({
         <PolicyNumberField
           id="offer_driver_cooldown_seconds"
           label="Cooldown"
-          gloss="Après refus ou timeout"
+          gloss="Après un refus explicite"
           unit="min"
           min={0}
           value={cooldownMinutes}
@@ -415,7 +438,7 @@ export function DispatchMatchingFields({
               offer_driver_cooldown_seconds: Math.max(0, Math.round(minutes)) * 60,
             })
           }
-          hint="Levé en vague 3. Défaut 30 min."
+          hint="La course reste acceptable pendant ce temps. Défaut 15 min."
           info={<PolicyInfoButton help={helpOfferCooldown(cooldownMinutes)} />}
         />
       </div>

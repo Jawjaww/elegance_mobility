@@ -33,6 +33,7 @@ export type FeePolicySnapshot = {
   gps_wave3_max_age_seconds?: number;
   dispatch_include_offline_from_wave?: number;
   offer_batch_size?: number;
+  max_ride_open_offers?: number;
   offer_ttl_seconds?: number;
   offer_driver_cooldown_seconds?: number;
   tiers: FeePolicyTier[];
@@ -129,11 +130,12 @@ export function parseFeePolicySnapshot(raw: unknown): FeePolicySnapshot | null {
       raw.dispatch_include_offline_from_wave,
       3,
     ),
-    offer_batch_size: asNumber(raw.offer_batch_size, 2),
+    offer_batch_size: asNumber(raw.offer_batch_size, 3),
+    max_ride_open_offers: asNumber(raw.max_ride_open_offers, 40),
     offer_ttl_seconds: asNumber(raw.offer_ttl_seconds, 90),
     offer_driver_cooldown_seconds: asNumber(
       raw.offer_driver_cooldown_seconds,
-      1800,
+      900,
     ),
     tiers: tiersRaw.map(parseTier).filter((t): t is FeePolicyTier => t != null),
   };
@@ -410,6 +412,7 @@ export function buildFeePolicySnapshot(
     dispatch_include_offline_from_wave:
       policy.dispatch_include_offline_from_wave,
     offer_batch_size: policy.offer_batch_size,
+    max_ride_open_offers: policy.max_ride_open_offers,
     offer_ttl_seconds: policy.offer_ttl_seconds,
     offer_driver_cooldown_seconds: policy.offer_driver_cooldown_seconds,
     tiers: tiers.map((tier) => ({

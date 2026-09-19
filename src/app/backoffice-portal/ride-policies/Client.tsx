@@ -47,6 +47,7 @@ function formToUpdate(values: PolicyFormValues): PolicyUpdate {
     dispatch_include_offline_from_wave:
       values.dispatch_include_offline_from_wave,
     offer_batch_size: values.offer_batch_size,
+    max_ride_open_offers: values.max_ride_open_offers,
     offer_ttl_seconds: values.offer_ttl_seconds,
     offer_driver_cooldown_seconds: values.offer_driver_cooldown_seconds,
   };
@@ -180,8 +181,8 @@ export default function RidePoliciesPage() {
             <PolicyChip
               tone="matching"
               label="Lot matching"
-              gloss="Chauffeurs par tick"
-              value={String(values.offer_batch_size)}
+              gloss="Par vague (× palier)"
+              value={`${values.offer_batch_size}/${values.offer_batch_size * 2}/${values.offer_batch_size * 3}`}
             />
             <PolicyChip
               tone="matching"
