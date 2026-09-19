@@ -117,6 +117,10 @@ export function snapshotFromPolicyFields(
     max_ride_open_offers?: number;
     offer_ttl_seconds?: number;
     offer_driver_cooldown_seconds?: number;
+    dispatch_weight_distance?: number;
+    dispatch_weight_accept?: number;
+    dispatch_weight_rating?: number;
+    dispatch_weight_online?: number;
   },
   tiers: FeePolicyTier[],
 ): FeePolicySnapshot {
@@ -157,6 +161,10 @@ export function snapshotFromBundle(
       offer_ttl_seconds: bundle.policy.offer_ttl_seconds,
       offer_driver_cooldown_seconds:
         bundle.policy.offer_driver_cooldown_seconds,
+      dispatch_weight_distance: bundle.policy.dispatch_weight_distance,
+      dispatch_weight_accept: bundle.policy.dispatch_weight_accept,
+      dispatch_weight_rating: bundle.policy.dispatch_weight_rating,
+      dispatch_weight_online: bundle.policy.dispatch_weight_online,
     },
     bundle.tiers,
   );

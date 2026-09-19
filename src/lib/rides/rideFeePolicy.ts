@@ -36,6 +36,19 @@ export type FeePolicySnapshot = {
   max_ride_open_offers?: number;
   offer_ttl_seconds?: number;
   offer_driver_cooldown_seconds?: number;
+  /**
+   * Dispatch score mix. Read by `score_dispatch_candidates`; a key that is absent
+   * falls back to the column default server-side.
+   *
+   * Distance is flat inside 1 km (`dispatch_distance_score`), so raising
+   * `dispatch_weight_distance` no longer re-creates a "closest wins" bias between
+   * nearby drivers: it only changes how much the first kilometre is worth against
+   * the acceptance rate and the rating.
+   */
+  dispatch_weight_distance?: number;
+  dispatch_weight_accept?: number;
+  dispatch_weight_rating?: number;
+  dispatch_weight_online?: number;
   tiers: FeePolicyTier[];
 };
 
@@ -137,6 +150,10 @@ export function parseFeePolicySnapshot(raw: unknown): FeePolicySnapshot | null {
       raw.offer_driver_cooldown_seconds,
       900,
     ),
+    dispatch_weight_distance: asNumber(raw.dispatch_weight_distance, 0.5),
+    dispatch_weight_accept: asNumber(raw.dispatch_weight_accept, 0.25),
+    dispatch_weight_rating: asNumber(raw.dispatch_weight_rating, 0.2),
+    dispatch_weight_online: asNumber(raw.dispatch_weight_online, 0.05),
     tiers: tiersRaw.map(parseTier).filter((t): t is FeePolicyTier => t != null),
   };
 }
@@ -432,6 +449,10 @@ export function buildFeePolicySnapshot(
     max_ride_open_offers: policy.max_ride_open_offers,
     offer_ttl_seconds: policy.offer_ttl_seconds,
     offer_driver_cooldown_seconds: policy.offer_driver_cooldown_seconds,
+    dispatch_weight_distance: policy.dispatch_weight_distance,
+    dispatch_weight_accept: policy.dispatch_weight_accept,
+    dispatch_weight_rating: policy.dispatch_weight_rating,
+    dispatch_weight_online: policy.dispatch_weight_online,
     tiers: tiers.map((tier) => ({
       kind: tier.kind,
       after_minutes: tier.after_minutes,
