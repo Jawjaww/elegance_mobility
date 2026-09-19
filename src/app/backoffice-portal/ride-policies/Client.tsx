@@ -50,6 +50,10 @@ function formToUpdate(values: PolicyFormValues): PolicyUpdate {
     max_ride_open_offers: values.max_ride_open_offers,
     offer_ttl_seconds: values.offer_ttl_seconds,
     offer_driver_cooldown_seconds: values.offer_driver_cooldown_seconds,
+    dispatch_weight_distance: values.dispatch_weight_distance,
+    dispatch_weight_accept: values.dispatch_weight_accept,
+    dispatch_weight_rating: values.dispatch_weight_rating,
+    dispatch_weight_online: values.dispatch_weight_online,
   };
 }
 
@@ -171,7 +175,7 @@ export default function RidePoliciesPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-6">
             <PolicyChip
               tone="matching"
               label="Heartbeat"
@@ -183,6 +187,14 @@ export default function RidePoliciesPage() {
               label="Lot matching"
               gloss="Par vague (× palier)"
               value={`${values.offer_batch_size}/${values.offer_batch_size * 2}/${values.offer_batch_size * 3}`}
+            />
+            <PolicyChip
+              tone="matching"
+              label="Score"
+              gloss="Distance / accept / note"
+              value={`${Math.round(values.dispatch_weight_distance * 100)}/${Math.round(
+                values.dispatch_weight_accept * 100,
+              )}/${Math.round(values.dispatch_weight_rating * 100)}`}
             />
             <PolicyChip
               tone="matching"

@@ -192,6 +192,30 @@ export function helpMaxRideOpenOffers(count: number): PolicyHelp {
   };
 }
 
+export function helpDispatchScoreWeights(weights: {
+  distance: number;
+  accept: number;
+  rating: number;
+  online: number;
+}): PolicyHelp {
+  const pct = (weight: number) => `${Math.round(weight * 100)} %`;
+  return {
+    term: "Pondération du score",
+    gloss: "Comment on classe les chauffeurs d’un même palier",
+    what:
+      "Quand plusieurs chauffeurs sont éligibles, le score les classe dans cet ordre : " +
+      `${pct(weights.distance)} distance × fraîcheur GPS, ` +
+      `${pct(weights.accept)} taux d’acceptation, ` +
+      `${pct(weights.rating)} note, ` +
+      `${pct(weights.online)} en ligne. ` +
+      "La distance est plate jusqu’à 1 km : deux chauffeurs à 300 m et 900 m ont le même score de distance, ce sont la note et le taux d’acceptation qui décident. " +
+      "Au-delà, la distance décroît sur des paliers absolus (2 km → 0,85 ; 5 km → 0,50 ; 12 km → 0,12), identiques dans toutes les vagues. " +
+      "Les poids n’ont pas besoin de totaliser 100 % : seul leur rapport compte.",
+    ifRaise: "Ce critère pèse davantage dans l’ordre du lot.",
+    ifLower: "Ce critère pèse moins ; les trois autres décident davantage.",
+  };
+}
+
 export function helpOfferCooldown(minutes: number): PolicyHelp {
   return {
     term: "Cooldown après refus",

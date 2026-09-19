@@ -14,6 +14,7 @@ import type { Database } from "@/lib/types/database.types";
 import { PolicyInfoButton } from "./PolicyInfoButton";
 import {
   helpCancelAfterArrivalFlat,
+  helpDispatchScoreWeights,
   helpDriverLate,
   helpEnRoute,
   helpGpsWave1,
@@ -60,6 +61,10 @@ export type PolicyFormValues = {
   max_ride_open_offers: number;
   offer_ttl_seconds: number;
   offer_driver_cooldown_seconds: number;
+  dispatch_weight_distance: number;
+  dispatch_weight_accept: number;
+  dispatch_weight_rating: number;
+  dispatch_weight_online: number;
 };
 
 type FieldChange = (key: keyof PolicyFormValues, value: number) => void;
@@ -69,6 +74,16 @@ const DAY_S = 86400;
 
 function asPositiveInt(value: number, fallback: number): number {
   return Number.isFinite(value) && value > 0 ? Math.round(value) : fallback;
+}
+
+/**
+ * Score weights live in 0..1. The server does not require them to sum to 1 (only
+ * the ratio matters), but a value outside the range is rejected by the column
+ * CHECK, so the form clamps rather than letting the save fail.
+ */
+function clampWeight(value: number): number {
+  const safe = Number.isFinite(value) ? value : 0;
+  return Math.min(1, Math.max(0, Math.round(safe * 100) / 100));
 }
 
 function withOrderedWaveAges(values: PolicyFormValues): PolicyFormValues {
@@ -122,6 +137,10 @@ export function policyRowToForm(row: PolicyRow): PolicyFormValues {
         ? Math.round(row.offer_driver_cooldown_seconds)
         : 1800,
     ),
+    dispatch_weight_distance: clampWeight(row.dispatch_weight_distance),
+    dispatch_weight_accept: clampWeight(row.dispatch_weight_accept),
+    dispatch_weight_rating: clampWeight(row.dispatch_weight_rating),
+    dispatch_weight_online: clampWeight(row.dispatch_weight_online),
   };
 }
 
@@ -312,6 +331,11 @@ export function DispatchMatchingFields({
     0,
     Math.round(values.offer_driver_cooldown_seconds / 60),
   );
+  const weightsTotal =
+    values.dispatch_weight_distance +
+    values.dispatch_weight_accept +
+    values.dispatch_weight_rating +
+    values.dispatch_weight_online;
 
   const patchWaves = (partial: Partial<PolicyFormValues>) => {
     onChange(withOrderedWaveAges({ ...values, ...partial }));
@@ -441,6 +465,91 @@ export function DispatchMatchingFields({
           hint="La course reste acceptable pendant ce temps. Défaut 15 min."
           info={<PolicyInfoButton help={helpOfferCooldown(cooldownMinutes)} />}
         />
+      </div>
+      <div className="rounded-xl border border-neutral-800/80 bg-neutral-950/40 px-3 py-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">
+              Pondération du score
+            </p>
+            <p className="mt-0.5 text-xs text-blue-300/80">
+              À moins d’1 km, la distance ne départage plus les chauffeurs
+            </p>
+          </div>
+          <PolicyInfoButton
+            help={helpDispatchScoreWeights({
+              distance: values.dispatch_weight_distance,
+              accept: values.dispatch_weight_accept,
+              rating: values.dispatch_weight_rating,
+              online: values.dispatch_weight_online,
+            })}
+          />
+        </div>
+        <div className="mt-2 grid gap-3 sm:grid-cols-4">
+          <PolicyNumberField
+            id="dispatch_weight_distance"
+            label="Distance"
+            gloss="× fraîcheur GPS"
+            unit=""
+            step="0.05"
+            min={0}
+            max={1}
+            value={values.dispatch_weight_distance}
+            onChange={(weight) =>
+              onChange({
+                ...values,
+                dispatch_weight_distance: clampWeight(weight),
+              })
+            }
+            hint="Palier 1 km, puis décroissance absolue."
+          />
+          <PolicyNumberField
+            id="dispatch_weight_accept"
+            label="Acceptation"
+            gloss="Taux lissé"
+            unit=""
+            step="0.05"
+            min={0}
+            max={1}
+            value={values.dispatch_weight_accept}
+            onChange={(weight) =>
+              onChange({ ...values, dispatch_weight_accept: clampWeight(weight) })
+            }
+            hint="Un seul refus ne met plus à 0 %."
+          />
+          <PolicyNumberField
+            id="dispatch_weight_rating"
+            label="Note"
+            gloss="3★ → 0, 5★ → 1"
+            unit=""
+            step="0.05"
+            min={0}
+            max={1}
+            value={values.dispatch_weight_rating}
+            onChange={(weight) =>
+              onChange({ ...values, dispatch_weight_rating: clampWeight(weight) })
+            }
+            hint="Toute l’échelle 3–5 sert enfin."
+          />
+          <PolicyNumberField
+            id="dispatch_weight_online"
+            label="En ligne"
+            gloss="Départage en vague 3"
+            unit=""
+            step="0.05"
+            min={0}
+            max={1}
+            value={values.dispatch_weight_online}
+            onChange={(weight) =>
+              onChange({ ...values, dispatch_weight_online: clampWeight(weight) })
+            }
+            hint="Constante tant que les hors-ligne sont exclus."
+          />
+        </div>
+        <p className="mt-2 text-xs text-neutral-500">
+          Somme {weightsTotal.toFixed(2)} — le serveur normalise, seul le rapport
+          entre les quatre compte.
+        </p>
       </div>
       <div className="rounded-xl border border-neutral-800/80 bg-neutral-950/40 px-3 py-3">
         <div className="flex items-start justify-between gap-2">

@@ -103,4 +103,40 @@ describe("rideFeePolicy", () => {
       );
     });
   });
+
+  // The dispatch score mix became a policy setting in 20260920010000. Two properties
+  // matter to the backoffice form: an absent key must fall back to the column default
+  // rather than to zero (which would silently switch a criterion off), and an explicit
+  // zero must survive (an admin may legitimately want to ignore a criterion).
+  describe("dispatch score weights", () => {
+    it("reads the mix from the ride's own policy", () => {
+      const snap = parseFeePolicySnapshot({
+        dispatch_weight_distance: 0.4,
+        dispatch_weight_accept: 0.3,
+        dispatch_weight_rating: 0.25,
+        dispatch_weight_online: 0.05,
+      });
+      expect(snap?.dispatch_weight_distance).toBe(0.4);
+      expect(snap?.dispatch_weight_accept).toBe(0.3);
+      expect(snap?.dispatch_weight_rating).toBe(0.25);
+      expect(snap?.dispatch_weight_online).toBe(0.05);
+    });
+
+    it("falls back to the platform defaults when the keys are absent", () => {
+      const snap = parseFeePolicySnapshot({ heartbeat_minutes: 25 });
+      expect(snap?.dispatch_weight_distance).toBe(0.5);
+      expect(snap?.dispatch_weight_accept).toBe(0.25);
+      expect(snap?.dispatch_weight_rating).toBe(0.2);
+      expect(snap?.dispatch_weight_online).toBe(0.05);
+    });
+
+    it("keeps an explicit zero instead of replacing it with the default", () => {
+      const snap = parseFeePolicySnapshot({
+        dispatch_weight_distance: 0,
+        dispatch_weight_online: 0,
+      });
+      expect(snap?.dispatch_weight_distance).toBe(0);
+      expect(snap?.dispatch_weight_online).toBe(0);
+    });
+  });
 });
