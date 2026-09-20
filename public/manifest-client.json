@@ -1,13 +1,13 @@
 {
-  "name": "Elegance Mobility",
-  "short_name": "Elegance",
+  "name": "Vector Elegans",
+  "short_name": "Vector Elegans",
   "description": "Vos réservations et notifications en temps réel",
   "lang": "fr",
   "start_url": "/my-account",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#ffffff",
+  "background_color": "#0a0a0a",
   "theme_color": "#2563eb",
   "icons": [
     {

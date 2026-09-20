@@ -67,7 +67,6 @@ driver-portal/
 | `useRealtimeRides` | Écoute WebSocket courses pending |
 | `useDriverLocation` | Tracking GPS + envoi Supabase |
 | `useWakeLock` | Empêche écran de s'éteindre |
-| `usePWA` | Gestion installation PWA |
 
 ### Store (Zustand)
 ```typescript

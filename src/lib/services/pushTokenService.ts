@@ -58,9 +58,10 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 }
 
 /**
- * Scope of the client push worker. It must stay explicit: the driver portal registers
- * its own worker (`/sw.js`) and two registrations sharing a scope replace each other,
- * which would silently drop the push handler.
+ * Scope of the client push worker. It must stay explicit: two registrations sharing a
+ * scope replace each other, so an implicit scope would let a later registration silently
+ * drop the push handler. This is the only worker the web app registers — the driver
+ * portal's own `sw.js` was dead (never registered) and has been removed.
  */
 const PUSH_SERVICE_WORKER = "/sw-client.js";
 const PUSH_SERVICE_WORKER_SCOPE = "/";

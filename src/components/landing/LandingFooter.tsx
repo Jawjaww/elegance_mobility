@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { LandingInstallInvite } from "@/components/landing/LandingInstallInvite";
 
 export function LandingFooter() {
   return (
-    <footer className="shrink-0 border-t border-blue-500/10 py-5 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-neutral-500">
+    <footer className="shrink-0 border-t border-blue-500/10 px-4 sm:px-6 lg:px-8 pt-4 pb-5">
+      <LandingInstallInvite />
+      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-neutral-500 pt-4">
         <p>© {new Date().getFullYear()} Vector Elegans</p>
         <div className="flex items-center gap-6">
           <Link

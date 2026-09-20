@@ -6,6 +6,10 @@ import {
   subscribeWebPush,
   syncWebPushSubscription,
 } from "@/lib/services/pushTokenService";
+import {
+  sendTestNotification,
+  TEST_NOTIFICATION_COPY,
+} from "@/lib/services/testNotification";
 import { Bell, BellOff } from "lucide-react";
 
 export function ClientPushSetup() {
@@ -13,6 +17,20 @@ export function ClientPushSetup() {
     "idle" | "loading" | "enabled" | "denied" | "unsupported" | "error"
   >("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [testFeedback, setTestFeedback] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+
+  const runTestNotification = useCallback(async () => {
+    setTesting(true);
+    setTestFeedback(null);
+    const result = await sendTestNotification();
+    setTesting(false);
+    setTestFeedback(
+      result.ok
+        ? "Test envoyé — si la bannière n'apparaît pas ou reste silencieuse, le canal de notification Android est à régler."
+        : TEST_NOTIFICATION_COPY[result.reason],
+    );
+  }, []);
 
   const enablePush = useCallback(async () => {
     setStatus("loading");
@@ -74,9 +92,27 @@ export function ClientPushSetup() {
 
   if (status === "enabled") {
     return (
-      <div className="flex items-center gap-2 text-sm text-emerald-300">
-        <Bell className="h-4 w-4" />
-        <span>Notifications push activées</span>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-sm text-emerald-300">
+          <Bell className="h-4 w-4" />
+          <span>Notifications push activées</span>
+        </div>
+        {testFeedback ? (
+          <p className="text-sm text-neutral-400">{testFeedback}</p>
+        ) : null}
+        {/* Sound and the heads-up banner belong to the Android notification channel, which
+            no web API can read or change — so the only way to check a settings change is to
+            observe a real notification. */}
+        <Button
+          variant="outline"
+          className="border-neutral-700 text-neutral-200"
+          disabled={testing}
+          onClick={() => {
+            void runTestNotification();
+          }}
+        >
+          {testing ? "Envoi…" : "Tester la notification"}
+        </Button>
       </div>
     );
   }

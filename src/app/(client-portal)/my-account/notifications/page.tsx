@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AccountPageHeader } from "@/components/account/AccountPageHeader";
+import { ClientInstallCard } from "@/components/account/ClientInstallCard";
 import { ClientPushSetup } from "@/components/account/ClientPushSetup";
 import { ACCOUNT_CARD, ACCOUNT_PAGE } from "@/components/account/accountUi";
 import { cn } from "@/lib/utils";
@@ -131,6 +132,10 @@ export default function NotificationsPage() {
 
       <div className={cn(ACCOUNT_CARD, "p-5 sm:p-6 mb-4")}>
         <ClientPushSetup />
+      </div>
+
+      <div className={cn(ACCOUNT_CARD, "p-5 sm:p-6 mb-4")}>
+        <ClientInstallCard />
       </div>
 
       <div className={cn(ACCOUNT_CARD, "p-5 sm:p-6")}>
