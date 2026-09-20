@@ -18,6 +18,16 @@
  * bounding box exactly on the canvas centre — so the placement cannot drift when the
  * glyph or the stroke width changes.
  *
+ * ## Two roles per palette, because one asset cannot serve both
+ *
+ * A manifest icon is not one thing. The `maskable` role is drawn **edge to edge and opaque**
+ * so Android can crop it to its own shape without inventing a background; the `any` role is
+ * drawn **on transparency**, like a favicon, as the spec asks. A single full-bleed square
+ * used for both is what shipped first, and it failed twice over: as `any` only, Android
+ * composited it onto a white background (a square inside a square), and Android reads only
+ * the **alpha channel** of a small icon, where an opaque square is a plain block. Hence two
+ * files: `icon-{size}.png` (transparent, gradient glyph) and `icon-512-maskable.png`.
+ *
  * ## One definition, two audiences
  *
  * The driver app and the client portal each get their own set, from the same glyph and
@@ -46,14 +56,25 @@ const RENDER_DENSITY = 384;
 
 /**
  * Which sizes are worth generating: exactly those a consumer declares. `manifest.json`
- * and `manifest-client.json` declare 192 and 512 (Chrome's installability minimum), and
- * `sw-client.js` uses the 72 px badge for the status bar.
+ * and `manifest-client.json` declare 192 and 512 (Chrome's installability minimum), one
+ * maskable 512, and `sw-client.js` uses the badge for the status bar.
  */
 const ICON_SIZES = [192, 512];
-const BADGE_SIZE = 72;
+/**
+ * 96 px, not 72: Android renders the small icon at up to 24 dp, which is 96 px at a 4x
+ * density. Under that the status bar downsamples our artwork, and the car loses its edges.
+ */
+const BADGE_SIZE = 96;
 
 /**
- * Fraction of the canvas the glyph's bounding box occupies.
+ * Radius of the maskable safe zone, as a fraction of the canvas, per the manifest spec: the
+ * area guaranteed to survive whatever shape the platform masks the icon to. Everything
+ * important has to fit inside it, because the outer band may be cropped away.
+ */
+const SAFE_ZONE_RADIUS = 0.4;
+
+/**
+ * Fraction of the canvas the glyph's bounding box occupies, for the `any` role.
  *
  * The icon keeps a generous margin: Android masks installed icons to its own shape and
  * crops a plain square, so artwork reaching the edges gets its corners cut off. The badge
@@ -61,6 +82,12 @@ const BADGE_SIZE = 72;
  */
 const ICON_GLYPH_WIDTH = 0.62;
 const BADGE_GLYPH_WIDTH = 0.86;
+
+/**
+ * Safety margin on the derived maskable width, so rounding in the transform cannot push a
+ * corner a hair past the circle the test checks.
+ */
+const MASKABLE_MARGIN = 0.97;
 
 /**
  * Palettes, per audience. `from`/`to` mirror the design-system gradients: the client pair
@@ -168,22 +195,70 @@ function centringTransform(box, widthFraction) {
 }
 
 /**
- * Full-bleed square rather than a rounded rectangle: the OS masks installed icons to its
- * own shape, and a pre-rounded background leaves transparent corners a mask then crops
- * into visible notches.
+ * Largest glyph width fraction whose bounding box still fits the maskable safe zone.
+ *
+ * Derived from the measurement rather than written by hand: the drawn box is centred by
+ * `centringTransform`, so its farthest point from the centre is a corner, at `(w/2, h/2)`.
+ * Requiring that corner inside the circle of radius `SAFE_ZONE_RADIUS` gives the bound.
+ * Hand-picking a number here is how a glyph ends up cropped on one platform's mask.
  */
-function iconSvg(size, palette, transform) {
+function maskableGlyphWidth(box) {
+  const width = box.maxX - box.minX;
+  const height = box.maxY - box.minY;
+  const aspect = height / width;
+  const maxFraction = (2 * SAFE_ZONE_RADIUS) / Math.sqrt(1 + aspect * aspect);
+  return maxFraction * MASKABLE_MARGIN;
+}
+
+/** Shared `<defs>`, so both roles paint with the same brand gradient. */
+function gradientDefs(palette) {
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"` +
-    ` viewBox="0 0 ${VIEW_BOX} ${VIEW_BOX}">\n` +
-    `  <defs>\n` +
+    `<defs>\n` +
     `    <linearGradient id="veGradient" x1="0" y1="0" x2="1" y2="0">\n` +
     `      <stop offset="0" stop-color="${palette.from}"/>\n` +
     `      <stop offset="1" stop-color="${palette.to}"/>\n` +
     `    </linearGradient>\n` +
-    `  </defs>\n` +
+    `  </defs>\n`
+  );
+}
+
+/**
+ * The `maskable` role: full-bleed opaque gradient with a white glyph.
+ *
+ * Full-bleed square rather than a rounded rectangle: the OS masks installed icons to its
+ * own shape, and a pre-rounded background leaves transparent corners a mask then crops
+ * into visible notches. Opaque is a requirement, not a preference — a manifest that marks a
+ * transparent image `maskable` gets it composited onto a solid fill of the browser's
+ * choosing, which is the white square this role exists to avoid.
+ */
+function maskableIconSvg(size, palette, transform) {
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"` +
+    ` viewBox="0 0 ${VIEW_BOX} ${VIEW_BOX}">\n` +
+    `  ${gradientDefs(palette)}` +
     `  <rect width="${VIEW_BOX}" height="${VIEW_BOX}" fill="url(#veGradient)"/>\n` +
     `  ${glyphGroup(transform, "#ffffff")}\n` +
+    `</svg>\n`
+  );
+}
+
+/**
+ * The `any` role: transparent background, glyph stroked in the brand gradient.
+ *
+ * Transparency is the point, and it is what fixes the small-icon rendering. Android keeps
+ * only the **alpha channel** of a small icon, so the previous full-bleed square had an alpha
+ * silhouette that was literally a square — a plain block wherever the artwork is consumed
+ * that way (measured: the whole canvas opaque). A transparent icon cannot produce anything
+ * but the car, whatever the consumer does with the colour channels. The spec says the same
+ * thing from the other end: `any` icons are meant to be favicon-like, with transparent
+ * regions and no padding.
+ */
+function anyIconSvg(size, palette, transform) {
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"` +
+    ` viewBox="0 0 ${VIEW_BOX} ${VIEW_BOX}">\n` +
+    `  ${gradientDefs(palette)}` +
+    `  ${glyphGroup(transform, "url(#veGradient)")}\n` +
     `</svg>\n`
   );
 }
@@ -207,21 +282,30 @@ async function rasterize(svg, size, target) {
 
 async function main() {
   const box = await measureGlyph();
-  const iconTransform = centringTransform(box, ICON_GLYPH_WIDTH);
+  const anyTransform = centringTransform(box, ICON_GLYPH_WIDTH);
+  const maskableTransform = centringTransform(box, maskableGlyphWidth(box));
   const badgeTransform = centringTransform(box, BADGE_GLYPH_WIDTH);
 
   let written = 0;
   for (const { dir, palette } of SETS) {
     fs.mkdirSync(dir, { recursive: true });
     for (const size of ICON_SIZES) {
-      const svg = iconSvg(size, palette, iconTransform);
+      const svg = anyIconSvg(size, palette, anyTransform);
       // The SVG is committed as the reviewable source and the PNG as the shipped asset,
       // both regenerated here so they can never disagree.
       fs.writeFileSync(path.join(dir, `icon-${size}x${size}.svg`), svg);
       await rasterize(svg, size, path.join(dir, `icon-${size}x${size}.png`));
       written += 1;
     }
-    console.log(`${path.relative(ICON_ROOT, dir) || "."}: ${ICON_SIZES.join(", ")}`);
+    // One maskable file, at 512 only: it is the size every platform draws the launcher icon
+    // from, and a smaller maskable would just be the same artwork upscaled.
+    const maskable = maskableIconSvg(512, palette, maskableTransform);
+    fs.writeFileSync(path.join(dir, "icon-512-maskable.svg"), maskable);
+    await rasterize(maskable, 512, path.join(dir, "icon-512-maskable.png"));
+    written += 1;
+    console.log(
+      `${path.relative(ICON_ROOT, dir) || "."}: any ${ICON_SIZES.join("/")} + maskable 512`,
+    );
   }
 
   const badge = badgeSvg(BADGE_SIZE, badgeTransform);

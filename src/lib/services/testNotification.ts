@@ -17,7 +17,7 @@
  * `src/__tests__/notificationAssets.test.ts` asserts both copies point at real files.
  */
 export const CLIENT_NOTIFICATION_ICON = "/icons/client/icon-192x192.png";
-export const NOTIFICATION_BADGE = "/icons/badge-72x72.png";
+export const NOTIFICATION_BADGE = "/icons/badge-96x96.png";
 
 export type TestNotificationFailure =
   | "unsupported"

@@ -124,8 +124,10 @@ self.addEventListener("push", (event) => {
       icon: "/icons/client/icon-192x192.png",
       // Android keeps only the alpha channel of the badge to paint the status-bar
       // icon. A full-colour icon renders as a plain white blob, so this points at
-      // the dedicated white-on-transparent silhouette.
-      badge: "/icons/badge-72x72.png",
+      // the dedicated white-on-transparent silhouette. 96 px is the 24 dp Android
+      // draws at a 4x density: a smaller file is downsampled and the car loses its
+      // edges in the status bar.
+      badge: "/icons/badge-96x96.png",
       tag,
       data: { rideId, ...payload.data },
     }),

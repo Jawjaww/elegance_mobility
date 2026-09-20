@@ -36,22 +36,36 @@ function iconSourceFiles(): string[] {
 }
 
 /**
- * Rasterised assets to inspect, each with the way its glyph reads against its background:
- * the app icons draw white strokes over a gradient, the status-bar badge is a white
- * silhouette over transparency.
+ * Every rasterised icon to inspect.
+ *
+ * The glyph reads differently per role: the `maskable` icon and the badge draw white over a
+ * known background, while the `any` icons are transparent with a **gradient** glyph, so their
+ * shape lives in the alpha channel alone. The mode is therefore detected from each file's own
+ * corners rather than listed here.
  */
-function rasterFiles(): { file: string; glyph: "white" | "alpha" }[] {
-  const out: { file: string; glyph: "white" | "alpha" }[] = [];
+function rasterFiles(): string[] {
+  const out: string[] = [];
   for (const dir of [ICONS_DIR, path.join(ICONS_DIR, "client")]) {
     for (const name of fs.readdirSync(dir)) {
-      if (/^icon-\d+x\d+\.png$/.test(name)) {
-        out.push({ file: path.join(dir, name), glyph: "white" });
-      }
+      // Deliberately open. A narrower `^icon-\d+x\d+\.png$` used to exclude
+      // `icon-512-maskable.png` from every raster check — a green suite that never looked at
+      // the new asset.
+      if (/^icon-.*\.png$/.test(name)) out.push(path.join(dir, name));
     }
   }
   for (const name of fs.readdirSync(ICONS_DIR)) {
-    if (/^badge-\d+x\d+\.png$/.test(name)) {
-      out.push({ file: path.join(ICONS_DIR, name), glyph: "alpha" });
+    if (/^badge-\d+x\d+\.png$/.test(name)) out.push(path.join(ICONS_DIR, name));
+  }
+  return out;
+}
+
+/** Icon PNGs of one manifest role, across both palettes. */
+function iconFilesByRole(role: "any" | "maskable"): string[] {
+  const out: string[] = [];
+  for (const dir of [ICONS_DIR, path.join(ICONS_DIR, "client")]) {
+    for (const name of fs.readdirSync(dir)) {
+      if (!name.startsWith("icon-") || !name.endsWith(".png")) continue;
+      if ((role === "maskable") === name.includes("-maskable")) out.push(path.join(dir, name));
     }
   }
   return out;
@@ -228,11 +242,12 @@ describe("notification icon assets", () => {
         "utf8",
       );
 
-      // The background must actually *paint* with the gradient. Asserting only that a
-      // `<linearGradient>` is declared is vacuous: a flat `fill="#2563eb"` left next to an
+      // The gradient must actually *paint*, on the `fill` or the `stroke`. Asserting only that
+      // a `<linearGradient>` is declared is vacuous: a flat `fill="#2563eb"` left next to an
       // unused definition passes that, which is how the first version of this test missed
-      // the very regression it was written for (found by mutation, not by reading).
-      expect(svg).toMatch(/fill="url\(#[A-Za-z0-9_-]+\)"/);
+      // the very regression it was written for (found by mutation, not by reading). The
+      // `any` role has no `<rect>` any more and strokes the glyph instead, so both are valid.
+      expect(svg).toMatch(/(?:fill|stroke)="url\(#[A-Za-z0-9_-]+\)"/);
       for (const stop of stops) {
         expect(svg).toContain(`stop-color="${stop}"`);
       }
@@ -248,12 +263,17 @@ describe("notification icon assets", () => {
     // - no opaque black: that is what a missing font produces.
     const offenders: string[] = [];
 
-    for (const { file, glyph } of rasterFiles()) {
+    for (const file of rasterFiles()) {
       const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({
         resolveWithObject: true,
       });
       const channels = info.channels;
-      const isGlyph = glyph === "white"
+      // The role decides how the glyph reads, and the file itself says which role it is: an
+      // opaque top-left pixel means a filled background, so the glyph is the white artwork.
+      // The `any` icons are transparent and their glyph is the gradient, so only alpha marks
+      // it. Hard-coding a list here is how a role stops being checked.
+      const opaqueBackground = data[3] === 255;
+      const isGlyph = opaqueBackground
         ? (r: number, g: number, b: number) => r > 200 && g > 200 && b > 200
         : (_r: number, _g: number, _b: number, a: number) => a > 40;
 
@@ -300,8 +320,132 @@ describe("notification icon assets", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("keeps the installed app name as the full brand name", () => {
-    // The manifest name is the only place the installed app's name can be set, and that
+  it("keeps the `any` icons transparent, so no consumer can render a square", async () => {
+    // The defect this pins: every icon used to be a full-bleed **opaque** square. Android keeps
+    // only the alpha channel of a small icon, so that square's silhouette *was* a square — a
+    // plain block wherever the artwork is consumed that way — and on Chrome the WebAPK carries
+    // its own badge image built from these files. An opaque corner is the tell, and it is the
+    // cheapest possible check.
+    const files = iconFilesByRole("any");
+    expect(files.length).toBeGreaterThan(0);
+
+    const offenders: string[] = [];
+    for (const file of files) {
+      const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({
+        resolveWithObject: true,
+      });
+      const alphaAt = (x: number, y: number) =>
+        data[(y * info.width + x) * info.channels + 3];
+      const corners = [
+        alphaAt(0, 0),
+        alphaAt(info.width - 1, 0),
+        alphaAt(0, info.height - 1),
+        alphaAt(info.width - 1, info.height - 1),
+      ];
+      if (corners.some((alpha) => alpha === 255)) {
+        offenders.push(`${path.relative(PROJECT_ROOT, file)}: opaque corners`);
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps every `maskable` icon opaque and inside the safe zone", async () => {
+    // Both requirements come from the manifest spec, and both have to be measured. A maskable
+    // icon declared over a transparent image gets composited onto a solid fill of the
+    // browser's choosing — the white square this role exists to avoid. And artwork outside the
+    // 40 % radius may be cropped by whatever shape the platform masks the icon to.
+    const files = iconFilesByRole("maskable");
+    expect(files.length).toBeGreaterThan(0);
+
+    const offenders: string[] = [];
+    for (const file of files) {
+      const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({
+        resolveWithObject: true,
+      });
+      const channels = info.channels;
+      let transparent = 0;
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      for (let y = 0; y < info.height; y += 1) {
+        for (let x = 0; x < info.width; x += 1) {
+          const i = (y * info.width + x) * channels;
+          const [r, g, b, a] = [data[i], data[i + 1], data[i + 2], data[i + 3]];
+          if (a < 255) transparent += 1;
+          if (r > 200 && g > 200 && b > 200) {
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
+        }
+      }
+
+      const label = path.relative(PROJECT_ROOT, file);
+      if (transparent > 0) {
+        offenders.push(`${label}: ${transparent} non-opaque pixels`);
+        continue;
+      }
+      if (minX === Infinity) {
+        offenders.push(`${label}: white glyph not found`);
+        continue;
+      }
+
+      const centreX = (info.width - 1) / 2;
+      const centreY = (info.height - 1) / 2;
+      const safeRadius = 0.4 * info.width;
+      const farthest = Math.max(
+        ...[minX, maxX].flatMap((x) =>
+          [minY, maxY].map((y) => Math.hypot(x - centreX, y - centreY)),
+        ),
+      );
+      if (farthest > safeRadius) {
+        offenders.push(
+          `${label}: glyph corner ${farthest.toFixed(0)}px past safe radius ${safeRadius.toFixed(0)}px`,
+        );
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("declares one `any` and one `maskable` icon per manifest, never combined", async () => {
+    // `any maskable` on a single entry is the tempting one-liner and the wrong answer: the
+    // maskable safe zone adds padding that shrinks the artwork when the same file is used as
+    // an `any` icon, which web.dev warns against explicitly.
+    const problems: string[] = [];
+
+    for (const [name, json] of manifestFiles()) {
+      const icons = (Array.isArray(json.icons) ? json.icons : []) as {
+        src?: string;
+        sizes?: string;
+        purpose?: string;
+      }[];
+
+      const maskable = icons.find((icon) => icon.purpose === "maskable");
+      if (!maskable?.src) {
+        problems.push(`${name}: no maskable icon`);
+        continue;
+      }
+      if (!maskable.src.includes("-maskable")) {
+        problems.push(`${name}: maskable points at ${maskable.src}`);
+      }
+      if (!fs.existsSync(absolute(maskable.src))) {
+        problems.push(`${name}: maskable file missing at ${maskable.src}`);
+      }
+
+      const combined = icons.filter((icon) => (icon.purpose ?? "").includes(" "));
+      if (combined.length > 0) {
+        problems.push(`${name}: combined purpose on ${combined.map((i) => i.src).join(", ")}`);
+      }
+    }
+
+    expect(problems).toEqual([]);
+  });
+
+  it("keeps the installed app name as the full brand name", () => {    // The manifest name is the only place the installed app's name can be set, and that
     // name is what Android shows as the sender of a notification. It read "Elegance
     // Mobility" / "Elegance Driver" — two variants of a brand that exists nowhere else,
     // and neither of them the product's actual name.
