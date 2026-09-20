@@ -57,45 +57,104 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return outputArray;
 }
 
+/**
+ * Scope of the client push worker. It must stay explicit: the driver portal registers
+ * its own worker (`/sw.js`) and two registrations sharing a scope replace each other,
+ * which would silently drop the push handler.
+ */
+const PUSH_SERVICE_WORKER = "/sw-client.js";
+const PUSH_SERVICE_WORKER_SCOPE = "/";
+
+function webPushUnsupportedReason(): string | null {
+  if (typeof window === "undefined") return "SSR";
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    return "Push non supporté sur ce navigateur";
+  }
+  if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
+    return "NEXT_PUBLIC_VAPID_PUBLIC_KEY non configurée";
+  }
+  return null;
+}
+
+async function registerPushServiceWorker(): Promise<ServiceWorkerRegistration> {
+  const registration = await navigator.serviceWorker.register(
+    PUSH_SERVICE_WORKER,
+    { scope: PUSH_SERVICE_WORKER_SCOPE },
+  );
+  await navigator.serviceWorker.ready;
+  return registration;
+}
+
+function vapidApplicationServerKey(): ArrayBuffer {
+  const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
+  return urlBase64ToUint8Array(vapidPublic).buffer as ArrayBuffer;
+}
+
+/**
+ * Reuses the browser's current subscription when one exists. Calling `subscribe()`
+ * unconditionally mints a fresh endpoint every time, which piles up rows in
+ * `push_tokens` — one per visit — and leaves dead endpoints behind.
+ */
+async function resolveSubscription(
+  registration: ServiceWorkerRegistration,
+): Promise<PushSubscription> {
+  const existing = await registration.pushManager.getSubscription();
+  if (existing) return existing;
+
+  return registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: vapidApplicationServerKey(),
+  });
+}
+
+async function persistSubscription(
+  subscription: PushSubscription,
+): Promise<{ success: boolean; error?: string }> {
+  return upsertPushToken(
+    JSON.stringify(subscription),
+    "web",
+    navigator.userAgent.slice(0, 120),
+  );
+}
+
+/**
+ * Registers the current subscription without ever prompting for permission.
+ *
+ * This is the repair path: the client portal calls it on load so a subscription that
+ * the push service invalidated, or that the browser rotated, is re-registered without
+ * the user having to find the notifications page again. Returns a failure when
+ * permission was never granted — asking here would prompt on every page.
+ */
+export async function syncWebPushSubscription(): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const unsupported = webPushUnsupportedReason();
+  if (unsupported) return { success: false, error: unsupported };
+
+  if (Notification.permission !== "granted") {
+    return { success: false, error: "Permission non accordée" };
+  }
+
+  const registration = await registerPushServiceWorker();
+  const subscription = await resolveSubscription(registration);
+  return persistSubscription(subscription);
+}
+
+/** Interactive enrolment: asks for permission, then registers the subscription. */
 export async function subscribeWebPush(): Promise<{
   success: boolean;
   error?: string;
 }> {
-  if (typeof window === "undefined") {
-    return { success: false, error: "SSR" };
-  }
-
-  const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  if (!vapidPublic) {
-    return {
-      success: false,
-      error: "NEXT_PUBLIC_VAPID_PUBLIC_KEY non configurée",
-    };
-  }
-
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-    return { success: false, error: "Push non supporté sur ce navigateur" };
-  }
+  const unsupported = webPushUnsupportedReason();
+  if (unsupported) return { success: false, error: unsupported };
 
   const permission = await Notification.requestPermission();
   if (permission !== "granted") {
     return { success: false, error: "Permission refusée" };
   }
 
-  const registration = await navigator.serviceWorker.register("/sw-client.js");
-  await navigator.serviceWorker.ready;
-
-  const applicationServerKey = urlBase64ToUint8Array(vapidPublic)
-    .buffer as ArrayBuffer;
-
-  const subscription = await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey,
-  });
-
-  return upsertPushToken(
-    JSON.stringify(subscription),
-    "web",
-    navigator.userAgent.slice(0, 120),
-  );
+  const registration = await registerPushServiceWorker();
+  const subscription = await resolveSubscription(registration);
+  return persistSubscription(subscription);
 }
