@@ -8,7 +8,11 @@ import { LANDING_CTA } from "@/components/landing/landingAssets";
 
 export function FinalCtaSection() {
   return (
-    <div className="flex min-h-0 flex-1 flex-col justify-center px-4 sm:px-6 lg:px-8 pt-16 pb-6">
+    // Mobile top padding is tighter than desktop's on purpose: this block shares one
+    // exactly-one-screen panel with the footer, and `100svh` is already reduced by the
+    // visible browser chrome on a phone. The install invitation added to the footer would
+    // otherwise be paid for by clipping the bottom of the last panel.
+    <div className="flex min-h-0 flex-1 flex-col justify-center px-4 sm:px-6 lg:px-8 pt-10 sm:pt-16 pb-6">
       <FadeIn from="left" distance={56} className="max-w-5xl mx-auto w-full">
         <div className="relative overflow-hidden rounded-3xl border border-blue-500/25 bg-gradient-to-br from-blue-950/90 via-neutral-900 to-neutral-950 px-6 py-12 sm:px-12 sm:py-16 lg:py-20 text-center">
           <div
