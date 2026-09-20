@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   createInstallPromptController,
+  isBraveBrowser,
   type InstallOutcome,
   type InstallState,
 } from "@/lib/services/installPrompt";
@@ -21,6 +22,13 @@ export function useInstallPrompt() {
       : createInstallPromptController(window, navigator),
   );
   const [state, setState] = useState<InstallState>("manual");
+  // Starts false for the same hydration reason as the state above, then settles in the
+  // effect: Brave is chrome we must not advise to a user who cannot benefit from it.
+  const [isBrave, setIsBrave] = useState(false);
+
+  useEffect(() => {
+    setIsBrave(isBraveBrowser(navigator));
+  }, []);
 
   useEffect(() => {
     if (!controller) return;
@@ -40,5 +48,5 @@ export function useInstallPrompt() {
     return (await controller?.promptInstall()) ?? "unavailable";
   }, [controller]);
 
-  return { state, promptInstall };
+  return { state, promptInstall, isBrave };
 }

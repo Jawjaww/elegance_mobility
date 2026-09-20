@@ -1,6 +1,8 @@
 import {
   createInstallPromptController,
+  isBraveBrowser,
   isStandaloneDisplay,
+  shouldOfferDirectInstall,
 } from "@/lib/services/installPrompt";
 
 /**
@@ -167,5 +169,28 @@ describe("install prompt controller", () => {
     expect(win.listenerCount("beforeinstallprompt")).toBe(0);
     expect(win.listenerCount("appinstalled")).toBe(0);
     expect(controller.getState()).toBe("promptable");
+  });
+});
+
+describe("Brave cannot complete an install", () => {
+  it("recognises Brave by the shim it injects and nothing else", () => {
+    // `navigator.brave` is Brave's fingerprinting-protection shim; no other Chromium browser
+    // defines it. Recognising the browser is what lets the install surfaces stay silent
+    // instead of inviting a tap that Brave will fail.
+    expect(isBraveBrowser({ brave: {} } as unknown as Navigator)).toBe(true);
+    expect(isBraveBrowser({} as unknown as Navigator)).toBe(false);
+    expect(isBraveBrowser(undefined)).toBe(false);
+  });
+
+  it("refuses the direct install tap on Brave even when the event fired", () => {
+    // The regression this pins: Brave fires `beforeinstallprompt` exactly like Chrome, so
+    // gating the button on the event alone put a button on screen whose only outcome was
+    // Brave's own error — while its "accepted" reply made our copy claim the install had
+    // started. The event is a necessary condition, never a sufficient one.
+    expect(shouldOfferDirectInstall("promptable", true)).toBe(false);
+    expect(shouldOfferDirectInstall("promptable", false)).toBe(true);
+    // Unchanged for the states that were already refused.
+    expect(shouldOfferDirectInstall("manual", false)).toBe(false);
+    expect(shouldOfferDirectInstall("installed", false)).toBe(false);
   });
 });

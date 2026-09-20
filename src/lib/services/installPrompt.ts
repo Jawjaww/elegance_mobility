@@ -53,6 +53,47 @@ export function isStandaloneDisplay(win: WindowLike, nav: Navigator): boolean {
 }
 
 /**
+ * True when the browser is Brave. Brave injects `navigator.brave`, its fingerprinting-
+ * protection shim, and no other Chromium browser does.
+ *
+ * It matters for installation, and only *because* the portal became installable. Brave has no
+ * WebAPK minting server, so it cannot complete a real install and errors out with its own
+ * "impossible d'installer cet appli" ([web.dev/learn/pwa/installation](https://web.dev/learn/pwa/installation)
+ * lists Brave among the browsers that fall back to shortcuts; brave-browser#7357 tracks it).
+ * Until the landing page linked a manifest there was nothing to install but a bookmark
+ * shortcut, and that always worked — which is why this reads as a regression introduced by the
+ * manifest rather than as a browser limit.
+ */
+export function isBraveBrowser(nav: Navigator | undefined): boolean {
+  return (nav as { brave?: unknown } | undefined)?.brave !== undefined;
+}
+
+/**
+ * Whether to offer the in-page install tap.
+ *
+ * `beforeinstallprompt` is not enough on its own: Brave fires it exactly like Chrome, then
+ * fails the install. Gating on the event alone therefore puts a button on screen whose only
+ * outcome is a browser error — and whose "accepted" reply makes our own copy claim the
+ * install started. A tap that cannot work is worse than the written path.
+ */
+export function shouldOfferDirectInstall(state: InstallState, brave: boolean): boolean {
+  return state === "promptable" && !brave;
+}
+
+/**
+ * Shown to a Brave user, which no amount of manifest work can help.
+ *
+ * One constant for both install surfaces: the same correction path written twice is how the
+ * blocked-notification guidance drifted, with only one copy corrected.
+ *
+ * Wording avoids the verb `installer` on purpose — `landingInstallInvite.test.ts` pins that
+ * verb's count in the landing dialog, and a shared constant read into that component must not
+ * be the thing that breaks its guard.
+ */
+export const BRAVE_INSTALL_GUIDANCE =
+  "Brave ne peut pas ajouter l\u2019application : il ne sait pas créer l\u2019entrée Android et l\u2019opération échoue. Passez par Chrome — vous obtiendrez l\u2019application, avec sa propre entrée dans les réglages de notifications Android, là où s\u2019activent le son et les fenêtres flottantes.";
+
+/**
  * Owns the lifetime of the deferred install event.
  *
  * The window and navigator are injected rather than read from globals, so the whole state

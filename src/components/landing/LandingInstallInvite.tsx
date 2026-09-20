@@ -11,6 +11,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
+import {
+  BRAVE_INSTALL_GUIDANCE,
+  shouldOfferDirectInstall,
+} from "@/lib/services/installPrompt";
 import { LANDING_CTA } from "@/components/landing/landingAssets";
 
 /**
@@ -37,7 +41,7 @@ import { LANDING_CTA } from "@/components/landing/landingAssets";
  * raised. See docs/shared/PUSH_SETUP.md.
  */
 export function LandingInstallInvite() {
-  const { state, promptInstall } = useInstallPrompt();
+  const { state, promptInstall, isBrave } = useInstallPrompt();
   const [open, setOpen] = useState(false);
   const [outcome, setOutcome] = useState<string | null>(null);
 
@@ -84,36 +88,47 @@ export function LandingInstallInvite() {
 
           {/* No web page can open the browser menu or the system settings, so the only
               honest thing to show is where the entry lives on each platform. iOS is named
-              because Safari never offers `beforeinstallprompt` at all. */}
-          <ul className="mt-8 space-y-7">
-            <li>
-              <p className="text-xs font-medium uppercase tracking-wider text-blue-300/80">
-                Sur Android
-              </p>
-              <p className="mt-2 text-sm leading-relaxed text-neutral-300">
-                Menu du navigateur (⋮)
-                <span className="mt-1 block font-medium text-white">
-                  → « Installer l&apos;application »
-                </span>
-              </p>
-            </li>
-            <li>
-              <p className="text-xs font-medium uppercase tracking-wider text-blue-300/80">
-                Sur iPhone
-              </p>
-              <p className="mt-2 text-sm leading-relaxed text-neutral-300">
-                Partager
-                <span className="mt-1 block font-medium text-white">
-                  → « Sur l&apos;écran d&apos;accueil »
-                </span>
-              </p>
-            </li>
-          </ul>
+              because Safari never offers `beforeinstallprompt` at all.
 
-          {/* Offered only when the browser actually captured an install prompt: it is
-              then one tap instead of a trip through the menu. Never shown as a dead
-              button, since `promptInstall` would answer `unavailable`. */}
-          {state === "promptable" ? (
+              Brave gets one line instead of both, and it is the same line the account page
+              shows: the directions below point at an entry Brave offers and then fails, so
+              naming it would be advising a step we know does not work. */}
+          {isBrave ? (
+            <p className="mt-8 text-sm leading-relaxed text-amber-300">
+              {BRAVE_INSTALL_GUIDANCE}
+            </p>
+          ) : (
+            <ul className="mt-8 space-y-7">
+              <li>
+                <p className="text-xs font-medium uppercase tracking-wider text-blue-300/80">
+                  Sur Android
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-neutral-300">
+                  Menu du navigateur (⋮)
+                  <span className="mt-1 block font-medium text-white">
+                    → « Installer l&apos;application »
+                  </span>
+                </p>
+              </li>
+              <li>
+                <p className="text-xs font-medium uppercase tracking-wider text-blue-300/80">
+                  Sur iPhone
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-neutral-300">
+                  Partager
+                  <span className="mt-1 block font-medium text-white">
+                    → « Sur l&apos;écran d&apos;accueil »
+                  </span>
+                </p>
+              </li>
+            </ul>
+          )}
+
+          {/* Offered only when the browser actually captured an install prompt *and* can
+              finish one: it is then one tap instead of a trip through the menu. Never shown
+              as a dead button, since `promptInstall` would answer `unavailable` on a browser
+              that did not offer the event, and Brave fails the install after accepting it. */}
+          {shouldOfferDirectInstall(state, isBrave) ? (
             <Button
               className={`mt-8 w-full ${LANDING_CTA}`}
               onClick={() => {

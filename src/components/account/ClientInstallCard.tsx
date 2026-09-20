@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
+import { BRAVE_INSTALL_GUIDANCE } from "@/lib/services/installPrompt";
 import { Download, Smartphone } from "lucide-react";
 
 /**
@@ -16,7 +17,7 @@ import { Download, Smartphone } from "lucide-react";
  * a button that cannot work is worse than no button — the written path is shown instead.
  */
 export function ClientInstallCard() {
-  const { state, promptInstall } = useInstallPrompt();
+  const { state, promptInstall, isBrave } = useInstallPrompt();
   const [outcome, setOutcome] = useState<string | null>(null);
 
   if (state === "installed") {
@@ -27,6 +28,19 @@ export function ClientInstallCard() {
           Application installée. Le son et les fenêtres flottantes se règlent dans les
           réglages de notifications d&apos;Android.
         </span>
+      </div>
+    );
+  }
+
+  // Checked before the two states below, because Brave reaches both of them and can finish
+  // neither: it fires `beforeinstallprompt` (so it looks `promptable`) and then fails the
+  // install. The green message above still wins, since a Brave user who installed from Chrome
+  // is genuinely installed.
+  if (isBrave) {
+    return (
+      <div className="flex items-start gap-2 text-sm text-amber-300">
+        <Smartphone className="h-4 w-4 mt-0.5 shrink-0" />
+        <span>{BRAVE_INSTALL_GUIDANCE}</span>
       </div>
     );
   }
