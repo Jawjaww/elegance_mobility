@@ -1,6 +1,93 @@
 /**
- * Service Worker — client portal push notifications
+ * Service Worker — client portal push notifications, and the app shell's static cache.
+ *
+ * One registration serves two requirements that look unrelated:
+ *
+ * - `push` delivers the notifications.
+ * - `fetch` is what Android requires before it will install a real app (a WebAPK). Chromium
+ *   dropped that requirement on desktop, but Android — Brave and Chrome alike — still
+ *   refuses to build the app without a worker that handles `fetch`. Critically, this gate
+ *   does **not** show up in `Page.getInstallabilityErrors`, which reports an empty list for
+ *   this very site: the manifest, icons and scope all pass. So a manifest alone makes the
+ *   browser *offer* installation and then fail it with "impossible d'installer cette
+ *   application", while push keeps working — because push only ever needed the other
+ *   handler. Losing this listener silently removes the install path.
+ *
+ * The cache is deliberately narrow, and the two prefixes are treated differently on purpose:
+ *
+ * - `/_next/static/*` is content-hashed by Next, so a given URL never changes content:
+ *   cache-first, and the entry can never go stale.
+ * - The icon set keeps stable filenames across artwork changes — these very drawings were
+ *   redesigned not long ago. Cache-first would therefore have pinned the previous ones
+ *   forever, so those are fetched network-first and only fall back to the cache when offline.
+ *
+ * Navigations, RSC payloads, API and Supabase traffic are never intercepted: caching the
+ * HTML shell is how a deploy turns into a stale app.
  */
+const STATIC_CACHE = "ve-static-v1";
+const IMMUTABLE_PREFIXES = ["/_next/static/"];
+const REVALIDATE_PREFIXES = ["/icons/"];
+
+self.addEventListener("install", (event) => {
+  // Only immutable URLs are cached and nothing is served stale, so taking over immediately
+  // is safe — and it is what lets an install fix land without waiting for every tab to close.
+  event.waitUntil(self.skipWaiting());
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      const names = await caches.keys();
+      await Promise.all(
+        names
+          .filter((name) => name.startsWith("ve-static-") && name !== STATIC_CACHE)
+          .map((name) => caches.delete(name)),
+      );
+      await self.clients.claim();
+    })(),
+  );
+});
+
+self.addEventListener("fetch", (event) => {
+  const request = event.request;
+
+  // Anything that is not a same-origin GET is left to the network untouched.
+  if (request.method !== "GET") return;
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+
+  const immutable = IMMUTABLE_PREFIXES.some((p) => url.pathname.startsWith(p));
+  const revalidate = REVALIDATE_PREFIXES.some((p) => url.pathname.startsWith(p));
+  if (!immutable && !revalidate) return;
+
+  // Both branches stay inside `respondWith`: `waitUntil` raises `InvalidStateError` once the
+  // handler has returned, so it cannot be reached after an `await` — a background refresh
+  // written that way would fail at runtime. Everything therefore completes within the
+  // response promise the event is already waiting on.
+  event.respondWith(
+    (async () => {
+      const cache = await caches.open(STATIC_CACHE);
+      const cached = await cache.match(request);
+
+      if (immutable && cached) return cached;
+
+      try {
+        const response = await fetch(request);
+        // Only a successful, complete response is worth storing; a 404 replayed later for a
+        // path that simply is not deployed yet would be worse than no cache at all.
+        if (response.ok) await cache.put(request, response.clone());
+        return response;
+      } catch (error) {
+        // Network-first paths fall back to the cached copy, which is what makes the app
+        // shell usable offline. Without a cache there is nothing to serve: rethrow so the
+        // browser reports the failure instead of us inventing a response.
+        if (cached) return cached;
+        throw error;
+      }
+    })(),
+  );
+});
+
 self.addEventListener("push", (event) => {
   let payload = { title: "Vector Elegans", body: "Nouvelle notification" };
   try {

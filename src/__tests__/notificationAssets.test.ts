@@ -57,9 +57,17 @@ function rasterFiles(): { file: string; glyph: "white" | "alpha" }[] {
   return out;
 }
 
-/** Icon paths declared by static files, whatever the quoting style. */
+/**
+ * Icon paths declared by static files, whatever the quoting style.
+ *
+ * The image extension is required. The assertion built on this is "every referenced icon
+ * exists", and without that requirement a bare directory prefix — the service worker lists
+ * one to know which requests to cache — would be satisfied by the directory itself.
+ */
 function referencedIconPaths(source: string): string[] {
-  return [...source.matchAll(/["'`](\/icons\/[^"'`\s]+)["'`]/g)].map((match) => match[1]);
+  return [...source.matchAll(/["'`](\/icons\/[^"'`\s]+\.(?:png|svg))["'`]/g)].map(
+    (match) => match[1],
+  );
 }
 
 function readJson(filePath: string): Record<string, unknown> {

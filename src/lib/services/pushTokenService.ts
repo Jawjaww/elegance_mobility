@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/database/client";
+import { registerAppServiceWorker } from "@/lib/services/serviceWorkerRegistration";
 
 export type PushPlatform = "expo" | "web";
 
@@ -58,13 +59,10 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 }
 
 /**
- * Scope of the client push worker. It must stay explicit: two registrations sharing a
- * scope replace each other, so an implicit scope would let a later registration silently
- * drop the push handler. This is the only worker the web app registers — the driver
- * portal's own `sw.js` was dead (never registered) and has been removed.
+ * The worker's URL and scope live in `serviceWorkerRegistration.ts`, which registers the
+ * same worker on load. A second copy here would be a second source of truth for the scope,
+ * and two registrations sharing a scope silently replace each other.
  */
-const PUSH_SERVICE_WORKER = "/sw-client.js";
-const PUSH_SERVICE_WORKER_SCOPE = "/";
 
 /**
  * Why a web push enrolment could not complete.
@@ -144,14 +142,16 @@ function unsupportedWebPushReason(): WebPushFailureReason | null {
   return null;
 }
 
-async function registerPushServiceWorker(): Promise<ServiceWorkerRegistration> {
-  const registration = await navigator.serviceWorker.register(
-    PUSH_SERVICE_WORKER,
-    { scope: PUSH_SERVICE_WORKER_SCOPE },
-  );
-  await navigator.serviceWorker.ready;
-  return registration;
-}
+  async function registerPushServiceWorker(): Promise<ServiceWorkerRegistration> {
+    const result = await registerAppServiceWorker();
+    if (!result.ok) {
+      // `unsupported` is already filtered out by `unsupportedWebPushReason` before this
+      // point, so reaching here means the registration genuinely failed.
+      throw new Error(`service worker registration failed: ${result.reason}`);
+    }
+    await navigator.serviceWorker.ready;
+    return result.registration;
+  }
 
 function vapidApplicationServerKey(): ArrayBuffer {
   const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";

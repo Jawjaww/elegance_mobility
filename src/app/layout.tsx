@@ -1,6 +1,7 @@
 import { Outfit } from "next/font/google";
 import Script from "next/script";
 import { ClientProviders } from "@/components/ClientProviders";
+import { ServiceWorkerRegistrar } from "@/components/pwa/ServiceWorkerRegistrar";
 import { STRIP_EXTENSION_DOM_ATTRS_SCRIPT } from "@/lib/strip-extension-dom-attrs";
 import "./globals.css";
 
@@ -52,7 +53,14 @@ export default function RootLayout({
           <div className="bg-elegant-gradient w-full h-full" />
         </div>
 
-        <ClientProviders>{children}</ClientProviders>
+        <ClientProviders>
+          {/* Mounted here rather than in a portal layout so the landing page, the client
+              portal and the driver portal all get a worker: Android will not install the
+              app without one handling `fetch`, and the landing is where the install entry
+              lives. */}
+          <ServiceWorkerRegistrar />
+          {children}
+        </ClientProviders>
       </body>
     </html>
   );
