@@ -28,25 +28,6 @@ export async function upsertPushToken(
   return { success: true };
 }
 
-export async function fetchUserNotifications(userId: string) {
-  const { data, error } = await supabase
-    .from("notifications")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(50);
-
-  if (error) throw error;
-  return data ?? [];
-}
-
-export async function markNotificationRead(notificationId: string) {
-  const { error } = await supabase.rpc("mark_notification_read", {
-    notification_uuid: notificationId,
-  });
-  if (error) throw error;
-}
-
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replaceAll("-", "+").replaceAll("_", "/");
