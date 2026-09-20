@@ -15,8 +15,12 @@
  *
  * The cache is deliberately narrow, and the two prefixes are treated differently on purpose:
  *
- * - `/_next/static/*` is content-hashed by Next, so a given URL never changes content:
- *   cache-first, and the entry can never go stale.
+ * - `/_next/static/*` is content-hashed by Next **in production**, so a given URL never
+ *   changes content there: cache-first. In development the very same paths are served
+ *   `no-store, must-revalidate`, and their content changes on every edit — so an entry is
+ *   only stored when the response itself declares it immutable. Trusting the URL shape
+ *   instead is what pinned a development chunk and made a page run code that no longer
+ *   existed on disk.
  * - The icon set keeps stable filenames across artwork changes — these very drawings were
  *   redesigned not long ago. Cache-first would therefore have pinned the previous ones
  *   forever, so those are fetched network-first and only fall back to the cache when offline.
@@ -24,9 +28,27 @@
  * Navigations, RSC payloads, API and Supabase traffic are never intercepted: caching the
  * HTML shell is how a deploy turns into a stale app.
  */
-const STATIC_CACHE = "ve-static-v1";
+// Versioned on purpose: `activate` deletes every other `ve-static-*` cache, so bumping the
+// name is also what clears entries a previous worker stored wrongly, without asking anyone
+// to clear storage by hand.
+const STATIC_CACHE = "ve-static-v2";
 const IMMUTABLE_PREFIXES = ["/_next/static/"];
 const REVALIDATE_PREFIXES = ["/icons/"];
+
+/**
+ * Whether the server itself says this URL's content never changes.
+ *
+ * `cache-control: immutable` is Next's own answer to that question, and it is the only
+ * signal that tells development and production apart: `next dev` serves the same
+ * `/_next/static/*` paths as `no-store, must-revalidate`, because a chunk's content changes
+ * on every edit while its URL does not (`next/dist/server/lib/router-server.js`). Storing
+ * those pinned a development chunk in the browser — the page then ran a file that no longer
+ * existed on disk, and `isBrave is not defined` was the result, the variable having been
+ * added to the source while the worker kept handing back the chunk from before it.
+ */
+function isImmutable(response) {
+  return (response.headers.get("cache-control") ?? "").includes("immutable");
+}
 
 self.addEventListener("install", (event) => {
   // Only immutable URLs are cached and nothing is served stale, so taking over immediately
@@ -69,13 +91,20 @@ self.addEventListener("fetch", (event) => {
       const cache = await caches.open(STATIC_CACHE);
       const cached = await cache.match(request);
 
+      // Answering without touching the network is only safe because nothing but an
+      // immutability claim gets stored below: a hit here cannot be a development chunk.
       if (immutable && cached) return cached;
 
       try {
         const response = await fetch(request);
-        // Only a successful, complete response is worth storing; a 404 replayed later for a
-        // path that simply is not deployed yet would be worse than no cache at all.
-        if (response.ok) await cache.put(request, response.clone());
+          // Only a successful, complete response is worth storing; a 404 replayed later for a
+          // path that simply is not deployed yet would be worse than no cache at all. The
+          // `/icons/` set is stored whatever the header says (its filenames are stable, and the
+          // cache is what serves it offline); the `/_next/static/` prefix is stored only on the
+          // server's own immutability claim, which is absent in development.
+        if (response.ok && (revalidate || isImmutable(response))) {
+          await cache.put(request, response.clone());
+        }
         return response;
       } catch (error) {
         // Network-first paths fall back to the cached copy, which is what makes the app

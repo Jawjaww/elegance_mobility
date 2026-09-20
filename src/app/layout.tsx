@@ -37,8 +37,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" suppressHydrationWarning>
+      {/* `100dvh` rather than `min-h-screen` (100vh): on mobile, `100vh` is the height of the
+          viewport *without* the address bar, so a 100vh body is always taller than what the
+          user actually sees and every short page becomes scrollable by the height of the
+          browser chrome — scrolling that reveals nothing. `dvh` follows the visible viewport. */}
       <body
-        className={`${outfit.variable} font-outfit antialiased min-h-screen`}
+        className={`${outfit.variable} font-outfit antialiased min-h-[100dvh]`}
         suppressHydrationWarning
       >
         <Script

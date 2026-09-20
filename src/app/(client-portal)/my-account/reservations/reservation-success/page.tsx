@@ -2,9 +2,15 @@
 import Link from "next/link";
 import { Check } from "lucide-react";
 
+/**
+ * Fills the space left between the header and the bottom nav (`flex-1`) instead of declaring
+ * its own `min-h-screen`. A viewport-sized block nested inside the shell added a full screen
+ * of height on top of the header and the nav clearance, which is why this page scrolled far
+ * more than the others.
+ */
 export default function ReservationSuccessPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-5 py-12 sm:px-6">
+    <div className="flex flex-1 items-center justify-center px-5 py-12 sm:px-6">
       <div className="w-full max-w-3xl">
         <div className="flex flex-col items-center mb-12 space-y-4 text-center">
           <div className="inline-flex items-center justify-center bg-blue-600/20 rounded-full p-4 sm:p-6 animate-in zoom-in-50 duration-500">

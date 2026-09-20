@@ -47,10 +47,11 @@ function readSource(file: string): string {
 function readCopy(file: string): string {
   const raw = fs.readFileSync(file, "utf8");
 
-  // Block comments first: a `//` sitting inside one must not survive to the next pass.
-  const withoutComments = raw
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/\/\/.*$/gm, "");
+  // Single pass, block alternative first. Stripping the two kinds in sequence breaks on a
+  // `/*` written inside a `//` comment — the block pass sees it before knowing it is inside a
+  // line comment, and swallows everything up to the next `*/`. Alternation lets whichever
+  // construct *opens* first win, which also covers a `//` inside a block comment (a URL).
+  const withoutComments = raw.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
 
   return withoutComments.replace(/\s+/g, " ");
 }

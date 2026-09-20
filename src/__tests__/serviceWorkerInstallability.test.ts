@@ -24,13 +24,21 @@ function readWorker(): string {
 }
 
 /**
- * Comments are removed before any assertion about *code*. Two guards already tripped over
+ * Comments are removed before any assertion about *code*. Three guards have now tripped over
  * their own prose: a comment citing the `/icons/` prefix pattern was read as an icon
- * reference, and one explaining why `waitUntil` is forbidden contained the word itself.
- * A guard must read the code, never the explanation of the code.
+ * reference, one explaining why `waitUntil` is forbidden contained the word itself, and one
+ * naming the static prefix hid the rest of the handler. A guard must read the code, never the
+ * explanation of the code.
+ *
+ * One pass, with the two comment forms as alternatives and the block form tried first, rather
+ * than stripping the block form and then the line form. Sequenced that way, a block opener
+ * typed inside a line comment is matched by the block pass, which has no idea it is inside a
+ * line comment, and everything up to the next block terminator is swallowed — code included.
+ * Alternation lets whichever construct opens first win, which is right in both directions,
+ * including the reverse case of a line-comment marker inside a block comment, such as a URL.
  */
 function stripComments(source: string): string {
-  return source.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+  return source.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, " ");
 }
 
 /**
@@ -90,5 +98,32 @@ describe("installable app shell", () => {
     expect(immutable).toContain("/_next/static/");
     expect(immutable).not.toContain("/icons/");
     expect(revalidated).toContain("/icons/");
+  });
+
+  it("stores a chunk only when the response declares itself immutable", () => {
+    // The regression behind a page dying on "isBrave is not defined": every successful
+    // response under `/_next/static/` was cached, including the `no-store` ones `next dev`
+    // serves for those very paths. The pinned development chunk then outlived the edit that
+    // produced it, and the page ran a version of the file that no longer existed on disk.
+    // Immutability has to be read from the response, because the URL looks identical in
+    // development and in production — only the header tells them apart.
+    const handler = fetchHandlerCode();
+    const worker = readWorker();
+
+    expect(handler).toMatch(/isImmutable\(response\)/);
+    expect(worker).toMatch(/headers\.get\("cache-control"\)/);
+    expect(worker).toMatch(/includes\("immutable"\)/);
+    // The unconditional store that caused the outage must be gone, not merely bypassed.
+    expect(handler).not.toMatch(/if \(response\.ok\) await cache\.put/);
+  });
+
+  it("purges an older cache generation, so a bad entry cannot outlive the fix", () => {
+    // The name is versioned for exactly this: `activate` deletes every other `ve-static-*`
+    // cache, which repairs a browser already holding a pinned chunk without asking anyone to
+    // clear storage by hand.
+    const worker = readWorker();
+
+    expect(worker).toMatch(/const STATIC_CACHE = "ve-static-v\d+"/);
+    expect(worker).toMatch(/name\.startsWith\("ve-static-"\) && name !== STATIC_CACHE/);
   });
 });
