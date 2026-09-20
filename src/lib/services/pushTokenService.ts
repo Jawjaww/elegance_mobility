@@ -65,13 +65,70 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 const PUSH_SERVICE_WORKER = "/sw-client.js";
 const PUSH_SERVICE_WORKER_SCOPE = "/";
 
-function webPushUnsupportedReason(): string | null {
-  if (typeof window === "undefined") return "SSR";
+/**
+ * Why a web push enrolment could not complete.
+ *
+ * Codes rather than prose, because three different permission outcomes need three
+ * different remedies and a single "refused" message told the user nothing. Chrome
+ * declining to *show* the prompt — a screen overlay from another app, a non-secure
+ * origin — looked exactly like the user having blocked notifications, which points at
+ * the opposite action.
+ */
+export type WebPushFailureReason =
+  | "ssr"
+  | "unsupported"
+  | "insecure_context"
+  | "vapid_missing"
+  /** Permission is (or became) `denied`: only Chrome's site settings can undo it. */
+  | "permission_denied"
+  /** Chrome never displayed the prompt, so nothing was decided — the remedy is on the phone. */
+  | "prompt_unavailable"
+  /** Repair path only: permission was never granted, and it must not prompt to find out. */
+  | "permission_not_granted"
+  | "subscription_failed";
+
+export type WebPushResult = {
+  success: boolean;
+  reason?: WebPushFailureReason;
+  error?: string;
+};
+
+/**
+ * User-facing copy per failure. Each entry names the action that actually unblocks the
+ * case it describes — a generic message here is what made the failure look like a refusal.
+ */
+const WEB_PUSH_FAILURE_COPY: Record<WebPushFailureReason, string> = {
+  ssr: "Rendu côté serveur",
+  unsupported: "Push non supporté sur ce navigateur",
+  insecure_context:
+    "Les notifications exigent HTTPS (ou localhost) : cette page n'est pas en contexte sécurisé",
+  vapid_missing: "NEXT_PUBLIC_VAPID_PUBLIC_KEY non configurée",
+  permission_denied:
+    "Notifications bloquées pour ce site — autorisez-les dans les réglages Chrome (Paramètres du site → Notifications)",
+  prompt_unavailable:
+    "Chrome n'a pas affiché la demande d'autorisation — fermez les bulles ou fenêtres superposées d'autres applications, puis réessayez",
+  permission_not_granted: "Permission non accordée",
+  subscription_failed: "Abonnement push impossible — réessayez",
+};
+
+function webPushFailure(
+  reason: WebPushFailureReason,
+  error?: string,
+): WebPushResult {
+  return { success: false, reason, error: error ?? WEB_PUSH_FAILURE_COPY[reason] };
+}
+
+function unsupportedWebPushReason(): WebPushFailureReason | null {
+  if (typeof window === "undefined") return "ssr";
+  // Checked before the API probe: on a plain-HTTP origin the service worker and
+  // PushManager are missing too, and "unsupported browser" would send the user looking
+  // for a browser problem that does not exist — the page just is not a secure context.
+  if (!window.isSecureContext) return "insecure_context";
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-    return "Push non supporté sur ce navigateur";
+    return "unsupported";
   }
   if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
-    return "NEXT_PUBLIC_VAPID_PUBLIC_KEY non configurée";
+    return "vapid_missing";
   }
   return null;
 }
@@ -109,12 +166,15 @@ async function resolveSubscription(
 
 async function persistSubscription(
   subscription: PushSubscription,
-): Promise<{ success: boolean; error?: string }> {
-  return upsertPushToken(
+): Promise<WebPushResult> {
+  const result = await upsertPushToken(
     JSON.stringify(subscription),
     "web",
     navigator.userAgent.slice(0, 120),
   );
+  if (result.success) return { success: true };
+  // Keep the server's message: it is the only diagnostic for a row that was refused.
+  return webPushFailure("subscription_failed", result.error);
 }
 
 /**
@@ -125,15 +185,12 @@ async function persistSubscription(
  * the user having to find the notifications page again. Returns a failure when
  * permission was never granted — asking here would prompt on every page.
  */
-export async function syncWebPushSubscription(): Promise<{
-  success: boolean;
-  error?: string;
-}> {
-  const unsupported = webPushUnsupportedReason();
-  if (unsupported) return { success: false, error: unsupported };
+export async function syncWebPushSubscription(): Promise<WebPushResult> {
+  const unsupported = unsupportedWebPushReason();
+  if (unsupported) return webPushFailure(unsupported);
 
   if (Notification.permission !== "granted") {
-    return { success: false, error: "Permission non accordée" };
+    return webPushFailure("permission_not_granted");
   }
 
   const registration = await registerPushServiceWorker();
@@ -142,19 +199,32 @@ export async function syncWebPushSubscription(): Promise<{
 }
 
 /** Interactive enrolment: asks for permission, then registers the subscription. */
-export async function subscribeWebPush(): Promise<{
-  success: boolean;
-  error?: string;
-}> {
-  const unsupported = webPushUnsupportedReason();
-  if (unsupported) return { success: false, error: unsupported };
+export async function subscribeWebPush(): Promise<WebPushResult> {
+  const unsupported = unsupportedWebPushReason();
+  if (unsupported) return webPushFailure(unsupported);
 
   const permission = await Notification.requestPermission();
   if (permission !== "granted") {
-    return { success: false, error: "Permission refusée" };
+    // The value *after* the call is the only signal that separates the two cases, and
+    // they need opposite actions. A permission left at `default` means Chrome never
+    // showed the prompt at all (it refuses while another app draws an overlay over the
+    // screen — chat heads, a floating player, and notably our own driver overlay
+    // bubble), so asking the user to "unblock" it would be nonsense.
+    return webPushFailure(
+      Notification.permission === "denied"
+        ? "permission_denied"
+        : "prompt_unavailable",
+    );
   }
 
-  const registration = await registerPushServiceWorker();
-  const subscription = await resolveSubscription(registration);
-  return persistSubscription(subscription);
+  try {
+    const registration = await registerPushServiceWorker();
+    const subscription = await resolveSubscription(registration);
+    return await persistSubscription(subscription);
+  } catch (error) {
+    // Swallowed on purpose: this promise is awaited from a button handler, and a
+    // rejection there would leave the UI stuck on "Activation…" with no explanation.
+    console.warn("[push] subscription failed:", error);
+    return webPushFailure("subscription_failed");
+  }
 }

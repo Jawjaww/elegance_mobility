@@ -41,6 +41,18 @@ function setPermission(permission: NotificationPermission): jest.Mock {
   return requestPermission;
 }
 
+/**
+ * jsdom does not implement `isSecureContext` (it is `undefined`), and the service now
+ * refuses to enrol without it — an undefined value would be read as an insecure origin
+ * and fail every test for the wrong reason. Each test states the context it assumes.
+ */
+function setSecureContext(value: boolean) {
+  Object.defineProperty(globalThis, "isSecureContext", {
+    configurable: true,
+    value,
+  });
+}
+
 function setPushManager(existing: PushSubscriptionLike | null) {
   const subscribe = jest.fn().mockResolvedValue(FRESH);
   const getSubscription = jest.fn().mockResolvedValue(existing);
@@ -65,6 +77,7 @@ beforeEach(() => {
   rpcMock.mockReset();
   rpcMock.mockResolvedValue({ data: [{ success: true }], error: null });
   process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = VAPID_PUBLIC;
+  setSecureContext(true);
 });
 
 describe("syncWebPushSubscription (silent repair path)", () => {
@@ -154,5 +167,62 @@ describe("subscribeWebPush (interactive enrolment)", () => {
 
     expect(result.success).toBe(false);
     expect(register).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The regression this file exists for. Chrome refusing to *show* the prompt — a screen
+   * overlay from another app is the usual cause — leaves the permission at `default`.
+   * Reporting that as "refused" told the user to unblock something that was never
+   * blocked, which is the opposite of the action that unblocks it.
+   */
+  it("separates a prompt Chrome never showed from a refusal", async () => {
+    setPermission("default");
+    const { register } = setPushManager(null);
+
+    const result = await subscribeWebPush();
+
+    expect(result.success).toBe(false);
+    expect(result.reason).toBe("prompt_unavailable");
+    expect(result.error).toMatch(/superposées/);
+    expect(result.error).not.toMatch(/refusée/i);
+    expect(register).not.toHaveBeenCalled();
+  });
+
+  it("reports a blocked permission as such, pointing at Chrome's settings", async () => {
+    setPermission("denied");
+    setPushManager(null);
+
+    const result = await subscribeWebPush();
+
+    expect(result.reason).toBe("permission_denied");
+    expect(result.error).toMatch(/réglages Chrome/);
+  });
+
+  it("refuses to enrol on a non-secure origin, before probing the browser", async () => {
+    setSecureContext(false);
+    setPermission("default");
+    const { register } = setPushManager(null);
+
+    const result = await subscribeWebPush();
+
+    expect(result.success).toBe(false);
+    expect(result.reason).toBe("insecure_context");
+    expect(result.error).toMatch(/HTTPS/);
+    expect(register).not.toHaveBeenCalled();
+  });
+
+  it("never rejects when the push service refuses, so the button cannot hang", async () => {
+    jest.spyOn(console, "warn").mockImplementation(() => {});
+    setPermission("granted");
+    const { register } = setPushManager(null);
+    register.mockRejectedValue(new Error("push service unavailable"));
+
+    const result = await subscribeWebPush();
+
+    expect(result).toEqual({
+      success: false,
+      reason: "subscription_failed",
+      error: expect.stringContaining("Abonnement push impossible"),
+    });
   });
 });
