@@ -16,18 +16,25 @@ import { LANDING_CTA } from "@/components/landing/landingAssets";
 /**
  * Install invitation shown at the bottom of the landing page.
  *
- * The instructions live in a dialog rather than in the footer. The landing is a stack of
- * full-viewport snap panels and this footer is pinned to the last one, so every line added
- * here eats the height the CTA card needs — the panel clips its overflow, and on a phone
- * (where `100svh` is already reduced by the visible browser chrome) three lines of menu
- * directions were enough to cut the block off the bottom of the screen. A dialog has room
- * for the directions and costs the footer nothing.
+ * The directions live in a dialog rather than in the footer. The landing is a stack of
+ * full-viewport snap panels and this footer is pinned to the last one, which clips its
+ * overflow, so every line added there is paid for by cutting the bottom of the panel. A
+ * dialog costs the footer nothing.
  *
- * Installing is what gives the notification a name and a channel: a notification coming
- * from a browser tab is attributed to the browser and the bare origin ("Chrome • host"),
- * which no page can change, whereas one coming from the installed app carries the
- * manifest's name and gets its own entry in Android's notification settings — the only
- * place sound and "pop on screen" can be raised. See docs/shared/PUSH_SETUP.md.
+ * The copy is deliberately spare. The footer stays visible behind the overlay, so the dialog
+ * first led with "Installer Vector Elegans", then "L'installation …", then the quoted label,
+ * then an "Installer directement" button — the footer's own wording four times over, in two
+ * blocks the reader takes in at once. The footer itself repeated the action too, pairing a
+ * "Installez Vector Elegans" lead-in with an "Installer l'application" button; it is now a
+ * single button carrying the wording. The verb `Installer` therefore survives exactly once in
+ * this file, inside the quotes, where it is the browser's label to look for rather than our
+ * own copy. `landingInstallInvite.test.ts` pins that count.
+ *
+ * Installing is what gives the notification a name and a channel: a notification from a
+ * browser tab is attributed to the browser and the bare origin, which no page can change,
+ * whereas one from the installed app carries the manifest's name and gets its own entry in
+ * Android's notification settings — the only place sound and "pop on screen" can be
+ * raised. See docs/shared/PUSH_SETUP.md.
  */
 export function LandingInstallInvite() {
   const { state, promptInstall } = useInstallPrompt();
@@ -40,50 +47,66 @@ export function LandingInstallInvite() {
 
   return (
     <>
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm text-neutral-300 truncate">
-            Installez <span className="font-semibold text-white">Vector Elegans</span>
-          </p>
-          <p className="text-xs text-neutral-500 truncate">
-            Suivi de course et notifications, même application fermée.
-          </p>
-        </div>
+      {/* One element, not three. The lead-in text, the subtitle and the button used to sit
+          here as a stack, and since this footer stays visible behind the dialog, "Installez
+          Vector Elegans" and "Installer l'application" announced the same action twice, a few
+          pixels apart. The action now carries the wording on its own; the value proposition
+          lives in the dialog. */}
+      <div className="max-w-7xl mx-auto flex justify-center">
         <Button
           size="sm"
-          className={`h-9 px-4 shrink-0 ${LANDING_CTA}`}
+          className={`h-9 px-5 ${LANDING_CTA}`}
           onClick={() => {
             setOutcome(null);
             setOpen(true);
           }}
         >
           <Download className="h-4 w-4 mr-2" aria-hidden />
-          Installer l&apos;application
+          Installez Vector Elegans
         </Button>
       </div>
 
+      {/* Padding and gaps are widened from the component defaults, and each direction is
+          split over two lines: the two platforms read as two blocks instead of one dense
+          paragraph. */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="border-blue-500/25 bg-neutral-950 text-white">
-          <DialogHeader>
-            <DialogTitle>Installer Vector Elegans</DialogTitle>
+        <DialogContent className="gap-0 border-blue-500/25 bg-neutral-950 p-6 text-white sm:p-8">
+          {/* `space-y-2` on the header rather than `space-y-0` plus a `mt-2` on the
+              description: the `space-y-*` selector outranks a plain `mt-*`, so the margin
+              was being overridden and the title sat flush against the description —
+              measured at 0px before this was changed. */}
+          <DialogHeader className="space-y-2 text-left">
+            <DialogTitle>Ajouter à votre téléphone</DialogTitle>
             <DialogDescription className="text-neutral-400">
-              L&apos;installation donne à l&apos;application sa propre entrée dans les
-              réglages de notifications Android — c&apos;est là que s&apos;activent le son
-              et les fenêtres flottantes.
+              Pour recevoir les notifications avec son et fenêtre flottante.
             </DialogDescription>
           </DialogHeader>
 
           {/* No web page can open the browser menu or the system settings, so the only
               honest thing to show is where the entry lives on each platform. iOS is named
               because Safari never offers `beforeinstallprompt` at all. */}
-          <ul className="space-y-2 text-sm text-neutral-300">
+          <ul className="mt-8 space-y-7">
             <li>
-              <span className="font-medium text-white">Sur Android :</span> Menu du
-              navigateur (⋮) → « Installer l&apos;application »
+              <p className="text-xs font-medium uppercase tracking-wider text-blue-300/80">
+                Sur Android
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-neutral-300">
+                Menu du navigateur (⋮)
+                <span className="mt-1 block font-medium text-white">
+                  → « Installer l&apos;application »
+                </span>
+              </p>
             </li>
             <li>
-              <span className="font-medium text-white">Sur iPhone :</span> Partager →
-              « Sur l&apos;écran d&apos;accueil »
+              <p className="text-xs font-medium uppercase tracking-wider text-blue-300/80">
+                Sur iPhone
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-neutral-300">
+                Partager
+                <span className="mt-1 block font-medium text-white">
+                  → « Sur l&apos;écran d&apos;accueil »
+                </span>
+              </p>
             </li>
           </ul>
 
@@ -92,24 +115,24 @@ export function LandingInstallInvite() {
               button, since `promptInstall` would answer `unavailable`. */}
           {state === "promptable" ? (
             <Button
-              className={`w-full ${LANDING_CTA}`}
+              className={`mt-8 w-full ${LANDING_CTA}`}
               onClick={() => {
                 void (async () => {
                   const result = await promptInstall();
                   setOutcome(
                     result === "accepted"
-                      ? "Installation lancée."
-                      : "Installation annulée — vous pouvez réessayer depuis le menu du navigateur.",
+                      ? "Ajout lancé."
+                      : "Ajout annulé — vous pouvez réessayer depuis le menu du navigateur.",
                   );
                 })();
               }}
             >
               <Download className="h-4 w-4 mr-2" aria-hidden />
-              Installer directement
+              Ajouter directement
             </Button>
           ) : null}
 
-          {outcome ? <p className="text-sm text-neutral-400">{outcome}</p> : null}
+          {outcome ? <p className="mt-4 text-sm text-neutral-400">{outcome}</p> : null}
         </DialogContent>
       </Dialog>
     </>

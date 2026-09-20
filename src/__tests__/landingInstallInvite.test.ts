@@ -34,6 +34,27 @@ function readSource(file: string): string {
   return fs.readFileSync(file, "utf8").replace(/\s+/g, " ");
 }
 
+/**
+ * Source with comments removed. The prose in this file discusses the verb at length
+ * ("Installer Vector Elegans", "install prompt", "Installing is what …"), so counting words
+ * on the raw file would measure the commentary instead of the copy the user reads.
+ *
+ * Comments are stripped *before* whitespace is collapsed, and that order is load-bearing:
+ * collapsing first turns the file into a single line, at which point one `//` comment
+ * swallows the rest of the component and the count silently drops to zero. It did — the
+ * assertion below failed with `Received length: 0` before this ordering was fixed.
+ */
+function readCopy(file: string): string {
+  const raw = fs.readFileSync(file, "utf8");
+
+  // Block comments first: a `//` sitting inside one must not survive to the next pass.
+  const withoutComments = raw
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/.*$/gm, "");
+
+  return withoutComments.replace(/\s+/g, " ");
+}
+
 describe("landing install invitation", () => {
   it("keeps the menu directions out of the footer", () => {
     const footer = readSource(FOOTER);
@@ -60,5 +81,38 @@ describe("landing install invitation", () => {
     // too, so a name-only check stayed green with the component unrendered (found by
     // mutation, not by reading).
     expect(readSource(FOOTER)).toContain("<LandingInstallInvite");
+  });
+
+  it("states the install verb once and no more", () => {
+    // The regression this pins: the footer stays visible behind the overlay, so copy that
+    // repeated the verb in the dialog — a title, a sentence about "l'installation", the
+    // quoted label and a button — read as the same word four times across two blocks the
+    // reader sees at once. The footer had its own repeat as well, stacking a "Installez
+    // Vector Elegans" lead-in on top of an "Installer l'application" button.
+    //
+    // One occurrence remains, and it is `Installer` with a capital I: inside the quotes, where
+    // it is the browser's menu label to look for rather than our wording. `Installez` (the
+    // button) differs on the final letter. Hook and helper names (`useInstallPrompt`,
+    // `promptInstall`) carry `Install` but never `Installer`, so they stay out of the count.
+    const copy = readCopy(INVITE);
+    const occurrences = copy.match(/Installer/g) ?? [];
+
+    expect(occurrences).toHaveLength(1);
+    // Case-insensitive on purpose: the sentence that caused the repetition began with
+    // "L'installation …", which a capital-I pattern misses — that mutation passed until this
+    // was lowered (found by mutation, not by reading).
+    expect(copy).not.toMatch(/installation/i);
+    expect(copy).not.toMatch(/\binstaller\b/);
+  });
+
+  it("keeps the footer to a single element", () => {
+    // The instruction was explicit: not the lead-in text, the subtitle *and* the button all
+    // at once — merge them, with the action carrying the wording. The subtitle is the marker
+    // here: it is the one line with no install verb, so a re-added text block would slip past
+    // the count above unnoticed.
+    const copy = readCopy(INVITE);
+
+    expect(copy).not.toContain("Suivi de course");
+    expect(copy).toContain("Installez Vector Elegans");
   });
 });
