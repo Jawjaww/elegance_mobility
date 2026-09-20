@@ -1,6 +1,7 @@
 "use client";
 
 import { ClientLayout } from "@/components/layout";
+import { ClientPushSync } from "@/components/account/ClientPushSync";
 
 /**
  * Client Portal Layout - Pure Client Component (Tauri-Ready)
@@ -11,5 +12,10 @@ export default function ClientPortalLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <ClientLayout>{children}</ClientLayout>;
+  return (
+    <ClientLayout>
+      <ClientPushSync />
+      {children}
+    </ClientLayout>
+  );
 }
