@@ -96,6 +96,24 @@ export type WebPushResult = {
 };
 
 /**
+ * What to tell a user whose notifications are blocked.
+ *
+ * Ordered by the layer that actually gates them, Android first. Chromium returns `denied`
+ * when notifications are blocked **at the Android level**, where the site prompt could not be
+ * shown anyway (`46f3223`, "[permissions] Return DENIED when notifications are blocked in
+ * Android"), and it additionally **revokes the site-level permission** when Chrome has no
+ * app-level permission (`78c1afb`, "Revoke site-level Notifications permission"). So a site
+ * permission cannot be granted while the app-level switch is off: telling someone to "Autoriser"
+ * on the site alone sends them to a control that cannot act, which is the dead-end this copy
+ * has already produced once.
+ *
+ * Exported because two surfaces render it — the service's failure copy and the blocked state
+ * of `ClientPushSetup` — and two copies of a correction path drift apart.
+ */
+export const NOTIFICATION_BLOCKED_GUIDANCE =
+  "Notifications bloquées. Autorisez d'abord Chrome au niveau Android : Réglages → Applications → Chrome → Notifications (tant que ce réglage est coupé, Chrome refuse toute autorisation de site). Ensuite, ici : menu à gauche de la barre d'adresse → Informations sur le site → Autorisations → Notifications → Autoriser. Fermez puis rouvrez Chrome pour que le changement soit pris en compte.";
+
+/**
  * User-facing copy per failure. Each entry names the action that actually unblocks the
  * case it describes — a generic message here is what made the failure look like a refusal.
  */
@@ -105,15 +123,7 @@ const WEB_PUSH_FAILURE_COPY: Record<WebPushFailureReason, string> = {
   insecure_context:
     "Les notifications exigent HTTPS (ou localhost) : cette page n'est pas en contexte sécurisé",
   vapid_missing: "NEXT_PUBLIC_VAPID_PUBLIC_KEY non configurée",
-  /*
-   * Points at the address-bar menu on purpose. Sending users to "Paramètres des sites →
-   * Notifications" dead-ends whenever the site is *absent* from that list — which is
-   * exactly what a global switch or an Android-level block produces, since the list
-   * only holds sites with an explicit per-site decision. The address-bar menu acts on
-   * the current site, so it works in both cases.
-   */
-  permission_denied:
-    "Notifications bloquées — ouvrez le menu à gauche de la barre d'adresse : Informations sur le site → Autorisations → Notifications → Autoriser. Si le site n'y figure pas, vérifiez l'interrupteur global (Chrome → Paramètres → Paramètres des sites → Notifications)",
+  permission_denied: NOTIFICATION_BLOCKED_GUIDANCE,
   prompt_unavailable:
     "Chrome n'a pas affiché la demande d'autorisation — fermez les bulles ou fenêtres superposées d'autres applications, puis réessayez",
   permission_not_granted: "Permission non accordée",

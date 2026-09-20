@@ -11,8 +11,12 @@ jest.mock("@/lib/database/client", () => ({
   supabase: { rpc: jest.fn() },
 }));
 
+import fs from "fs";
+import path from "path";
+
 import { supabase } from "@/lib/database/client";
 import {
+  NOTIFICATION_BLOCKED_GUIDANCE,
   subscribeWebPush,
   syncWebPushSubscription,
 } from "@/lib/services/pushTokenService";
@@ -202,6 +206,25 @@ describe("subscribeWebPush (interactive enrolment)", () => {
     expect(result.error).toMatch(/Autorisations/);
   });
 
+  it("sends a blocked permission to the Android switch first, where the block usually is", async () => {
+    setPermission("denied");
+    setPushManager(null);
+
+    const result = await subscribeWebPush();
+
+    // Chromium returns `denied` when notifications are blocked at the Android level, and
+    // revokes the site permission in that case, so a site permission cannot be granted while
+    // the app switch is off. A copy that only names the site control sends the user to
+    // something that cannot act — the dead-end this guidance has already produced once.
+    expect(result.error).toMatch(/Android/);
+    expect(result.error).toMatch(/Applications → Chrome → Notifications/);
+    // Order matters: the app-level step must come before the site-level one.
+    const androidAt = result.error?.indexOf("Applications") ?? -1;
+    const siteAt = result.error?.indexOf("barre d'adresse") ?? -1;
+    expect(androidAt).toBeGreaterThanOrEqual(0);
+    expect(siteAt).toBeGreaterThan(androidAt);
+  });
+
   it("refuses to enrol on a non-secure origin, before probing the browser", async () => {
     setSecureContext(false);
     setPermission("default");
@@ -228,5 +251,36 @@ describe("subscribeWebPush (interactive enrolment)", () => {
       reason: "subscription_failed",
       error: expect.stringContaining("Abonnement push impossible"),
     });
+  });
+});
+
+describe("blocked-notification guidance", () => {
+  const COMPONENT = path.resolve(
+    __dirname,
+    "../../../components/account/ClientPushSetup.tsx",
+  );
+
+  it("names the Android app-level switch before the site-level one", () => {
+    // Chromium returns `denied` when notifications are blocked at the Android level and
+    // revokes the site permission in that case, so the app switch is the gate that has to be
+    // described first. Order is asserted, not just presence: a copy that mentions both but
+    // leads with the site control still dead-ends the user.
+    const androidAt = NOTIFICATION_BLOCKED_GUIDANCE.indexOf("Applications");
+    const siteAt = NOTIFICATION_BLOCKED_GUIDANCE.indexOf("barre d'adresse");
+
+    expect(androidAt).toBeGreaterThanOrEqual(0);
+    expect(siteAt).toBeGreaterThan(androidAt);
+  });
+
+  it("is rendered from one source, not copied into the component", () => {
+    // Two surfaces show this correction path (the service's failure copy and the blocked
+    // state of `ClientPushSetup`). Two literal copies drifted apart once already, and only
+    // the service's was corrected.
+    const component = fs.readFileSync(COMPONENT, "utf8");
+
+    expect(component).toContain("NOTIFICATION_BLOCKED_GUIDANCE");
+    // The tell-tale of a re-introduced copy: the component spelling out the steps itself.
+    expect(component).not.toMatch(/Informations sur le site/);
+    expect(component).not.toMatch(/Réglages → Applications/);
   });
 });

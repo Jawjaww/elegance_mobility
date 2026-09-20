@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
+  NOTIFICATION_BLOCKED_GUIDANCE,
   subscribeWebPush,
   syncWebPushSubscription,
 } from "@/lib/services/pushTokenService";
@@ -119,14 +120,12 @@ export function ClientPushSetup() {
 
   if (status === "denied") {
     return (
-      <div className="flex items-center gap-2 text-sm text-amber-300">
-        <BellOff className="h-4 w-4" />
-        <span>
-          Notifications bloquées — ouvrez le menu à gauche de la barre d&apos;adresse :
-          Informations sur le site → Autorisations → Notifications → Autoriser. Si le
-          site n&apos;y figure pas, vérifiez l&apos;interrupteur global des
-          notifications dans les réglages Chrome.
-        </span>
+      <div className="flex items-start gap-2 text-sm text-amber-300">
+        <BellOff className="mt-0.5 h-4 w-4 shrink-0" />
+        {/* One shared correction path, from `pushTokenService`: it is ordered Android-first,
+            because a site permission cannot be granted while Chrome is blocked at the app
+            level, and an earlier copy sent users to a control that could not act. */}
+        <span>{NOTIFICATION_BLOCKED_GUIDANCE}</span>
       </div>
     );
   }
