@@ -79,7 +79,10 @@ export type WebPushFailureReason =
   | "unsupported"
   | "insecure_context"
   | "vapid_missing"
-  /** Permission is (or became) `denied`: only Chrome's site settings can undo it. */
+  /**
+   * Permission is (or became) `denied`: no page can re-prompt, and the remedy is in
+   * Chrome — reachable from the address bar, not necessarily from the site list.
+   */
   | "permission_denied"
   /** Chrome never displayed the prompt, so nothing was decided — the remedy is on the phone. */
   | "prompt_unavailable"
@@ -103,8 +106,15 @@ const WEB_PUSH_FAILURE_COPY: Record<WebPushFailureReason, string> = {
   insecure_context:
     "Les notifications exigent HTTPS (ou localhost) : cette page n'est pas en contexte sécurisé",
   vapid_missing: "NEXT_PUBLIC_VAPID_PUBLIC_KEY non configurée",
+  /*
+   * Points at the address-bar menu on purpose. Sending users to "Paramètres des sites →
+   * Notifications" dead-ends whenever the site is *absent* from that list — which is
+   * exactly what a global switch or an Android-level block produces, since the list
+   * only holds sites with an explicit per-site decision. The address-bar menu acts on
+   * the current site, so it works in both cases.
+   */
   permission_denied:
-    "Notifications bloquées pour ce site — autorisez-les dans les réglages Chrome (Paramètres du site → Notifications)",
+    "Notifications bloquées — ouvrez le menu à gauche de la barre d'adresse : Informations sur le site → Autorisations → Notifications → Autoriser. Si le site n'y figure pas, vérifiez l'interrupteur global (Chrome → Paramètres → Paramètres des sites → Notifications)",
   prompt_unavailable:
     "Chrome n'a pas affiché la demande d'autorisation — fermez les bulles ou fenêtres superposées d'autres applications, puis réessayez",
   permission_not_granted: "Permission non accordée",

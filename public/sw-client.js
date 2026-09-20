@@ -18,8 +18,14 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(payload.title || "Vector Elegans", {
       body: payload.body || "",
-      icon: "/icons/icon-192x192.png",
-      badge: "/icons/icon-72x72.png",
+      // The client portal has its own icon set (blue, its `theme_color`): a client who
+      // installs the portal or receives a notification should not see the driver's
+      // green icon.
+      icon: "/icons/client/icon-192x192.png",
+      // Android keeps only the alpha channel of the badge to paint the status-bar
+      // icon. A full-colour icon renders as a plain white blob, so this points at
+      // the dedicated white-on-transparent silhouette.
+      badge: "/icons/badge-72x72.png",
       tag: rideId ? `ride-${rideId}` : "notification",
       data: { rideId, ...payload.data },
     }),

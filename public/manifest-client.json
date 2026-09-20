@@ -1,0 +1,26 @@
+{
+  "name": "Elegance Mobility",
+  "short_name": "Elegance",
+  "description": "Vos réservations et notifications en temps réel",
+  "lang": "fr",
+  "start_url": "/my-account",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/icons/client/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/client/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

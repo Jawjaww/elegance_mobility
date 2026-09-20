@@ -86,8 +86,10 @@ export function ClientPushSetup() {
       <div className="flex items-center gap-2 text-sm text-amber-300">
         <BellOff className="h-4 w-4" />
         <span>
-          Notifications bloquées — autorisez-les pour ce site dans les réglages
-          Chrome (Paramètres du site → Notifications).
+          Notifications bloquées — ouvrez le menu à gauche de la barre d&apos;adresse :
+          Informations sur le site → Autorisations → Notifications → Autoriser. Si le
+          site n&apos;y figure pas, vérifiez l&apos;interrupteur global des
+          notifications dans les réglages Chrome.
         </span>
       </div>
     );

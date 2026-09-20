@@ -188,14 +188,18 @@ describe("subscribeWebPush (interactive enrolment)", () => {
     expect(register).not.toHaveBeenCalled();
   });
 
-  it("reports a blocked permission as such, pointing at Chrome's settings", async () => {
+  it("points a blocked permission at the address-bar menu, not the site list", async () => {
     setPermission("denied");
     setPushManager(null);
 
     const result = await subscribeWebPush();
 
     expect(result.reason).toBe("permission_denied");
-    expect(result.error).toMatch(/réglages Chrome/);
+    // Chrome's per-site notification list only holds sites with an explicit decision,
+    // so it dead-ends when the block is global or imposed by Android. The address-bar
+    // menu acts on the current site, so it holds in both cases.
+    expect(result.error).toMatch(/barre d'adresse/);
+    expect(result.error).toMatch(/Autorisations/);
   });
 
   it("refuses to enrol on a non-secure origin, before probing the browser", async () => {
