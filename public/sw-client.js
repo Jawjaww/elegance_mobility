@@ -101,6 +101,19 @@ self.addEventListener("push", (event) => {
   }
 
   const rideId = payload.data?.ride_id ?? payload.rideId ?? null;
+  const eventType = payload.data?.type ?? null;
+
+  // The tag decides which notifications *replace* each other, and a replacement is silent:
+  // without `renotify` (not reliably supported) the new notification takes the old one's
+  // place in the tray with no sound and no banner. Keying the tag on the ride alone therefore
+  // swallowed the second and third moments of that ride — `ride_accepted`, `driver_arrived`
+  // and `ride_completed` all carry the same ride id — so a client got one alert per ride and
+  // silence after it, which reads exactly like "the notification never arrived".
+  // `testNotification.ts` already documents this same-tag behaviour and refuses a tag for
+  // that reason. A real push still needs one, so a re-delivered event cannot stack: the tag
+  // groups per event *and* ride. Each moment alerts, a retry of the same moment replaces
+  // itself.
+  const tag = [eventType, rideId].filter(Boolean).join("-") || "notification";
 
   event.waitUntil(
     self.registration.showNotification(payload.title || "Vector Elegans", {
@@ -113,7 +126,7 @@ self.addEventListener("push", (event) => {
       // icon. A full-colour icon renders as a plain white blob, so this points at
       // the dedicated white-on-transparent silhouette.
       badge: "/icons/badge-72x72.png",
-      tag: rideId ? `ride-${rideId}` : "notification",
+      tag,
       data: { rideId, ...payload.data },
     }),
   );
