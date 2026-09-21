@@ -13,8 +13,6 @@ function ReservationPageContent() {
     originAddress,
     destinationAddress,
     pickupDateTime,
-    distance,
-    duration,
     vehicleType,
     options,
     handleNextStep,
@@ -50,8 +48,6 @@ function ReservationPageContent() {
             <VehicleStep
               vehicleType={vehicleType}
               options={options}
-              distance={distance}
-              duration={duration}
               onVehicleTypeChange={setVehicleType}
               onOptionsChange={setOptions}
               onPrevious={handlePrevStep}

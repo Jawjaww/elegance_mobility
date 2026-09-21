@@ -161,8 +161,6 @@ function EditReservationContent() {
           options={vehicleOptionsFromSelected(
             normalizeSelectedOptions(reservationStore.selectedOptions),
           )}
-          distance={reservationStore.distance ?? undefined}
-          duration={reservationStore.duration ?? undefined}
           onVehicleTypeChange={reservationStore.setSelectedVehicle}
           onOptionsChange={(nextOptions) =>
             reservationStore.setSelectedOptions(

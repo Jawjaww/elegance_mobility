@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { type VehicleType, type VehicleOptions } from "@/lib/vehicle";
-import { formatDuration, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { ReservationOptionsToggles } from "@/components/reservation/ReservationOptionsToggles";
 import DateTimeStep from "@/components/reservation/DateTimeStep";
 import {
@@ -17,8 +17,6 @@ import { Car, Check, Sparkles, Users, type LucideIcon } from "lucide-react";
 export interface VehicleStepProps {
   vehicleType: VehicleType;
   options: VehicleOptions;
-  distance?: number;
-  duration?: number;
   onVehicleTypeChange: (type: VehicleType) => void;
   onOptionsChange: (options: VehicleOptions) => void;
   onPrevious: () => void;
@@ -58,8 +56,6 @@ const vehicleOptions: ReadonlyArray<{
 const VehicleStep: React.FC<VehicleStepProps> = ({
   vehicleType,
   options,
-  distance,
-  duration,
   onVehicleTypeChange,
   onOptionsChange,
   onPrevious,
@@ -172,45 +168,26 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
         />
       </div>
 
-      {distance && duration ? (
-        <div className="hidden rounded-2xl border border-neutral-800 bg-neutral-900/80 px-5 py-4 lg:flex lg:items-center lg:justify-between">
-          <div>
-            <p className="text-sm text-neutral-400">Distance</p>
-            <p className="font-medium text-white">{distance.toFixed(1)} km</p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-neutral-400">Durée estimée</p>
-            <p className="font-medium text-white">{formatDuration(duration)}</p>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="flex flex-col gap-4 pt-2 lg:gap-5 lg:pt-0">
-        {distance && duration ? (
-          <p className="text-sm text-neutral-400 lg:hidden">
-            <span className="font-medium text-white">{distance.toFixed(1)} km</span>
-            <span className="mx-2 text-neutral-600">·</span>
-            <span className="font-medium text-white">
-              {formatDuration(duration)}
-            </span>
-          </p>
-        ) : null}
-
-        <div className="flex w-full flex-col gap-3 sm:flex-row lg:gap-5">
-          <Button
-            onClick={onPrevious}
-            variant="outline"
-            className="min-h-11 w-full flex-1 px-8 text-base border-blue-400/30 bg-transparent text-white hover:bg-blue-500/15 md:min-h-12 md:px-10"
-          >
-            Retour
-          </Button>
-          <Button
-            onClick={onConfirm}
-            className={`min-h-11 w-full flex-1 px-8 text-base md:min-h-12 md:px-10 ${LANDING_CTA}`}
-          >
-            Continuer
-          </Button>
-        </div>
+      {/*
+        The route figures used to be repeated here: a card on desktop, a line on a phone. They
+        already sit over the map on the step before, and the two copies spent a row on the very
+        step that has to fit above the fold. That row is now spent on the option tiles, which
+        shared their width between the label and the price and truncated the longest label.
+      */}
+      <div className="flex w-full flex-col gap-3 pt-2 sm:flex-row lg:gap-5 lg:pt-0">
+        <Button
+          onClick={onPrevious}
+          variant="outline"
+          className="min-h-11 w-full flex-1 px-8 text-base border-blue-400/30 bg-transparent text-white hover:bg-blue-500/15 md:min-h-12 md:px-10"
+        >
+          Retour
+        </Button>
+        <Button
+          onClick={onConfirm}
+          className={`min-h-11 w-full flex-1 px-8 text-base md:min-h-12 md:px-10 ${LANDING_CTA}`}
+        >
+          Continuer
+        </Button>
       </div>
     </div>
   );

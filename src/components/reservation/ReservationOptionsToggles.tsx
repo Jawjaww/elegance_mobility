@@ -44,7 +44,10 @@ function optionIcon(name: string): LucideIcon {
   if (label.includes("siège") || label.includes("enfant") || label.includes("bébé")) {
     return Baby;
   }
-  if (label.includes("animal")) return PawPrint;
+  // The plural matters: French forms "animaux", and that does not contain the singular "animal"
+  // (it ends in -aux, not -al). Testing only the singular left "Animaux domestiques" matching no
+  // rule at all, so it fell through to the generic fallback below and showed a sparkle.
+  if (label.includes("animal") || label.includes("animaux")) return PawPrint;
   if (label.includes("aéroport") || label.includes("attente")) return Plane;
   if (label.includes("boisson")) return GlassWater;
   if (label.includes("wifi")) return Wifi;
@@ -134,12 +137,13 @@ export function ReservationOptionsToggles({
             aria-label={ariaLabel}
             onClick={() => handleChange(option.name, !selected)}
             className={cn(
-              // One row per option, not two. The stacked label-over-price layout cost a second
-              // line on every tile: five options in two columns meant three rows of ~63px, and
-              // on a phone that alone pushed the confirm button off the fold. A row reads
-              // faster for short labels anyway. `pr-5` is reserved for the selected badge in
-              // the corner, so the price never slides under it.
-              "relative flex items-center gap-1.5 rounded-xl border py-2 pl-2 pr-5 transition-all duration-200 md:gap-2 md:py-2.5 md:pl-2.5 md:pr-7",
+              // Two lines per option: the label owns a line, the price sits under it. The
+              // single-row variant shared the tile's width between the two, which left the label
+              // ~64px wide at 360px and clipped the longest name — "Siège enfant" measured 68px
+              // of text in 64px of room. Stacking costs a line per tile and buys back the
+              // ellipsis, i.e. a label the reader cannot finish. `pr-6` stays reserved for the
+              // selected badge in the corner.
+              "relative flex items-center gap-2 rounded-xl border py-1.5 pl-2.5 pr-6 transition-all duration-200 md:gap-2.5 md:py-2 md:pl-3 md:pr-7",
               selected
                 ? RESERVATION_PICKER_CARD_SELECTED
                 : RESERVATION_PICKER_CARD,
@@ -164,11 +168,17 @@ export function ReservationOptionsToggles({
             >
               <Icon className="h-3.5 w-3.5 text-blue-400" aria-hidden />
             </span>
-            <span className="min-w-0 flex-1 truncate text-left text-xs font-semibold leading-none text-white lg:text-sm">
-              {label}
-            </span>
-            <span className="shrink-0 text-[10px] font-medium leading-none text-blue-300/90 lg:text-xs">
-              {price}
+            {/*
+              Deliberately without `truncate`: a clipped option name is the defect this layout
+              exists to remove. The label wraps instead, and `min-w-0` lets it do so in the row.
+            */}
+            <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5 text-left">
+              <span className="text-xs font-semibold leading-tight text-white lg:text-sm">
+                {label}
+              </span>
+              <span className="text-[10px] font-medium leading-tight text-blue-300/90 lg:text-xs">
+                {price}
+              </span>
             </span>
           </button>
         );

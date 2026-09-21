@@ -83,6 +83,22 @@ describe("reservation step layout", () => {
     expect(source).toContain("pickupDateTime");
   });
 
+  it("keeps the route figures off the vehicle step", () => {
+    const source = readSource(VEHICLE_STEP);
+
+    // They were repeated here twice — a card on desktop, a line on a phone — while step one
+    // already overlays them on the map. The copies spent a row on the step that has to fit above
+    // the fold; that row now pays for the two-line option tiles (see stepTwoCompactness).
+    expect(source).not.toContain("Durée estimée");
+    expect(source).not.toContain("formatDuration");
+    // The props went with the markup, rather than lingering with no reader.
+    expect(source).not.toContain("distance?: number");
+    expect(source).not.toContain("duration?: number");
+    // Non-vacuity: the step still renders its own content.
+    expect(source).toContain("Choisissez votre véhicule");
+    expect(source).toContain("Options");
+  });
+
   it("wires the date to the vehicle step on both the creation and the edit page", () => {
     for (const page of [CREATE_PAGE, EDIT_PAGE]) {
       const source = readSource(page);
@@ -101,6 +117,9 @@ describe("reservation step layout", () => {
       // component whose interface no longer declares it.
       expect(locationStep).not.toContain("onDateTimeChange");
       expect(locationStep).not.toContain("pickupDateTime");
+      // Same rule for the route figures, which the step stopped taking.
+      expect(vehicleStep).not.toContain("distance=");
+      expect(vehicleStep).not.toContain("duration=");
     }
   });
 

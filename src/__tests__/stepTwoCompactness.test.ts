@@ -2,13 +2,19 @@ import fs from "fs";
 import path from "path";
 
 /**
- * Guards the step-two compaction.
+ * Guards the step-two layout.
  *
  * Step two has to fit above the fold on a phone: it carries the vehicle tiles, five options and
- * the pickup date, and anything that overflows pushes the confirm button out of sight. Both
- * blocks below were measured on a 390x844 viewport before being changed — options 202px -> 142px,
- * the date block 114px -> 66px, content bottom 807px -> 675px — and neither change truncated a
- * label (checked in the DOM: five options, zero truncated).
+ * the pickup date, and anything that overflows pushes the confirm button out of sight. The date
+ * block was measured on a 390x844 viewport before being compacted (114px -> 66px).
+ *
+ * The options took two passes. A single-row tile first bought about 20px per row, which helped
+ * the fold but shared each tile's width between the label and the price: at 360px the label got
+ * ~64px and clipped the longest name — "Siège enfant" measured 68px of text, so it rendered as an
+ * ellipsis. The route figures were then dropped from this step, where they had been a desktop
+ * card plus a phone line on top of the overlay step one already shows, and that freed row now
+ * pays for a two-line tile. Measured at 360x844: tiles 42px -> 44px, options block 142px ->
+ * 147px, confirm button bottom 689px -> 658px, truncated labels 1 -> 0.
  *
  * Source-level assertions, as elsewhere in this folder: which layout each block uses is the
  * thing being pinned, and the repository has no component-rendering setup.
@@ -32,27 +38,34 @@ function readSource(file: string): string {
 }
 
 describe("step two compactness", () => {
-  it("lays each option out on a single row", () => {
+  it("lays each option out on two lines", () => {
     const source = readSource(OPTIONS);
 
-    // The stacked variant put the price on a second line and cost ~20px per option, i.e. three
-    // rows of 62px instead of 42px.
-    expect(source).not.toContain("flex flex-col items-center justify-center gap-0.5");
-    expect(source).toContain("flex items-center gap-1.5 rounded-xl border py-2 pl-2 pr-5");
-    // The label takes the slack and truncates rather than wrapping to a second line.
-    expect(source).toContain("min-w-0 flex-1 truncate");
-    // The price keeps its full label for screen readers via aria-label, so the visible text can
-    // stay on one line.
+    // The label owns a line and the price sits under it, so neither competes for the tile's
+    // width with the other.
+    expect(source).toContain(
+      "flex min-w-0 flex-1 flex-col items-start gap-0.5 text-left",
+    );
+    expect(source).toContain("font-semibold leading-tight text-white");
+    // Non-vacuity: the stack is actually rendered inside each tile, not a stray class name.
+    expect(source).toMatch(/<button[\s\S]*flex min-w-0 flex-1 flex-col/);
+
+    // A clipped option name is the very defect this layout removes, so the label must not
+    // truncate. It wraps instead.
+    expect(source).not.toContain("truncate");
+
+    // The price keeps its full label for screen readers via aria-label, because the visible text
+    // is shortened ("Animaux" for "Animaux domestiques").
     expect(source).toContain("aria-label={ariaLabel}");
   });
 
-  it("keeps the selected badge clear of the price", () => {
+  it("keeps the selected badge clear of the option text", () => {
     const source = readSource(OPTIONS);
 
     // The badge is absolutely positioned in the top-right corner; without reserved padding the
-    // price slides under it. Verified in the DOM: 0 overlaps over 5 options.
+    // text column runs under it. Verified in the DOM: 0 overlaps over 5 options.
     expect(source).toContain("absolute right-1 top-1");
-    expect(source).toContain("pr-5");
+    expect(source).toContain("pr-6");
   });
 
   it("keeps the picker and its shortcut on one row", () => {
