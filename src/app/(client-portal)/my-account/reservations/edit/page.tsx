@@ -152,8 +152,6 @@ function EditReservationContent() {
           onOriginSelect={() => {}}
           onDestinationSelect={() => {}}
           onRouteCalculated={() => {}}
-          onDateTimeChange={reservationStore.setPickupDateTime}
-          pickupDateTime={reservationStore.pickupDateTime}
           originAddress={originAddress}
           destinationAddress={destinationAddress}
         />
@@ -176,6 +174,8 @@ function EditReservationContent() {
           onPrevious={handlePrevStep}
           onConfirm={handleContinueToConfirmation}
           isEditing={true}
+          pickupDateTime={reservationStore.pickupDateTime}
+          onDateTimeChange={reservationStore.setPickupDateTime}
         />
       );
   } else {

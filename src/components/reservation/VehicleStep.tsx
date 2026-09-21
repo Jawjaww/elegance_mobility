@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { type VehicleType, type VehicleOptions } from "@/lib/vehicle";
 import { formatDuration, cn } from "@/lib/utils";
 import { ReservationOptionsToggles } from "@/components/reservation/ReservationOptionsToggles";
+import DateTimeStep from "@/components/reservation/DateTimeStep";
 import {
   LANDING_CTA,
   RESERVATION_PICKER_CARD,
@@ -23,6 +24,9 @@ export interface VehicleStepProps {
   onPrevious: () => void;
   onConfirm: () => void;
   isEditing?: boolean;
+  /** Pickup date, chosen on this step rather than on the map step (see the block below). */
+  pickupDateTime?: Date | string | null;
+  onDateTimeChange?: (date: Date) => void;
 }
 
 const vehicleOptions: ReadonlyArray<{
@@ -60,6 +64,8 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
   onOptionsChange,
   onPrevious,
   onConfirm,
+  pickupDateTime,
+  onDateTimeChange,
 }) => {
   const selectedVehicle = vehicleOptions.find(
     (option) => option.value === vehicleType,
@@ -143,6 +149,27 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
             compact
           />
         </div>
+      </div>
+
+      {/*
+        The pickup date lives on this step, not on the map step. The map step answers "where"
+        and this one answers "when" and "what": the date used to sit below the map, where on a
+        phone it cost a full section and forced a scroll to reach the button — the exact thing
+        the map overlay was meant to remove.
+
+        Moving it here is only safe because the confirmation screens refuse to render without
+        a pickup date (they bounce back to /reservation). The creation flow seeds the store at
+        mount with an "as soon as possible" value, so the date is never unset by leaving the
+        picker untouched. See `useReservation`.
+      */}
+      <div className="space-y-2.5 border-t border-blue-500/15 pt-3 md:space-y-4 md:pt-4 lg:space-y-4 lg:pt-6">
+        <h3 className="text-sm font-semibold text-white md:text-base">
+          Date et heure de prise en charge
+        </h3>
+        <DateTimeStep
+          pickupDateTime={pickupDateTime ?? null}
+          onDateTimeSelect={(date) => onDateTimeChange?.(date)}
+        />
       </div>
 
       {distance && duration ? (

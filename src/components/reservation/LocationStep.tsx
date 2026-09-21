@@ -10,9 +10,9 @@ import {
   type AutocompleteInputHandle,
 } from "@/components/AutocompleteInput";
 import { Coordinates } from "@/lib/types/map-types";
-import DateTimeStep from "@/components/reservation/DateTimeStep";
 import { TripEndpointRail } from "@/components/reservation/TripEndpointRail";
-import { formatDuration, cn } from "@/lib/utils";
+import { TripStatsBadge } from "@/components/reservation/TripStatsBadge";
+import { cn } from "@/lib/utils";
 import UnifiedMap from "@/components/map/UnifiedMap";
 import { LANDING_CTA } from "@/components/landing/landingSurface";
 
@@ -33,8 +33,6 @@ export interface LocationStepProps {
   onOriginSelect?: (address: string, coords: Coordinates) => void;
   onDestinationSelect?: (address: string, coords: Coordinates) => void;
   onRouteCalculated?: (distance: number, duration: number) => void;
-  onDateTimeChange?: (date: Date) => void;
-  pickupDateTime?: Date;
   originAddress?: string;
   destinationAddress?: string;
 }
@@ -59,8 +57,6 @@ export function LocationStep({
   onOriginSelect,
   onDestinationSelect,
   onRouteCalculated,
-  onDateTimeChange,
-  pickupDateTime,
   originAddress,
   destinationAddress,
 }: Readonly<LocationStepProps>) {
@@ -161,14 +157,6 @@ export function LocationStep({
     onRouteCalculated?.(distance, duration);
   };
 
-  const hasTripStats =
-    store.distance !== null &&
-    store.duration !== null &&
-    store.distance > 0 &&
-    store.duration > 0 &&
-    hasFiniteCoords(store.departure) &&
-    hasFiniteCoords(store.destination);
-
   const originValue = originAddress ?? store.departure?.display_name ?? "";
   const destinationValue =
     destinationAddress ?? store.destination?.display_name ?? "";
@@ -191,8 +179,8 @@ export function LocationStep({
       )}
     >
       {/*
-        Mobile: `contents` so children keep order (addresses → map → meta → CTA).
-        Desktop: one left column so distance/datetime sit beside the map, not below it.
+        Mobile: `contents` so children keep order (addresses → map → CTA).
+        Desktop: one left column so the addresses sit beside the map, not above it.
       */}
       <div
         className={cn(
@@ -263,37 +251,6 @@ export function LocationStep({
           </div>
         </section>
 
-        <section
-          className={cn(
-            sectionClass,
-            "order-3 lg:mt-auto lg:rounded-none lg:border-x-0 lg:border-b-0 lg:bg-transparent lg:p-0 lg:border-t lg:border-blue-500/20 lg:pt-5",
-          )}
-        >
-          {hasTripStats ? (
-            <p className="mb-2.5 flex items-center justify-between gap-3 text-sm sm:mb-3 lg:mb-3">
-              <span>
-                <span className="text-neutral-400">Distance </span>
-                <span className="font-medium text-white">
-                  {store.distance} km
-                </span>
-              </span>
-              <span className="text-right">
-                <span className="text-neutral-400">Durée </span>
-                <span className="font-medium text-white">
-                  {formatDuration(store.duration ?? 0)}
-                </span>
-              </span>
-            </p>
-          ) : null}
-          <Label className="mb-1 block text-sm sm:mb-2 sm:text-base lg:mb-2">
-            Date et heure de prise en charge
-          </Label>
-          <DateTimeStep
-            pickupDateTime={pickupDateTime || null}
-            onDateTimeSelect={(date) => onDateTimeChange?.(date)}
-          />
-        </section>
-
         <div
           className={cn(
             "order-5 flex justify-stretch sm:justify-end",
@@ -312,7 +269,9 @@ export function LocationStep({
 
       {showMap ? (
         <div className="order-2 flex h-44 min-h-0 flex-col gap-3 sm:h-[400px] lg:col-start-2 lg:row-start-1 lg:h-full lg:self-stretch">
-          <section className="min-h-0 flex-1 overflow-hidden rounded-lg border border-blue-500/20 md:rounded-2xl lg:min-h-[18rem] lg:rounded-3xl">
+          {/* `relative` is what the overlay positions against; the fetch of the trip stats
+              rides on the map instead of taking a line of its own below it. */}
+          <section className="relative min-h-0 flex-1 overflow-hidden rounded-lg border border-blue-500/20 md:rounded-2xl lg:min-h-[18rem] lg:rounded-3xl">
             <UnifiedMap
               mode="REQUEST"
               key={mapKey}
@@ -320,6 +279,10 @@ export function LocationStep({
               destination={store.destination}
               onRouteCalculated={handleRouteCalculated}
               height="100%"
+            />
+            <TripStatsBadge
+              distance={store.distance}
+              duration={store.duration}
             />
           </section>
           <div className="hidden shrink-0 lg:block lg:w-full">

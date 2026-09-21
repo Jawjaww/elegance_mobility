@@ -43,8 +43,6 @@ function ReservationPageContent() {
               onOriginSelect={handleOriginSelect}
               onDestinationSelect={handleDestinationSelect}
               onRouteCalculated={handleRouteCalculated}
-              onDateTimeChange={setPickupDateTime}
-              pickupDateTime={pickupDateTime}
               originAddress={originAddress}
               destinationAddress={destinationAddress}
             />
@@ -59,6 +57,8 @@ function ReservationPageContent() {
               onPrevious={handlePrevStep}
               onConfirm={handleReservation}
               isEditing={false}
+              pickupDateTime={pickupDateTime}
+              onDateTimeChange={setPickupDateTime}
             />
           )}
         </LandingDesktopPanel>
