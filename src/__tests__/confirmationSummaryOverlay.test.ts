@@ -122,6 +122,79 @@ describe("confirmation summary", () => {
   );
 });
 
+/**
+ * The confirmation screens' heading.
+ *
+ * Both screens used to open with a centred title block ("Confirmation de réservation" /
+ * "Confirmation des modifications") plus a subtitle, and repeat a second title inside the
+ * details card. The block cost a phone screen real height to restate what the card already
+ * says, so it was dropped and the card's title took over the h1.
+ *
+ * Pinned here because the failure mode is silent and asymmetric: deleting the block without
+ * promoting the card title leaves the page with *zero* h1 (nothing renders broken), and
+ * promoting without deleting leaves *two*. Neither is visible in a screenshot.
+ */
+describe("confirmation heading", () => {
+  it.each(CONFIRMATION_FILES)("has exactly one h1 (%s)", (_name, file) => {
+    const source = readSource(file);
+    const headings = source.match(/<h1[\s>]/g) ?? [];
+    expect(headings).toHaveLength(1);
+  });
+
+  it.each(CONFIRMATION_FILES)(
+    "carries the h1 on the details card, not on a dropped header block (%s)",
+    (_name, file) => {
+      const source = readSource(file);
+
+      // The heading sits inside the details card, next to the route icon.
+      expect(source).toMatch(/<h1 [^>]*> <Route /);
+      // And no title is left behind above the grid.
+      expect(source).not.toContain("text-xl font-bold text-white md:mb-1");
+    },
+  );
+
+  it.each(CONFIRMATION_FILES)(
+    "no longer states the dropped titles or subtitles (%s)",
+    (_name, file) => {
+      const source = readSource(file);
+
+      // Non-vacuity: the card the heading replaced is still rendered.
+      expect(source).toContain("TripEndpointRail");
+      expect(source).toContain('label="Date et heure"');
+
+      expect(source).not.toContain("Confirmation de réservation");
+      expect(source).not.toContain("Confirmation des modifications");
+      expect(source).not.toContain(
+        "Vérifiez les détails avant de confirmer votre trajet",
+      );
+      expect(source).not.toContain(
+        "Vérifiez les changements avant de valider",
+      );
+    },
+  );
+
+  it("keeps the edit screen saying what it edits", () => {
+    // On a phone the confirm button collapses to "Confirmer" (`md:hidden`, the longer label is
+    // `hidden md:inline`), so this heading is the last place stating that an existing
+    // reservation is being changed rather than created.
+    expect(readSource(EDIT_CONFIRMATION)).toContain("Vérifier les modifications");
+    expect(readSource(CREATE_CONFIRMATION)).not.toContain(
+      "Vérifier les modifications",
+    );
+  });
+
+  // The heading must not re-inflate: the whole point was the saved height. The h1 keeps the
+  // compact scale the card title already had.
+  it.each(CONFIRMATION_FILES)(
+    "keeps the compact type scale on the h1 (%s)",
+    (_name, file) => {
+      expect(readSource(file)).toMatch(
+        /<h1 className="[^"]*text-sm font-semibold[^"]*"/,
+      );
+    },
+  );
+});
+
 describe("vehicleLabel", () => {
   it("names the categories the client can book", () => {
     expect(vehicleLabel("STANDARD")).toBe("Berline");

@@ -375,21 +375,16 @@ export function ConfirmationDetails() {
         defaultTab="login"
       />
 
-      <div className="mb-3 text-center md:mb-6">
-        <h1 className="text-xl font-bold text-white md:mb-1 md:text-2xl">
-          Confirmation de réservation
-        </h1>
-        <p className="mt-0.5 text-xs text-neutral-400 md:text-sm">
-          Vérifiez les détails avant de confirmer votre trajet
-        </p>
-      </div>
-
       <div className="grid gap-3 md:gap-6 lg:grid-cols-2 lg:items-start">
         <Card className="order-1 border-blue-500/20 bg-neutral-900/80 p-4 md:rounded-3xl md:p-5 lg:col-start-1 lg:row-start-1">
-          <h2 className="mb-3 flex items-center text-sm font-semibold text-white md:text-base">
+          {/* The page's only heading. The former "Confirmation de réservation" block and its
+              subtitle were dropped: they said nothing the card does not, and the compaction
+              they cost is visible on a phone. The card title therefore carries the h1, while
+              keeping its compact type scale — the tag changed, the pixels did not. */}
+          <h1 className="mb-3 flex items-center text-sm font-semibold text-white md:text-base">
             <Route className="mr-2 h-4 w-4 text-blue-500" aria-hidden />
             Détails du trajet
-          </h2>
+          </h1>
 
           <div className="flex gap-3">
             <TripEndpointRail className="pt-1.5" />

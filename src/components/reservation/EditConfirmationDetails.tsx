@@ -250,21 +250,17 @@ export function EditConfirmationDetails({
 
   return (
     <div className="mx-auto w-full max-w-4xl py-3 pb-5 md:py-6 lg:max-w-6xl lg:py-5">
-      <div className="mb-3 text-center md:mb-6">
-        <h1 className="text-xl font-bold text-white md:mb-1 md:text-2xl">
-          Confirmation des modifications
-        </h1>
-        <p className="mt-0.5 text-xs text-neutral-400 md:text-sm">
-          Vérifiez les changements avant de valider
-        </p>
-      </div>
-
       <div className="grid gap-3 md:gap-6 lg:grid-cols-2 lg:items-start">
         <Card className="order-1 border-blue-500/20 bg-neutral-900/80 p-4 md:rounded-3xl md:p-5 lg:col-start-1 lg:row-start-1">
-          <h2 className="mb-3 flex items-center text-sm font-semibold text-white md:text-base">
+          {/* The page's only heading. The former "Confirmation des modifications" block was
+              dropped with the one on the creation screen, but this screen has to keep saying
+              what it does: on a phone the confirm button collapses to "Confirmer"
+              (`md:hidden`), so this title is the last place stating that an existing
+              reservation is being changed. Compact type scale kept, as on the other screen. */}
+          <h1 className="mb-3 flex items-center text-sm font-semibold text-white md:text-base">
             <Route className="mr-2 h-4 w-4 text-blue-500" aria-hidden />
-            Détails du trajet
-          </h2>
+            Vérifier les modifications
+          </h1>
 
           <div className="flex gap-3">
             <TripEndpointRail className="pt-1.5" />
