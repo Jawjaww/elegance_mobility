@@ -126,8 +126,10 @@ export function DateTimePicker({
           {label}
         </Label>
       ) : null}
-      {/* Compact row: avoids a full-bleed field with a floating mid-calendar affordance */}
-      <div className="flex w-full max-w-sm items-center gap-2">
+      {/* Compact row: avoids a full-bleed field with a floating mid-calendar affordance.
+          No `max-w-sm` here — the caller decides the width, and in the step it is paired with
+          the "as soon as possible" shortcut on the same line. */}
+      <div className="flex w-full min-w-0 items-center gap-2">
         <Input
           id={inputId}
           ref={inputRef}

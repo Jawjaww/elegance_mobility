@@ -72,13 +72,13 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
   );
 
   return (
-    <div className="space-y-6 lg:space-y-8">
+    <div className="space-y-5 lg:space-y-8">
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-white md:text-base lg:mb-4">
+        <h2 className="mb-2.5 text-sm font-semibold text-white md:text-base lg:mb-4">
           Choisissez votre véhicule
         </h2>
 
-        <div className="mb-3 grid grid-cols-3 gap-2 md:mb-6 md:gap-4 lg:mb-8 lg:gap-5">
+        <div className="mb-2.5 grid grid-cols-3 gap-2 md:mb-6 md:gap-4 lg:mb-8 lg:gap-5">
           {vehicleOptions.map((option) => {
             const selected = vehicleType === option.value;
             const Icon = option.icon;
@@ -134,12 +134,12 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
          * description lives below the deck instead of inside every card.
          */}
         {selectedVehicle ? (
-          <p className="mb-4 text-xs leading-snug text-neutral-400 md:hidden">
+          <p className="mb-2.5 text-xs leading-snug text-neutral-400 md:hidden">
             {selectedVehicle.description}
           </p>
         ) : null}
 
-        <div className="space-y-2.5 border-t border-blue-500/15 pt-3 md:space-y-4 md:pt-4 lg:space-y-4 lg:pt-6">
+        <div className="space-y-2 border-t border-blue-500/15 pt-2.5 md:space-y-4 md:pt-4 lg:space-y-4 lg:pt-6">
           <h3 className="text-sm font-semibold text-white md:text-base">
             Options
           </h3>
@@ -162,7 +162,7 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
         mount with an "as soon as possible" value, so the date is never unset by leaving the
         picker untouched. See `useReservation`.
       */}
-      <div className="space-y-2.5 border-t border-blue-500/15 pt-3 md:space-y-4 md:pt-4 lg:space-y-4 lg:pt-6">
+      <div className="space-y-1.5 border-t border-blue-500/15 pt-2.5 md:space-y-3 md:pt-4 lg:space-y-3 lg:pt-5">
         <h3 className="text-sm font-semibold text-white md:text-base">
           Date et heure de prise en charge
         </h3>

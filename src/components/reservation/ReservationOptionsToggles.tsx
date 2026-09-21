@@ -134,7 +134,12 @@ export function ReservationOptionsToggles({
             aria-label={ariaLabel}
             onClick={() => handleChange(option.name, !selected)}
             className={cn(
-              "relative flex flex-col items-center justify-center gap-0.5 rounded-xl border px-2 py-2.5 transition-all duration-200 md:px-2.5 md:py-3 lg:gap-1 lg:px-3 lg:py-3",
+              // One row per option, not two. The stacked label-over-price layout cost a second
+              // line on every tile: five options in two columns meant three rows of ~63px, and
+              // on a phone that alone pushed the confirm button off the fold. A row reads
+              // faster for short labels anyway. `pr-5` is reserved for the selected badge in
+              // the corner, so the price never slides under it.
+              "relative flex items-center gap-1.5 rounded-xl border py-2 pl-2 pr-5 transition-all duration-200 md:gap-2 md:py-2.5 md:pl-2.5 md:pr-7",
               selected
                 ? RESERVATION_PICKER_CARD_SELECTED
                 : RESERVATION_PICKER_CARD,
@@ -149,23 +154,20 @@ export function ReservationOptionsToggles({
               </span>
             ) : null}
 
-            <div className="flex items-center justify-center gap-1.5 pr-3">
-              <span
-                className={cn(
-                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border",
-                  selected
-                    ? RESERVATION_PICKER_ICON_SELECTED
-                    : RESERVATION_PICKER_ICON,
-                )}
-              >
-                <Icon className="h-3.5 w-3.5 text-blue-400" aria-hidden />
-              </span>
-              <span className="text-xs font-semibold leading-none text-white lg:text-sm">
-                {label}
-              </span>
-            </div>
-
-            <span className="text-[10px] font-medium leading-none text-blue-300/90 lg:text-xs">
+            <span
+              className={cn(
+                "flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border md:h-7 md:w-7",
+                selected
+                  ? RESERVATION_PICKER_ICON_SELECTED
+                  : RESERVATION_PICKER_ICON,
+              )}
+            >
+              <Icon className="h-3.5 w-3.5 text-blue-400" aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1 truncate text-left text-xs font-semibold leading-none text-white lg:text-sm">
+              {label}
+            </span>
+            <span className="shrink-0 text-[10px] font-medium leading-none text-blue-300/90 lg:text-xs">
               {price}
             </span>
           </button>
