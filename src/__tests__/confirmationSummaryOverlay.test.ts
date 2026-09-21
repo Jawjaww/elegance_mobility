@@ -136,3 +136,68 @@ describe("vehicleLabel", () => {
     expect(vehicleLabel("ELECTRIC")).toBe("ELECTRIC");
   });
 });
+
+/**
+ * The redirect guard on the confirmation screen.
+ *
+ * The draft lives in a persisted store that React reads through `useSyncExternalStore`, and this
+ * screen is reachable by deep link. On a hard load (deep link, refresh) the hydration render is
+ * handed the store's *initial* state rather than the persisted one, where `departure` and
+ * `destination` are still null — so a guard reading the render values bounced the reader to step
+ * 1 and threw away a draft that had been on disk the whole time. `getState()` returns the current
+ * state, which is hydrated by then.
+ *
+ * Pinned because the broken form reads perfectly well in review: the values it consults are right
+ * there in scope, and it is only wrong on a load path a reviewer rarely takes. Only a test that
+ * names the access stops it from coming back.
+ */
+describe("confirmation deep-link guard", () => {
+  /**
+   * The `useEffect` that sends an incomplete draft back to step 1.
+   *
+   * Anchored on the redirect target rather than on `getState()`: that token is absent from the
+   * broken form, so anchoring there would find nothing and the assertions below could only
+   * report a missing slice. The target itself is in both forms, so a revert is extracted and
+   * judged.
+   *
+   * Last occurrence, because the confirmation button's neighbour `handleModify` also returns to
+   * `/reservation`.
+   */
+  function redirectEffect(): { body: string; deps: string } {
+    const source = readSource(CREATE_CONFIRMATION);
+    const push = source.lastIndexOf('router.push("/reservation")');
+
+    // Non-vacuity: an empty slice would satisfy every assertion below.
+    expect(push).toBeGreaterThan(-1);
+
+    const start = source.lastIndexOf("useEffect(", push);
+    const end = source.indexOf("]);", push);
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(push);
+
+    return { body: source.slice(start, push), deps: source.slice(push, end + 3) };
+  }
+
+  it("decides from the current store state, not from the render snapshot", () => {
+    expect(redirectEffect().body).toContain("useReservationStore.getState()");
+  });
+
+  it("still sends an incomplete draft back to step 1", () => {
+    const { body } = redirectEffect();
+
+    // Each of the four, read off the current state. The guard has to stay complete: a dropped
+    // condition walks the reader onto a screen that renders the missing field as a blank row.
+    expect(body).toContain("!store.departure");
+    expect(body).toContain("!store.destination");
+    expect(body).toContain("!store.pickupDateTime");
+    expect(body).toContain("!store.selectedVehicle");
+  });
+
+  it("keeps the render values in its dependency list", () => {
+    // The guard reads through `getState()`, so nothing in its body changes when the store
+    // updates. These dependencies are the only thing that re-runs the check.
+    expect(redirectEffect().deps).toContain(
+      "departure, destination, pickupDateTime, selectedVehicle, router",
+    );
+  });
+});

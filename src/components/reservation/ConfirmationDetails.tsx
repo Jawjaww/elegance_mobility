@@ -324,8 +324,29 @@ export function ConfirmationDetails() {
     calculatePrice();
   }, [departure, destination, selectedVehicle, selectedOptions, distance]);
 
+  /*
+   * The check below deliberately reads the store instead of this render's values.
+   *
+   * The draft lives in a persisted store that React reads through `useSyncExternalStore`, and
+   * this screen is reachable by deep link. On a hard load (deep link, refresh) React's hydration
+   * render is served the store's *initial* state rather than the persisted one: `departure` and
+   * `destination` are null on that commit, while `pickupDateTime` and `selectedVehicle` already
+   * look set because the initial state carries a date and a default vehicle. Deciding from the
+   * render values therefore bounced the reader back to step 1 and threw away a draft that had
+   * been on disk the whole time — the store itself was hydrated all along.
+   *
+   * `getState()` always returns the current state, so this only redirects when the draft is
+   * genuinely absent. The render values stay in the dependency list so the check still re-runs
+   * whenever the store changes.
+   */
   useEffect(() => {
-    if (!departure || !destination || !pickupDateTime || !selectedVehicle) {
+    const store = useReservationStore.getState();
+    if (
+      !store.departure ||
+      !store.destination ||
+      !store.pickupDateTime ||
+      !store.selectedVehicle
+    ) {
       router.push("/reservation");
     }
   }, [departure, destination, pickupDateTime, selectedVehicle, router]);
