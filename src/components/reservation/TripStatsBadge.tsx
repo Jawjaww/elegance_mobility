@@ -6,6 +6,14 @@ import { cn, formatDuration } from "@/lib/utils";
 interface TripStatsBadgeProps {
   distance?: number | null;
   duration?: number | null;
+  /**
+   * Vehicle category, e.g. "Berline premium".
+   *
+   * Only the confirmation screens pass it: there the reader is about to commit, so the overlay
+   * carries the "what" alongside the "how far". The reservation steps leave it out because they
+   * are already showing the picker, and repeating the choice on the map would be noise.
+   */
+  vehicle?: string | null;
 }
 
 /**
@@ -28,6 +36,7 @@ interface TripStatsBadgeProps {
 export function TripStatsBadge({
   distance,
   duration,
+  vehicle,
 }: Readonly<TripStatsBadgeProps>) {
   // Nothing to overlay until the route is known. Rendered as nothing rather than as a
   // placeholder so the map is never covered by an empty pill.
@@ -44,7 +53,7 @@ export function TripStatsBadge({
         // staying light enough to still read as glass rather than as a chip.
         "rounded-full border border-white/60 bg-white/55 px-3 py-1.5",
         "backdrop-blur-xl backdrop-saturate-150",
-        "text-xs font-medium text-neutral-900 shadow-lg shadow-black/10",
+        "text-xs font-medium whitespace-nowrap text-neutral-900 shadow-lg shadow-black/10",
       )}
     >
       <Route className="h-3.5 w-3.5 shrink-0 text-blue-600" aria-hidden />
@@ -54,6 +63,14 @@ export function TripStatsBadge({
         ·
       </span>
       <span>{formatDuration(duration)}</span>
+      {vehicle ? (
+        <>
+          <span className="text-neutral-500" aria-hidden>
+            ·
+          </span>
+          <span>{vehicle}</span>
+        </>
+      ) : null}
     </p>
   );
 }

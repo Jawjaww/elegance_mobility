@@ -41,3 +41,17 @@ export function assertVehicleType(v: unknown): VehicleType {
 export function normalizeVehicleType(v: unknown): VehicleType {
   return validateVehicleType(v) ?? ("STANDARD" as VehicleType);
 }
+
+/**
+ * French display name for a vehicle category.
+ *
+ * Single source of truth for the wording. It was duplicated verbatim in both confirmation
+ * screens before the vehicle category moved onto the map overlay, at which point a third
+ * copy would have been introduced; the surfaces must never disagree on the label.
+ */
+export function vehicleLabel(vehicle: VehicleType): string {
+  if (vehicle === "STANDARD") return "Berline";
+  if (vehicle === "PREMIUM") return "Berline premium";
+  if (vehicle === "VAN") return "Van de confort";
+  return vehicle;
+}

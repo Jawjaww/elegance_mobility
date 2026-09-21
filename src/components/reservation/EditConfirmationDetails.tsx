@@ -2,8 +2,7 @@
 
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { formatDuration, cn } from "@/lib/utils";
-import { CalendarIcon, CarIcon, Route } from "lucide-react";
+import { CalendarIcon, Route } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useReservationStore } from "@/lib/stores/reservationStore";
 import { reservationService } from "@/lib/services/reservationService";
@@ -17,7 +16,8 @@ import { pricingService } from "@/lib/services/pricingService";
 import { resolveRideFinalPrice } from "@/lib/services/resolveRideFinalPrice";
 import { LANDING_CTA } from "@/components/landing/landingSurface";
 import { TripEndpointRail } from "@/components/reservation/TripEndpointRail";
-import type { VehicleType } from "@/lib/vehicle";
+import { TripStatsBadge } from "@/components/reservation/TripStatsBadge";
+import { vehicleLabel } from "@/lib/utils/vehicle";
 
 type EditConfirmationDetailsProps = {
   reservationId: string;
@@ -28,13 +28,6 @@ type PriceDetails = {
   optionsPrice: number;
   totalPrice: number;
 };
-
-function vehicleLabel(vehicle: VehicleType): string {
-  if (vehicle === "STANDARD") return "Berline";
-  if (vehicle === "PREMIUM") return "Berline premium";
-  if (vehicle === "VAN") return "Van de confort";
-  return vehicle;
-}
 
 function Fact({
   icon: Icon,
@@ -56,74 +49,39 @@ function Fact({
   );
 }
 
-function TripSummaryBar({
-  distance,
-  duration,
+/**
+ * Price breakdown — now the only figure in the summary bar.
+ *
+ * Distance and duration used to sit here as a second row above the price; they now label the
+ * map overlay instead. Dropping the row is what brings this screen back under the fold on a
+ * phone, and the price is what the reader is actually here to check.
+ */
+function PriceSummaryBar({
   priceDetails,
 }: Readonly<{
-  distance?: number | null;
-  duration?: number | null;
-  priceDetails: PriceDetails | null;
+  priceDetails: PriceDetails;
 }>) {
   return (
     <div className="rounded-2xl border border-blue-500/15 bg-neutral-800/40 px-4 py-3 sm:px-6 sm:py-4">
-      {(distance || duration) && (
-        <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4 sm:gap-x-8">
-          {distance ? (
-            <div className="sm:col-span-2">
-              <p className="text-xs text-neutral-400 sm:text-sm">
-                Distance estimée
-              </p>
-              <p className="mt-0.5 text-base font-semibold text-white sm:mt-1 sm:text-lg">
-                {distance} km
-              </p>
-            </div>
-          ) : null}
-          {duration ? (
-            <div
-              className={cn(
-                "text-right sm:col-span-2",
-                !distance && "col-span-2 text-left",
-              )}
-            >
-              <p className="text-xs text-neutral-400 sm:text-sm">
-                Durée estimée
-              </p>
-              <p className="mt-0.5 text-base font-semibold text-white sm:mt-1 sm:text-lg">
-                {formatDuration(duration)}
-              </p>
-            </div>
-          ) : null}
+      <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4 sm:gap-x-8">
+        <div className="sm:col-span-2">
+          <p className="text-xs text-neutral-400 sm:text-sm">Prix de base</p>
+          <p className="mt-0.5 text-base font-semibold text-white sm:mt-1 sm:text-lg">
+            {priceDetails.basePrice}€
+            {priceDetails.optionsPrice > 0 ? (
+              <span className="ml-2 text-sm font-normal text-neutral-400">
+                (+{priceDetails.optionsPrice}€ options)
+              </span>
+            ) : null}
+          </p>
         </div>
-      )}
-
-      {priceDetails && (
-        <div
-          className={cn(
-            "grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4 sm:gap-x-8",
-            (distance || duration) &&
-              "mt-3 border-t border-neutral-700/50 pt-3 sm:mt-4 sm:pt-4",
-          )}
-        >
-          <div className="sm:col-span-2">
-            <p className="text-xs text-neutral-400 sm:text-sm">Prix de base</p>
-            <p className="mt-0.5 text-base font-semibold text-white sm:mt-1 sm:text-lg">
-              {priceDetails.basePrice}€
-              {priceDetails.optionsPrice > 0 ? (
-                <span className="ml-2 text-sm font-normal text-neutral-400">
-                  (+{priceDetails.optionsPrice}€ options)
-                </span>
-              ) : null}
-            </p>
-          </div>
-          <div className="text-right sm:col-span-2">
-            <p className="text-xs text-neutral-400 sm:text-sm">Total estimé</p>
-            <p className="mt-0.5 text-xl font-bold text-blue-400 sm:mt-1 sm:text-2xl">
-              {priceDetails.totalPrice}€
-            </p>
-          </div>
+        <div className="text-right sm:col-span-2">
+          <p className="text-xs text-neutral-400 sm:text-sm">Total estimé</p>
+          <p className="mt-0.5 text-xl font-bold text-blue-400 sm:mt-1 sm:text-2xl">
+            {priceDetails.totalPrice}€
+          </p>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -330,15 +288,14 @@ export function EditConfirmationDetails({
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/[0.08] pt-3">
+          {/* The vehicle category is deliberately absent here: it now labels the map overlay
+              ("4 km · 7 min · Berline premium"). Rendering both would be the same fact twice. */}
+          <div className="mt-3 border-t border-white/[0.08] pt-3">
             <Fact icon={CalendarIcon} label="Date et heure">
               <span className="capitalize">{formattedDate}</span>
               {formattedTime ? (
                 <span className="text-neutral-400"> · {formattedTime}</span>
               ) : null}
-            </Fact>
-            <Fact icon={CarIcon} label="Véhicule">
-              {vehicleLabel(selectedVehicle)}
             </Fact>
           </div>
 
@@ -369,7 +326,9 @@ export function EditConfirmationDetails({
           }
         >
           <Card className="order-2 overflow-hidden rounded-xl border-blue-500/20 bg-neutral-900/80 p-0 md:rounded-3xl lg:col-start-2 lg:row-start-1">
-            <div className="h-48 md:h-64 lg:h-[min(18.5rem,calc(100svh-13rem))]">
+            {/* `relative` hosts the stats overlay; the card's `overflow-hidden` clips the pill
+                to the rounded corner. */}
+            <div className="relative h-48 md:h-64 lg:h-[min(18.5rem,calc(100svh-13rem))]">
               <ReservationMap
                 departure={departure}
                 destination={destination}
@@ -377,17 +336,18 @@ export function EditConfirmationDetails({
                 className="h-48 md:h-64 lg:h-[min(18.5rem,calc(100svh-13rem))]"
                 height="100%"
               />
+              <TripStatsBadge
+                distance={distance}
+                duration={duration}
+                vehicle={vehicleLabel(selectedVehicle)}
+              />
             </div>
           </Card>
         </Suspense>
 
-        {(distance || duration || priceDetails) && (
+        {priceDetails && (
           <div className="order-3 w-full lg:col-span-2">
-            <TripSummaryBar
-              distance={distance}
-              duration={duration}
-              priceDetails={priceDetails}
-            />
+            <PriceSummaryBar priceDetails={priceDetails} />
           </div>
         )}
 
