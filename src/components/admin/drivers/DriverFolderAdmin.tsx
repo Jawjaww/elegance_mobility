@@ -36,6 +36,7 @@ import {
   mapDossierAdminRpcMessage,
   type DossierApproveClient,
 } from "@/lib/drivers/approveDossierFromServer";
+import { fetchDriverAccountEmails } from "@/lib/drivers/adminDrivers";
 import {
   ZoomIn,
   ZoomOut,
@@ -50,6 +51,7 @@ import {
   Briefcase,
   FileText,
   ShieldCheck,
+  Mail,
   Pencil,
 } from "lucide-react";
 
@@ -153,6 +155,19 @@ const REOPEN_ACTION_COPY = {
   confirmClassName:
     "border-amber-600 text-amber-300 hover:bg-amber-900/30",
 } as const;
+
+/**
+ * Action rows of the driver folder.
+ *
+ * On a phone the actions used to wrap inside a single row, which left several buttons squeezed
+ * onto one line with truncated labels. They are stacked and full width up to `sm`, where the
+ * original wrapping row comes back unchanged.
+ *
+ * The two styles are named constants applied to each element rather than a selector on the
+ * children, so the intent is readable at the call site and can be asserted on the source.
+ */
+const DRIVER_ACTION_ROW = "flex flex-col gap-2 sm:flex-row sm:flex-wrap";
+const DRIVER_ACTION_BUTTON = "w-full sm:w-auto";
 
 function driverActionCopy(pending: PendingDriverAction) {
   return pending.type === "reopen"
@@ -371,6 +386,10 @@ const SECTIONS = [
 export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: string }>) {
   const { toast } = useToast();
   const [driver, setDriver] = useState<DriverRow | null>(null);
+  // Account email, read through the admin-only `admin_driver_account_emails` RPC. It is the only
+  // field that tells two same-named drivers apart in this header, which shows a name and nothing
+  // else; it is not part of the `drivers` row.
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
   const [docs, setDocs] = useState<DriverDocRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -545,8 +564,15 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
 
       if (!driverData) {
         setDocs([]);
+        setAccountEmail(null);
         return;
       }
+
+      // Read before the documents, and independently of them: it comes from `auth.users` through
+      // the RPC, not from this row. The helper swallows its own failures, so an unavailable RPC
+      // leaves the email null and the rest of the folder untouched.
+      const emailsByDriverId = await fetchDriverAccountEmails([driverId]);
+      setAccountEmail(emailsByDriverId.get(driverId) ?? null);
 
       const { data: docsData, error: docsErr } = await supabase
         .from("driver_documents")
@@ -1036,7 +1062,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
           <Button
             size="sm"
             onClick={() => openOpsDialog("suspended")}
-            className="bg-red-600 hover:bg-red-700"
+            className={`bg-red-600 hover:bg-red-700 ${DRIVER_ACTION_BUTTON}`}
           >
             Suspendre
           </Button>
@@ -1046,7 +1072,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
             size="sm"
             variant="outline"
             onClick={() => openOpsDialog("on_vacation")}
-            className="border-blue-600 text-blue-300 hover:bg-blue-900/30"
+            className={`border-blue-600 text-blue-300 hover:bg-blue-900/30 ${DRIVER_ACTION_BUTTON}`}
           >
             Mettre en congé
           </Button>
@@ -1055,7 +1081,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
           <Button
             size="sm"
             onClick={() => openOpsDialog("active")}
-            className="bg-green-600 hover:bg-green-700"
+            className={`bg-green-600 hover:bg-green-700 ${DRIVER_ACTION_BUTTON}`}
           >
             Réactiver
           </Button>
@@ -1068,14 +1094,14 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
         size="sm"
         variant="outline"
         onClick={() => openReopenDialog()}
-        className="border-amber-600 text-amber-300 hover:bg-amber-900/30"
+        className={`border-amber-600 text-amber-300 hover:bg-amber-900/30 ${DRIVER_ACTION_BUTTON}`}
       >
         Remettre en vérification
       </Button>
     );
 
     const approveDocsHint = !isComplete ? (
-      <p className="text-xs text-amber-300 basis-full">
+      <p className="text-xs text-amber-300 sm:basis-full">
         Approuvez d’abord les documents remplacés
       </p>
     ) : null;
@@ -1086,7 +1112,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
         <Button
           size="sm"
           onClick={() => void approveDossierFromDb()}
-          className="bg-green-600 hover:bg-green-700"
+          className={`bg-green-600 hover:bg-green-700 ${DRIVER_ACTION_BUTTON}`}
           disabled={!isComplete}
         >
           ✓ Valider le dossier
@@ -1094,7 +1120,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
         <Button
           size="sm"
           onClick={() => approveOrRejectDossier(false)}
-          className="bg-red-600 hover:bg-red-700"
+          className={`bg-red-600 hover:bg-red-700 ${DRIVER_ACTION_BUTTON}`}
         >
           ✗ Rejeter le dossier
         </Button>
@@ -1102,7 +1128,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
           size="sm"
           variant="outline"
           onClick={() => void cancelPendingReview()}
-          className="border-amber-600 text-amber-300 hover:bg-amber-900/30"
+          className={`border-amber-600 text-amber-300 hover:bg-amber-900/30 ${DRIVER_ACTION_BUTTON}`}
         >
           ↩ Renvoyer pour correction
         </Button>
@@ -1117,14 +1143,14 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
           variant="outline"
           onClick={() => void putDossierInReview()}
           disabled={!canSubmit}
-          className="border-amber-600 text-amber-300 hover:bg-amber-900/30"
+          className={`border-amber-600 text-amber-300 hover:bg-amber-900/30 ${DRIVER_ACTION_BUTTON}`}
         >
           Mettre en vérification
         </Button>
         <Button
           size="sm"
           onClick={() => void approveDossierFromDb()}
-          className="bg-green-600 hover:bg-green-700"
+          className={`bg-green-600 hover:bg-green-700 ${DRIVER_ACTION_BUTTON}`}
           disabled={!isComplete}
         >
           ✓ Valider le dossier
@@ -1134,7 +1160,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
 
     if (compact) {
       return (
-        <div className="flex flex-wrap gap-2">
+        <div className={DRIVER_ACTION_ROW}>
           {showOps && (
             <>
               {opsButtons}
@@ -1158,7 +1184,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
               Suspendre ou passer en congé empêche d&apos;accepter de nouvelles
               courses. Cela ne change pas l&apos;état du dossier.
             </p>
-            <div className="flex flex-wrap gap-2">{opsButtons}</div>
+            <div className={DRIVER_ACTION_ROW}>{opsButtons}</div>
           </div>
         )}
         {showOps && (
@@ -1174,7 +1200,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
             <span className="text-sm text-neutral-400 mb-2 block">
               Dossier
             </span>
-            <div className="flex flex-wrap gap-2">{reviewButtons}</div>
+            <div className={DRIVER_ACTION_ROW}>{reviewButtons}</div>
           </div>
         )}
         {showDraft && (
@@ -1187,7 +1213,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
               en vérification ou l&apos;activer directement s&apos;il est
               complet.
             </p>
-            <div className="flex flex-wrap gap-2">{draftButtons}</div>
+            <div className={DRIVER_ACTION_ROW}>{draftButtons}</div>
           </div>
         )}
       </div>
@@ -1288,6 +1314,19 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
               <p className="mt-1 text-sm text-neutral-400">
                 Dossier chauffeur
               </p>
+              {/* The header used to carry a name and nothing else, which is what made two
+                  accounts named "Jaw Ben" and "jaw ben" impossible to tell apart while working
+                  on a dossier. The email is the disambiguator, so it sits right under the name
+                  rather than in the collapsed details below. */}
+              {accountEmail ? (
+                <p className="mt-1 flex items-center gap-1.5 text-sm text-neutral-300">
+                  <Mail
+                    className="h-3.5 w-3.5 shrink-0 text-neutral-500"
+                    aria-hidden
+                  />
+                  <span className="break-all">{accountEmail}</span>
+                </p>
+              ) : null}
               {driver.ops_status_reason &&
                 (driver.status === "suspended" ||
                   driver.status === "on_vacation" ||
@@ -1300,7 +1339,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                 ID: {driver?.id}
               </span>
             </div>
-            <div className="flex flex-wrap gap-2 shrink-0 justify-end">
+            <div className={`${DRIVER_ACTION_ROW} shrink-0 sm:justify-end`}>
               {renderAdminActionBar({ compact: true })}
               {editing ? (
                 <>
@@ -1308,7 +1347,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                     onClick={saveDriver}
                     disabled={saving}
                     size="sm"
-                    className={LANDING_CTA}
+                    className={`${LANDING_CTA} ${DRIVER_ACTION_BUTTON}`}
                   >
                     {saving ? "Enregistrement..." : "Enregistrer"}
                   </Button>
@@ -1319,7 +1358,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                       setEditing(false);
                       setForm(driver ?? {});
                     }}
-                    className="border-blue-400/30 bg-transparent text-white hover:bg-blue-500/15"
+                    className={`border-blue-400/30 bg-transparent text-white hover:bg-blue-500/15 ${DRIVER_ACTION_BUTTON}`}
                   >
                     Annuler
                   </Button>
@@ -1328,7 +1367,7 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
                 <Button
                   onClick={() => setEditing(true)}
                   size="sm"
-                  className={LANDING_CTA}
+                  className={`${LANDING_CTA} ${DRIVER_ACTION_BUTTON}`}
                 >
                   <Pencil className="h-4 w-4 mr-2" aria-hidden />
                   Modifier le profil

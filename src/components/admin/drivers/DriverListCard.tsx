@@ -10,6 +10,7 @@ import {
   Car,
   FolderOpen,
   IdCard,
+  Mail,
   MapPin,
   Phone,
   User,
@@ -45,7 +46,9 @@ function InfoRow({
         <p className="text-[10px] uppercase tracking-wide text-neutral-500">
           {label}
         </p>
-        <p className="text-sm text-neutral-200 truncate">{value}</p>
+        <p className="text-sm text-neutral-200 truncate" title={value}>
+          {value}
+        </p>
       </div>
     </div>
   );
@@ -96,6 +99,11 @@ export function DriverListCard({ driver }: DriverListCardProps) {
 
       <CardContent className="pt-0 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* The email leads: it is the only field that separates two drivers sharing a name,
+              which is exactly what this list could not do before. */}
+          {driver.account_email ? (
+            <InfoRow icon={Mail} label="Email" value={driver.account_email} />
+          ) : null}
           {driver.phone ? (
             <InfoRow icon={Phone} label="Téléphone" value={driver.phone} />
           ) : null}

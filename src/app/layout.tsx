@@ -24,6 +24,15 @@ export const viewport = {
   userScalable: false,
   themeColor: "#2563eb",
   viewportFit: "cover" as const,
+  /**
+   * Android Chrome keeps the layout viewport at its full height when the keyboard opens
+   * (its default, `resizes-visual`) and only shrinks the *visual* viewport. `dvh` is resolved
+   * against the layout viewport, so it keeps reporting the old height: a dialog anchored to
+   * the bottom of `dvh` stays exactly where the keyboard now covers it. Asking for
+   * `resizes-content` makes the layout viewport shrink with the keyboard, which is what the
+   * mobile dialog anchoring in `components/ui/dialog.tsx` relies on.
+   */
+  interactiveWidget: "resizes-content" as const,
 };
 
 /**

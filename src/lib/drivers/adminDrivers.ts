@@ -12,6 +12,13 @@ type VehicleSummary = Pick<
 
 export type DriverWithVehicle = DriverRow & {
   current_vehicle: VehicleSummary | null;
+  /**
+   * Account email, resolved from `auth.users` by the admin-only RPC
+   * `admin_driver_account_emails`. `null` when the RPC is unavailable or the dossier has no
+   * auth user — never rendered as an empty string, so a missing email is never mistaken for a
+   * blank one.
+   */
+  account_email: string | null;
 };
 
 export type DriverStatusFilter = DriverStatus | "all";
@@ -70,6 +77,40 @@ async function fetchVehicleSummariesById(
   return map;
 }
 
+/**
+ * Resolve the account email of each given dossier.
+ *
+ * The email is what tells two same-named drivers apart, and it only exists in `auth.users`,
+ * which the browser client cannot read however privileged the signed-in account is. The
+ * admin-only RPC `admin_driver_account_emails` reads it server-side.
+ *
+ * One batch call rather than one per driver: the caller resolves a whole page at once (the
+ * driver list), or a single dossier (the folder page). A failure is not fatal — the backoffice
+ * must keep working on name and phone, and a cloud deploy can lag the app — so it degrades to an
+ * empty map exactly like the vehicle summaries above.
+ */
+export async function fetchDriverAccountEmails(
+  driverIds: string[],
+): Promise<Map<string, string>> {
+  const byDriverId = new Map<string, string>();
+  const uniqueIds = Array.from(new Set(driverIds.filter(Boolean)));
+  if (uniqueIds.length === 0) return byDriverId;
+
+  const { data, error } = await supabase.rpc("admin_driver_account_emails", {
+    p_driver_ids: uniqueIds,
+  });
+
+  if (error) {
+    console.warn("[adminDrivers] account emails fetch failed:", error.message);
+    return byDriverId;
+  }
+
+  for (const row of data ?? []) {
+    byDriverId.set(row.driver_id, row.email);
+  }
+  return byDriverId;
+}
+
 export async function fetchDriversWithVehicles(): Promise<DriverWithVehicle[]> {
   const { data: drivers, error } = await supabase
     .from("drivers")
@@ -89,13 +130,17 @@ export async function fetchDriversWithVehicles(): Promise<DriverWithVehicle[]> {
     ),
   );
 
-  const vehiclesById = await fetchVehicleSummariesById(vehicleIds);
+  const [vehiclesById, emailsByDriverId] = await Promise.all([
+    fetchVehicleSummariesById(vehicleIds),
+    fetchDriverAccountEmails(rows.map((driver) => driver.id)),
+  ]);
 
   return rows.map((driver) => ({
     ...driver,
     current_vehicle: driver.current_vehicle_id
       ? (vehiclesById.get(driver.current_vehicle_id) ?? null)
       : null,
+    account_email: emailsByDriverId.get(driver.id) ?? null,
   }));
 }
 
@@ -118,13 +163,17 @@ export function filterDrivers(
 
     const name = driverDisplayName(driver).toLowerCase();
     const phone = (driver.phone ?? "").toLowerCase();
+    const email = (driver.account_email ?? "").toLowerCase();
     const license = (driver.driving_license_number ?? "").toLowerCase();
     const vehicle =
       vehicleSummaryLabel(driver.current_vehicle)?.toLowerCase() ?? "";
 
+    // The email belongs in the search: it is the one field that distinguishes two drivers with
+    // the same name, and finding the right one of those is the reason it is displayed at all.
     return (
       name.includes(query) ||
       phone.includes(query) ||
+      email.includes(query) ||
       license.includes(query) ||
       vehicle.includes(query)
     );
