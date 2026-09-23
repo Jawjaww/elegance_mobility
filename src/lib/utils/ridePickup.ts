@@ -68,6 +68,13 @@ export function isRidePickupStillOfferable(
 /** Short label when pickup passed but matching is still open (badge uses flame icon). */
 export const MATCHING_DELAY_LABEL = 'En recherche';
 
+/**
+ * Pickup passed and the matching window closed without a driver.
+ * The search is over — showing « En recherche » here would promise a driver is
+ * still being looked for. Single source for both the admin card and the client portal.
+ */
+export const EXPIRED_MATCHING_LABEL = 'Recherche expirée';
+
 /** Pickup time passed, deadline still open, client has not paused matching. */
 export function isMatchingDelayActive(
   pickupTime: string | null | undefined,
@@ -108,7 +115,7 @@ export function getPendingRideDisplayLabel(
   if (matchingPausedAt) return 'Confirmez la recherche';
   const deadline = resolveMatchingDeadlineMs(pickupTime, matchingDeadlineAt);
   if (deadline == null) return 'En attente';
-  if (deadline <= Date.now()) return 'Recherche expirée';
+  if (deadline <= Date.now()) return EXPIRED_MATCHING_LABEL;
   if (isMatchingDelayActive(pickupTime, matchingDeadlineAt, matchingPausedAt)) {
     return MATCHING_DELAY_LABEL;
   }

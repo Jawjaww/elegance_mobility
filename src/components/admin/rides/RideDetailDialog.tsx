@@ -186,11 +186,15 @@ function RideDetailContent({
     ride.matching_paused_at,
     ride.status,
     ride.delay_kind,
+    ride.pickup_time,
+    ride.matching_deadline_at,
   );
   const badgeOverride = adminMatchingBadgeOverride(
     ride.matching_paused_at,
     ride.status,
     ride.delay_kind,
+    ride.pickup_time,
+    ride.matching_deadline_at,
   );
 
   return (
