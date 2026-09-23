@@ -17,6 +17,24 @@ export interface DashboardMetrics {
 }
 
 /**
+ * Collects the label of a count whose request failed.
+ *
+ * Every count used to be read with `.count || 0`, which conflates "we counted zero" with "we
+ * could not count at all". A failed `rides` request therefore rendered as a confident
+ * "0 course en retard" while the rides list showed two, and nothing said the number was
+ * unavailable — `getDashboardMetrics` never throws, so the caller's error toast never fired.
+ *
+ * A count nobody could obtain is not zero. The failure is named here and thrown below.
+ */
+function collectCountFailure(
+  failures: string[],
+  label: string,
+  result: { error: { message: string } | null },
+): void {
+  if (result.error) failures.push(`${label} : ${result.error.message}`);
+}
+
+/**
  * Fetches metrics for the admin dashboard.
  */
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
@@ -88,6 +106,26 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
       .gte("pickup_time", yesterdayStr)
       .lt("pickup_time", todayStr),
   ]);
+
+  // `vehicles` keeps its deliberate soft failure: a missing vehicle count degrades one metric
+  // card and was already handled as such. The ride and driver counts below are the numbers the
+  // operator acts on, so they must not be guessed.
+  const failedCounts: string[] = [];
+  collectCountFailure(failedCounts, "courses du jour", todayRidesResult);
+  collectCountFailure(failedCounts, "courses en attente", pendingRidesResult);
+  collectCountFailure(failedCounts, "courses en retard", delayedRidesResult);
+  collectCountFailure(failedCounts, "courses en cours", inProgressRidesResult);
+  collectCountFailure(failedCounts, "chauffeurs actifs", activeDriversResult);
+  collectCountFailure(
+    failedCounts,
+    "chauffeurs en ligne",
+    onlineDriversResult,
+  );
+  collectCountFailure(failedCounts, "courses à venir", remainingRidesResult);
+
+  if (failedCounts.length > 0) {
+    throw new Error(`Compteurs indisponibles — ${failedCounts.join(" ; ")}`);
+  }
 
   if (availableVehiclesResult.error) {
     console.warn(

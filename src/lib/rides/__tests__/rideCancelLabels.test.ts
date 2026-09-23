@@ -60,6 +60,57 @@ describe('rideCancelLabels', () => {
     ).toBe(false);
   });
 
+  it('reads the matching window, not just the status, for the admin badge', () => {
+    // The deadline is the arbiter: an expired window is not "En recherche" any more.
+    const past = Date.now() - 5 * 60_000;
+    const pickupTime = new Date(past).toISOString();
+    const expired = new Date(Date.now() - 60_000).toISOString();
+    const open = new Date(Date.now() + 60_000).toISOString();
+
+    expect(
+      shouldShowAdminMatchingFlameBadge(null, 'delayed', 'matching', pickupTime, open),
+    ).toBe(true);
+    expect(
+      adminMatchingBadgeOverride(null, 'delayed', 'matching', pickupTime, open),
+    ).toBeNull();
+
+    expect(
+      shouldShowAdminMatchingFlameBadge(
+        null,
+        'delayed',
+        'matching',
+        pickupTime,
+        expired,
+      ),
+    ).toBe(false);
+    expect(
+      adminMatchingBadgeOverride(null, 'delayed', 'matching', pickupTime, expired),
+    ).toBe('Recherche expirée');
+    expect(
+      adminMatchingBadgeOverride(null, 'delayed', 'matching', pickupTime, expired),
+    ).not.toBe('En recherche');
+
+    // A ride matching no longer applies to stays silent, whatever the deadline says.
+    expect(
+      shouldShowAdminMatchingFlameBadge(null, 'completed', null, pickupTime, open),
+    ).toBe(false);
+    expect(
+      adminMatchingBadgeOverride(null, 'completed', null, pickupTime, expired),
+    ).toBeNull();
+
+    // Pause wins over everything.
+    expect(
+      shouldShowAdminMatchingFlameBadge(expired, 'delayed', 'matching', pickupTime, open),
+    ).toBe(false);
+    expect(
+      adminMatchingBadgeOverride(expired, 'delayed', 'matching', pickupTime, open),
+    ).toBe('Recherche en pause');
+
+    // No pickup time: keep the status-only signal rather than dropping the badge.
+    expect(shouldShowAdminMatchingFlameBadge(null, 'delayed', 'matching')).toBe(true);
+    expect(adminMatchingBadgeOverride(null, 'delayed', 'matching')).toBeNull();
+  });
+
   it('maps delay kind and vehicle display names', () => {
     expect(delayKindLabel('matching')).toBe('Matching (pas de chauffeur)');
     expect(delayKindLabel(null)).toBe('—');

@@ -8,6 +8,7 @@ import {
   DRIVER_DOCS_BUCKET,
   toStoragePath,
 } from "@/lib/storage/driverDocumentPath";
+import { resolveDriverDocumentPreviews, type DriverDocumentPreviewTarget } from "@/lib/storage/driverDocumentPreviews";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -425,13 +426,15 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
       return prev;
     });
 
-    const urls: Record<string, string> = {};
     await supabase.auth.getUser();
     const {
       data: { session },
     } = await supabase.auth.getSession();
     const accessToken = session?.access_token;
 
+    // Resolve every storage path once: the batch call and the fallback both key on it, and a
+    // document without a resolvable path is reported the same way as before.
+    const targets: DriverDocumentPreviewTarget[] = [];
     for (const doc of docsData) {
       if (!doc.file_url) continue;
       const path = toStoragePath(doc.file_url);
@@ -442,9 +445,17 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
         );
         continue;
       }
-      const signed = await resolveSignedUrlForPath(path, accessToken);
-      if (signed) urls[doc.id] = signed;
+      targets.push({ docId: doc.id, path });
     }
+
+    // One batched request for the folder, then a parallel fallback for whatever it missed.
+    // See `resolveDriverDocumentPreviews` for why the ordering is the point.
+    const urls = await resolveDriverDocumentPreviews(
+      targets,
+      accessToken,
+      resolveSignedUrlForPath,
+    );
+
     setSignedUrls(urls);
 
     const missing = docsData.filter((d) => d.file_url && !urls[d.id]).length;
@@ -568,17 +579,25 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
         return;
       }
 
-      // Read before the documents, and independently of them: it comes from `auth.users` through
-      // the RPC, not from this row. The helper swallows its own failures, so an unavailable RPC
-      // leaves the email null and the rest of the folder untouched.
-      const emailsByDriverId = await fetchDriverAccountEmails([driverId]);
+      // Three reads that depend on nothing but the driver id: the account email (from `auth.users`
+      // through its own RPC), the documents, and the plate. Running them together removes two
+      // sequential round trips from the folder's time-to-first-paint on a mobile connection.
+      const [emailsByDriverId, docsResult, vehiclesResult] = await Promise.all([
+        fetchDriverAccountEmails([driverId]),
+        supabase
+          .from("driver_documents")
+          .select("*")
+          .eq("driver_id", driverId)
+          .order("upload_date", { ascending: false }),
+        supabase
+          .from("vehicles")
+          .select("license_plate")
+          .eq("driver_id", driverId),
+      ]);
       setAccountEmail(emailsByDriverId.get(driverId) ?? null);
 
-      const { data: docsData, error: docsErr } = await supabase
-        .from("driver_documents")
-        .select("*")
-        .eq("driver_id", driverId)
-        .order("upload_date", { ascending: false });
+      const docsErr = docsResult.error;
+      const docsData = docsResult.data;
 
       console.log(
         "[DriverFolderAdmin] Docs data:",
@@ -594,29 +613,27 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
           "[DriverFolderAdmin] Documents fetch failed:",
           docsErr.message,
         );
-        setDocs([]);
-      } else {
-        setDocs(docsData ?? []);
-        if (docsData && docsData.length > 0) {
-          await generateSignedUrls(docsData);
-        }
       }
-
       const resolvedDocs = docsErr ? [] : (docsData ?? []);
+      setDocs(resolvedDocs);
+
       let hasPlate: boolean | null = null;
-      const { data: vehicles, error: vehicleErr } = await supabase
-        .from("vehicles")
-        .select("license_plate")
-        .eq("driver_id", driverId);
-      if (!vehicleErr && vehicles) {
-        hasPlate = vehicles.some((v) => {
+      if (!vehiclesResult.error && vehiclesResult.data) {
+        hasPlate = vehiclesResult.data.some((v) => {
           const plate = (v.license_plate ?? "").trim();
           return plate !== "" && plate !== "À compléter";
         });
       }
 
+      // Preview URLs and completeness are independent of each other, but both need the documents
+      // and the plate resolved above. They overlap instead of queueing behind one another.
+      const signedUrlsWork =
+        resolvedDocs.length > 0
+          ? generateSignedUrls(resolvedDocs)
+          : Promise.resolve();
+      let completenessWork: Promise<void>;
       if (driverData.user_id) {
-        await fetchCompleteness(
+        completenessWork = fetchCompleteness(
           driverData.user_id,
           driverData,
           resolvedDocs,
@@ -624,7 +641,9 @@ export default function DriverFolderAdmin({ driverId }: Readonly<{ driverId: str
         );
       } else {
         applyLocalCompleteness(driverData, resolvedDocs, hasPlate);
+        completenessWork = Promise.resolve();
       }
+      await Promise.all([signedUrlsWork, completenessWork]);
     } catch (e: unknown) {
       console.warn("DriverFolderAdmin.loadData error:", e);
       setLoadError(errorMessage(e));

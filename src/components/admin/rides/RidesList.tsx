@@ -14,6 +14,7 @@ import { adminCancelRide, isAdminRpcFailure } from "@/services/adminRideService"
 import { AdminRideListCard } from "./AdminRideListCard";
 import { RideDetailDialog } from "./RideDetailDialog";
 import { formatPersonName } from "@/lib/rides/rideCancelLabels";
+import { describeRideLoadError } from "@/lib/rides/rideLoadError";
 import { LANDING_CTA } from "@/components/landing/landingAssets";
 
 const LOADING_SKELETON_IDS = ["ride-skel-1", "ride-skel-2", "ride-skel-3"] as const;
@@ -136,6 +137,20 @@ export function RidesList() {
         <p className="text-neutral-400 text-sm sm:text-base">
           Impossible de charger les courses.
         </p>
+        {/* Surface the real cause and a way out: without these two, a failed load is
+            indistinguishable from a filter that matches nothing. */}
+        <p className="mt-2 break-words text-xs text-neutral-500 sm:text-sm">
+          {describeRideLoadError(query.error)}
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void query.refetch()}
+          disabled={query.isFetching}
+          className="mt-4 min-h-11 w-full px-8 sm:w-auto"
+        >
+          {query.isFetching ? "Nouvelle tentative..." : "Réessayer"}
+        </Button>
       </Card>
     );
   }

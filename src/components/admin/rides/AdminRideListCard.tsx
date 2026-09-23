@@ -33,12 +33,16 @@ function RideStatusCorner({
   cancelBilling,
   matchingPausedAt,
   delayKind,
+  pickupTime,
+  matchingDeadlineAt,
 }: Readonly<{
   status: DbRideStatus;
   canceledBy: string | null;
   cancelBilling: string | null;
   matchingPausedAt: string | null;
   delayKind: string | null;
+  pickupTime: string;
+  matchingDeadlineAt: string | null;
 }>) {
   const isCanceled = status.includes("canceled");
   const reasonBadge = cancelBadgeLabel(status, canceledBy);
@@ -47,6 +51,8 @@ function RideStatusCorner({
     matchingPausedAt,
     status,
     delayKind,
+    pickupTime,
+    matchingDeadlineAt,
   );
 
   if (!isCanceled) {
@@ -60,6 +66,8 @@ function RideStatusCorner({
             matchingPausedAt,
             status,
             delayKind,
+            pickupTime,
+            matchingDeadlineAt,
           )}
           showMatchingFlame={showMatchingFlame}
         />
@@ -140,6 +148,8 @@ export function AdminRideListCard({
             cancelBilling={ride.cancel_billing}
             matchingPausedAt={ride.matching_paused_at}
             delayKind={ride.delay_kind}
+            pickupTime={ride.pickup_time}
+            matchingDeadlineAt={ride.matching_deadline_at}
           />
         </div>
 

@@ -2,364 +2,71 @@
 
 import { create } from "zustand";
 import { supabase } from "@/lib/database/client";
-import type {
-  Database,
-  Driver as DbDriver,
-} from "@/lib/types/database.types";
+import type { Database } from "@/lib/types/database.types";
 
-// Types de base (generated schema)
-type RideRow = Database["public"]["Tables"]["rides"]["Row"];
-type VehicleRow = Database["public"]["Tables"]["vehicles"]["Row"];
+type DriverStatus = Database["public"]["Enums"]["driver_status"];
 
-type Driver = Pick<
-  DbDriver,
-  | "id"
-  | "user_id"
-  | "status"
-  | "first_name"
-  | "last_name"
-  | "phone"
-  | "current_vehicle_id"
-  | "created_at"
-  | "updated_at"
-> & {
-  license_number?: string;
-  default_vehicle_id?: string;
+/**
+ * The only driver fields any backoffice screen reads.
+ *
+ * This list used to be `select("*")` — 42 columns, including the full dossier, fetched to
+ * render a name in a `<SelectItem>` and a status in a filter. Narrowing it keeps the payload
+ * proportional to what is displayed, and the type below now states what a caller may rely on
+ * rather than exposing a whole row nobody had checked.
+ */
+const DRIVER_LIST_COLUMNS = "id, first_name, last_name, phone, status";
+
+export type DriverListEntry = {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  status: DriverStatus;
 };
 
-interface DriverWithDetails extends Driver {
-  vehicle?: VehicleRow;
-  todayStats?: {
-    completedRides: number;
-    totalEarnings: number;
-    totalDistance: number;
-    remainingRides: number;
-  };
-}
-
 interface DriversState {
-  drivers: DriverWithDetails[];
-  activeDriver: DriverWithDetails | null;
+  drivers: DriverListEntry[];
   loading: boolean;
+  /**
+   * Kept as the store's failure surface. No screen reads it today, but a failed list must not
+   * vanish silently: an empty driver selector is indistinguishable from a fleet with no
+   * drivers, and that is the state this store used to produce.
+   */
   error: string | null;
-  // Actions
   fetchDrivers: () => Promise<void>;
-  fetchDriverDetails: (driverId: string) => Promise<void>;
-  setActiveDriver: (driver: DriverWithDetails | null) => void;
-  updateDriverStatus: (
-    driverId: string,
-    status: Driver["status"],
-  ) => Promise<void>;
-  assignVehicle: (driverId: string, vehicleId: string) => Promise<void>;
-  fetchDriverDailyStats: (driverId: string) => Promise<void>;
 }
 
-export const useDriversStore = create<DriversState>((set, get) => ({
+export const useDriversStore = create<DriversState>((set) => ({
   drivers: [],
-  activeDriver: null,
   loading: false,
   error: null,
 
+  /**
+   * One request, not two.
+   *
+   * Two shapes were removed here. The first awaited a `.single()` vehicle query per driver
+   * inside a `map`, so a page paid 1 + N round-trips for a list it renders at once. The second
+   * resolved those vehicles in a single batched query — better, but still pointless: no
+   * consumer reads `driver.vehicle`, so the request was buying a field nothing looked at.
+   */
   fetchDrivers: async () => {
     set({ loading: true, error: null });
     try {
-      console.log("🔍 Tentative de récupération des chauffeurs...");
-
-      // D'abord récupérer les chauffeurs
-      const { data: drivers, error: driversError } = await supabase
+      const { data, error } = await supabase
         .from("drivers")
-        .select("*")
+        .select(DRIVER_LIST_COLUMNS)
         .order("created_at", { ascending: false });
 
-      console.log("📊 Résultat requête drivers:", { drivers, driversError });
-
-      if (driversError) {
-        console.error("❌ Erreur drivers:", driversError);
-        throw driversError;
-      }
-
-      if (!drivers) {
-        console.log("⚠️ Aucun driver trouvé");
-        set({ drivers: [], loading: false });
-        return;
-      }
-
-      console.log(`✅ ${drivers.length} drivers trouvés:`, drivers);
-
-      // Récupérer les véhicules séparément si nécessaire
-      const driversWithDetails: DriverWithDetails[] = await Promise.all(
-        drivers.map(async (driver) => {
-          let vehicle: VehicleRow | undefined;
-
-          // Récupérer le véhicule si un ID est spécifié
-          if (driver.current_vehicle_id || driver.default_vehicle_id) {
-            const vehicleId =
-              driver.current_vehicle_id || driver.default_vehicle_id;
-            const { data: vehicleData } = await supabase
-              .from("vehicles")
-              .select("*")
-              .eq("id", vehicleId)
-              .single();
-
-            vehicle = vehicleData || undefined;
-          }
-
-          return {
-            ...driver,
-            vehicle,
-          };
-        }),
-      );
-
-      console.log("🚗 Drivers avec détails:", driversWithDetails);
-
-      set({
-        drivers: driversWithDetails,
-        loading: false,
-      });
-    } catch (error: any) {
-      console.error("❌ Erreur lors de la récupération des chauffeurs:", error);
-      set({
-        error: error.message || "Erreur lors de la récupération des chauffeurs",
-        loading: false,
-      });
-    }
-  },
-
-  fetchDriverDetails: async (driverId: string) => {
-    try {
-      const { data: driver, error } = await supabase
-        .from("drivers")
-        .select("*")
-        .eq("id", driverId)
-        .single();
-
       if (error) throw error;
 
-      let vehicle: VehicleRow | undefined;
-
-      // Récupérer le véhicule si un ID est spécifié
-      if (driver.current_vehicle_id || driver.default_vehicle_id) {
-        const vehicleId =
-          driver.current_vehicle_id || driver.default_vehicle_id;
-        const { data: vehicleData } = await supabase
-          .from("vehicles")
-          .select("*")
-          .eq("id", vehicleId)
-          .single();
-
-        vehicle = vehicleData || undefined;
-      }
-
-      // Mise à jour du driver dans le state
-      set((state) => ({
-        drivers: state.drivers.map((d) =>
-          d.id === driverId ? { ...driver, vehicle } : d,
-        ),
-      }));
-    } catch (error: any) {
-      console.error("Erreur lors de la récupération des détails:", error);
-    }
-  },
-
-  setActiveDriver: (driver) => {
-    set({ activeDriver: driver });
-  },
-
-  updateDriverStatus: async (driverId: string, status: Driver["status"]) => {
-    try {
-      if (
-        status !== "active" &&
-        status !== "suspended" &&
-        status !== "on_vacation"
-      ) {
-        throw new Error(
-          "Seuls les statuts opérationnels active, suspended et on_vacation sont supportés",
-        );
-      }
-
-      const { data, error } = await supabase.rpc("admin_set_driver_status", {
-        p_driver_id: driverId,
-        p_status: status,
-      });
-      if (error) throw error;
-
-      const row = Array.isArray(data) ? data[0] : data;
-      const payload = row as
-        | { success?: boolean; error?: string; new_status?: string }
-        | null;
-      if (payload?.success === false) {
-        throw new Error(payload.error || "Mise à jour du statut refusée");
-      }
-
-      const nextStatus = (payload?.new_status as Driver["status"]) || status;
-
-      // Optimistic local update
-      set((state) => ({
-        drivers: state.drivers.map((driver) =>
-          driver.id === driverId
-            ? {
-                ...driver,
-                status: nextStatus,
-                updated_at: new Date().toISOString(),
-              }
-            : driver,
-        ),
-      }));
-
-      const activeDriver = get().activeDriver;
-      if (activeDriver?.id === driverId) {
-        set({
-          activeDriver: {
-            ...activeDriver,
-            status: nextStatus,
-            updated_at: new Date().toISOString(),
-          },
-        });
-      }
-    } catch (error: any) {
-      console.error("Erreur updateDriverStatus:", error);
-      get().fetchDrivers();
-      throw error;
-    }
-  },
-
-  assignVehicle: async (driverId: string, vehicleId: string) => {
-    try {
-      const { error } = await supabase
-        .from("drivers")
-        .update({
-          current_vehicle_id: vehicleId,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", driverId);
-
-      if (error) throw error;
-
-      // Récupérer les détails du véhicule
-      const { data: vehicle } = await supabase
-        .from("vehicles")
-        .select("*")
-        .eq("id", vehicleId)
-        .single();
-
-      // Mise à jour optimiste du state
-      set((state) => ({
-        drivers: state.drivers.map((driver) =>
-          driver.id === driverId
-            ? {
-                ...driver,
-                current_vehicle_id: vehicleId,
-                vehicle,
-                updated_at: new Date().toISOString(),
-              }
-            : driver,
-        ),
-      }));
-
-      // Mettre à jour activeDriver si nécessaire
-      const activeDriver = get().activeDriver;
-      if (activeDriver?.id === driverId) {
-        set({
-          activeDriver: {
-            ...activeDriver,
-            current_vehicle_id: vehicleId,
-            vehicle,
-            updated_at: new Date().toISOString(),
-          },
-        });
-      }
-    } catch (error: any) {
-      console.error("Erreur lors de l'assignation du véhicule:", error);
-      // Recharger en cas d'erreur
-      get().fetchDrivers();
-    }
-  },
-
-  fetchDriverDailyStats: async (driverId: string) => {
-    try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const { data: rides, error } = await supabase
-        .from("rides")
-        .select("*")
-        .eq("driver_id", driverId)
-        .gte("pickup_time", today.toISOString())
-        .lt(
-          "pickup_time",
-          new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString(),
-        );
-
-      if (error) throw error;
-
-      const stats = rides.reduce(
-        (acc, ride: RideRow) => ({
-          completedRides:
-            acc.completedRides + (ride.status === "completed" ? 1 : 0),
-          totalEarnings:
-            acc.totalEarnings +
-            (ride.status === "completed" ? ride.final_price || 0 : 0),
-          totalDistance: acc.totalDistance + (ride.distance || 0),
-          remainingRides:
-            acc.remainingRides +
-            (["scheduled", "in-progress", "delayed"].includes(ride.status)
-              ? 1
-              : 0),
-        }),
-        {
-          completedRides: 0,
-          totalEarnings: 0,
-          totalDistance: 0,
-          remainingRides: 0,
-        },
-      );
-
-      // Mise à jour du driver avec les stats
-      set((state) => ({
-        drivers: state.drivers.map((driver) =>
-          driver.id === driverId ? { ...driver, todayStats: stats } : driver,
-        ),
-        activeDriver:
-          state.activeDriver?.id === driverId
-            ? { ...state.activeDriver, todayStats: stats }
-            : state.activeDriver,
-      }));
-    } catch (error: any) {
-      console.error("Erreur lors de la récupération des statistiques:", error);
+      set({ drivers: data ?? [], loading: false });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Erreur lors du chargement";
+      console.error("[driversStore] driver list fetch failed:", message);
+      set({ error: message, loading: false });
     }
   },
 }));
-
-// Setup des souscriptions en temps réel
-
-// Hook client pour souscription Supabase
-import { useEffect } from "react";
-export function useDriversStoreSubscription() {
-  useEffect(() => {
-    const channel = supabase
-      .channel("store-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "drivers" },
-        () => useDriversStore.getState().fetchDrivers(),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "rides" },
-        (payload: { new: { driver_id?: string } }) => {
-          if (payload.new?.driver_id) {
-            useDriversStore
-              .getState()
-              .fetchDriverDailyStats(payload.new.driver_id);
-          }
-        },
-      )
-      .subscribe();
-    return () => {
-      channel.unsubscribe();
-    };
-  }, []);
-}
 
 export default useDriversStore;

@@ -1,5 +1,11 @@
 /** Helpers for ride cancellation display (backoffice + client). */
 
+import {
+  EXPIRED_MATCHING_LABEL,
+  isMatchingDelayActive,
+  resolveMatchingDeadlineMs,
+} from "@/lib/utils/ridePickup";
+
 export type CanceledBy = "system" | "admin" | "client" | "driver";
 
 export type CancelBilling = "none" | "client_fee" | "waive";
@@ -79,24 +85,57 @@ export function clientStatusBadgeOverride(
   return null;
 }
 
-/** Admin flame badge when matching runs past pickup (icon replaces long text). */
+/**
+ * Admin flame badge: matching runs past pickup, so the icon replaces the long text.
+ *
+ * The matching deadline is the arbiter, exactly as `getPendingRideDisplayLabel` reads it. A ride
+ * whose window has closed is no longer being searched for, and the flame would claim the
+ * opposite. `pickupTime` stays optional so a caller without the window keeps the status-only
+ * signal instead of losing the badge entirely.
+ */
 export function shouldShowAdminMatchingFlameBadge(
   matchingPausedAt: string | null | undefined,
   status: string,
   delayKind: string | null | undefined,
+  pickupTime?: string | null,
+  matchingDeadlineAt?: string | null,
 ): boolean {
   if (matchingPausedAt) return false;
-  return status === "delayed" || delayKind === "matching";
+  if (!isMatchingContext(status, delayKind)) return false;
+  if (!pickupTime) return status === "delayed" || delayKind === "matching";
+  return isMatchingDelayActive(pickupTime, matchingDeadlineAt, matchingPausedAt);
 }
 
-/** Admin badge: pause label only — matching delay uses flame icon. */
+/**
+ * Admin badge text for the matching lifecycle: paused, or the search that ran out.
+ * Returns null while matching is genuinely live — the flame icon carries that state, and the
+ * plain `STATUS_LABELS` entry would otherwise repeat « En recherche » over an expired window.
+ */
 export function adminMatchingBadgeOverride(
   matchingPausedAt: string | null | undefined,
-  _status: string,
-  _delayKind: string | null | undefined,
+  status: string,
+  delayKind: string | null | undefined,
+  pickupTime?: string | null,
+  matchingDeadlineAt?: string | null,
 ): string | null {
   if (matchingPausedAt) return "Recherche en pause";
+  if (!isMatchingContext(status, delayKind) || !pickupTime) return null;
+  if (isMatchingDelayActive(pickupTime, matchingDeadlineAt, matchingPausedAt)) {
+    return null;
+  }
+  const deadline = resolveMatchingDeadlineMs(pickupTime, matchingDeadlineAt);
+  if (deadline != null && deadline <= Date.now()) return EXPIRED_MATCHING_LABEL;
   return null;
+}
+
+/** Only a ride still looking for a driver can wear the matching badge. */
+function isMatchingContext(
+  status: string,
+  delayKind: string | null | undefined,
+): boolean {
+  return (
+    status === "pending" || status === "delayed" || delayKind === "matching"
+  );
 }
 
 const DELAY_KIND_LABELS: Record<string, string> = {
