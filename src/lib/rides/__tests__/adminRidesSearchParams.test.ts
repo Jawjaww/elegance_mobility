@@ -1,6 +1,7 @@
 import {
   buildAdminRidesSearchParams,
   parseAdminRidesSearchParams,
+  shouldWriteFiltersToUrl,
 } from "../adminRidesSearchParams";
 
 describe("adminRidesSearchParams", () => {
@@ -49,5 +50,44 @@ describe("adminRidesSearchParams", () => {
       parseAdminRidesSearchParams(new URLSearchParams("filter=canceled"))
         .selectedStatus,
     ).toBe("canceled");
+  });
+
+  describe("the URL write-back", () => {
+    // Reproduces the exact condition that made this necessary: serialising the default filters
+    // yields a non-empty string, while a freshly opened `/backoffice-portal/rides` has none.
+    const defaultFilters = buildAdminRidesSearchParams({
+      selectedDate: new Date(2026, 8, 10),
+      viewMode: "month",
+      selectedStatus: "all",
+      driverFilter: null,
+      clientFilter: null,
+      searchQuery: "",
+    });
+
+    it("does not rewrite a bare URL during the seeding pass", () => {
+      expect(defaultFilters).not.toBe("");
+
+      // `null` is the state before the first pass: the filters were just read from this URL.
+      expect(shouldWriteFiltersToUrl(defaultFilters, "", null)).toBe(false);
+    });
+
+    it("does not rewrite when the URL already matches", () => {
+      expect(
+        shouldWriteFiltersToUrl(defaultFilters, defaultFilters, ""),
+      ).toBe(false);
+    });
+
+    it("rewrites once a filter really changed", () => {
+      const changed = buildAdminRidesSearchParams({
+        selectedDate: new Date(2026, 8, 10),
+        viewMode: "day",
+        selectedStatus: "pending",
+        driverFilter: "driver-1",
+        clientFilter: null,
+        searchQuery: "",
+      });
+
+      expect(shouldWriteFiltersToUrl(changed, defaultFilters, "")).toBe(true);
+    });
   });
 });

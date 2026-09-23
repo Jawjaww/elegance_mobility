@@ -5,58 +5,13 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { AlertTriangle, MapPin } from "lucide-react";
-import { supabase } from "@/lib/database/client";
-import { overdueUnassignedOrFilter } from "@/lib/dashboard/adminDashboard";
+import {
+  EMPTY_QUEUE_PREVIEW,
+  loadDelayedQueue,
+  loadUpcomingQueue,
+  type QueuePreview,
+} from "@/lib/dashboard/ridesQueueSummary";
 import { cn } from "@/lib/utils";
-
-type QueuePreview = {
-  count: number;
-  pickupTime: string | null;
-};
-
-const EMPTY: QueuePreview = { count: 0, pickupTime: null };
-
-async function loadUpcoming(): Promise<QueuePreview> {
-  const nowIso = new Date().toISOString();
-  const [{ count }, { data }] = await Promise.all([
-    supabase
-      .from("rides")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "pending")
-      .gte("pickup_time", nowIso),
-    supabase
-      .from("rides")
-      .select("pickup_time")
-      .eq("status", "pending")
-      .gte("pickup_time", nowIso)
-      .order("pickup_time", { ascending: true })
-      .limit(1),
-  ]);
-  return {
-    count: count ?? 0,
-    pickupTime: data?.[0]?.pickup_time ?? null,
-  };
-}
-
-async function loadDelayed(): Promise<QueuePreview> {
-  const orFilter = overdueUnassignedOrFilter(new Date().toISOString());
-  const [{ count }, { data }] = await Promise.all([
-    supabase
-      .from("rides")
-      .select("id", { count: "exact", head: true })
-      .or(orFilter),
-    supabase
-      .from("rides")
-      .select("pickup_time")
-      .or(orFilter)
-      .order("pickup_time", { ascending: true })
-      .limit(1),
-  ]);
-  return {
-    count: count ?? 0,
-    pickupTime: data?.[0]?.pickup_time ?? null,
-  };
-}
 
 function QueueCard({
   title,
@@ -64,12 +19,14 @@ function QueueCard({
   preview,
   tone,
   icon,
+  loading = false,
 }: Readonly<{
   title: string;
   href: string;
   preview: QueuePreview;
   tone: "pending" | "urgent";
   icon: ReactNode;
+  loading?: boolean;
 }>) {
   const styles =
     tone === "urgent"
@@ -104,37 +61,58 @@ function QueueCard({
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-xs font-medium text-neutral-400">{title}</p>
-        <p className={cn("text-2xl font-bold tabular-nums leading-none mt-0.5", styles.count)}>
-          {preview.count}
-        </p>
-        <p className={cn("text-[11px] mt-1 truncate", styles.hint)}>
-          {preview.pickupTime
-            ? format(new Date(preview.pickupTime), "EEE d MMM · HH:mm", {
-                locale: fr,
-              })
-            : "Aucune"}
-        </p>
+        {loading ? (
+          // Placeholders sized like the values they replace, so the card does not resize when
+          // the count arrives. The count used to render as a real "0" from its initial state,
+          // which read as "nothing is waiting" for as long as the request took — a wrong
+          // answer shown confidently, not just a slow one.
+          <div aria-hidden className="animate-pulse">
+            <div className={cn("h-6 rounded bg-white/10 mt-0.5", "w-10")} />
+            <div className="h-3 rounded bg-white/10 mt-1 w-24" />
+          </div>
+        ) : (
+          <>
+            <p
+              className={cn(
+                "text-2xl font-bold tabular-nums leading-none mt-0.5",
+                styles.count,
+              )}
+            >
+              {preview.count}
+            </p>
+            <p className={cn("text-[11px] mt-1 truncate", styles.hint)}>
+              {preview.pickupTime
+                ? format(new Date(preview.pickupTime), "EEE d MMM · HH:mm", {
+                    locale: fr,
+                  })
+                : "Aucune"}
+            </p>
+          </>
+        )}
       </div>
     </Link>
   );
 }
 
 export function RidesQueueSummary() {
-  const [upcoming, setUpcoming] = useState<QueuePreview>(EMPTY);
-  const [delayed, setDelayed] = useState<QueuePreview>(EMPTY);
+  const [upcoming, setUpcoming] = useState<QueuePreview>(EMPTY_QUEUE_PREVIEW);
+  const [delayed, setDelayed] = useState<QueuePreview>(EMPTY_QUEUE_PREVIEW);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
       const [nextUpcoming, nextDelayed] = await Promise.all([
-        loadUpcoming(),
-        loadDelayed(),
+        loadUpcomingQueue(),
+        loadDelayedQueue(),
       ]);
       setUpcoming(nextUpcoming);
       setDelayed(nextDelayed);
     } catch (error) {
       console.error("Error loading rides queue summary:", error);
-      setUpcoming(EMPTY);
-      setDelayed(EMPTY);
+      setUpcoming(EMPTY_QUEUE_PREVIEW);
+      setDelayed(EMPTY_QUEUE_PREVIEW);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -143,6 +121,8 @@ export function RidesQueueSummary() {
   }, [load]);
 
   return (
+    // Each card owns its own request, so the two counts arrive independently instead of the
+    // grid waiting on the slower one.
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
       <QueueCard
         title="Prochaine"
@@ -150,6 +130,7 @@ export function RidesQueueSummary() {
         preview={upcoming}
         tone="pending"
         icon={<MapPin className="h-4 w-4" aria-hidden />}
+        loading={loading}
       />
       <QueueCard
         title="En retard"
@@ -157,6 +138,7 @@ export function RidesQueueSummary() {
         preview={delayed}
         tone="urgent"
         icon={<AlertTriangle className="h-4 w-4" aria-hidden />}
+        loading={loading}
       />
     </div>
   );

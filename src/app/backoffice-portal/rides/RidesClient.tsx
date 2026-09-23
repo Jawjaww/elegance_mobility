@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useDriversStore } from "@/lib/stores/driversStore";
 import { RidesList } from "@/components/admin/rides/RidesList";
@@ -10,6 +10,7 @@ import { useUnifiedRidesStore } from "@/lib/stores/unifiedRidesStore";
 import {
   buildAdminRidesSearchParams,
   parseAdminRidesSearchParams,
+  shouldWriteFiltersToUrl,
 } from "@/lib/rides/adminRidesSearchParams";
 
 export default function RidesPage() {
@@ -18,6 +19,11 @@ export default function RidesPage() {
   const searchParams = useSearchParams();
   const { fetchDrivers } = useDriversStore();
   const [hydrated, setHydrated] = useState(false);
+  /**
+   * The URL as it stood when the state was first seeded from it. `null` means the write-back
+   * has not yet had the chance to restate it.
+   */
+  const restatedInitialUrlRef = useRef<string | null>(null);
   const selectedDate = useUnifiedRidesStore((s) => s.selectedDate);
   const selectedStatus = useUnifiedRidesStore((s) => s.selectedStatus);
   const driverFilter = useUnifiedRidesStore((s) => s.driverFilter);
@@ -74,8 +80,19 @@ export default function RidesPage() {
       searchQuery,
     });
     const current = searchParams?.toString() ?? "";
-    if (next === current) return;
-    router.replace(`${pathname}?${next}`, { scroll: false });
+
+    if (
+      shouldWriteFiltersToUrl(next, current, restatedInitialUrlRef.current)
+    ) {
+      router.replace(`${pathname}?${next}`, { scroll: false });
+      return;
+    }
+
+    // Nothing to write yet: this is the pass that seeds the state from the URL, so the URL is
+    // already the truth. Remembered so the next divergence is treated as a real change.
+    if (restatedInitialUrlRef.current === null) {
+      restatedInitialUrlRef.current = current;
+    }
   }, [
     hydrated,
     selectedDate,

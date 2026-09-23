@@ -22,10 +22,7 @@ type Driver = Pick<
   | "current_vehicle_id"
   | "created_at"
   | "updated_at"
-> & {
-  license_number?: string;
-  default_vehicle_id?: string;
-};
+>;
 
 interface DriverWithDetails extends Driver {
   vehicle?: VehicleRow;
@@ -63,66 +60,54 @@ export const useDriversStore = create<DriversState>((set, get) => ({
   fetchDrivers: async () => {
     set({ loading: true, error: null });
     try {
-      console.log("🔍 Tentative de récupération des chauffeurs...");
-
-      // D'abord récupérer les chauffeurs
       const { data: drivers, error: driversError } = await supabase
         .from("drivers")
         .select("*")
         .order("created_at", { ascending: false });
-
-      console.log("📊 Résultat requête drivers:", { drivers, driversError });
 
       if (driversError) {
         console.error("❌ Erreur drivers:", driversError);
         throw driversError;
       }
 
-      if (!drivers) {
-        console.log("⚠️ Aucun driver trouvé");
-        set({ drivers: [], loading: false });
-        return;
+      const rows = drivers ?? [];
+
+      // One request for every distinct vehicle, not one per driver. The previous shape
+      // awaited a `.single()` query inside a `map`, so the page paid 1 + N round-trips and
+      // the cost grew with the fleet — for a list the caller renders all at once. Vehicles
+      // are resolved through a map instead, which is also the shape `adminDrivers.ts` uses.
+      const vehicleIds = Array.from(
+        new Set(
+          rows
+            .map((driver) => driver.current_vehicle_id)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      );
+      const vehiclesById = new Map<string, VehicleRow>();
+      if (vehicleIds.length > 0) {
+        const { data: vehicles } = await supabase
+          .from("vehicles")
+          .select("*")
+          .in("id", vehicleIds);
+        for (const vehicle of vehicles ?? []) {
+          vehiclesById.set(vehicle.id, vehicle);
+        }
       }
 
-      console.log(`✅ ${drivers.length} drivers trouvés:`, drivers);
-
-      // Récupérer les véhicules séparément si nécessaire
-      const driversWithDetails: DriverWithDetails[] = await Promise.all(
-        drivers.map(async (driver) => {
-          let vehicle: VehicleRow | undefined;
-
-          // Récupérer le véhicule si un ID est spécifié
-          if (driver.current_vehicle_id || driver.default_vehicle_id) {
-            const vehicleId =
-              driver.current_vehicle_id || driver.default_vehicle_id;
-            const { data: vehicleData } = await supabase
-              .from("vehicles")
-              .select("*")
-              .eq("id", vehicleId)
-              .single();
-
-            vehicle = vehicleData || undefined;
-          }
-
-          return {
-            ...driver,
-            vehicle,
-          };
-        }),
-      );
-
-      console.log("🚗 Drivers avec détails:", driversWithDetails);
-
       set({
-        drivers: driversWithDetails,
+        drivers: rows.map((driver) => ({
+          ...driver,
+          vehicle: driver.current_vehicle_id
+            ? vehiclesById.get(driver.current_vehicle_id)
+            : undefined,
+        })),
         loading: false,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Erreur lors du chargement";
       console.error("❌ Erreur lors de la récupération des chauffeurs:", error);
-      set({
-        error: error.message || "Erreur lors de la récupération des chauffeurs",
-        loading: false,
-      });
+      set({ error: message, loading: false });
     }
   },
 
@@ -139,13 +124,11 @@ export const useDriversStore = create<DriversState>((set, get) => ({
       let vehicle: VehicleRow | undefined;
 
       // Récupérer le véhicule si un ID est spécifié
-      if (driver.current_vehicle_id || driver.default_vehicle_id) {
-        const vehicleId =
-          driver.current_vehicle_id || driver.default_vehicle_id;
+      if (driver.current_vehicle_id) {
         const { data: vehicleData } = await supabase
           .from("vehicles")
           .select("*")
-          .eq("id", vehicleId)
+          .eq("id", driver.current_vehicle_id)
           .single();
 
         vehicle = vehicleData || undefined;
@@ -330,36 +313,5 @@ export const useDriversStore = create<DriversState>((set, get) => ({
     }
   },
 }));
-
-// Setup des souscriptions en temps réel
-
-// Hook client pour souscription Supabase
-import { useEffect } from "react";
-export function useDriversStoreSubscription() {
-  useEffect(() => {
-    const channel = supabase
-      .channel("store-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "drivers" },
-        () => useDriversStore.getState().fetchDrivers(),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "rides" },
-        (payload: { new: { driver_id?: string } }) => {
-          if (payload.new?.driver_id) {
-            useDriversStore
-              .getState()
-              .fetchDriverDailyStats(payload.new.driver_id);
-          }
-        },
-      )
-      .subscribe();
-    return () => {
-      channel.unsubscribe();
-    };
-  }, []);
-}
 
 export default useDriversStore;

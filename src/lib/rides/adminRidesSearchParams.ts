@@ -91,3 +91,25 @@ export function buildAdminRidesSearchParams(
   if (q) params.set("q", q);
   return params.toString();
 }
+
+/**
+ * Whether the URL must be rewritten to reflect the current filters.
+ *
+ * The answer is no until the state has been seeded from the URL once — there is nothing to
+ * write back while the state *is* the URL. This matters because
+ * `buildAdminRidesSearchParams` always writes `view` and `date`: a bare
+ * `/backoffice-portal/rides` never equals its own serialisation, so the reactive write-back
+ * fired on every single page load and spent a soft navigation, and its RSC round-trip,
+ * restating filters the state had just been read from.
+ *
+ * `urlSeenAtSeed` is `null` until that first pass has happened. Once it is set, any divergence
+ * is a real filter change and the URL is written as before.
+ */
+export function shouldWriteFiltersToUrl(
+  next: string,
+  current: string,
+  urlSeenAtSeed: string | null,
+): boolean {
+  if (next === current) return false;
+  return urlSeenAtSeed !== null;
+}
