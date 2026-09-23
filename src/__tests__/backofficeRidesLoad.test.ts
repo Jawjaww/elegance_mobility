@@ -17,6 +17,7 @@ jest.mock("@/lib/database/client", () => ({
 import { supabase } from "@/lib/database/client";
 import { useDriversStore } from "@/lib/stores/driversStore";
 import {
+  EMPTY_QUEUE_PREVIEW,
   loadDelayedQueue,
   loadUpcomingQueue,
 } from "@/lib/dashboard/ridesQueueSummary";
@@ -156,7 +157,11 @@ describe("the courses queue summary", () => {
     const preview = await loadUpcomingQueue();
 
     expect(tableRequests("rides")).toHaveLength(1);
-    expect(preview).toEqual({ count: 7, pickupTime: "2026-09-23T08:00:00Z" });
+    expect(preview).toEqual({
+      count: 7,
+      pickupTime: "2026-09-23T08:00:00Z",
+      failed: false,
+    });
 
     // The count has to come from the same call as the row, which is what `count: "exact"`
     // asks PostgREST for. Without it the card silently loses its total.
@@ -176,7 +181,7 @@ describe("the courses queue summary", () => {
     const preview = await loadDelayedQueue();
 
     expect(tableRequests("rides")).toHaveLength(1);
-    expect(preview).toEqual({ count: 0, pickupTime: null });
+    expect(preview).toEqual({ count: 0, pickupTime: null, failed: false });
   });
 
   it("reports an absent pickup time rather than inventing one", async () => {
@@ -188,6 +193,46 @@ describe("the courses queue summary", () => {
 
     // A count with no rows is a real state (the queue emptied between the two halves of the
     // request) and must not read as a pickup time.
-    expect(preview).toEqual({ count: 4, pickupTime: null });
+    expect(preview).toEqual({ count: 4, pickupTime: null, failed: false });
+  });
+
+  it("refuses to show a count when the request failed", async () => {
+    // This is the bug the operator reported as "the delayed rides never show": PostgREST
+    // answers a failed request with `count: null`, which `?? 0` turned into a confident
+    // "0 / Aucune". Failure and emptiness must stay distinguishable.
+    selectSpy.rides.mockReturnValue(
+      chainable({
+        data: null,
+        count: null,
+        error: { message: "permission denied", code: "42501" },
+      }),
+    );
+
+    const preview = await loadDelayedQueue();
+
+    expect(preview.failed).toBe(true);
+    expect(preview.count).toBe(0);
+    expect(preview.pickupTime).toBeNull();
+
+    // Non-vacuity: the "0" must not be claimable as an answer. If `failed` were dropped, the
+    // card would render exactly the silent zero that caused the report.
+    expect(preview).not.toEqual(EMPTY_QUEUE_PREVIEW);
+  });
+
+  it("keeps a failure distinct from a genuinely empty queue", async () => {
+    selectSpy.rides.mockReturnValue(
+      chainable({ data: [], error: null, count: 0 }),
+    );
+    const empty = await loadDelayedQueue();
+
+    selectSpy.rides.mockReturnValue(
+      chainable({ data: null, count: null, error: { message: "boom" } }),
+    );
+    const broken = await loadDelayedQueue();
+
+    // Same count, same pickup time, opposite meaning.
+    expect(broken.count).toBe(empty.count);
+    expect(broken.pickupTime).toBe(empty.pickupTime);
+    expect(broken.failed).not.toBe(empty.failed);
   });
 });

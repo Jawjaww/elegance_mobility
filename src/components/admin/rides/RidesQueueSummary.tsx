@@ -7,11 +7,86 @@ import { fr } from "date-fns/locale";
 import { AlertTriangle, MapPin } from "lucide-react";
 import {
   EMPTY_QUEUE_PREVIEW,
+  FAILED_QUEUE_PREVIEW,
   loadDelayedQueue,
   loadUpcomingQueue,
   type QueuePreview,
 } from "@/lib/dashboard/ridesQueueSummary";
 import { cn } from "@/lib/utils";
+
+type QueueCardStyles = {
+  shell: string;
+  icon: string;
+  count: string;
+  hint: string;
+};
+
+/**
+ * The three states a count can be in, kept as one component rather than a chain of ternaries.
+ *
+ * `loading` and `failed` are distinct on purpose: a request in flight is not an answer, and a
+ * request that failed even less so. Both used to fall through to a real "0 / Aucune", which
+ * read as "nothing is waiting" when the truth was "we could not find out".
+ */
+function QueueCardValue({
+  loading,
+  preview,
+  styles,
+}: Readonly<{
+  loading: boolean;
+  preview: QueuePreview;
+  styles: QueueCardStyles;
+}>) {
+  if (loading) {
+    // Placeholders sized like the values they replace, so the card does not resize when the
+    // count arrives.
+    return (
+      <div aria-hidden className="animate-pulse">
+        <div className="h-6 rounded bg-white/10 mt-0.5 w-10" />
+        <div className="h-3 rounded bg-white/10 mt-1 w-24" />
+      </div>
+    );
+  }
+
+  if (preview.failed) {
+    // A named "Indisponible" beats the confident zero the card used to show.
+    return (
+      <>
+        <p
+          className={cn(
+            "text-2xl font-bold leading-none mt-0.5",
+            styles.hint,
+          )}
+        >
+          —
+        </p>
+        <p className={cn("text-[11px] mt-1 truncate", styles.hint)}>
+          Indisponible
+        </p>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <p
+        className={cn(
+          "text-2xl font-bold tabular-nums leading-none mt-0.5",
+          styles.count,
+        )}
+      >
+        {preview.count}
+      </p>
+      <p className={cn("text-[11px] mt-1 truncate", styles.hint)}>
+        {preview.pickupTime
+          ? format(new Date(preview.pickupTime), "EEE d MMM · HH:mm", {
+              locale: fr,
+            })
+          : "Aucune"}
+      </p>
+    </>
+  );
+}
 
 function QueueCard({
   title,
@@ -61,34 +136,7 @@ function QueueCard({
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-xs font-medium text-neutral-400">{title}</p>
-        {loading ? (
-          // Placeholders sized like the values they replace, so the card does not resize when
-          // the count arrives. The count used to render as a real "0" from its initial state,
-          // which read as "nothing is waiting" for as long as the request took — a wrong
-          // answer shown confidently, not just a slow one.
-          <div aria-hidden className="animate-pulse">
-            <div className={cn("h-6 rounded bg-white/10 mt-0.5", "w-10")} />
-            <div className="h-3 rounded bg-white/10 mt-1 w-24" />
-          </div>
-        ) : (
-          <>
-            <p
-              className={cn(
-                "text-2xl font-bold tabular-nums leading-none mt-0.5",
-                styles.count,
-              )}
-            >
-              {preview.count}
-            </p>
-            <p className={cn("text-[11px] mt-1 truncate", styles.hint)}>
-              {preview.pickupTime
-                ? format(new Date(preview.pickupTime), "EEE d MMM · HH:mm", {
-                    locale: fr,
-                  })
-                : "Aucune"}
-            </p>
-          </>
-        )}
+        <QueueCardValue loading={loading} preview={preview} styles={styles} />
       </div>
     </Link>
   );
@@ -109,8 +157,8 @@ export function RidesQueueSummary() {
       setDelayed(nextDelayed);
     } catch (error) {
       console.error("Error loading rides queue summary:", error);
-      setUpcoming(EMPTY_QUEUE_PREVIEW);
-      setDelayed(EMPTY_QUEUE_PREVIEW);
+      setUpcoming(FAILED_QUEUE_PREVIEW);
+      setDelayed(FAILED_QUEUE_PREVIEW);
     } finally {
       setLoading(false);
     }
