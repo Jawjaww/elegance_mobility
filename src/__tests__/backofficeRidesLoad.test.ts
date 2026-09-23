@@ -62,12 +62,8 @@ function installedFrom() {
   });
 }
 
-function vehiclesRequests(): unknown[] {
-  return fromMock.mock.calls.filter(([table]) => table === "vehicles");
-}
-
-function ridesRequests(): unknown[] {
-  return fromMock.mock.calls.filter(([table]) => table === "rides");
+function tableRequests(table: string): unknown[] {
+  return fromMock.mock.calls.filter(([called]) => called === table);
 }
 
 beforeEach(() => {
@@ -77,19 +73,13 @@ beforeEach(() => {
 });
 
 describe("the drivers store", () => {
-  it("resolves vehicles in one request no matter how many drivers there are", async () => {
-    const drivers = [
-      { id: "d1", current_vehicle_id: "v1" },
-      { id: "d2", current_vehicle_id: "v2" },
-      { id: "d3", current_vehicle_id: "v3" },
-    ];
-    selectSpy.drivers.mockReturnValue(chainable({ data: drivers, error: null }));
-    selectSpy.vehicles.mockReturnValue(
+  it("loads the whole list in a single request", async () => {
+    selectSpy.drivers.mockReturnValue(
       chainable({
         data: [
-          { id: "v1", make: "A" },
-          { id: "v2", make: "B" },
-          { id: "v3", make: "C" },
+          { id: "d1", first_name: "A", last_name: "B", phone: null, status: "active" },
+          { id: "d2", first_name: "C", last_name: "D", phone: null, status: "active" },
+          { id: "d3", first_name: "E", last_name: "F", phone: null, status: "active" },
         ],
         error: null,
       }),
@@ -97,30 +87,59 @@ describe("the drivers store", () => {
 
     await useDriversStore.getState().fetchDrivers();
 
-    // The regression this guards: a `.single()` per driver inside a `map`, which made the
-    // page pay 1 + N round-trips for a list it renders all at once. Three drivers, one
-    // request — and it stays one as the fleet grows.
-    expect(vehiclesRequests()).toHaveLength(1);
-
-    // Non-vacuity in the other direction: the batching must still attach the right vehicle,
-    // otherwise "one request" would also be satisfied by not resolving vehicles at all.
-    const stored = useDriversStore.getState().drivers;
-    expect(stored).toHaveLength(3);
-    expect(stored.map((driver) => driver.vehicle?.id)).toEqual([
-      "v1",
-      "v2",
-      "v3",
-    ]);
+    // The regression this guards: a `.single()` per driver inside a `map`, which made a page
+    // pay 1 + N round-trips for a list it renders all at once. Three drivers, one request —
+    // and it stays one as the fleet grows.
+    expect(tableRequests("drivers")).toHaveLength(1);
+    expect(useDriversStore.getState().drivers).toHaveLength(3);
   });
 
-  it("asks for no vehicle at all when no driver has one", async () => {
+  it("asks for no vehicles at all, because nothing reads driver.vehicle", async () => {
     selectSpy.drivers.mockReturnValue(
-      chainable({ data: [{ id: "d1", current_vehicle_id: null }], error: null }),
+      chainable({
+        data: [{ id: "d1", first_name: "A", last_name: "B", phone: null, status: "active" }],
+        error: null,
+      }),
     );
 
     await useDriversStore.getState().fetchDrivers();
 
-    expect(vehiclesRequests()).toHaveLength(0);
+    // A batched vehicle query was tried here and removed: no consumer reads the field, so it
+    // was a request bought for nothing. This assertion is what keeps it from coming back.
+    expect(tableRequests("vehicles")).toHaveLength(0);
+  });
+
+  it("selects the displayed columns rather than every column of the row", async () => {
+    selectSpy.drivers.mockReturnValue(chainable({ data: [], error: null }));
+
+    await useDriversStore.getState().fetchDrivers();
+
+    const builder = selectSpy.drivers.mock.results[0]?.value as {
+      select: jest.Mock;
+    };
+    // `select("*")` pulled 42 columns — the whole dossier — to render a name in a select and a
+    // status in a filter.
+    expect(builder.select).toHaveBeenCalledWith(
+      "id, first_name, last_name, phone, status",
+    );
+  });
+
+  it("surfaces a failure instead of reporting an empty fleet", async () => {
+    // A real PostgrestError, not a bare object: supabase-js throws an Error subclass, and the
+    // store reads `.message` off it. A plain `{message}` literal would take the fallback branch.
+    selectSpy.drivers.mockReturnValue(
+      chainable({
+        data: null,
+        error: Object.assign(new Error("permission denied"), { code: "42501" }),
+      }),
+    );
+
+    await useDriversStore.getState().fetchDrivers();
+
+    // An empty selector is indistinguishable from a fleet with no drivers, which is exactly
+    // the state a swallowed error used to produce.
+    expect(useDriversStore.getState().error).toBe("permission denied");
+    expect(useDriversStore.getState().loading).toBe(false);
   });
 });
 
@@ -136,7 +155,7 @@ describe("the courses queue summary", () => {
 
     const preview = await loadUpcomingQueue();
 
-    expect(ridesRequests()).toHaveLength(1);
+    expect(tableRequests("rides")).toHaveLength(1);
     expect(preview).toEqual({ count: 7, pickupTime: "2026-09-23T08:00:00Z" });
 
     // The count has to come from the same call as the row, which is what `count: "exact"`
@@ -156,7 +175,7 @@ describe("the courses queue summary", () => {
 
     const preview = await loadDelayedQueue();
 
-    expect(ridesRequests()).toHaveLength(1);
+    expect(tableRequests("rides")).toHaveLength(1);
     expect(preview).toEqual({ count: 0, pickupTime: null });
   });
 
