@@ -4,7 +4,7 @@
   "short_name": "Vector Elegans",
   "description": "Vos réservations et notifications en temps réel",
   "lang": "fr",
-  "start_url": "/my-account",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

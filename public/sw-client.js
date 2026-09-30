@@ -25,13 +25,16 @@
  *   redesigned not long ago. Cache-first would therefore have pinned the previous ones
  *   forever, so those are fetched network-first and only fall back to the cache when offline.
  *
- * Navigations, RSC payloads, API and Supabase traffic are never intercepted: caching the
- * HTML shell is how a deploy turns into a stale app.
+ * Document navigations are answered with `respondWith(fetch)` and never stored. Chromium
+ * treats a `fetch` listener that never answers the document as empty, and Android then
+ * refuses to mint the WebAPK. Caching that HTML is how a deploy turns into a stale app,
+ * so the response is not written to the cache. RSC payloads, API and Supabase traffic
+ * stay on the network.
  */
 // Versioned on purpose: `activate` deletes every other `ve-static-*` cache, so bumping the
 // name is also what clears entries a previous worker stored wrongly, without asking anyone
 // to clear storage by hand.
-const STATIC_CACHE = "ve-static-v3";
+const STATIC_CACHE = "ve-static-v4";
 const IMMUTABLE_PREFIXES = ["/_next/static/"];
 const REVALIDATE_PREFIXES = ["/icons/"];
 
@@ -77,6 +80,14 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  // The document request has to be answered here. A listener that returns without
+  // `respondWith` for navigations is the empty-handler case Chromium ignores, and
+  // Android then fails the WebAPK install. The HTML is fetched and not stored.
+  if (request.mode === "navigate") {
+    event.respondWith(fetch(request));
+    return;
+  }
 
   const immutable = IMMUTABLE_PREFIXES.some((p) => url.pathname.startsWith(p));
   const revalidate = REVALIDATE_PREFIXES.some((p) => url.pathname.startsWith(p));

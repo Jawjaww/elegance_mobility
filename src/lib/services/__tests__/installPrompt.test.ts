@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import {
   createInstallPromptController,
   isBraveBrowser,
@@ -192,5 +194,23 @@ describe("Brave cannot complete an install", () => {
     // Unchanged for the states that were already refused.
     expect(shouldOfferDirectInstall("manual", false)).toBe(false);
     expect(shouldOfferDirectInstall("installed", false)).toBe(false);
+  });
+});
+
+describe("install prompt stays inside the user gesture", () => {
+  it("does not await the service worker before calling prompt()", () => {
+    // Chromium requires prompt() in the same user activation as the click. Awaiting
+    // registration first yields the turn, the activation expires, and Android reports a
+    // generic install failure. The worker is registered on load, not on the tap.
+    const source = fs.readFileSync(
+      path.join(__dirname, "../../../hooks/useInstallPrompt.ts"),
+      "utf8",
+    );
+    const callback = source.split("const promptInstall")[1]?.split("return {")[0] ?? "";
+
+    expect(callback).toMatch(/controller\?\.promptInstall\(\)/);
+    expect(callback).not.toMatch(/await(?! controller)/);
+    expect(source).not.toContain("registerAppServiceWorker");
+    expect(source).not.toContain("waitForAppServiceWorkerActive");
   });
 });

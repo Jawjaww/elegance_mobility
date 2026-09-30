@@ -198,7 +198,7 @@ describe("notification icon assets", () => {
 
     expect(sources).toContain("/icons/client/icon-192x192.png");
     expect(sources).toContain("/icons/client/icon-512x512.png");
-    expect(json.start_url).toBe("/my-account");
+    expect(json.start_url).toBe("/");
     expect(json.display).toBe("standalone");
   });
 
