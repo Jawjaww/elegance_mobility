@@ -90,15 +90,6 @@ const BADGE_GLYPH_WIDTH = 0.86;
 const MASKABLE_MARGIN = 0.97;
 
 /**
- * Must match each manifest's `background_color` so PWA launch/splash corners blend with the
- * system screen instead of showing a sharp gradient square on black.
- */
-const MASKABLE_SPLASH_BG = "#0a0a0a";
-
-/** Corner radius on the gradient tile (viewBox units). ~22 % reads like a modern app icon. */
-const MASKABLE_CORNER_RADIUS = 22;
-
-/**
  * Palettes, per audience. `from`/`to` mirror the design-system gradients: the client pair
  * is literally `.btn-gradient`'s `from-blue-600 to-blue-800`.
  */
@@ -232,21 +223,20 @@ function gradientDefs(palette) {
 }
 
 /**
- * The `maskable` role: opaque splash-colored canvas, rounded gradient tile, white glyph.
+ * The `maskable` role: full-bleed opaque gradient with a white glyph.
  *
- * The canvas stays fully opaque (maskable spec). Corners outside the rounded gradient use
- * `MASKABLE_SPLASH_BG` so cold start matches `background_color` instead of a harsh square.
- * Home-screen icons are still masked by the OS; the rounded tile is mainly for the launch
- * splash where Android draws the asset as-is on the manifest background.
+ * Full-bleed square rather than a rounded rectangle: the OS masks installed icons to its
+ * own shape, and a pre-rounded background leaves transparent corners a mask then crops
+ * into visible notches. Opaque is a requirement, not a preference — a manifest that marks a
+ * transparent image `maskable` gets it composited onto a solid fill of the browser's
+ * choosing, which is the white square this role exists to avoid.
  */
 function maskableIconSvg(size, palette, transform) {
-  const r = MASKABLE_CORNER_RADIUS;
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"` +
     ` viewBox="0 0 ${VIEW_BOX} ${VIEW_BOX}">\n` +
     `  ${gradientDefs(palette)}` +
-    `  <rect width="${VIEW_BOX}" height="${VIEW_BOX}" fill="${MASKABLE_SPLASH_BG}"/>\n` +
-    `  <rect width="${VIEW_BOX}" height="${VIEW_BOX}" rx="${r}" ry="${r}" fill="url(#veGradient)"/>\n` +
+    `  <rect width="${VIEW_BOX}" height="${VIEW_BOX}" fill="url(#veGradient)"/>\n` +
     `  ${glyphGroup(transform, "#ffffff")}\n` +
     `</svg>\n`
   );

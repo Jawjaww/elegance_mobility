@@ -300,9 +300,7 @@ describe("notification icon assets", () => {
         offenders.push(`${label}: glyph not found`);
         continue;
       }
-      const isMaskable = file.includes("-maskable");
-      // Maskable tiles paint rounded corners in `background_color` (#0a0a0a) — not a missing font.
-      if (!isMaskable && black / (info.width * info.height) > 0.01) {
+      if (black / (info.width * info.height) > 0.01) {
         offenders.push(`${label}: ${((100 * black) / (info.width * info.height)).toFixed(1)}% opaque black`);
       }
 
