@@ -7,6 +7,10 @@ import {
   type InstallOutcome,
   type InstallState,
 } from "@/lib/services/installPrompt";
+import {
+  registerAppServiceWorker,
+  waitForAppServiceWorkerActive,
+} from "@/lib/services/serviceWorkerRegistration";
 
 /**
  * Exposes the install state and the browser's install dialog.
@@ -45,6 +49,10 @@ export function useInstallPrompt() {
   }, [controller]);
 
   const promptInstall = useCallback(async (): Promise<InstallOutcome> => {
+    const sw = await registerAppServiceWorker();
+    if (sw.ok) {
+      await waitForAppServiceWorkerActive(sw.registration);
+    }
     return (await controller?.promptInstall()) ?? "unavailable";
   }, [controller]);
 

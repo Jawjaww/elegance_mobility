@@ -31,7 +31,7 @@
 // Versioned on purpose: `activate` deletes every other `ve-static-*` cache, so bumping the
 // name is also what clears entries a previous worker stored wrongly, without asking anyone
 // to clear storage by hand.
-const STATIC_CACHE = "ve-static-v2";
+const STATIC_CACHE = "ve-static-v3";
 const IMMUTABLE_PREFIXES = ["/_next/static/"];
 const REVALIDATE_PREFIXES = ["/icons/"];
 
