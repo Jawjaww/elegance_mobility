@@ -113,9 +113,10 @@ export function createInstallPromptController(
   };
 
   const onBeforeInstallPrompt = (event: Event) => {
-    // Suppress the browser's own install UI: the event is single-use, so letting the
-    // browser consume it here would leave our button permanently inert.
-    event.preventDefault();
+    // Do not call preventDefault(). The event is single-use, and the install path people
+    // actually use is Chrome's menu. Cancelling it here leaves that menu with nothing to
+    // consume, and Android answers "impossible d'installer cette appli". The in-app button
+    // may still call prompt() while the event is pending.
     deferred = event as BeforeInstallPromptEvent;
     notify();
   };

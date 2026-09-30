@@ -88,7 +88,7 @@ describe("install prompt controller", () => {
     controller.dispose();
   });
 
-  it("cancels the browser's own install UI, so the deferred event survives for our button", () => {
+  it("does not cancel the browser install event, so the Chrome menu can use it", () => {
     const win = createWindowLike();
     const controller = createInstallPromptController(win, NAV);
     const { event } = createInstallEvent("accepted");
@@ -99,8 +99,10 @@ describe("install prompt controller", () => {
 
     win.dispatch("beforeinstallprompt", event);
 
-    // Without this, the browser consumes the single-use event and `prompt()` would throw.
-    expect(defaultPrevented).toBe(true);
+    // preventDefault() steals the single-use event from Chrome's menu. The menu is the
+    // install path; cancelling it makes Android fail the install.
+    expect(defaultPrevented).toBe(false);
+    expect(controller.getState()).toBe("promptable");
 
     controller.dispose();
   });
