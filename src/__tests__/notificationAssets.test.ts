@@ -164,8 +164,7 @@ describe("notification icon assets", () => {
   it("every manifest declares the 192px and 512px icons Chrome requires to install", () => {
     // Chrome's installability criteria: no 192px and 512px icon, no install prompt —
     // which is how the driver manifest stayed uninstallable while still declaring a
-    // name and a scope. Checked by declared size, so each app is free to serve its own
-    // icon set (driver green, client blue).
+    // name and a scope. Checked by declared size, so the icon set stays free to change.
     const incomplete = manifestFiles().flatMap(([name, json]) => {
       const sizes = manifestIconSizes(json);
       const missing = ["192x192", "512x512"].filter((required) => !sizes.includes(required));
@@ -202,16 +201,34 @@ describe("notification icon assets", () => {
     expect(json.display).toBe("standalone");
   });
 
-  it("the two apps do not share an icon: the client is blue, the driver is green", () => {
-    const driver = manifestIconSources(readJson(path.join(PUBLIC_DIR, "manifest.json")));
-    const client = manifestIconSources(readJson(path.join(PUBLIC_DIR, "manifest-client.json")));
+  it("keeps one installable app per origin, with every route linking that same manifest", () => {
+    // Two manifests on one origin is an anti-pattern, not a feature. The driver portal used
+    // to declare `scope: "/driver-portal"` **inside** the client manifest's `scope: "/"`, and
+    // Chrome does not treat two manifests on one origin as two apps when their scopes
+    // overlap — it respects the broader one. Installation then failed for the whole origin
+    // while an unrelated PWA installed fine from the same device. A genuinely separate app
+    // belongs on its own origin, so this guard is what stops the second manifest coming back.
+    const manifests = fs
+      .readdirSync(PUBLIC_DIR)
+      .filter((name) => /^manifest.*\.json$/.test(name));
 
-    // Both sets are generated from the same car glyph, so pointing the client at the
-    // driver's set is a one-line mistake that installs a green icon under the portal's
-    // blue theme.
-    const shared = client.filter((src) => driver.includes(src));
+    expect(manifests).toEqual(["manifest-client.json"]);
 
-    expect(shared).toEqual([]);
+    // Every route that links a manifest must link that one. A `<link rel="manifest">`
+    // pointing anywhere else is the shape being forbidden.
+    const routes = [
+      "src/app/page.tsx",
+      "src/app/(client-portal)/layout.tsx",
+      "src/app/(public-portal)/layout.tsx",
+      "src/app/driver-portal/layout.tsx",
+    ];
+    const declared = routes.flatMap((relative) =>
+      [...fs.readFileSync(path.join(PROJECT_ROOT, relative), "utf8").matchAll(
+        /manifest:\s*"([^"]+)"/g,
+      )].map((match) => match[1]),
+    );
+
+    expect(declared).toEqual(routes.map(() => "/manifest-client.json"));
   });
 
   it("draws every icon glyph with paths, never with text", () => {
@@ -227,20 +244,20 @@ describe("notification icon assets", () => {
   });
 
   it("paints every icon with the design-system gradient, not a flat fill", () => {
-    // The blue pair is literally `.btn-gradient` / `LANDING_CTA` in the app
-    // (`from-blue-600 to-blue-800`); the driver keeps its own emerald equivalent. Pinning
-    // both stops means an icon can neither fall back to a single flat colour nor drift to
-    // an off-brand shade.
-    const expected = [
-      { dir: "client", stops: ["#2563eb", "#1e40af"] },
-      { dir: "", stops: ["#10b981", "#047857"] },
-    ];
+    // The stops are literally `.btn-gradient` / `LANDING_CTA` in the app
+    // (`from-blue-600 to-blue-800`). Pinning them means an icon can neither fall back to a
+    // single flat colour nor drift to an off-brand shade.
+    const stops = ["#2563eb", "#1e40af"];
+    const clientDir = path.join(PUBLIC_DIR, "icons", "client");
+    const svgs = fs
+      .readdirSync(clientDir)
+      .filter((name) => name.startsWith("icon-") && name.endsWith(".svg"));
 
-    for (const { dir, stops } of expected) {
-      const svg = fs.readFileSync(
-        path.join(PUBLIC_DIR, "icons", dir, "icon-192x192.svg"),
-        "utf8",
-      );
+    // Without this the loop below passes vacuously on a renamed or deleted set.
+    expect(svgs.length).toBeGreaterThan(0);
+
+    for (const name of svgs) {
+      const svg = fs.readFileSync(path.join(clientDir, name), "utf8");
 
       // The gradient must actually *paint*, on the `fill` or the `stroke`. Asserting only that
       // a `<linearGradient>` is declared is vacuous: a flat `fill="#2563eb"` left next to an
@@ -445,16 +462,14 @@ describe("notification icon assets", () => {
     expect(problems).toEqual([]);
   });
 
-  it("keeps the installed app name as the full brand name", () => {    // The manifest name is the only place the installed app's name can be set, and that
+  it("keeps the installed app name as the full brand name", () => {
+    // The manifest name is the only place the installed app's name can be set, and that
     // name is what Android shows as the sender of a notification. It read "Elegance
     // Mobility" / "Elegance Driver" — two variants of a brand that exists nowhere else,
     // and neither of them the product's actual name.
     const names = manifestFiles().map(([name, json]) => [name, json.name]);
 
-    expect(names).toEqual([
-      ["manifest-client.json", "Vector Elegans"],
-      ["manifest.json", "Vector Elegans"],
-    ]);
+    expect(names).toEqual([["manifest-client.json", "Vector Elegans"]]);
     expect(readJson(path.join(PUBLIC_DIR, "manifest-client.json")).short_name).toBe(
       "Vector Elegans",
     );

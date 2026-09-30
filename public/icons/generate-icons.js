@@ -28,14 +28,16 @@
  * the **alpha channel** of a small icon, where an opaque square is a plain block. Hence two
  * files: `icon-{size}.png` (transparent, gradient glyph) and `icon-512-maskable.png`.
  *
- * ## One definition, two audiences
+ * ## One glyph, one installable app
  *
- * The driver app and the client portal each get their own set, from the same glyph and
- * the same geometry: only the palette differs (green `#10b981`, blue `#2563eb`, each
- * matching its manifest's `theme_color`). The colours are the app's design-system
- * gradient — the `from-blue-600 to-blue-800` pair of `.btn-gradient` in `globals.css`
- * for the client, its emerald equivalent for the driver. Serving the driver's green
- * icon to a client who installs the portal is a visible brand mismatch.
+ * There is a single icon set, because there is a single installable app on the origin:
+ * `manifest-client.json`. The driver portal links that same manifest and is a route of the
+ * app, not a second one — see `src/app/driver-portal/layout.tsx` for why the two-manifest
+ * arrangement was removed. The palette is the app's design-system gradient, the
+ * `from-blue-600 to-blue-800` pair of `.btn-gradient` in `globals.css`, matching the
+ * manifest's own `theme_color`. A second set only made sense while a second manifest
+ * existed, and an icon set no manifest declares is dead weight regenerated on every
+ * artwork change.
  *
  * The SVGs are written by this script rather than hand-maintained: eight copies of the
  * same 223-byte file previously had to be edited together, which is how one of them gets
@@ -55,9 +57,9 @@ const VIEW_BOX = 100;
 const RENDER_DENSITY = 384;
 
 /**
- * Which sizes are worth generating: exactly those a consumer declares. `manifest.json`
- * and `manifest-client.json` declare 192 and 512 (Chrome's installability minimum), one
- * maskable 512, and `sw-client.js` uses the badge for the status bar.
+ * Which sizes are worth generating: exactly those a consumer declares. `manifest-client.json`
+ * declares 192 and 512 (Chrome's installability minimum) plus one maskable 512, and
+ * `sw-client.js` uses the badge for the status bar.
  */
 const ICON_SIZES = [192, 512];
 /**
@@ -90,19 +92,13 @@ const BADGE_GLYPH_WIDTH = 0.86;
 const MASKABLE_MARGIN = 0.97;
 
 /**
- * Palettes, per audience. `from`/`to` mirror the design-system gradients: the client pair
- * is literally `.btn-gradient`'s `from-blue-600 to-blue-800`.
+ * The palette mirrors the design-system gradient: literally `.btn-gradient`'s
+ * `from-blue-600 to-blue-800`, and the `theme_color` of the one manifest.
  */
-const PALETTES = {
-  driver: { from: "#10b981", to: "#047857" },
-  client: { from: "#2563eb", to: "#1e40af" },
-};
+const PALETTE = { from: "#2563eb", to: "#1e40af" };
 
-/** Sets to write, relative to this folder. `null` palette means the monochrome badge. */
-const SETS = [
-  { dir: ICON_ROOT, palette: PALETTES.driver },
-  { dir: path.join(ICON_ROOT, "client"), palette: PALETTES.client },
-];
+/** The set to write, relative to this folder. The shared badge is written separately. */
+const SETS = [{ dir: path.join(ICON_ROOT, "client"), palette: PALETTE }];
 
 /**
  * Lucide's `car`, in its native 24x24 box, drawn as strokes.
