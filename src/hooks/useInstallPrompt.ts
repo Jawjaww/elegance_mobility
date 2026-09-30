@@ -7,10 +7,6 @@ import {
   type InstallOutcome,
   type InstallState,
 } from "@/lib/services/installPrompt";
-import {
-  registerAppServiceWorker,
-  waitForAppServiceWorkerActive,
-} from "@/lib/services/serviceWorkerRegistration";
 
 /**
  * Exposes the install state and the browser's install dialog.
@@ -48,11 +44,10 @@ export function useInstallPrompt() {
     };
   }, [controller]);
 
+  // `prompt()` has to run inside the click's user gesture. Awaiting the worker first
+  // yields the turn, Chromium drops the activation, and Android answers with a generic
+  // install failure. The worker is already registered on load by ServiceWorkerRegistrar.
   const promptInstall = useCallback(async (): Promise<InstallOutcome> => {
-    const sw = await registerAppServiceWorker();
-    if (sw.ok) {
-      await waitForAppServiceWorkerActive(sw.registration);
-    }
     return (await controller?.promptInstall()) ?? "unavailable";
   }, [controller]);
 

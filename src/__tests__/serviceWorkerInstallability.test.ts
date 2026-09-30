@@ -64,14 +64,20 @@ describe("installable app shell", () => {
     expect(readWorker()).toMatch(/addEventListener\(\s*"push"/);
   });
 
-  it("leaves navigations, cross-origin and non-GET traffic to the network", () => {
+  it("answers document navigations from the network and does not cache them", () => {
     const handler = fetchHandlerCode();
 
-    // Caching the HTML shell is how a deploy turns into a stale app, and answering API
-    // calls from cache could replay a ride status. Only same-origin GETs under the two
-    // static prefixes may be answered, so the handler must bail out otherwise.
+    // A fetch listener that never calls respondWith for the document is the empty-handler
+    // case Chromium ignores, and Android then refuses the WebAPK. The HTML itself is not
+    // stored: caching the shell is how a deploy turns into a stale app. API and other
+    // non-static GETs still bail out.
     expect(handler).toMatch(/request\.method !== "GET"/);
     expect(handler).toMatch(/url\.origin !== self\.location\.origin/);
+    expect(handler).toMatch(/request\.mode === "navigate"/);
+    const navigation =
+      handler.split(/request\.mode === "navigate"/)[1]?.split(/IMMUTABLE_PREFIXES/)[0] ?? "";
+    expect(navigation).toMatch(/respondWith\(fetch\(request\)\)/);
+    expect(navigation).not.toContain("cache.put");
     expect(handler).toMatch(/if \(!immutable && !revalidate\) return;/);
   });
 

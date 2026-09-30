@@ -44,31 +44,3 @@ export async function registerAppServiceWorker(): Promise<AppServiceWorkerResult
     return { ok: false, reason: "failed" };
   }
 }
-
-/**
- * Android WebAPK install can fail with a generic error if `prompt()` runs before the worker
- * is active, even when `beforeinstallprompt` already fired. Callers that open the install
- * dialog should await this after `registerAppServiceWorker()`.
- */
-export async function waitForAppServiceWorkerActive(
-  registration: ServiceWorkerRegistration,
-  timeoutMs = 12_000,
-): Promise<boolean> {
-  if (registration.active) return true;
-
-  const worker = registration.installing ?? registration.waiting;
-  if (!worker) return Boolean(registration.active);
-
-  if (worker.state === "activated") return true;
-
-  return new Promise((resolve) => {
-    const timer = window.setTimeout(() => resolve(false), timeoutMs);
-    const onStateChange = () => {
-      if (worker.state !== "activated") return;
-      window.clearTimeout(timer);
-      worker.removeEventListener("statechange", onStateChange);
-      resolve(true);
-    };
-    worker.addEventListener("statechange", onStateChange);
-  });
-}
