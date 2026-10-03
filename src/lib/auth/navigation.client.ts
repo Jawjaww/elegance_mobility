@@ -19,6 +19,9 @@ export function useRoleNavigation() {
       case "app_driver":
         router.push("/driver-portal/dashboard");
         break;
+      case "app_operator":
+        router.push("/operator-portal");
+        break;
       case "app_customer":
         router.push("/my-account");
         break;

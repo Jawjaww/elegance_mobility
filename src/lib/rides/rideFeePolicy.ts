@@ -145,7 +145,11 @@ export function parseFeePolicySnapshot(raw: unknown): FeePolicySnapshot | null {
     ),
     offer_batch_size: asNumber(raw.offer_batch_size, 3),
     max_ride_open_offers: asNumber(raw.max_ride_open_offers, 40),
-    offer_ttl_seconds: asNumber(raw.offer_ttl_seconds, 90),
+    // 15 s, pas 90 : la mise en avant (plein écran + push) est ce qui retient
+    // l'élargissement de la recherche. Passé ce délai la course glisse dans le
+    // bottomsheet du chauffeur et reste acceptable ; seule la vague suivante
+    // s'ouvre. Le plancher de l'UI backoffice est aussi 15 s.
+    offer_ttl_seconds: asNumber(raw.offer_ttl_seconds, 15),
     offer_driver_cooldown_seconds: asNumber(
       raw.offer_driver_cooldown_seconds,
       900,

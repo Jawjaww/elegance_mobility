@@ -59,6 +59,8 @@ export function getPortalRedirectUrl(user: User | null | undefined): string {
     case ROLES.SUPER_ADMIN:
     case ROLES.ADMIN:
       return '/backoffice-portal'
+    case ROLES.OPERATOR:
+      return '/operator-portal'
     case ROLES.DRIVER:
       return '/driver-portal'
     case ROLES.CUSTOMER:
@@ -81,6 +83,16 @@ export function isUserSuperAdmin(user: User | null | undefined): boolean {
 
 export function isUserDriver(user: User | null | undefined): boolean {
   return getUserRole(user) === ROLES.DRIVER
+}
+
+/**
+ * Porte d'entrée du portail opérateur (rôle app_operator).
+ * 
+ * Ne dit rien de l'appartenance à une flotte : celle-ci vit dans
+ * public.operator_members et se vérifie en SQL.
+ */
+export function isUserOperator(user: User | null | undefined): boolean {
+  return getUserRole(user) === ROLES.OPERATOR
 }
 
 export function isUserCustomer(user: User | null | undefined): boolean {
