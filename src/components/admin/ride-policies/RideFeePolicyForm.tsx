@@ -130,7 +130,7 @@ export function policyRowToForm(row: PolicyRow): PolicyFormValues {
       Math.max(1, asPositiveInt(row.offer_batch_size, 3)),
     ),
     max_ride_open_offers: asPositiveInt(row.max_ride_open_offers, 40),
-    offer_ttl_seconds: asPositiveInt(row.offer_ttl_seconds, 90),
+    offer_ttl_seconds: asPositiveInt(row.offer_ttl_seconds, 15),
     offer_driver_cooldown_seconds: Math.max(
       0,
       Number.isFinite(row.offer_driver_cooldown_seconds)
@@ -444,7 +444,7 @@ export function DispatchMatchingFields({
               offer_ttl_seconds: Math.max(15, Math.round(seconds)),
             })
           }
-          hint="La course reste acceptable ensuite. Défaut 90 s."
+          hint="La course reste acceptable ensuite. Défaut 15 s."
           info={
             <PolicyInfoButton help={helpOfferTtl(values.offer_ttl_seconds)} />
           }

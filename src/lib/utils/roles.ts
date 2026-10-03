@@ -6,17 +6,25 @@
  * Rôles disponibles:
  * - app_customer: Client standard
  * - app_driver: Chauffeur VTC
+ * - app_operator: Opérateur de flotte (appartenance dans public.operator_members)
  * - app_admin: Administrateur
  * - app_super_admin: Super administrateur
  * 
  * IMPORTANT: Les rôles sont contrôlés côté serveur (raw_app_meta_data)
  * raw_user_meta_data est client-side et ne doit pas être utilisé pour l'autorisation
+ * 
+ * app_operator est une *porte* : il dit que le compte a le droit d'entrer dans le
+ * portail opérateur. Le périmètre réel — de quel opérateur, avec quel rôle — vit
+ * dans public.operator_members, jamais dans le JWT : un claim reste périmé jusqu'à
+ * une heure, une ligne de table non. Les rôles restent distincts : un opérateur
+ * n'est pas un admin.
  */
 
 /** Application roles stored in auth.users.raw_app_meta_data.role */
 export type AppRole =
   | 'app_customer'
   | 'app_driver'
+  | 'app_operator'
   | 'app_admin'
   | 'app_super_admin'
 
@@ -26,6 +34,7 @@ export type AppRole =
 export const ROLES = {
   CUSTOMER: 'app_customer' as const,
   DRIVER: 'app_driver' as const,
+  OPERATOR: 'app_operator' as const,
   ADMIN: 'app_admin' as const,
   SUPER_ADMIN: 'app_super_admin' as const,
 }
@@ -36,6 +45,7 @@ export const ROLES = {
 export const ALL_ROLES: AppRole[] = [
   ROLES.CUSTOMER,
   ROLES.DRIVER,
+  ROLES.OPERATOR,
   ROLES.ADMIN,
   ROLES.SUPER_ADMIN,
 ]
@@ -62,6 +72,16 @@ export function isSuperAdmin(role: AppRole | null | undefined): boolean {
  */
 export function isDriver(role: AppRole | null | undefined): boolean {
   return role === ROLES.DRIVER
+}
+
+/**
+ * Vérifie si c'est un opérateur de flotte
+ * 
+ * Le rôle ouvre le portail opérateur ; il ne dit pas *quel* opérateur.
+ * L'appartenance et le rôle dans la flotte se lisent dans public.operator_members.
+ */
+export function isOperator(role: AppRole | null | undefined): boolean {
+  return role === ROLES.OPERATOR
 }
 
 /**
@@ -106,6 +126,17 @@ export function canAccessAdminPortal(role: AppRole | null | undefined): boolean 
  */
 export function canAccessDriverPortal(role: AppRole | null | undefined): boolean {
   return isDriver(role)
+}
+
+/**
+ * Vérifie l'accès au portail opérateur
+ * 
+ * Ne pas confondre avec canAccessAdminPortal : ce sont deux portées distinctes.
+ * L'entrée dans le portail ne prouve pas l'appartenance à une flotte — la page
+ * lit operator_members et traite le cas « aucune ligne ».
+ */
+export function canAccessOperatorPortal(role: AppRole | null | undefined): boolean {
+  return isOperator(role)
 }
 
 /**
@@ -157,6 +188,8 @@ export function formatRoleName(role: AppRole | null | undefined): string {
       return 'Super Administrateur'
     case ROLES.ADMIN:
       return 'Administrateur'
+    case ROLES.OPERATOR:
+      return 'Opérateur'
     case ROLES.DRIVER:
       return 'Chauffeur'
     case ROLES.CUSTOMER:
@@ -174,6 +207,8 @@ export function getRoleColor(role: AppRole | null | undefined): string {
       return 'text-red-600 bg-red-50'
     case ROLES.ADMIN:
       return 'text-orange-600 bg-orange-50'
+    case ROLES.OPERATOR:
+      return 'text-violet-600 bg-violet-50'
     case ROLES.DRIVER:
       return 'text-blue-600 bg-blue-50'
     case ROLES.CUSTOMER:

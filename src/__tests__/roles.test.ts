@@ -1,7 +1,11 @@
 import {
+  ALL_ROLES,
+  formatRoleName,
   isAdmin,
   isDriver,
+  isOperator,
   canAccessAdminPortal,
+  canAccessOperatorPortal,
   canAcceptRides,
   canAccessClientPortal,
   canCreateRides,
@@ -34,5 +38,27 @@ describe('roles helpers', () => {
     expect(canAccessClientPortal(ROLES.CUSTOMER)).toBe(true)
     expect(canCreateRides(ROLES.CUSTOMER)).toBe(true)
     expect(canAccessClientPortal(ROLES.ADMIN)).toBe(true)
+  })
+
+  it('detects the fleet operator role', () => {
+    expect(isOperator(ROLES.OPERATOR)).toBe(true)
+    expect(canAccessOperatorPortal(ROLES.OPERATOR)).toBe(true)
+    expect(isOperator(ROLES.ADMIN)).toBe(false)
+    expect(isOperator(ROLES.DRIVER)).toBe(false)
+    expect(isOperator(ROLES.CUSTOMER)).toBe(false)
+    expect(isOperator(null)).toBe(false)
+    expect(isOperator(undefined)).toBe(false)
+    expect(ALL_ROLES).toContain(ROLES.OPERATOR)
+    expect(formatRoleName(ROLES.OPERATOR)).toBe('Opérateur')
+  })
+
+  it('keeps operator and admin scopes apart', () => {
+    // Distinct scopes: the operator role opens /operator-portal only, and an
+    // admin does not inherit the operator portal (nor the reverse).
+    expect(isAdmin(ROLES.OPERATOR)).toBe(false)
+    expect(canAccessAdminPortal(ROLES.OPERATOR)).toBe(false)
+    expect(canAccessOperatorPortal(ROLES.ADMIN)).toBe(false)
+    expect(canAccessOperatorPortal(ROLES.SUPER_ADMIN)).toBe(false)
+    expect(canAccessOperatorPortal(null)).toBe(false)
   })
 })
