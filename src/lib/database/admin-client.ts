@@ -26,11 +26,21 @@ function roleFromMetadata(value: unknown): string {
   return typeof role === "string" ? role : "";
 }
 
+/**
+ * Rôle applicatif du porteur du jeton.
+ *
+ * Source de vérité : `app_metadata`, écrit côté serveur.
+ *
+ * `user_metadata` est écarté **volontairement**, même en repli : il provient de
+ * `raw_user_meta_data`, que le client écrit lui-même à l'inscription
+ * (`signUp({ data: { role: 'app_admin' } })`). L'accepter reviendrait à laisser un compte se
+ * nommer administrateur — la garde de `/api/admin/*` serait alors contournable avec la seule
+ * clé anonyme. Côté SQL la même règle est tenue par `is_admin()` / `is_super_admin()`
+ * (migration 20261003140000) et gardée par le test pgTAP 59 ; ici par les tests de
+ * `requireAdmin`.
+ */
 export function callerRole(caller: Record<string, unknown>): string {
-  return (
-    roleFromMetadata(caller.app_metadata) ||
-    roleFromMetadata(caller.user_metadata)
-  );
+  return roleFromMetadata(caller.app_metadata);
 }
 
 export function isAdminRole(role: string): boolean {

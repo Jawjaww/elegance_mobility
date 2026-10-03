@@ -115,4 +115,42 @@ describe("requireAdmin", () => {
     expect(result.error).toBeUndefined();
     expect(result.callerId).toBe("admin-1");
   });
+
+  // `user_metadata` vient de raw_user_meta_data, que le client écrit lui-même à l'inscription.
+  // L'accepter en repli rendrait ces routes ouvrables avec la seule clé anonyme.
+  it("returns 403 when the admin role only exists in user_metadata", async () => {
+    const req = new Request("https://app.local/api", {
+      headers: { Authorization: "Bearer self-declared-jwt" },
+    });
+    const result = await requireAdmin(req, {
+      getUserByJwt: async () => ({
+        user: {
+          id: "self-declared-1",
+          app_metadata: {},
+          user_metadata: { role: "app_admin" },
+        },
+      }),
+    });
+    expect(result.error?.status).toBe(403);
+    expect(await jsonOf(result.error as Response)).toEqual({
+      ok: false,
+      error: "admin role required",
+    });
+  });
+
+  it("does not let user_metadata override a lower app_metadata role", async () => {
+    const req = new Request("https://app.local/api", {
+      headers: { Authorization: "Bearer conflicting-jwt" },
+    });
+    const result = await requireAdmin(req, {
+      getUserByJwt: async () => ({
+        user: {
+          id: "customer-1",
+          app_metadata: { role: "app_customer" },
+          user_metadata: { role: "app_admin" },
+        },
+      }),
+    });
+    expect(result.error?.status).toBe(403);
+  });
 });
