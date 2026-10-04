@@ -10,6 +10,11 @@ import { supabase } from "@/lib/database/client";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "../ui/loading-spinner";
 import { Suspense, useState, useEffect } from "react";
+import { PaymentMethodChoice } from "./PaymentMethodChoice";
+import {
+  resolvePaymentMethod,
+  type BookingPaymentMethod,
+} from "@/lib/reservation/paymentChoice";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import ReservationMap from "@/components/map/ReservationMap";
@@ -48,6 +53,7 @@ function buildPendingRidePayload(input: {
   distance: number | null | undefined;
   duration: number | null | undefined;
   estimatedPrice: number | null | undefined;
+  paymentMethod: BookingPaymentMethod;
 }): Partial<Ride> {
   const dateObj = normalizePickupDateTime(input.pickupDateTime);
   return {
@@ -66,6 +72,8 @@ function buildPendingRidePayload(input: {
     status: "pending",
     estimated_price: toNullableNumber(input.estimatedPrice),
     final_price: null,
+    // F-01 : fige le mode choisi par le client. C'est lui que le chauffeur verra dans l'offre.
+    payment_method: input.paymentMethod,
   };
 }
 
@@ -207,6 +215,33 @@ export function ConfirmationDetails() {
 
   // État pour gérer l'affichage du modal d'authentification
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<BookingPaymentMethod>("cash");
+  // Defaut a `false` : si la lecture echoue, on ne propose PAS le paiement en ligne. Se tromper
+  // dans ce sens coute un moyen de paiement en moins ; se tromper dans l'autre ferait croire au
+  // client qu'il a paye.
+  const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      const { data } = await supabase
+        .from("ride_fee_policies")
+        .select("online_payment_enabled")
+        .eq("scope_kind", "platform")
+        .eq("is_active", true)
+        .limit(1)
+        .maybeSingle();
+
+      if (!cancelled) {
+        setOnlinePaymentEnabled(data?.online_payment_enabled === true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleConfirm = async () => {
     if (!departure || !destination || !pickupDateTime || !selectedVehicle) {
@@ -241,6 +276,9 @@ export function ConfirmationDetails() {
         distance,
         duration,
         estimatedPrice: priceDetails?.totalPrice,
+        paymentMethod: resolvePaymentMethod(paymentMethod, {
+          onlineEnabled: onlinePaymentEnabled,
+        }),
       });
 
       const { data, error } = await supabase
@@ -472,7 +510,15 @@ export function ConfirmationDetails() {
           </div>
         )}
 
-        <div className="order-4 flex w-full gap-3 md:gap-4 lg:col-span-2 lg:gap-5">
+        <div className="order-4 w-full lg:col-span-2">
+          <PaymentMethodChoice
+            value={paymentMethod}
+            onChange={setPaymentMethod}
+            context={{ onlineEnabled: onlinePaymentEnabled }}
+          />
+        </div>
+
+        <div className="order-5 flex w-full gap-3 md:gap-4 lg:col-span-2 lg:gap-5">
           <Button
             variant="outline"
             onClick={handleModify}
