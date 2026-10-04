@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,14 +10,31 @@ import { supabase } from "@/lib/database/client";
 import { LANDING_BRAND } from "@/components/landing/landingAssets";
 
 /**
- * En-tête du portail opérateur : marque, portée, déconnexion.
- *
- * Pas de navigation : le portail n'a qu'un écran (OP-07 portera la flotte).
- * L'accent est violet, là où l'administration est bleue — deux portées
+ * Sections du portail. L'accent est violet, là où l'administration est bleue — deux portées
  * distinctes ne doivent pas se ressembler.
  */
+const OPERATOR_NAV = [
+  { href: "/operator-portal", label: "Tableau de bord" },
+  { href: "/operator-portal/rides", label: "Courses" },
+  { href: "/operator-portal/drivers", label: "Chauffeurs" },
+  { href: "/operator-portal/vehicles", label: "Véhicules" },
+  { href: "/operator-portal/rates", label: "Tarifs" },
+] as const;
+
+/**
+ * Une seule entrée active à la fois. `/operator-portal` est préfixe de toutes les autres : sans
+ * la comparaison exacte pour l'accueil, l'onglet « Tableau de bord » resterait allumé partout —
+ * le défaut qui avait déjà coûté une passe de correction sur la navigation cliente.
+ */
+function isActiveSection(pathname: string | null, href: string): boolean {
+  if (!pathname) return false;
+  if (href === "/operator-portal") return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 function OperatorHeader() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const pathname = usePathname();
 
   const handleLogout = async () => {
     if (isLoggingOut) return;
@@ -59,6 +77,32 @@ function OperatorHeader() {
           </Button>
         </div>
       </div>
+
+      <nav
+        aria-label="Sections du portail opérateur"
+        className="border-t border-neutral-800/60 bg-neutral-950/80"
+      >
+        <ul className="mx-auto flex max-w-screen-2xl gap-1 overflow-x-auto px-4 sm:px-6 lg:px-8">
+          {OPERATOR_NAV.map((item) => {
+            const active = isActiveSection(pathname, item.href);
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`inline-block whitespace-nowrap border-b-2 px-3 py-3 text-sm transition-colors ${
+                    active
+                      ? "border-violet-400 text-violet-200"
+                      : "border-transparent text-neutral-400 hover:text-neutral-100"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
     </header>
   );
 }
