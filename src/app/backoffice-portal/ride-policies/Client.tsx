@@ -40,6 +40,8 @@ function formToUpdate(values: PolicyFormValues): PolicyUpdate {
     wait_max_minutes: values.wait_max_minutes,
     no_show_flat: values.no_show_flat,
     cancel_after_arrival_flat: values.cancel_after_arrival_flat,
+    commission_percent: values.commission_percent,
+    operator_share_percent: values.operator_share_percent,
     gps_wave1_max_age_seconds: values.gps_wave1_max_age_seconds,
     gps_wave2_max_age_seconds: values.gps_wave2_max_age_seconds,
     gps_wave3_max_age_seconds: values.gps_wave3_max_age_seconds,
@@ -213,6 +215,18 @@ export default function RidePoliciesPage() {
               label="No-show"
               gloss="Client absent"
               value={formatFeeEuro(values.no_show_flat)}
+            />
+            <PolicyChip
+              tone="fees"
+              label="Commission"
+              gloss="Sur le prix client"
+              value={`${Math.round(values.commission_percent)} %`}
+            />
+            <PolicyChip
+              tone="matching"
+              label="Part opérateur"
+              gloss="De la commission"
+              value={`${Math.round(values.operator_share_percent)} %`}
             />
           </div>
 

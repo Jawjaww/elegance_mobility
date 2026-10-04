@@ -53,6 +53,8 @@ export type PolicyFormValues = {
   wait_max_minutes: number;
   no_show_flat: number;
   cancel_after_arrival_flat: number;
+  commission_percent: number;
+  operator_share_percent: number;
   gps_wave1_max_age_seconds: number;
   gps_wave2_max_age_seconds: number;
   gps_wave3_max_age_seconds: number;
@@ -109,6 +111,13 @@ export function policyRowToForm(row: PolicyRow): PolicyFormValues {
     wait_max_minutes: row.wait_max_minutes,
     no_show_flat: Number(row.no_show_flat),
     cancel_after_arrival_flat: Number(row.cancel_after_arrival_flat),
+    // Bornés à [0, 100] : la base porte la même contrainte, mais un formulaire qui accepte 150
+    // ne découvrirait l'erreur qu'au moment d'enregistrer.
+    commission_percent: Math.min(100, Math.max(0, Number(row.commission_percent))),
+    operator_share_percent: Math.min(
+      100,
+      Math.max(0, Number(row.operator_share_percent)),
+    ),
     gps_wave1_max_age_seconds: asPositiveInt(
       row.gps_wave1_max_age_seconds,
       86400,
@@ -761,6 +770,26 @@ export function FeesPolicyFields({
       hint="Chaque course fige ses règles. Modifier ici ne change pas les réservations déjà créées. Rien n’est débité tout seul."
     >
       <div className="grid gap-3 sm:grid-cols-2">
+        <PolicyNumberField
+          id="commission_percent"
+          label="Commission"
+          gloss="Prélevée sur le prix client, avant le gain chauffeur"
+          unit="%"
+          step="1"
+          value={values.commission_percent}
+          onChange={(value) => patch("commission_percent", value)}
+          hint="Part du prix client qui n’ira pas au chauffeur. 20 % par défaut."
+        />
+        <PolicyNumberField
+          id="operator_share_percent"
+          label="Part opérateur"
+          gloss="Part de la commission reversée à l’opérateur qui a vendu la course"
+          unit="%"
+          step="1"
+          value={values.operator_share_percent}
+          onChange={(value) => patch("operator_share_percent", value)}
+          hint="Pourcentage DE LA COMMISSION. Le reste revient à la plateforme (70 % par défaut)."
+        />
         <PolicyNumberField
           id="no_show_flat"
           label="No-show"
