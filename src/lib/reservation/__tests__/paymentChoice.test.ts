@@ -1,6 +1,8 @@
 import {
   availablePaymentMethods,
   ONLINE_PAYMENT_DISABLED_NOTICE,
+  ONLINE_PAYMENT_UNAVAILABLE_LABEL,
+  PAYMENT_METHOD_LABELS,
   paymentMethodNotice,
   resolvePaymentMethod,
 } from "../paymentChoice";
@@ -44,25 +46,28 @@ describe("paymentChoice", () => {
     expect(resolvePaymentMethod("cash", OFF)).toBe("cash");
   });
 
-  it("dit au client qu'il réglera le chauffeur quand le paiement en ligne est fermé", () => {
+  it("étiquette les cartes en un mot", () => {
+    expect(PAYMENT_METHOD_LABELS.cash).toBe("Espèces");
+    expect(PAYMENT_METHOD_LABELS.card).toBe("En ligne");
+    expect(PAYMENT_METHOD_LABELS.cash).not.toMatch(/à bord/i);
+  });
+
+  it("dit Indisponible quand le paiement en ligne est fermé — pas une phrase", () => {
     const notice = paymentMethodNotice("cash", OFF);
 
     expect(notice).toBe(ONLINE_PAYMENT_DISABLED_NOTICE);
-    expect(notice).toContain("chauffeur");
-    // Et surtout : la phrase ne doit pas laisser croire à un paiement en ligne.
+    expect(notice).toBe(ONLINE_PAYMENT_UNAVAILABLE_LABEL);
     expect(notice).not.toContain("serez débité");
+    expect(notice.split(/\s+/)).toHaveLength(1);
   });
 
-  it("annonce le débit en ligne quand il est ouvert et choisi", () => {
-    expect(paymentMethodNotice("card", ON)).toContain("débité");
-    expect(paymentMethodNotice("card", ON)).toContain("rien à encaisser");
+  it("annonce un débit court quand il est ouvert et choisi", () => {
+    expect(paymentMethodNotice("card", ON)).toContain("Débit");
+    expect(paymentMethodNotice("card", ON)).not.toMatch(/chauffeur n'aura/);
   });
 
-  it("dit qu'on paie le chauffeur quand les espèces sont choisies et l'option ouverte", () => {
-    const notice = paymentMethodNotice("cash", ON);
-
-    expect(notice).toContain("chauffeur");
-    expect(notice).not.toContain("débité");
+  it("ne rajoute rien sous Espèces quand l'option en ligne est ouverte", () => {
+    expect(paymentMethodNotice("cash", ON)).toBe("");
   });
 });
 
@@ -89,8 +94,13 @@ describe("paymentChoice wiring", () => {
     expect(confirmation).toContain("useState(false)");
   });
 
-  it("l'écran n'affiche que les modes proposés, et dit toujours ce qui va se passer", () => {
+  it("montre toujours les deux cartes, et grise En ligne quand elle n'est pas offerte", () => {
     expect(choice).toContain("availablePaymentMethods(context)");
-    expect(choice).toContain("paymentMethodNotice(value, context)");
+    expect(choice).toContain("ONLINE_PAYMENT_UNAVAILABLE_LABEL");
+    expect(choice).toContain("Euro");
+    expect(choice).toContain("CreditCard");
+    expect(choice).toContain("aria-disabled");
+    expect(choice).toContain("disabled={disabled}");
+    expect(choice).not.toContain("Espèces à bord");
   });
 });

@@ -17,19 +17,18 @@ export interface PaymentChoiceContext {
 }
 
 export const PAYMENT_METHOD_LABELS: Record<BookingPaymentMethod, string> = {
-  cash: "Espèces à bord",
-  card: "Payer en ligne",
+  cash: "Espèces",
+  card: "En ligne",
 };
 
-/** Full sentence for tests and screen readers; UI uses a shorter inline hint when cash-only. */
-export const ONLINE_PAYMENT_DISABLED_NOTICE =
-  "Le paiement en ligne n'est pas encore ouvert : vous réglerez directement au chauffeur.";
+/** Shown on the greyed-out online card. One word — not a policy paragraph. */
+export const ONLINE_PAYMENT_UNAVAILABLE_LABEL = "Indisponible";
 
-export const ONLINE_PAYMENT_DISABLED_INLINE_HINT =
-  "en ligne indisponible, règlement au chauffeur";
+export const ONLINE_PAYMENT_DISABLED_NOTICE = ONLINE_PAYMENT_UNAVAILABLE_LABEL;
 
 /**
- * Ce que le tunnel a le droit de proposer, dans l'ordre d'affichage.
+ * Ce que le tunnel a le droit d'enregistrer, dans l'ordre d'affichage.
+ * Les deux cartes restent visibles ; celle qui n'est pas ici est grise.
  */
 export function availablePaymentMethods(
   context: PaymentChoiceContext,
@@ -54,7 +53,8 @@ export function resolvePaymentMethod(
 }
 
 /**
- * La phrase qui accompagne le choix — elle dit au client ce qui va se passer, sans rien promettre.
+ * Caption on a selectable card. Empty when cash is the only honest story.
+ * Disabled online uses {@link ONLINE_PAYMENT_UNAVAILABLE_LABEL} in the UI instead.
  */
 export function paymentMethodNotice(
   method: BookingPaymentMethod,
@@ -63,8 +63,8 @@ export function paymentMethodNotice(
   if (!context.onlineEnabled) return ONLINE_PAYMENT_DISABLED_NOTICE;
 
   if (method === "card") {
-    return "Vous serez débité en ligne : le chauffeur n'aura rien à encaisser.";
+    return "Débit en ligne.";
   }
 
-  return "Vous réglerez directement au chauffeur à la fin de la course.";
+  return "";
 }

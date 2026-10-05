@@ -1,11 +1,17 @@
 "use client";
 
+import { Check, CreditCard, Euro } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
+  RESERVATION_PICKER_CARD,
+  RESERVATION_PICKER_CARD_SELECTED,
+  RESERVATION_PICKER_ICON,
+  RESERVATION_PICKER_ICON_SELECTED,
+} from "@/components/landing/landingSurface";
+import {
   availablePaymentMethods,
-  ONLINE_PAYMENT_DISABLED_INLINE_HINT,
+  ONLINE_PAYMENT_UNAVAILABLE_LABEL,
   PAYMENT_METHOD_LABELS,
-  paymentMethodNotice,
   type BookingPaymentMethod,
   type PaymentChoiceContext,
 } from "@/lib/reservation/paymentChoice";
@@ -13,12 +19,19 @@ import {
 const SUMMARY_SHELL =
   "rounded-2xl border border-blue-500/15 bg-neutral-800/40";
 
+const DISPLAY_METHODS: ReadonlyArray<{
+  id: BookingPaymentMethod;
+  Icon: typeof Euro;
+}> = [
+  { id: "cash", Icon: Euro },
+  { id: "card", Icon: CreditCard },
+];
+
 /**
  * Payment method at confirm time (F-01 upstream).
  *
- * Styling matches {@link PriceSummaryBar} on the same screen. When online payment is off, a
- * single row replaces a toggle and the long policy sentence stays off-screen (sr-only) so the
- * summary bar does not grow by a full text line.
+ * Two compact picker tiles — same chrome as reservation options. Online payment stays visible
+ * when the policy is off: greyed, disabled, labelled Indisponible. A tap cannot write `card`.
  */
 export function PaymentMethodChoice({
   value,
@@ -35,67 +48,96 @@ export function PaymentMethodChoice({
   /** Divider above payment when stacked under the price row. */
   showTopSeparator?: boolean;
 }>) {
-  const methods = availablePaymentMethods(context);
-  const notice = paymentMethodNotice(value, context);
-  const cashOnly = methods.length === 1;
+  const offered = availablePaymentMethods(context);
 
   return (
-    <div
+    <fieldset
       className={cn(
-        embedded ? "px-4 py-2 sm:px-6 sm:py-2.5" : "px-4 py-2.5 sm:px-6 sm:py-3",
+        "m-0 w-full min-w-0 border-0 p-0",
+        embedded ? "px-4 pb-3 pt-2 sm:px-6" : "px-4 py-2.5 sm:px-6 sm:py-3",
         embedded
           ? showTopSeparator && "border-t border-white/[0.08]"
           : SUMMARY_SHELL,
       )}
     >
-      <div
-        className={cn(
-          "flex min-w-0 items-baseline justify-between gap-x-4 gap-y-0.5",
-          !cashOnly && "flex-col sm:flex-row sm:items-center",
-        )}
-      >
-        <p className="text-xs text-neutral-400 sm:shrink-0">Paiement</p>
+      <legend className="mb-1.5 w-full px-0 text-[11px] font-medium uppercase tracking-wide text-neutral-500">
+        Paiement
+      </legend>
+      <div className="grid w-full grid-cols-2 gap-2 md:max-w-sm">
+        {DISPLAY_METHODS.map(({ id, Icon }) => {
+          const disabled = !offered.includes(id);
+          const selected = !disabled && id === value;
 
-        {cashOnly ? (
-          <p className="text-right text-sm font-medium text-white sm:text-right">
-            {PAYMENT_METHOD_LABELS.cash}
-            <span className="font-normal text-neutral-500">
-              {" "}
-              · {ONLINE_PAYMENT_DISABLED_INLINE_HINT}
-            </span>
-            <span className="sr-only">. {notice}</span>
-          </p>
-        ) : (
-          <div className="flex w-full gap-2 sm:w-auto sm:min-w-[16rem]">
-            {methods.map((method) => {
-              const active = method === value;
-              return (
-                <button
-                  key={method}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => onChange(method)}
+          return (
+            <button
+              key={id}
+              type="button"
+              disabled={disabled}
+              aria-pressed={disabled ? undefined : selected}
+              aria-disabled={disabled}
+              aria-label={
+                disabled
+                  ? `${PAYMENT_METHOD_LABELS[id]}, ${ONLINE_PAYMENT_UNAVAILABLE_LABEL}`
+                  : PAYMENT_METHOD_LABELS[id]
+              }
+              onClick={() => onChange(id)}
+              className={cn(
+                "relative flex min-h-0 items-center gap-2 rounded-xl border py-1.5 pl-2.5 text-left transition-all duration-200",
+                selected ? "pr-6" : "pr-2.5",
+                disabled &&
+                  "cursor-not-allowed border-neutral-800 bg-neutral-900/50",
+                !disabled && selected && RESERVATION_PICKER_CARD_SELECTED,
+                !disabled && !selected && RESERVATION_PICKER_CARD,
+              )}
+            >
+              {selected ? (
+                <span
+                  className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-white"
+                  aria-hidden
+                >
+                  <Check className="h-2.5 w-2.5" strokeWidth={3} />
+                </span>
+              ) : null}
+
+              <span
+                className={cn(
+                  "flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border",
+                  disabled
+                    ? "border-neutral-800 bg-neutral-900"
+                    : selected
+                      ? RESERVATION_PICKER_ICON_SELECTED
+                      : RESERVATION_PICKER_ICON,
+                )}
+              >
+                <Icon
                   className={cn(
-                    "min-h-9 flex-1 rounded-lg border px-3 text-sm font-medium transition-colors",
-                    active
-                      ? "border-blue-400/50 bg-blue-500/20 text-white"
-                      : "border-blue-400/25 bg-transparent text-neutral-300 hover:bg-blue-500/10 hover:text-white",
+                    "h-3.5 w-3.5",
+                    disabled ? "text-neutral-500" : "text-blue-400",
+                  )}
+                  aria-hidden
+                />
+              </span>
+
+              <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
+                <span
+                  className={cn(
+                    "text-xs font-semibold leading-tight",
+                    disabled ? "text-neutral-500" : "text-white",
                   )}
                 >
-                  {PAYMENT_METHOD_LABELS[method]}
-                </button>
-              );
-            })}
-          </div>
-        )}
+                  {PAYMENT_METHOD_LABELS[id]}
+                </span>
+                {disabled ? (
+                  <span className="text-[10px] font-medium leading-tight text-neutral-500">
+                    {ONLINE_PAYMENT_UNAVAILABLE_LABEL}
+                  </span>
+                ) : null}
+              </span>
+            </button>
+          );
+        })}
       </div>
-
-      {!cashOnly ? (
-        <p className="mt-1.5 text-[11px] leading-snug text-neutral-500 sm:text-right">
-          {notice}
-        </p>
-      ) : null}
-    </div>
+    </fieldset>
   );
 }
 
