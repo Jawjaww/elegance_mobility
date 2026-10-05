@@ -10,7 +10,10 @@ import { supabase } from "@/lib/database/client";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "../ui/loading-spinner";
 import { Suspense, useState, useEffect } from "react";
-import { PaymentMethodChoice } from "./PaymentMethodChoice";
+import {
+  confirmationSummaryShell,
+  PaymentMethodChoice,
+} from "./PaymentMethodChoice";
 import {
   resolvePaymentMethod,
   type BookingPaymentMethod,
@@ -146,11 +149,20 @@ function Fact({
  */
 function PriceSummaryBar({
   priceDetails,
+  embedded = false,
 }: Readonly<{
   priceDetails: PriceDetails;
+  /** No outer shell — parent is {@link confirmationSummaryShell}. */
+  embedded?: boolean;
 }>) {
   return (
-    <div className="rounded-2xl border border-blue-500/15 bg-neutral-800/40 px-4 py-3 sm:px-6 sm:py-4">
+    <div
+      className={
+        embedded
+          ? "px-4 py-3 sm:px-6 sm:py-4"
+          : "rounded-2xl border border-blue-500/15 bg-neutral-800/40 px-4 py-3 sm:px-6 sm:py-4"
+      }
+    >
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4 sm:gap-x-8">
         <div className="sm:col-span-2">
           <p className="text-xs text-neutral-400 sm:text-sm">Prix de base</p>
@@ -359,7 +371,7 @@ export function ConfirmationDetails() {
         }
       }
     };
-    calculatePrice();
+    void calculatePrice();
   }, [departure, destination, selectedVehicle, selectedOptions, distance]);
 
   /*
@@ -397,10 +409,10 @@ export function ConfirmationDetails() {
     );
   }
 
-  const handleAuthSuccess = async () => {
+  const handleAuthSuccess = () => {
     setShowAuthModal(false);
     setTimeout(() => {
-      handleConfirm();
+      void handleConfirm();
     }, 300);
   };
 
@@ -504,21 +516,22 @@ export function ConfirmationDetails() {
           </Card>
         </Suspense>
 
-        {priceDetails && (
-          <div className="order-3 w-full lg:col-span-2">
-            <PriceSummaryBar priceDetails={priceDetails} />
-          </div>
-        )}
-
-        <div className="order-4 w-full lg:col-span-2">
+        <div
+          className={`order-3 w-full lg:col-span-2 ${confirmationSummaryShell}`}
+        >
+          {priceDetails ? (
+            <PriceSummaryBar priceDetails={priceDetails} embedded />
+          ) : null}
           <PaymentMethodChoice
+            embedded
+            showTopSeparator={Boolean(priceDetails)}
             value={paymentMethod}
             onChange={setPaymentMethod}
             context={{ onlineEnabled: onlinePaymentEnabled }}
           />
         </div>
 
-        <div className="order-5 flex w-full gap-3 md:gap-4 lg:col-span-2 lg:gap-5">
+        <div className="order-4 flex w-full gap-3 md:gap-4 lg:col-span-2 lg:gap-5">
           <Button
             variant="outline"
             onClick={handleModify}

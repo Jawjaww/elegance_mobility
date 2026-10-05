@@ -21,8 +21,12 @@ export const PAYMENT_METHOD_LABELS: Record<BookingPaymentMethod, string> = {
   card: "Payer en ligne",
 };
 
+/** Full sentence for tests and screen readers; UI uses a shorter inline hint when cash-only. */
 export const ONLINE_PAYMENT_DISABLED_NOTICE =
   "Le paiement en ligne n'est pas encore ouvert : vous réglerez directement au chauffeur.";
+
+export const ONLINE_PAYMENT_DISABLED_INLINE_HINT =
+  "en ligne indisponible, règlement au chauffeur";
 
 /**
  * Ce que le tunnel a le droit de proposer, dans l'ordre d'affichage.
