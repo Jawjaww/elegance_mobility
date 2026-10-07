@@ -292,7 +292,9 @@ export function ConfirmationDetails() {
   };
 
   const handleModify = () => {
-    router.push("/reservation");
+    // `?modify=1` : seul un retour explicite relit le brouillon persisté. Sans ce drapeau, le
+    // tunnel repart d'un brouillon vide et « Modifier » perdrait le trajet qu'on vient de saisir.
+    router.push("/reservation?modify=1");
   };
 
   // Handler when the map calculates a route; normalize types and update store
