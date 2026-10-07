@@ -1,42 +1,42 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { createJSONStorage } from 'zustand/middleware';
-import { Location, ReservationStore } from '@/lib/types/reservation.types';
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { Location, ReservationStore } from "@/lib/types/reservation.types";
+import type { VehicleType } from "@/lib/vehicle";
+import type { BookingPaymentMethod } from "@/lib/reservation/paymentChoice";
 
-// Fonction de normalisation utilisant uniquement lon
-function normalizeLocation(location: any): Location | null {
+function parseCoordinate(value: unknown): number | null {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") return Number.parseFloat(value);
+  return null;
+}
+
+function normalizeLocation(location: unknown): Location | null {
   try {
-    // Cas explicite pour null ou undefined
     if (location === null || location === undefined) {
       return null;
     }
 
-    // Vérifier le type de l'objet
-    if (typeof location !== 'object') {
-      throw new Error("Format de données incorrect");
+    if (typeof location !== "object") {
+      throw new TypeError("Format de données incorrect");
     }
 
-    // Validation et conversion des coordonnées
-    const lat = typeof location.lat === 'number' ? location.lat : 
-                typeof location.lat === 'string' ? parseFloat(location.lat) : null;
-    const lon = typeof location.lon === 'number' ? location.lon : 
-                typeof location.lon === 'string' ? parseFloat(location.lon) : null;
+    const raw = location as Record<string, unknown>;
+    const lat = parseCoordinate(raw.lat);
+    const lon = parseCoordinate(raw.lon);
 
-    // Vérification des valeurs
-    if (lat === null || lon === null || isNaN(lat) || isNaN(lon)) {
-      throw new Error("Coordonnées invalides");
+    if (lat === null || lon === null || Number.isNaN(lat) || Number.isNaN(lon)) {
+      throw new TypeError("Coordonnées invalides");
     }
 
     if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
-      throw new Error("Coordonnées hors limites");
+      throw new RangeError("Coordonnées hors limites");
     }
 
-    // Construction de l'objet normalisé
     return {
       lat,
       lon,
-      display_name: typeof location.display_name === 'string' ? location.display_name : "",
-      address: typeof location.address === 'object' ? location.address : {}
+      display_name: typeof raw.display_name === "string" ? raw.display_name : "",
+      address: typeof raw.address === "object" && raw.address !== null ? (raw.address as Record<string, unknown>) : {},
     };
   } catch (error) {
     console.error("[Store] Erreur de normalisation:", error);
@@ -44,22 +44,21 @@ function normalizeLocation(location: any): Location | null {
   }
 }
 
-import type { VehicleType } from '@/lib/vehicle';
-
 const initialState = {
   departure: null,
   destination: null,
   pickupDateTime: new Date(),
   distance: null,
   duration: null,
-  selectedVehicle: 'STANDARD' as VehicleType,
+  selectedVehicle: "STANDARD" as VehicleType,
   selectedOptions: [],
+  paymentMethod: "cash" as BookingPaymentMethod,
   step: 1,
 };
 
 export const useReservationStore = create<ReservationStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       ...initialState,
 
       setDeparture: (location) => {
@@ -73,16 +72,14 @@ export const useReservationStore = create<ReservationStore>()(
       },
 
       setPickupDateTime: (date) => {
-        // Validation et conversion de la date
         try {
-          const validDate = date instanceof Date ? new Date(date.getTime()) : new Date(date);
-          if (isNaN(validDate.getTime())) {
-            throw new Error("Date invalide");
+          const validDate = new Date(date);
+          if (Number.isNaN(validDate.getTime())) {
+            throw new TypeError("Date invalide");
           }
           set(() => ({ pickupDateTime: validDate }));
         } catch (error) {
           console.error("[Store] Erreur lors de la définition de la date:", error);
-          // En cas d'erreur, utiliser l'heure actuelle + 3h comme fallback
           const fallbackDate = new Date();
           fallbackDate.setHours(fallbackDate.getHours() + 3);
           set(() => ({ pickupDateTime: fallbackDate }));
@@ -101,8 +98,6 @@ export const useReservationStore = create<ReservationStore>()(
 
       setSelectedVehicle: (vehicle) =>
         set(() => ({
-          // Cast here to keep the store strict; callers should validate
-          // or use VehicleType from src/lib/vehicle.
           selectedVehicle: vehicle as VehicleType,
         })),
 
@@ -118,6 +113,11 @@ export const useReservationStore = create<ReservationStore>()(
           selectedOptions: options,
         })),
 
+      setPaymentMethod: (method) =>
+        set(() => ({
+          paymentMethod: method,
+        })),
+
       setStep: (step) =>
         set(() => ({
           step,
@@ -126,12 +126,12 @@ export const useReservationStore = create<ReservationStore>()(
       reset: () =>
         set(() => ({
           ...initialState,
-          pickupDateTime: new Date(), // Toujours utiliser une nouvelle instance
+          pickupDateTime: new Date(),
         })),
 
       addMinutesToPickupTime: (minutes) =>
         set((state) => {
-          const newDate = new Date(state.pickupDateTime.getTime());
+          const newDate = new Date(state.pickupDateTime);
           newDate.setMinutes(newDate.getMinutes() + minutes);
           return { pickupDateTime: newDate };
         }),
@@ -141,42 +141,41 @@ export const useReservationStore = create<ReservationStore>()(
           try {
             const currentDate = new Date(state.pickupDateTime);
             const newDate = new Date(date);
-            
-            // Conserver l'heure actuelle
+
             newDate.setHours(currentDate.getHours());
             newDate.setMinutes(currentDate.getMinutes());
-            
-            // Vérifier si la date est valide
-            if (isNaN(newDate.getTime())) {
-              throw new Error("Date invalide après mise à jour");
+
+            if (Number.isNaN(newDate.getTime())) {
+              throw new TypeError("Date invalide après mise à jour");
             }
-            
+
             return { pickupDateTime: newDate };
           } catch (error) {
             console.error("[Store] Erreur lors de la mise à jour de la date:", error);
-            return state; // Conserver l'état actuel en cas d'erreur
+            return state;
           }
         }),
     }),
     {
-      name: 'reservation-store',
+      name: "reservation-store",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         ...state,
-        // Convertir la date en ISO string pour le stockage
         pickupDateTime: state.pickupDateTime.toISOString(),
       }),
       onRehydrateStorage: () => (state) => {
-        // Reconvertir la date en objet Date lors de la réhydratation
-        if (state && typeof state.pickupDateTime === 'string') {
+        if (state && typeof state.pickupDateTime === "string") {
           try {
             state.pickupDateTime = new Date(state.pickupDateTime);
           } catch (error) {
             console.error("[Store] Erreur lors de la réhydratation de la date:", error);
-            state.pickupDateTime = new Date(); // Utiliser la date actuelle en cas d'erreur
+            state.pickupDateTime = new Date();
           }
         }
+        if (state && state.paymentMethod !== "cash" && state.paymentMethod !== "card") {
+          state.paymentMethod = "cash";
+        }
       },
-    }
-  )
+    },
+  ),
 );

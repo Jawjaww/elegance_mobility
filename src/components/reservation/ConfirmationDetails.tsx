@@ -11,13 +11,11 @@ import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "../ui/loading-spinner";
 import { Suspense, useState, useEffect } from "react";
 import {
-  confirmationSummaryShell,
-  PaymentMethodChoice,
-} from "./PaymentMethodChoice";
-import {
   resolvePaymentMethod,
   type BookingPaymentMethod,
 } from "@/lib/reservation/paymentChoice";
+import { useOnlinePaymentEnabled } from "@/hooks/useOnlinePaymentEnabled";
+import { TripOptionOverlay } from "@/components/reservation/TripOptionOverlay";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import ReservationMap from "@/components/map/ReservationMap";
@@ -149,20 +147,11 @@ function Fact({
  */
 function PriceSummaryBar({
   priceDetails,
-  embedded = false,
 }: Readonly<{
   priceDetails: PriceDetails;
-  /** No outer shell — parent is {@link confirmationSummaryShell}. */
-  embedded?: boolean;
 }>) {
   return (
-    <div
-      className={
-        embedded
-          ? "px-4 py-3 sm:px-6 sm:py-4"
-          : "rounded-2xl border border-blue-500/15 bg-neutral-800/40 px-4 py-3 sm:px-6 sm:py-4"
-      }
-    >
+    <div className="rounded-2xl border border-blue-500/15 bg-neutral-800/40 px-4 py-3 sm:px-6 sm:py-4">
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4 sm:gap-x-8">
         <div className="sm:col-span-2">
           <p className="text-xs text-neutral-400 sm:text-sm">Prix de base</p>
@@ -199,6 +188,7 @@ export function ConfirmationDetails() {
     pickupDateTime,
     selectedVehicle,
     selectedOptions,
+    paymentMethod,
     distance,
     duration,
   } = reservationStore;
@@ -227,33 +217,7 @@ export function ConfirmationDetails() {
 
   // État pour gérer l'affichage du modal d'authentification
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<BookingPaymentMethod>("cash");
-  // Defaut a `false` : si la lecture echoue, on ne propose PAS le paiement en ligne. Se tromper
-  // dans ce sens coute un moyen de paiement en moins ; se tromper dans l'autre ferait croire au
-  // client qu'il a paye.
-  const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    void (async () => {
-      const { data } = await supabase
-        .from("ride_fee_policies")
-        .select("online_payment_enabled")
-        .eq("scope_kind", "platform")
-        .eq("is_active", true)
-        .limit(1)
-        .maybeSingle();
-
-      if (!cancelled) {
-        setOnlinePaymentEnabled(data?.online_payment_enabled === true);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const onlinePaymentEnabled = useOnlinePaymentEnabled();
 
   const handleConfirm = async () => {
     if (!departure || !destination || !pickupDateTime || !selectedVehicle) {
@@ -469,24 +433,6 @@ export function ConfirmationDetails() {
               ) : null}
             </Fact>
           </div>
-
-          {selectedOptions.length > 0 ? (
-            <div className="mt-3 border-t border-white/[0.08] pt-3">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">
-                Options
-              </p>
-              <ul className="mt-1.5 flex flex-wrap gap-1.5">
-                {selectedOptions.map((option) => (
-                  <li
-                    key={option}
-                    className="rounded-full border border-blue-500/25 bg-blue-500/10 px-2.5 py-0.5 text-xs text-blue-100"
-                  >
-                    {option}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
         </Card>
 
         <Suspense
@@ -512,24 +458,16 @@ export function ConfirmationDetails() {
                 duration={duration}
                 vehicle={vehicleLabel(selectedVehicle)}
               />
+              <TripOptionOverlay options={selectedOptions} />
             </div>
           </Card>
         </Suspense>
 
-        <div
-          className={`order-3 w-full lg:col-span-2 ${confirmationSummaryShell}`}
-        >
-          {priceDetails ? (
-            <PriceSummaryBar priceDetails={priceDetails} embedded />
-          ) : null}
-          <PaymentMethodChoice
-            embedded
-            showTopSeparator={Boolean(priceDetails)}
-            value={paymentMethod}
-            onChange={setPaymentMethod}
-            context={{ onlineEnabled: onlinePaymentEnabled }}
-          />
-        </div>
+        {priceDetails ? (
+          <div className="order-3 w-full lg:col-span-2">
+            <PriceSummaryBar priceDetails={priceDetails} />
+          </div>
+        ) : null}
 
         <div className="order-4 flex w-full gap-3 md:gap-4 lg:col-span-2 lg:gap-5">
           <Button

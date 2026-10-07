@@ -82,16 +82,20 @@ describe("paymentChoice wiring", () => {
   const read = (relative: string) => readFileSync(join(process.cwd(), relative), "utf8");
 
   const confirmation = read(join("src", "components", "reservation", "ConfirmationDetails.tsx"));
+  const vehicle = read(join("src", "components", "reservation", "VehicleStep.tsx"));
+  const hook = read(join("src", "hooks", "useOnlinePaymentEnabled.ts"));
   const choice = read(join("src", "components", "reservation", "PaymentMethodChoice.tsx"));
 
   it("le mode choisi est enregistré sur la course, résolu contre le réglage", () => {
     expect(confirmation).toContain("payment_method: input.paymentMethod");
     expect(confirmation).toContain("resolvePaymentMethod(paymentMethod");
+    expect(vehicle).toContain("PaymentMethodChoice");
   });
 
   it("le tunnel lit le réglage, et son défaut est fermé", () => {
-    expect(confirmation).toContain("online_payment_enabled");
-    expect(confirmation).toContain("useState(false)");
+    expect(hook).toContain("online_payment_enabled");
+    expect(hook).toContain("useState(false)");
+    expect(vehicle).toContain("useOnlinePaymentEnabled");
   });
 
   it("montre toujours les deux cartes, et grise En ligne quand elle n'est pas offerte", () => {

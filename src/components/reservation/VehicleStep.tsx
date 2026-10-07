@@ -1,10 +1,15 @@
 "use client";
 
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { type VehicleType, type VehicleOptions } from "@/lib/vehicle";
 import { cn } from "@/lib/utils";
 import { ReservationOptionsToggles } from "@/components/reservation/ReservationOptionsToggles";
+import { PaymentMethodChoice } from "@/components/reservation/PaymentMethodChoice";
 import DateTimeStep from "@/components/reservation/DateTimeStep";
+import { useOnlinePaymentEnabled } from "@/hooks/useOnlinePaymentEnabled";
+import { useReservationStore } from "@/lib/stores/reservationStore";
+import { resolvePaymentMethod } from "@/lib/reservation/paymentChoice";
 import {
   LANDING_CTA,
   RESERVATION_PICKER_CARD,
@@ -63,6 +68,18 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
   pickupDateTime,
   onDateTimeChange,
 }) => {
+  const onlinePaymentEnabled = useOnlinePaymentEnabled();
+  const paymentMethod = useReservationStore((s) => s.paymentMethod);
+  const setPaymentMethod = useReservationStore((s) => s.setPaymentMethod);
+  const paymentContext = { onlineEnabled: onlinePaymentEnabled };
+  const resolvedPayment = resolvePaymentMethod(paymentMethod, paymentContext);
+
+  useEffect(() => {
+    if (resolvedPayment !== paymentMethod) {
+      setPaymentMethod(resolvedPayment);
+    }
+  }, [paymentMethod, resolvedPayment, setPaymentMethod]);
+
   const selectedVehicle = vehicleOptions.find(
     (option) => option.value === vehicleType,
   );
@@ -143,6 +160,16 @@ const VehicleStep: React.FC<VehicleStepProps> = ({
             options={options}
             onOptionsChange={onOptionsChange}
             compact
+          />
+        </div>
+
+        <div className="mt-2.5 space-y-2 border-t border-blue-500/15 pt-2.5 md:mt-4 md:space-y-4 md:pt-4 lg:mt-6 lg:space-y-4 lg:pt-6">
+          <PaymentMethodChoice
+            embedded
+            className="px-0 pb-0 pt-0"
+            value={resolvedPayment}
+            onChange={setPaymentMethod}
+            context={paymentContext}
           />
         </div>
       </div>
