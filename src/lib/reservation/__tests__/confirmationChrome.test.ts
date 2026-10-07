@@ -26,5 +26,6 @@ describe("confirmation chrome wiring", () => {
     expect(edit).toContain("TripOptionOverlay");
     expect(overlay).toContain("5000");
     expect(overlay).toContain("optionIcon");
+    expect(overlay).toContain("bottom-3 right-3");
   });
 });
