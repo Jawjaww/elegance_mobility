@@ -1,14 +1,24 @@
 "use client";
+import { useEffect } from "react";
 import Link from "next/link";
 import { Check } from "lucide-react";
+import { useReservationStore } from "@/lib/stores/reservationStore";
 
 /**
  * Fills the space left between the header and the bottom nav (`flex-1`) instead of declaring
  * its own `min-h-screen`. A viewport-sized block nested inside the shell added a full screen
  * of height on top of the header and the nav clearance, which is why this page scrolled far
  * more than the others.
+ *
+ * Cette page est aussi le terminus du tunnel : le brouillon a servi, il est **consommé** ici.
+ * Persisté sans être effacé, il faisait démarrer la réservation suivante avec les options de la
+ * précédente — 217 courses cloud portaient les deux mêmes options jamais choisies.
  */
 export default function ReservationSuccessPage() {
+  useEffect(() => {
+    useReservationStore.getState().reset();
+  }, []);
+
   return (
     <div className="flex flex-1 items-center justify-center px-5 py-12 sm:px-6">
       <div className="w-full max-w-3xl">

@@ -11,6 +11,7 @@ import {
   vehicleOptionsFromSelected,
 } from "../lib/vehicle";
 import { normalizeSelectedOptions } from "../lib/services/optionsCatalogService";
+import { shouldResumeReservationDraft } from "../lib/reservation/resumeDraft";
 import { useReservationStore } from "../lib/stores/reservationStore";
 import { normalizePickupDateTime } from "../lib/utils/normalizePickupDateTime";
 import { validateVehicleType } from "../lib/utils/vehicle";
@@ -32,39 +33,66 @@ export function useReservation() {
   const reservationStore = useReservationStore();
   const didApplyRebookRef = useRef(false);
 
+  /**
+   * Une nouvelle réservation part d'un brouillon **vide** ; seul un retour explicite dans le
+   * tunnel relit le brouillon persisté (voir `shouldResumeReservationDraft`, testé).
+   *
+   * Sans ce garde-fou, le brouillon persisté n'étant jamais effacé, les options d'une course
+   * précédente restaient cochées et étaient ajoutées à la course suivante — mesuré sur le cloud :
+   * 217 courses portaient exactement les deux mêmes options sans que le client les ait choisies.
+   */
+  const resumeDraft = shouldResumeReservationDraft({
+    modify: searchParams?.get("modify") ?? null,
+    rebook: searchParams?.get("rebook") ?? null,
+    editingId:
+      typeof window !== "undefined"
+        ? localStorage.getItem("currentEditingReservationId")
+        : null,
+  });
+  /** Le brouillon relu, ou `null` pour une nouvelle réservation. */
+  const seeded = resumeDraft ? reservationStore : null;
+
   // Standardisation sur lon et gestion des cas null
   const [origin, setOrigin] = useState<Coordinates | undefined>(() => {
-    if (!reservationStore.departure) return undefined;
+    if (!seeded?.departure) return undefined;
     return {
-      lat: reservationStore.departure.lat,
-      lon: reservationStore.departure.lon,
+      lat: seeded.departure.lat,
+      lon: seeded.departure.lon,
     };
   });
 
   const [destination, setDestination] = useState<Coordinates | undefined>(
     () => {
-      if (!reservationStore.destination || !reservationStore.departure)
-        return undefined;
+      if (!seeded?.destination || !seeded.departure) return undefined;
       return {
-        lat: reservationStore.destination.lat,
-        lon: reservationStore.destination.lon,
+        lat: seeded.destination.lat,
+        lon: seeded.destination.lon,
       };
     },
   );
 
   // Reste du code inchangé
   const [originAddress, setOriginAddress] = useState(
-    reservationStore.departure?.display_name || "",
+    seeded?.departure?.display_name || "",
   );
   const [destinationAddress, setDestinationAddress] = useState(
-    reservationStore.destination?.display_name || "",
+    seeded?.destination?.display_name || "",
   );
   const [pickupDateTime, setPickupDateTime] = useState(() => {
-    return normalizePickupDateTime(
-      reservationStore.pickupDateTime || new Date(),
-    );
+    return normalizePickupDateTime(seeded?.pickupDateTime || new Date());
   });
   const didNormalizePickupRef = useRef(false);
+
+  /**
+   * Une nouvelle réservation efface le brouillon que la précédente a laissé : c'est ce qui
+   * empêche les options d'une course terminée de se retrouver cochées sur la suivante. Une
+   * reprise explicite garde le sien.
+   */
+  useEffect(() => {
+    if (resumeDraft) return;
+    useReservationStore.getState().reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- une fois au montage
+  }, []);
 
   // Create mode only: bump stale draft datetime to now+min lead (keep addresses).
   useEffect(() => {
@@ -72,25 +100,23 @@ export function useReservation() {
     if (typeof window === "undefined") return;
     if (localStorage.getItem("currentEditingReservationId")) return;
     didNormalizePickupRef.current = true;
-    const normalized = normalizePickupDateTime(
-      reservationStore.pickupDateTime || pickupDateTime,
-    );
-    setPickupDateTime(normalized);
-    reservationStore.setPickupDateTime(normalized);
+    // La date locale est déjà normalisée à la graine (`seeded?.pickupDateTime`) : pour une
+    // nouvelle réservation c'est maintenant + délai mini, jamais la date de la course précédente.
+    // Lire `reservationStore.pickupDateTime` ici relisait le brouillon périmé et reportait la
+    // date d'une course sur la suivante.
+    reservationStore.setPickupDateTime(pickupDateTime);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once on mount for create flow
   }, []);
 
-  const [distance, setDistance] = useState(reservationStore.distance || 0);
-  const [duration, setDuration] = useState(reservationStore.duration || 0);
+  const [distance, setDistance] = useState(seeded?.distance || 0);
+  const [duration, setDuration] = useState(seeded?.duration || 0);
   const [vehicleType, setVehicleType] = useState<VehicleType>(
-    (reservationStore.selectedVehicle as VehicleType) || "STANDARD",
+    (seeded?.selectedVehicle as VehicleType) || "STANDARD",
   );
   const [pickup, setPickup] = useState<LocationState>(DEFAULT_LOCATION_STATE);
   const [dropoff, setDropoff] = useState<LocationState>(DEFAULT_LOCATION_STATE);
   const [options, setOptions] = useState<VehicleOptions>(() =>
-    vehicleOptionsFromSelected(
-      normalizeSelectedOptions(reservationStore.selectedOptions),
-    ),
+    vehicleOptionsFromSelected(normalizeSelectedOptions(seeded?.selectedOptions)),
   );
 
   // Prefill from system-expire rebook CTA (?rebook=1&from=&to=&…).
