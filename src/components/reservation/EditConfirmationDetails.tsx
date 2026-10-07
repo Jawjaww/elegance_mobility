@@ -17,6 +17,7 @@ import { resolveRideFinalPrice } from "@/lib/services/resolveRideFinalPrice";
 import { LANDING_CTA } from "@/components/landing/landingSurface";
 import { TripEndpointRail } from "@/components/reservation/TripEndpointRail";
 import { TripStatsBadge } from "@/components/reservation/TripStatsBadge";
+import { TripOptionOverlay } from "@/components/reservation/TripOptionOverlay";
 import { vehicleLabel } from "@/lib/utils/vehicle";
 
 type EditConfirmationDetailsProps = {
@@ -237,7 +238,7 @@ export function EditConfirmationDetails({
         }
       }
     };
-    calculatePrice();
+    void calculatePrice();
   }, [departure, destination, selectedVehicle, selectedOptions, distance]);
 
   if (!departure || !destination || !pickupDateTime || !selectedVehicle) {
@@ -294,24 +295,6 @@ export function EditConfirmationDetails({
               ) : null}
             </Fact>
           </div>
-
-          {selectedOptions.length > 0 ? (
-            <div className="mt-3 border-t border-white/[0.08] pt-3">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">
-                Options
-              </p>
-              <ul className="mt-1.5 flex flex-wrap gap-1.5">
-                {selectedOptions.map((option) => (
-                  <li
-                    key={option}
-                    className="rounded-full border border-blue-500/25 bg-blue-500/10 px-2.5 py-0.5 text-xs text-blue-100"
-                  >
-                    {option}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
         </Card>
 
         <Suspense
@@ -337,6 +320,7 @@ export function EditConfirmationDetails({
                 duration={duration}
                 vehicle={vehicleLabel(selectedVehicle)}
               />
+              <TripOptionOverlay options={selectedOptions} />
             </div>
           </Card>
         </Suspense>

@@ -98,6 +98,18 @@ describe("confirmation summary", () => {
   );
 
   it.each(CONFIRMATION_FILES)(
+    "shows extras as tap-to-label icons on the map, not as chips in the card (%s)",
+    (_name, file) => {
+      const source = readSource(file);
+
+      expect(source).toContain("<TripOptionOverlay");
+      expect(source).toContain("options={selectedOptions}");
+      // The chip row that used to sit under the date.
+      expect(source).not.toContain("border-blue-500/25 bg-blue-500/10");
+    },
+  );
+
+  it.each(CONFIRMATION_FILES)(
     "stops repeating the vehicle category in the details card (%s)",
     (_name, file) => {
       const source = readSource(file);

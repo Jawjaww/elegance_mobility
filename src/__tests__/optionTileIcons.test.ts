@@ -14,12 +14,13 @@ import path from "path";
  * going live with a generic sparkle. The names come from `SHORT_LABELS`, the same table the
  * tiles take their labels from, rather than a second copy that could drift from it.
  *
- * Source-level assertions, as elsewhere in this folder: `optionIcon` is private to the component
- * and the repository has no component-rendering setup.
+ * Source-level assertions, as elsewhere in this folder: the lookup lives in `optionGlyphs`
+ * (tiles and confirmation map overlay share it) and the repository has no component-rendering
+ * setup.
  */
 const OPTIONS = path.resolve(
   __dirname,
-  "../components/reservation/ReservationOptionsToggles.tsx",
+  "../lib/reservation/optionGlyphs.ts",
 );
 
 /**

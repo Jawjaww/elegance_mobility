@@ -27,8 +27,13 @@ const DISPLAY_METHODS: ReadonlyArray<{
   { id: "card", Icon: CreditCard },
 ];
 
+function paymentIconChrome(disabled: boolean, selected: boolean): string {
+  if (disabled) return "border-neutral-800 bg-neutral-900";
+  return selected ? RESERVATION_PICKER_ICON_SELECTED : RESERVATION_PICKER_ICON;
+}
+
 /**
- * Payment method at confirm time (F-01 upstream).
+ * Payment method on the vehicle step (F-01 upstream). Confirmation only records it.
  *
  * Two compact picker tiles — same chrome as reservation options. Online payment stays visible
  * when the policy is off: greyed, disabled, labelled Indisponible. A tap cannot write `card`.
@@ -39,14 +44,16 @@ export function PaymentMethodChoice({
   context,
   embedded = false,
   showTopSeparator = false,
+  className,
 }: Readonly<{
   value: BookingPaymentMethod;
   onChange: (method: BookingPaymentMethod) => void;
   context: PaymentChoiceContext;
-  /** Nested inside the price summary shell — no second card. */
+  /** Nested inside another shell — no second card. */
   embedded?: boolean;
-  /** Divider above payment when stacked under the price row. */
+  /** Divider above payment when stacked under another row. */
   showTopSeparator?: boolean;
+  className?: string;
 }>) {
   const offered = availablePaymentMethods(context);
 
@@ -58,6 +65,7 @@ export function PaymentMethodChoice({
         embedded
           ? showTopSeparator && "border-t border-white/[0.08]"
           : SUMMARY_SHELL,
+        className,
       )}
     >
       <legend className="mb-1.5 w-full px-0 text-[11px] font-medium uppercase tracking-wide text-neutral-500">
@@ -102,11 +110,7 @@ export function PaymentMethodChoice({
               <span
                 className={cn(
                   "flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border",
-                  disabled
-                    ? "border-neutral-800 bg-neutral-900"
-                    : selected
-                      ? RESERVATION_PICKER_ICON_SELECTED
-                      : RESERVATION_PICKER_ICON,
+                  paymentIconChrome(disabled, selected),
                 )}
               >
                 <Icon
@@ -140,5 +144,3 @@ export function PaymentMethodChoice({
     </fieldset>
   );
 }
-
-export { SUMMARY_SHELL as confirmationSummaryShell };
