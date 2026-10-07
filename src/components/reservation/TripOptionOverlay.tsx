@@ -7,7 +7,7 @@ import { optionIcon, shortOptionLabel } from "@/lib/reservation/optionGlyphs";
 const AUTO_HIDE_MS = 5000;
 
 /**
- * Selected extras as a row of map icons (top-right). Tap reveals the short label, then it
+ * Selected extras as a row of map icons (bottom-right). Tap reveals the short label, then it
  * closes on its own — the confirmation card must not grow a chip row for a fact already chosen.
  */
 export function TripOptionOverlay({
@@ -26,7 +26,7 @@ export function TripOptionOverlay({
   if (options.length === 0) return null;
 
   return (
-    <ul className="pointer-events-none absolute right-3 top-3 z-10 flex max-w-[55%] flex-wrap justify-end gap-1.5">
+    <ul className="pointer-events-none absolute bottom-3 right-3 z-10 flex max-w-[55%] flex-wrap justify-end gap-1.5">
       {options.map((option) => {
         const Icon = optionIcon(option);
         const label = shortOptionLabel(option);
